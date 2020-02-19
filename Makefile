@@ -28,7 +28,7 @@ MKDIR_OBJ=mkdir -p $(GDJDIR)/obj
 MKDIR_OUTPUT=mkdir -p $(GDJDIR)/output
 MKDIR_PDF=mkdir -p $(GDJDIR)/pdfDir
 
-all: mkdirBin mkdirLib mkdirObj mkdirOutput mkdirPdf obj/globalDebugHandler.o obj/checkMakeDir.o obj/configParser.o obj/centralityFromInput.o lib/libATLASGDJ.so bin/gdjNTupleToHist.exe
+all: mkdirBin mkdirLib mkdirObj mkdirOutput mkdirPdf obj/globalDebugHandler.o obj/checkMakeDir.o obj/configParser.o obj/centralityFromInput.o lib/libATLASGDJ.so bin/gdjNTupleToHist.exe bin/gdjHistDumper.exe
 
 mkdirBin:
 	$(MKDIR_BIN)
@@ -62,6 +62,9 @@ lib/libATLASGDJ.so:
 
 bin/gdjNTupleToHist.exe: src/gdjNTupleToHist.C
 	$(CXX) $(CXXFLAGS) src/gdjNTupleToHist.C -o bin/gdjNTupleToHist.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
+
+bin/gdjHistDumper.exe: src/gdjHistDumper.C
+	$(CXX) $(CXXFLAGS) src/gdjHistDumper.C -o bin/gdjHistDumper.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
 
 clean:
 	rm -f ./*~

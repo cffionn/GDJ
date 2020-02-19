@@ -11,13 +11,17 @@
 #include "TEnv.h"
 #include "TFile.h"
 #include "TH1F.h"
+#include "TH2F.h"
 #include "TMath.h"
 #include "TTree.h"
 
 //Local
+#include "include/binUtils.h"
 #include "include/centralityFromInput.h"
 #include "include/checkMakeDir.h"
 #include "include/configParser.h"
+#include "include/getLinBins.h"
+#include "include/getLogBins.h"
 #include "include/ghostUtil.h"
 #include "include/histDefUtility.h"
 #include "include/stringUtil.h"
@@ -52,16 +56,39 @@ int gdjNTupleToHist(std::string inConfigFileName)
   if(!isPP){
     centBins = strToVectI(config.GetConfigVal("CENTBINS"));
     nCentBins = centBins.size()-1;
+
+    if(!goodBinning(inConfigFileName, nMaxCentBins, nCentBins, "CENTBINS")) return 1;
+
     centBinsStr.clear();
     for(Int_t cI = 0; cI < nCentBins; ++cI){
       centBinsStr.push_back("Cent" + std::to_string(centBins[cI]) + "to" + std::to_string(centBins[cI+1]));
     }
   }
+
+  const Int_t nMaxPtBins = 200;
+  const Int_t nPtBins = std::stoi(config.GetConfigVal("NPTBINS"));
+  if(!goodBinning(inConfigFileName, nMaxPtBins, nPtBins, "NPTBINS")) return 1;
+  const Float_t ptBinsLow = std::stof(config.GetConfigVal("PTBINSLOW"));
+  const Float_t ptBinsHigh = std::stof(config.GetConfigVal("PTBINSHIGH"));
+  const Bool_t ptBinsDoLog = std::stof(config.GetConfigVal("PTBINSDOLOG"));
+  Double_t ptBins[nMaxPtBins+1];
+  if(ptBinsDoLog) getLogBins(ptBinsLow, ptBinsHigh, nPtBins, ptBins);
+  else getLinBins(ptBinsLow, ptBinsHigh, nPtBins, ptBins);
+
+  const Int_t nMaxEtaBins = 100;
+  const Int_t nEtaBins = std::stoi(config.GetConfigVal("NETABINS"));
+  if(!goodBinning(inConfigFileName, nMaxEtaBins, nEtaBins, "NETABINS")) return 1;
+  const Float_t etaBinsLow = std::stof(config.GetConfigVal("ETABINSLOW"));
+  const Float_t etaBinsHigh = std::stof(config.GetConfigVal("ETABINSHIGH"));
+  Double_t etaBins[nMaxEtaBins+1];
+  getLinBins(etaBinsLow, etaBinsHigh, nEtaBins, etaBins);
+
   
   TFile* outFile_p = new TFile(outFileName.c_str(), "RECREATE");
   TH1F* centrality_p = nullptr;
   TH1F* photonPt_p[nMaxCentBins];
   TH1F* photonEta_p[nMaxCentBins];
+  TH2F* photonEtaPt_p[nMaxCentBins];
   
   if(!isPP){
     centrality_p = new TH1F("centrality_h", ";Centrality (%);Counts", 100, -0.5, 99.5);
@@ -69,10 +96,13 @@ int gdjNTupleToHist(std::string inConfigFileName)
   }
 
   for(Int_t cI = 0; cI < nCentBins; ++cI){
-    photonPt_p[cI] = new TH1F(("photonPt_" + centBinsStr[cI] + "_h").c_str(), ";#gamma p_{T} [GeV];Counts", 14, 30, 100);
-    photonEta_p[cI] = new TH1F(("photonEta_" + centBinsStr[cI] + "_h").c_str(), ";#gamma #eta;Counts", 14, -2.1, 2.1);
+    photonPt_p[cI] = new TH1F(("photonPt_" + centBinsStr[cI] + "_h").c_str(), ";#gamma p_{T} [GeV];Counts", nPtBins, ptBins);
+    photonEta_p[cI] = new TH1F(("photonEta_" + centBinsStr[cI] + "_h").c_str(), ";#gamma #eta;Counts", nEtaBins, etaBins);
 
+    photonEtaPt_p[cI] = new TH2F(("photonEtaPt_" + centBinsStr[cI] + "_h").c_str(), ";#gamma #eta;#gamma p_{T} [GeV]", nEtaBins, etaBins, nPtBins, ptBins);
+    
     centerTitles({photonPt_p[cI], photonEta_p[cI]});
+    centerTitles(photonEtaPt_p[cI]);
   }
   
   TFile* inFile_p = new TFile(inROOTFileName.c_str(), "READ");
@@ -116,6 +146,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
     for(unsigned int pI = 0; pI < photon_pt_p->size(); ++pI){
       photonPt_p[centPos]->Fill(photon_pt_p->at(pI));
       photonEta_p[centPos]->Fill(photon_eta_p->at(pI));
+      photonEtaPt_p[centPos]->Fill(photon_eta_p->at(pI), photon_pt_p->at(pI));
     }
   }  
   
@@ -129,6 +160,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   for(Int_t cI = 0; cI < nCentBins; ++cI){
     photonPt_p[cI]->Write("", TObject::kOverwrite);
     photonEta_p[cI]->Write("", TObject::kOverwrite);
+    photonEtaPt_p[cI]->Write("", TObject::kOverwrite);
   }
 
   if(!isPP) delete centrality_p;
@@ -136,8 +168,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
   for(Int_t cI = 0; cI < nCentBins; ++cI){
     delete photonPt_p[cI];
     delete photonEta_p[cI];
+    delete photonEtaPt_p[cI];
   }
-
+  
   outFile_p->Close();
   delete outFile_p;
   
