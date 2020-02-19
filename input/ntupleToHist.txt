@@ -1,0 +1,5 @@
+INFILENAME,/home/cfmcginn/Samples/ATLASGDJ/data17_5TeV.root
+OUTFILENAME,data17_5TeV_HIST.root
+CENTFILENAME,input/centrality_cuts_Gv32_proposed_RCMOD2.txt
+
+ISPP,1
