@@ -60,10 +60,12 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::string topDi
 
     if(isStrSame(className, "TH1D")){
       TH1D* tempHist_p = (TH1D*)key->ReadObj();
+      tempHist_p->SetMinimum(0.0);
       tempHist_p->DrawCopy("HIST E1 P");
     }
     else if(isStrSame(className, "TH1F")){
       TH1F* tempHist_p = (TH1F*)key->ReadObj();
+      tempHist_p->SetMinimum(0.0);
       tempHist_p->DrawCopy("HIST E1 P");
     }
     else if(isStrSame(className, "TH1D")){
