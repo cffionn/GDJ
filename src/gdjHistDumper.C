@@ -100,7 +100,7 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::str
 
       tempHist_p->DrawCopy("HIST E1 P");
     }
-    else if(isStrSame(className, "TH1D")){
+    else if(isStrSame(className, "TH2D")){
       TH2D* tempHist_p = (TH2D*)key->ReadObj();
       tempHist_p->DrawCopy("COLZ");
     }
@@ -121,7 +121,7 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::str
       preLabels.push_back(labelName.substr(0, labelName.find("_")));
       labelName.replace(0, labelName.find("_")+1, "");
     }
-    preLabels.push_back(labelName);
+    if(labelName.size() != 0) preLabels.push_back(labelName);
     
     labelName = "";
     for(unsigned int pI = 0; pI < preLabels.size(); ++pI){
@@ -143,7 +143,7 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::str
   return retVal;
 }
 
-int HistDumping(std::string inFileName)
+int gdjHistDumper(std::string inFileName)
 {
   checkMakeDir check;
   if(!check.checkFileExt(inFileName, "root")) return 1;
@@ -169,7 +169,7 @@ int HistDumping(std::string inFileName)
 int main(int argc, char* argv[])
 {
   if(argc != 2){
-    std::cout << "Usage: ./bin/HistDumping.exe <inFileName>" << std::endl;
+    std::cout << "Usage: ./bin/gdjHistDumper.exe <inFileName>" << std::endl;
     std::cout << "TO DEBUG:" << std::endl;
     std::cout << " export DOGLOBALDEBUGROOT=1 #from command line" << std::endl;
     std::cout << "TO TURN OFF DEBUG:" << std::endl;
@@ -179,6 +179,6 @@ int main(int argc, char* argv[])
   }
  
   int retVal = 0;
-  retVal += HistDumping(argv[1]);
+  retVal += gdjHistDumper(argv[1]);
   return retVal;
 }
