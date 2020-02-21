@@ -49,7 +49,7 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::str
 
   const Float_t yOffset = 1.8;
 
-  const Float_t topMargin = 0.05;
+  const Float_t topMargin = 0.06;
   const Float_t leftMargin = 0.16;
   const Float_t rightMargin = 0.12;
   const Float_t bottomMargin = 0.12;
@@ -76,6 +76,8 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::str
 
     if(isStrSame(className, "TH1D")){
       TH1D* tempHist_p = (TH1D*)key->ReadObj();
+      
+      tempHist_p->SetMaximum(1.15*getMax(tempHist_p));
       tempHist_p->SetMinimum(0.0);
 
       tempHist_p->SetMarkerSize(markerSize);
@@ -89,6 +91,7 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::str
     }
     else if(isStrSame(className, "TH1F")){
       TH1F* tempHist_p = (TH1F*)key->ReadObj();
+      tempHist_p->SetMaximum(1.15*getMax(tempHist_p));
       tempHist_p->SetMinimum(0.0);
 
       tempHist_p->SetMarkerSize(markerSize);
@@ -124,13 +127,24 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::str
     if(labelName.size() != 0) preLabels.push_back(labelName);
     
     labelName = "";
+
+    double yPos = 0.965;
     for(unsigned int pI = 0; pI < preLabels.size(); ++pI){
       if(labelMap->count(preLabels[pI]) != 0) preLabels[pI] = (*labelMap)[preLabels[pI]];
+
+      if(labelName.size() + preLabels[pI].size() > 60){
+	if(labelName.find(";") != std::string::npos) labelName.replace(labelName.rfind(";"), labelName.size(), "");
+	label_p->DrawLatex(0.20, yPos, labelName.c_str());	
+	yPos -= 0.065;
+	labelName = "";
+      }
       labelName = labelName + preLabels[pI] + "; ";
     }
     if(labelName.find(";") != std::string::npos) labelName.replace(labelName.rfind(";"), labelName.size(), "");
+
+    std::cout << "LABEL SIZE: " << labelName.size() << std::endl;
     
-    label_p->DrawLatex(0.20, 0.965, labelName.c_str());
+    label_p->DrawLatex(0.20, yPos, labelName.c_str());
     gStyle->SetOptStat(0);
 
     saveName = "pdfDir/" + dateStr + "/" + saveName + "_" + dateStr + ".pdf";

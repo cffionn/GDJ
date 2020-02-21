@@ -153,13 +153,13 @@ int gdjNTupleToHist(std::string inConfigFileName)
   for(Int_t eI = 0; eI < nEtaBinsSub; ++eI){
     etaBinsSubStr.push_back(preStr + "Eta" + prettyString(etaBinsSub[eI], 2, true) + "to" + prettyString(etaBinsSub[eI+1], 2, true));
 
-    if(etaBinsSubDoAbs) binsToLabelStr[etaBinsSubStr[eI]] = prettyString(etaBinsSub[eI], 2, false) + " < |#eta_{#gamma}| < " + prettyString(etaBinsSub[eI+1], 2, false);
+    if(etaBinsSubDoAbs) binsToLabelStr[etaBinsSubStr[eI]] = prettyString(etaBinsSub[eI], 2, false) + "<|#eta_{#gamma}|<" + prettyString(etaBinsSub[eI+1], 2, false);
     else binsToLabelStr[etaBinsSubStr[eI]] = prettyString(etaBinsSub[eI], 2, false) + " < #eta_{#gamma} < " + prettyString(etaBinsSub[eI+1], 2, false);
   }
   etaBinsSubStr.push_back(preStr + "Eta" + prettyString(etaBinsSub[0], 2, true) + "to" + prettyString(etaBinsSub[nEtaBinsSub], 2, true));
-  if(etaBinsSubDoAbs) binsToLabelStr[etaBinsSubStr[etaBinsSubStr.size()-1]] = prettyString(etaBinsSub[0], 2, false) + " < |#eta_{#gamma}| < " + prettyString(etaBinsSub[nEtaBinsSub], 2, false);
+  if(etaBinsSubDoAbs) binsToLabelStr[etaBinsSubStr[etaBinsSubStr.size()-1]] = prettyString(etaBinsSub[0], 2, false) + "<|#eta_{#gamma}|<" + prettyString(etaBinsSub[nEtaBinsSub], 2, false);
   else binsToLabelStr[etaBinsSubStr[etaBinsSubStr.size()-1]] = prettyString(etaBinsSub[0], 2, false) + " < #eta_{#gamma} < " + prettyString(etaBinsSub[nEtaBinsSub], 2, false);
-
+  
   const Int_t nJtPtBins = std::stoi(config.GetConfigVal("NJTPTBINS"));
   if(!goodBinning(inConfigFileName, nMaxPtBins, nJtPtBins, "NJTPTBINS")) return 1;
   const Float_t jtPtBinsLow = std::stof(config.GetConfigVal("JTPTBINSLOW"));
@@ -169,12 +169,23 @@ int gdjNTupleToHist(std::string inConfigFileName)
   if(jtPtBinsDoLog) getLogBins(jtPtBinsLow, jtPtBinsHigh, nJtPtBins, jtPtBins);
   else getLinBins(jtPtBinsLow, jtPtBinsHigh, nJtPtBins, jtPtBins);
 
+  std::string jtPtBinsStr = "JtPt" + prettyString(jtPtBinsLow,1,true) + "to" + prettyString(jtPtBinsHigh,1,true);
+  std::string jtPtBinsLabel = prettyString(jtPtBinsLow,1,false) + " < p_{T,jet} < " + prettyString(jtPtBinsHigh,1,false);
+  binsToLabelStr[jtPtBinsStr] = jtPtBinsLabel;
+  
+  
+  
   const Float_t jtEtaBinsLow = std::stof(config.GetConfigVal("JTETABINSLOW"));
   const Float_t jtEtaBinsHigh = std::stof(config.GetConfigVal("JTETABINSHIGH"));
 
   const Int_t nDPhiBins = std::stoi(config.GetConfigVal("NDPHIBINS"));
   const Double_t gammaJtDPhiCut = mathStringToNum(config.GetConfigVal("GAMMAJTDPHI"));  
-
+  const std::string gammaJtDPhiStr = "DPhi" + mathStringToNameStr(config.GetConfigVal("GAMMAJTDPHI"));  
+  std::string gammaJtDPhiLabel = returnAllCapsString(config.GetConfigVal("GAMMAJTDPHI"));  
+  if(gammaJtDPhiLabel.find("PI") != std::string::npos) gammaJtDPhiLabel.replace(gammaJtDPhiLabel.find("PI"), 2, "#pi");
+  gammaJtDPhiLabel = "|#Delta#phi_{#gamma,jet}| > " + gammaJtDPhiLabel;
+  binsToLabelStr[gammaJtDPhiStr] = gammaJtDPhiLabel;
+  
   const Int_t nXJBins = std::stoi(config.GetConfigVal("NXJBINS"));
   const Float_t xjBinsLow = std::stof(config.GetConfigVal("XJBINSLOW"));
   const Float_t xjBinsHigh = std::stof(config.GetConfigVal("XJBINSHIGH"));
@@ -209,10 +220,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
       photonEtaVCentPt_p[cI][pI] = new TH1F(("photonEtaVCentPt_" + centBinsStr[cI] + "_" + gammaPtBinsSubStr[pI] + "_h").c_str(), ";#gamma #eta;Counts", nEtaBins, etaBins);
       photonPhiVCentPt_p[cI][pI] = new TH1F(("photonPhiVCentPt_" + centBinsStr[cI] + "_" + gammaPtBinsSubStr[pI] + "_h").c_str(), ";#gamma #phi;Counts", nPhiBins, phiBins);
 
-      photonJtDPhiVCentPt_p[cI][pI] = new TH1F(("photonJtDPhiVCentPt_" + centBinsStr[cI] + "_" + gammaPtBinsSubStr[pI] + "_h").c_str(), ";#Delta#phi_{#gamma,jet};#frac{N_{#gamma,jet}}{N_{#gamma}}", nDPhiBins, 0, TMath::Pi() + 0.01);
+      photonJtDPhiVCentPt_p[cI][pI] = new TH1F(("photonJtDPhiVCentPt_" + centBinsStr[cI] + "_" + gammaPtBinsSubStr[pI] + "_" + jtPtBinsStr + "_h").c_str(), ";#Delta#phi_{#gamma,jet};#frac{N_{#gamma,jet}}{N_{#gamma}}", nDPhiBins, 0, TMath::Pi() + 0.01);
 
-      photonJtPtVCentPt_p[cI][pI] = new TH1F(("photonJtPtVCentPt_" + centBinsStr[cI] + "_" + gammaPtBinsSubStr[pI] + "_h").c_str(), ";#gamma-tagged Jet p_{T} [GeV];#frac{N_{#gamma,jet}}{N_{#gamma}}", nJtPtBins, jtPtBins);
-      photonJtXJVCentPt_p[cI][pI] = new TH1F(("photonJtXJVCentPt_" + centBinsStr[cI] + "_" + gammaPtBinsSubStr[pI] + "_h").c_str(), ";x_{J,#gamma};#frac{N_{#gamma,jet}}{N_{#gamma}}", nXJBins, xjBins);
+      photonJtPtVCentPt_p[cI][pI] = new TH1F(("photonJtPtVCentPt_" + centBinsStr[cI] + "_" + gammaPtBinsSubStr[pI] + "_" + gammaJtDPhiStr + "_h").c_str(), ";#gamma-tagged Jet p_{T} [GeV];#frac{N_{#gamma,jet}}{N_{#gamma}}", nJtPtBins, jtPtBins);
+      photonJtXJVCentPt_p[cI][pI] = new TH1F(("photonJtXJVCentPt_" + centBinsStr[cI] + "_" + gammaPtBinsSubStr[pI] + "_" + jtPtBinsStr + "_" + gammaJtDPhiStr + "_h").c_str(), ";x_{J,#gamma};#frac{N_{#gamma,jet}}{N_{#gamma}}", nXJBins, xjBins);
       
       centerTitles({photonEtaVCentPt_p[cI][pI], photonPhiVCentPt_p[cI][pI], photonJtDPhiVCentPt_p[cI][pI], photonJtPtVCentPt_p[cI][pI], photonJtXJVCentPt_p[cI][pI]});
       setSumW2({photonJtDPhiVCentPt_p[cI][pI], photonJtPtVCentPt_p[cI][pI]});
@@ -260,6 +271,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   if(!allHLTPrescalesFound) return 1;
 
   float hltPrescaleDelta = 0.01;
+  std::vector<bool*> hltVect;
   std::vector<float*> hltPrescaleVect;
   Float_t fcalA_et, fcalC_et;
   std::vector<float>* photon_pt_p=nullptr;
@@ -274,10 +286,12 @@ int gdjNTupleToHist(std::string inConfigFileName)
   inTree_p->SetBranchStatus("*", 0);
 
   for(unsigned int hI = 0; hI < hltList.size(); ++hI){
+    hltVect.push_back(new bool(false));
     hltPrescaleVect.push_back(new float(0.0));
+
+    inTree_p->SetBranchStatus(hltList[hI].c_str(), 1);
     inTree_p->SetBranchStatus(hltListPres[hI].c_str(), 1);
-  }
-  
+  }  
 
   if(!isPP){
     inTree_p->SetBranchStatus("fcalA_et", 1);
@@ -294,6 +308,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   for(unsigned int hI = 0; hI < hltList.size(); ++hI){
+    inTree_p->SetBranchAddress(hltList[hI].c_str(), hltVect[hI]);
     inTree_p->SetBranchAddress(hltListPres[hI].c_str(), hltPrescaleVect[hI]);
   }
 
@@ -317,10 +332,29 @@ int gdjNTupleToHist(std::string inConfigFileName)
   }
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
   std::cout << "Processing " << nEntries << " events..." << std::endl;
+
+  bool didOneFireMiss = false;
+
   for(ULong64_t entry = 0; entry < nEntries; ++entry){
     if(entry%nDiv == 0) std::cout << " Entry " << entry << "/" << nEntries << "..." << std::endl;
     inTree_p->GetEntry(entry);
 
+    if(!didOneFireMiss){//only check this once per input
+      //check at least one of the purported selection triggers fired
+      bool oneFire = false;
+      for(unsigned int hI = 0; hI < hltVect.size(); ++hI){
+	if(*(hltVect[hI])){
+	  oneFire = true;
+	  break;
+	}
+      }
+
+      if(!oneFire){
+	std::cout << "WARNING - YOU HAVE EVENTS w/ NO TRIGGERS!!!" << std::endl;
+	didOneFireMiss = true;
+      }
+    }
+    
     //Check prescale is 1 in case i made a mistake on first unprescaled
     for(unsigned int hI = 0; hI < hltPrescaleVect.size(); ++hI){
       if(TMath::Abs((*(hltPrescaleVect[hI])) - 1.0) > hltPrescaleDelta){
@@ -356,7 +390,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	photonPtVCentEta_p[centPos][nEtaBinsSub]->Fill(photon_pt_p->at(pI));
       }
 
-      if(ptPos >= 0){
+       if(ptPos >= 0){
 	++(gammaCounts[ptPos]);
 	++(gammaCounts[nGammaPtBinsSub]);
 

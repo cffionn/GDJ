@@ -38,4 +38,17 @@ inline double mathStringToNum(std::string inStr)//currently just handles fractio
   return outVal;
 }
 
+inline std::string mathStringToNameStr(std::string inStr)//currently just handles fractions and pi
+{
+  inStr = returnAllCapsString(inStr);
+  while(inStr.find("/") != std::string::npos){
+    inStr.replace(inStr.find("/"), 1, "Over");
+  }
+  while(inStr.find("*") != std::string::npos){
+    inStr.replace(inStr.find("*"), 1, "");
+  }
+    
+  return inStr;
+}
+
 #endif
