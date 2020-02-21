@@ -19,11 +19,12 @@
 
 //Local
 #include "include/checkMakeDir.h"
+#include "include/configParser.h"
 #include "include/histDefUtility.h"
 #include "include/plotUtilities.h"
 #include "include/stringUtil.h"
 
-bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::string topDir = "")
+bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::string, std::string>* labelMap, std::string topDir = "")
 {
   bool retVal = true;
   TIter* next;
@@ -40,6 +41,21 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::string topDi
   label_p->SetNDC();
   label_p->SetTextFont(43);
   label_p->SetTextSize(16);
+
+  const Int_t markerSize = 1;
+  const Int_t markerStyle = 24;
+  const Int_t markerColor = 1;
+  const Int_t lineColor = 1;
+
+  const Float_t yOffset = 1.8;
+
+  const Float_t topMargin = 0.05;
+  const Float_t leftMargin = 0.16;
+  const Float_t rightMargin = 0.12;
+  const Float_t bottomMargin = 0.12;
+
+  const Float_t height = 450;
+  const Float_t width = height*(1.0 - topMargin - bottomMargin)/(1.0 - leftMargin - rightMargin);
   
   TKey* key;
   while((key=(TKey*)((*next)()))){
@@ -47,25 +63,41 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::string topDi
     const std::string className = key->GetClassName();
 
     if(isStrSame(className, "TDirectory") || isStrSame(className, "TDirectoryFile")){
-      if(topDir.size() == 0) retVal = retVal && recursiveHistSearch(dateStr, inFile_p, name);
-      else retVal = retVal && recursiveHistSearch(dateStr, inFile_p, topDir + "/" + name);
+      if(topDir.size() == 0) retVal = retVal && recursiveHistSearch(dateStr, inFile_p, labelMap, name);
+      else retVal = retVal && recursiveHistSearch(dateStr, inFile_p, labelMap, topDir + "/" + name);
     }
     if(!isStrSame(className, "TH1D") && !isStrSame(className, "TH2D") && !isStrSame(className, "TH1F") && !isStrSame(className, "TH2F")) continue;
     
-    TCanvas* canv_p = new TCanvas("canv_p", "", 450, 450);
-    canv_p->SetLeftMargin(0.12);
-    canv_p->SetTopMargin(0.05);
-    canv_p->SetRightMargin(0.12);
-    canv_p->SetBottomMargin(0.12);
+    TCanvas* canv_p = new TCanvas("canv_p", "", width, height);
+    canv_p->SetLeftMargin(leftMargin);
+    canv_p->SetTopMargin(topMargin);
+    canv_p->SetRightMargin(rightMargin);
+    canv_p->SetBottomMargin(bottomMargin);
 
     if(isStrSame(className, "TH1D")){
       TH1D* tempHist_p = (TH1D*)key->ReadObj();
       tempHist_p->SetMinimum(0.0);
+
+      tempHist_p->SetMarkerSize(markerSize);
+      tempHist_p->SetMarkerStyle(markerStyle);
+      tempHist_p->SetMarkerColor(markerColor);
+      tempHist_p->SetLineColor(lineColor);
+
+      tempHist_p->GetYaxis()->SetTitleOffset(yOffset);
+      
       tempHist_p->DrawCopy("HIST E1 P");
     }
     else if(isStrSame(className, "TH1F")){
       TH1F* tempHist_p = (TH1F*)key->ReadObj();
       tempHist_p->SetMinimum(0.0);
+
+      tempHist_p->SetMarkerSize(markerSize);
+      tempHist_p->SetMarkerStyle(markerStyle);
+      tempHist_p->SetMarkerColor(markerColor);
+      tempHist_p->SetLineColor(lineColor);
+
+      tempHist_p->GetYaxis()->SetTitleOffset(yOffset);
+
       tempHist_p->DrawCopy("HIST E1 P");
     }
     else if(isStrSame(className, "TH1D")){
@@ -84,7 +116,20 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::string topDi
 
     std::string labelName = saveName.substr(saveName.find("_")+1, saveName.size());//First part of the name should be clear from the figure itself so to simplify chop it off
     labelName.replace(labelName.rfind("_h"), 2, "");
-    while(labelName.find("_") != std::string::npos){labelName.replace(labelName.find("_"), 1, "; ");}    
+    std::vector<std::string> preLabels;
+    while(labelName.find("_") != std::string::npos){
+      preLabels.push_back(labelName.substr(0, labelName.find("_")));
+      labelName.replace(0, labelName.find("_")+1, "");
+    }
+    preLabels.push_back(labelName);
+    
+    labelName = "";
+    for(unsigned int pI = 0; pI < preLabels.size(); ++pI){
+      if(labelMap->count(preLabels[pI]) != 0) preLabels[pI] = (*labelMap)[preLabels[pI]];
+      labelName = labelName + preLabels[pI] + "; ";
+    }
+    if(labelName.find(";") != std::string::npos) labelName.replace(labelName.rfind(";"), labelName.size(), "");
+    
     label_p->DrawLatex(0.20, 0.965, labelName.c_str());
     gStyle->SetOptStat(0);
 
@@ -108,8 +153,10 @@ int HistDumping(std::string inFileName)
   check.doCheckMakeDir("pdfDir/" + dateStr);
   
   TFile* inFile_p = new TFile(inFileName.c_str(), "READ");
-
-  recursiveHistSearch(dateStr, inFile_p);  
+  TEnv* label_p = (TEnv*)inFile_p->Get("label");
+  configParser config(label_p);
+  std::map<std::string, std::string> labelMap = config.GetConfigMap();
+  recursiveHistSearch(dateStr, inFile_p, &labelMap);  
   
   inFile_p->Close();
   delete inFile_p;
