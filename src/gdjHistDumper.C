@@ -20,12 +20,18 @@
 //Local
 #include "include/checkMakeDir.h"
 #include "include/configParser.h"
+#include "include/globalDebugHandler.h"
 #include "include/histDefUtility.h"
 #include "include/plotUtilities.h"
 #include "include/stringUtil.h"
 
 bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::string, std::string>* labelMap, std::string topDir = "")
 {
+  globalDebugHandler gDebug;
+  bool doGlobalDebug = gDebug.GetDoGlobalDebug();
+  
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
   bool retVal = true;
   TIter* next;
   
@@ -42,6 +48,8 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::str
   label_p->SetTextFont(43);
   label_p->SetTextSize(16);
 
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
   const Int_t markerSize = 1;
   const Int_t markerStyle = 24;
   const Int_t markerColor = 1;
@@ -56,7 +64,9 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::str
 
   const Float_t height = 450;
   const Float_t width = height*(1.0 - topMargin - bottomMargin)/(1.0 - leftMargin - rightMargin);
-  
+
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
   TKey* key;
   while((key=(TKey*)((*next)()))){
     const std::string name = key->GetName();
@@ -67,7 +77,10 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::str
       else retVal = retVal && recursiveHistSearch(dateStr, inFile_p, labelMap, topDir + "/" + name);
     }
     if(!isStrSame(className, "TH1D") && !isStrSame(className, "TH2D") && !isStrSame(className, "TH1F") && !isStrSame(className, "TH2F")) continue;
-    
+
+
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
     TCanvas* canv_p = new TCanvas("canv_p", "", width, height);
     canv_p->SetLeftMargin(leftMargin);
     canv_p->SetTopMargin(topMargin);
@@ -111,11 +124,15 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::str
       TH2F* tempHist_p = (TH2F*)key->ReadObj();
       tempHist_p->DrawCopy("COLZ");
     }
-   
+
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
     std::string saveName = name;
     while(saveName.find("/") != std::string::npos){
       saveName.replace(0, saveName.find("/")+1, "");
     }
+
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
     std::string labelName = saveName.substr(saveName.find("_")+1, saveName.size());//First part of the name should be clear from the figure itself so to simplify chop it off
     labelName.replace(labelName.rfind("_h"), 2, "");
@@ -125,16 +142,19 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::str
       labelName.replace(0, labelName.find("_")+1, "");
     }
     if(labelName.size() != 0) preLabels.push_back(labelName);
-    
+
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+	
     labelName = "";
 
+    const double xPos = 0.22;
     double yPos = 0.965;
     for(unsigned int pI = 0; pI < preLabels.size(); ++pI){
       if(labelMap->count(preLabels[pI]) != 0) preLabels[pI] = (*labelMap)[preLabels[pI]];
 
       if(labelName.size() + preLabels[pI].size() > 60){
 	if(labelName.find(";") != std::string::npos) labelName.replace(labelName.rfind(";"), labelName.size(), "");
-	label_p->DrawLatex(0.20, yPos, labelName.c_str());	
+	label_p->DrawLatex(xPos, yPos, labelName.c_str());	
 	yPos -= 0.065;
 	labelName = "";
       }
@@ -144,13 +164,15 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::str
 
     std::cout << "LABEL SIZE: " << labelName.size() << std::endl;
     
-    label_p->DrawLatex(0.20, yPos, labelName.c_str());
+    label_p->DrawLatex(xPos, yPos, labelName.c_str());
     gStyle->SetOptStat(0);
 
     saveName = "pdfDir/" + dateStr + "/" + saveName + "_" + dateStr + ".pdf";
     quietSaveAs(canv_p, saveName);
     delete canv_p;
   }
+
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   delete label_p;
   
