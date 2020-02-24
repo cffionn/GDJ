@@ -129,11 +129,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
   else getLinBins(gammaPtBinsSubLow, gammaPtBinsSubHigh, nGammaPtBinsSub, gammaPtBinsSub);
   std::vector<std::string> gammaPtBinsSubStr;
   for(Int_t pI = 0; pI < nGammaPtBinsSub; ++pI){
-    gammaPtBinsSubStr.push_back("GammaPt" + prettyString(gammaPtBinsSub[pI], 1, true) + "to" + prettyString(gammaPtBinsSub[pI+1], 1, true));
+    gammaPtBinsSubStr.push_back("GammaPt" + std::to_string(pI));
 
     binsToLabelStr[gammaPtBinsSubStr[pI]] = prettyString(gammaPtBinsSub[pI], 1, false) + " < p_{T,#gamma} < " + prettyString(gammaPtBinsSub[pI+1], 1, false);
   }
-  gammaPtBinsSubStr.push_back("GammaPt" + prettyString(gammaPtBinsSub[0], 1, true) + "to" + prettyString(gammaPtBinsSub[nGammaPtBinsSub], 1, true));
+  gammaPtBinsSubStr.push_back("GammaPt" + std::to_string(nGammaPtBinsSub));
 
   binsToLabelStr[gammaPtBinsSubStr[gammaPtBinsSubStr.size()-1]] = prettyString(gammaPtBinsSub[0], 1, false) + " < p_{T,#gamma} < " + prettyString(gammaPtBinsSub[nGammaPtBinsSub], 1, false);
 
@@ -156,12 +156,12 @@ int gdjNTupleToHist(std::string inConfigFileName)
   std::string preStr = "";
   if(etaBinsSubDoAbs) preStr = "Abs";
   for(Int_t eI = 0; eI < nEtaBinsSub; ++eI){
-    etaBinsSubStr.push_back(preStr + "Eta" + prettyString(etaBinsSub[eI], 2, true) + "to" + prettyString(etaBinsSub[eI+1], 2, true));
+    etaBinsSubStr.push_back(preStr + "Eta" + std::to_string(eI));
 
     if(etaBinsSubDoAbs) binsToLabelStr[etaBinsSubStr[eI]] = prettyString(etaBinsSub[eI], 2, false) + "<|#eta_{#gamma}|<" + prettyString(etaBinsSub[eI+1], 2, false);
     else binsToLabelStr[etaBinsSubStr[eI]] = prettyString(etaBinsSub[eI], 2, false) + " < #eta_{#gamma} < " + prettyString(etaBinsSub[eI+1], 2, false);
   }
-  etaBinsSubStr.push_back(preStr + "Eta" + prettyString(etaBinsSub[0], 2, true) + "to" + prettyString(etaBinsSub[nEtaBinsSub], 2, true));
+  etaBinsSubStr.push_back(preStr + "Eta" + std::to_string(nEtaBinsSub));
   if(etaBinsSubDoAbs) binsToLabelStr[etaBinsSubStr[etaBinsSubStr.size()-1]] = prettyString(etaBinsSub[0], 2, false) + "<|#eta_{#gamma}|<" + prettyString(etaBinsSub[nEtaBinsSub], 2, false);
   else binsToLabelStr[etaBinsSubStr[etaBinsSubStr.size()-1]] = prettyString(etaBinsSub[0], 2, false) + " < #eta_{#gamma} < " + prettyString(etaBinsSub[nEtaBinsSub], 2, false);
   
@@ -174,14 +174,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
   if(jtPtBinsDoLog) getLogBins(jtPtBinsLow, jtPtBinsHigh, nJtPtBins, jtPtBins);
   else getLinBins(jtPtBinsLow, jtPtBinsHigh, nJtPtBins, jtPtBins);
 
-  std::string jtPtBinsStr = "JtPt" + prettyString(jtPtBinsLow,1,true) + "to" + prettyString(jtPtBinsHigh,1,true);
+  std::string jtPtBinsStr = "JtPt0";
   std::string jtPtBinsLabel = prettyString(jtPtBinsLow,1,false) + " < p_{T,jet} < " + prettyString(jtPtBinsHigh,1,false);
   binsToLabelStr[jtPtBinsStr] = jtPtBinsLabel;   
   
   
   const Int_t nDPhiBins = std::stoi(config.GetConfigVal("NDPHIBINS"));
   const Double_t gammaJtDPhiCut = mathStringToNum(config.GetConfigVal("GAMMAJTDPHI"));  
-  const std::string gammaJtDPhiStr = "DPhi" + mathStringToNameStr(config.GetConfigVal("GAMMAJTDPHI"));  
+  const std::string gammaJtDPhiStr = "DPhi0";
   std::string gammaJtDPhiLabel = returnAllCapsString(config.GetConfigVal("GAMMAJTDPHI"));  
   if(gammaJtDPhiLabel.find("PI") != std::string::npos) gammaJtDPhiLabel.replace(gammaJtDPhiLabel.find("PI"), 2, "#pi");
   gammaJtDPhiLabel = "|#Delta#phi_{#gamma,jet}| > " + gammaJtDPhiLabel;
