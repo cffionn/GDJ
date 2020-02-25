@@ -59,6 +59,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
   const bool isPP = std::stoi(config.GetConfigVal("ISPP"));
+  const bool isMC = std::stoi(config.GetConfigVal("ISMC"));
   const Int_t nMaxSubBins = 10;
   const Int_t nMaxCentBins = 10;
   Int_t nCentBins = 1;
@@ -205,6 +206,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
   TH1F* photonJtPtVCentPt_p[nMaxCentBins][nMaxSubBins+1];
   TH1F* photonJtEtaVCentPt_p[nMaxCentBins][nMaxSubBins+1];
   TH1F* photonJtXJVCentPt_p[nMaxCentBins][nMaxSubBins+1];
+
+  TH1F* photonJtFakeVCentPt_p[nMaxCentBins][nMaxSubBins+1];
   
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
@@ -230,7 +233,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
       photonJtXJVCentPt_p[cI][pI] = new TH1F(("photonJtXJVCentPt_" + centBinsStr[cI] + "_" + gammaPtBinsSubStr[pI] + "_" + jtPtBinsStr + "_" + gammaJtDPhiStr + "_h").c_str(), ";x_{J,#gamma};#frac{N_{#gamma,jet}}{N_{#gamma}}", nXJBins, xjBins);
       
       centerTitles({photonEtaVCentPt_p[cI][pI], photonPhiVCentPt_p[cI][pI], photonJtDPhiVCentPt_p[cI][pI], photonJtPtVCentPt_p[cI][pI], photonJtEtaVCentPt_p[cI][pI], photonJtXJVCentPt_p[cI][pI]});
-      setSumW2({photonJtDPhiVCentPt_p[cI][pI], photonJtPtVCentPt_p[cI][pI]});
+      setSumW2({photonJtDPhiVCentPt_p[cI][pI], photonJtPtVCentPt_p[cI][pI], photonJtEtaVCentPt_p[cI][pI], photonJtFakeVCentPt_p[cI][pI]});
+
+      if(isMC){
+	photonJtFakeVCentPt_p[cI][pI] = new TH1F(("photonJtFakeVCentPt_" + centBinsStr[cI] + "_" + gammaPtBinsSubStr[pI] + "_" + jtPtBinsStr + "_" + gammaJtDPhiStr + "_h").c_str(), ";#gamma-tagged Jet p_{T} ;#frac{N_{Fake jets}}{N_{All jets}}", nJtPtBins, jtPtBins);
+
+	centerTitles(photonJtFakeVCentPt_p[cI][pI]);
+	setSumW2(photonJtFakeVCentPt_p[cI][pI]);
+      }
     }
     
     photonEtaPt_p[cI] = new TH2F(("photonEtaPt_" + centBinsStr[cI] + "_h").c_str(), ";#gamma #eta;#gamma p_{T} [GeV]", nEtaBins, etaBins, nGammaPtBins, gammaPtBins);
@@ -460,8 +470,13 @@ int gdjNTupleToHist(std::string inConfigFileName)
   outFile_p->cd();
 
   //Pre-write and delete some of these require some mods
+
   for(Int_t cI = 0; cI < nCentBins; ++cI){
     for(Int_t pI = 0; pI < nGammaPtBinsSub+1; ++pI){
+      if(isMC){
+	photonJtFakeVCentPt_p[cI][pI]->Divide(photonJtPtVCentPt_p[cI][pI]);
+      }
+
       photonJtDPhiVCentPt_p[cI][pI]->Scale(1./gammaCounts[pI]);
       photonJtPtVCentPt_p[cI][pI]->Scale(1./gammaCounts[pI]);
       photonJtEtaVCentPt_p[cI][pI]->Scale(1./gammaCounts[pI]);
@@ -492,6 +507,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
       photonJtPtVCentPt_p[cI][pI]->Write("", TObject::kOverwrite);
       photonJtEtaVCentPt_p[cI][pI]->Write("", TObject::kOverwrite);
       photonJtXJVCentPt_p[cI][pI]->Write("", TObject::kOverwrite);
+
+      if(isMC){
+	photonJtFakeVCentPt_p[cI][pI]->Write("", TObject::kOverwrite);	
+      }
     }
     
     photonEtaPt_p[cI]->Write("", TObject::kOverwrite);
@@ -521,6 +540,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
       delete photonJtPtVCentPt_p[cI][pI];
       delete photonJtEtaVCentPt_p[cI][pI];
       delete photonJtXJVCentPt_p[cI][pI];
+
+      if(isMC){
+	delete photonJtFakeVCentPt_p[cI][pI];	
+      }
     }
 
     delete photonEtaPt_p[cI];
