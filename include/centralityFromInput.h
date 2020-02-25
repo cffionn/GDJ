@@ -2,8 +2,8 @@
 #define CENTRALITYFROMINPUT_H
 
 //cpp
-#include <fstream>
 #include <iostream>
+#include <string>
 #include <vector>
 
 //Local
@@ -17,12 +17,14 @@ class centralityFromInput
   ~centralityFromInput(){};
   void SetTable(std::string inTableFile);
   double GetCent(double inVal);
-
+  void PrintTableTex();
+  
  private:
-  checkMakeDir check;
-  bool isInit;
-  bool isDescending;
-  std::vector<double> centVals;
+  std::string m_tableFileName;
+  checkMakeDir m_check;
+  bool m_isInit;
+  bool m_isDescending;
+  std::vector<double> m_centVals;
 };
 
 #endif
