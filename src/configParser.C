@@ -22,6 +22,12 @@ configParser::configParser(TEnv* inConfigEnv_p)
   return;
 }
 
+configParser::configParser(TEnv* inConfigEnv_p, TEnv* inDefinitionEnv_p)
+{
+  Init(inConfigEnv_p, inDefinitionEnv_p);
+  return;
+}
+
 bool configParser::Init(std::string inConfigFileName)
 {
   Clean(); //Make sure all is reset in-case we forget a Clean call before invoking Init
@@ -43,13 +49,17 @@ bool configParser::Init(std::string inConfigFileName)
 
     tempVect = commaSepStringToVect(tempStr);//We need to parse string list
 
-    if(tempVect.size() != 2){
-      std::cout << "configParser::Init - Given inConfigFileName \'" << inConfigFileName << "\' contains invalid line \'" << tempStr << "\'. Please fix (2 items, comma sep). Clean and return false." << std::endl;
+    if(tempVect.size() < 2){
+      std::cout << "configParser::Init - Given inConfigFileName \'" << inConfigFileName << "\' contains invalid line \'" << tempStr << "\'. Please fix (At least 2 items, comma sep). Clean and return false." << std::endl;
       Clean();
       return false;
     }
+    std::string valStr = tempVect[1];
+    for(unsigned int tI = 2; tI < tempVect.size(); ++tI){
+      valStr = valStr + "," + tempVect[tI];
+    }
 
-    m_configVals[tempVect[0]] = tempVect[1];
+    m_configVals[tempVect[0]] = valStr;
   }
   
   return true;
@@ -57,9 +67,31 @@ bool configParser::Init(std::string inConfigFileName)
 
 bool configParser::Init(TEnv* inConfigEnv_p)
 {
+  Clean();
+  
   THashList* hash_p = (THashList*)inConfigEnv_p->GetTable();
   for(Int_t entry = 0; entry < hash_p->GetEntries(); ++entry){
     m_configVals[hash_p->At(entry)->GetName()] = inConfigEnv_p->GetValue(hash_p->At(entry)->GetName(), "");
+  }
+  return true;
+}
+
+bool configParser::Init(TEnv* inConfigEnv_p, TEnv* inDefinitionEnv_p)
+{
+  Init(inConfigEnv_p);
+
+  THashList* hash_p = (THashList*)inDefinitionEnv_p->GetTable();
+  for(Int_t entry = 0; entry < hash_p->GetEntries(); ++entry){
+    m_definitionVals[hash_p->At(entry)->GetName()] = inDefinitionEnv_p->GetValue(hash_p->At(entry)->GetName(), "");
+  }
+  return true;
+}
+
+bool configParser::ContainsParam(std::string inStr)
+{
+  if(m_configVals.count(inStr) == 0){
+    std::cout << "configParser::ContainsParam - Given inStr \'" << inStr << "\' not found. Please define in given config \'" << m_configFileName << "\'. return false" << std::endl;
+    return false;
   }
   return true;
 }
@@ -73,6 +105,15 @@ std::string configParser::GetConfigVal(std::string inStr)
   return m_configVals[inStr];
 }
 
+std::string configParser::GetDefinitionVal(std::string inStr)
+{
+  if(m_definitionVals.count(inStr) == 0){
+    std::cout << "configParser::GetDefinitionVal - Given inStr \'" << inStr << "\' is not found. Please define in given config \'" << m_configFileName << "\'. return empty string." << std::endl;
+    return "";
+  }
+  return m_definitionVals[inStr];
+}
+
 std::map<std::string, std::string> configParser::GetConfigMap(){return m_configVals;}
 
 void configParser::Clean()
@@ -84,6 +125,16 @@ void configParser::Clean()
     m_configFile = nullptr;
   }
   m_configVals.clear();
+  m_definitionVals.clear();
   
+  return;
+}
+
+void configParser::SetConfigVal(std::string inStrParam, std::string inStrVal)
+{
+  if(m_configVals.count(inStrParam) != 0){
+    std::cout << "CONFIGPARSER WARNING - SetConfigVal called to override, \'" << inStrParam << "\' with new value \'" << inStrVal << "\'" << std::endl;
+  }
+  m_configVals[inStrParam] = inStrVal;
   return;
 }

@@ -20,12 +20,17 @@ class configParser
   configParser(){};
   configParser(std::string inConfigFileName);
   configParser(TEnv* inConfigEnv_p);
+  configParser(TEnv* inConfigEnv_p, TEnv* inDefinitionEnv_p);
   ~configParser(){};
 
   bool Init(std::string inConfigFileName);
   bool Init(TEnv* inConfigEnv_p);
+  bool Init(TEnv* inConfigEnv_p, TEnv* inDefinitionEnv_p);
+  bool ContainsParam(std::string inStr);
   std::string GetConfigVal(std::string inStr);
   std::map<std::string, std::string> GetConfigMap();
+  void SetConfigVal(std::string inStrParam, std::string inStrVal);
+  std::string GetDefinitionVal(std::string inStr);
   void Clean();
   
  private:
@@ -33,6 +38,7 @@ class configParser
   std::string m_configFileName;
   std::ifstream* m_configFile = nullptr;
   std::map<std::string, std::string> m_configVals;  
+  std::map<std::string, std::string> m_definitionVals;
 };
 
 #endif

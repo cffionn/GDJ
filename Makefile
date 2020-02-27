@@ -28,7 +28,7 @@ MKDIR_OBJ=mkdir -p $(GDJDIR)/obj
 MKDIR_OUTPUT=mkdir -p $(GDJDIR)/output
 MKDIR_PDF=mkdir -p $(GDJDIR)/pdfDir
 
-all: mkdirBin mkdirLib mkdirObj mkdirOutput mkdirPdf obj/globalDebugHandler.o obj/checkMakeDir.o obj/configParser.o obj/centralityFromInput.o lib/libATLASGDJ.so bin/gdjNTupleToHist.exe bin/gdjHistDumper.exe
+all: mkdirBin mkdirLib mkdirObj mkdirOutput mkdirPdf obj/globalDebugHandler.o obj/checkMakeDir.o obj/configParser.o obj/centralityFromInput.o lib/libATLASGDJ.so bin/gdjMCNtuplePreProc.exe bin/gdjNTupleToHist.exe bin/gdjHistDumper.exe
 
 mkdirBin:
 	$(MKDIR_BIN)
@@ -59,6 +59,9 @@ obj/centralityFromInput.o: src/centralityFromInput.C
 
 lib/libATLASGDJ.so:
 	$(CXX) $(CXXFLAGS) -fPIC -shared -o lib/libATLASGDJ.so obj/checkMakeDir.o obj/globalDebugHandler.o obj/configParser.o obj/centralityFromInput.o $(ROOT) $(INCLUDE)
+
+bin/gdjMCNtuplePreProc.exe: src/gdjMCNtuplePreProc.C
+	$(CXX) $(CXXFLAGS) src/gdjMCNtuplePreProc.C -o bin/gdjMCNtuplePreProc.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
 
 bin/gdjNTupleToHist.exe: src/gdjNTupleToHist.C
 	$(CXX) $(CXXFLAGS) src/gdjNTupleToHist.C -o bin/gdjNTupleToHist.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ

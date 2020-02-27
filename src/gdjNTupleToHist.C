@@ -390,7 +390,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
     if(entry%nDiv == 0) std::cout << " Entry " << entry << "/" << nEntries << "..." << std::endl;
     inTree_p->GetEntry(entry);
 
-    if(!didOneFireMiss){//only check this once per input
+    if(!didOneFireMiss && !isMC){//only check this once per input
       //check at least one of the purported selection triggers fired
       bool oneFire = false;
       for(unsigned int hI = 0; hI < hltVect.size(); ++hI){
