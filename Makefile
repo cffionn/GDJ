@@ -28,7 +28,7 @@ MKDIR_OBJ=mkdir -p $(GDJDIR)/obj
 MKDIR_OUTPUT=mkdir -p $(GDJDIR)/output
 MKDIR_PDF=mkdir -p $(GDJDIR)/pdfDir
 
-all: mkdirBin mkdirLib mkdirObj mkdirOutput mkdirPdf obj/globalDebugHandler.o obj/checkMakeDir.o obj/configParser.o obj/centralityFromInput.o lib/libATLASGDJ.so bin/gdjMCNtuplePreProc.exe bin/gdjNTupleToHist.exe bin/gdjHistDumper.exe
+all: mkdirBin mkdirLib mkdirObj mkdirOutput mkdirPdf obj/centralityFromInput.o obj/checkMakeDir.o obj/configParser.o obj/globalDebugHandler.o obj/sampleHandler.o lib/libATLASGDJ.so bin/gdjMCNtuplePreProc.exe bin/gdjNTupleToHist.exe bin/gdjHistDumper.exe bin/testSampleHandler.exe
 
 mkdirBin:
 	$(MKDIR_BIN)
@@ -45,20 +45,23 @@ mkdirOutput:
 mkdirPdf:
 	$(MKDIR_PDF)
 
+obj/centralityFromInput.o: src/centralityFromInput.C
+	$(CXX) $(CXXFLAGS) -fPIC -c src/centralityFromInput.C -o obj/centralityFromInput.o $(INCLUDE) $(ROOT)
+
 obj/checkMakeDir.o: src/checkMakeDir.C
 	$(CXX) $(CXXFLAGS) -fPIC -c src/checkMakeDir.C -o obj/checkMakeDir.o $(INCLUDE)
-
-obj/globalDebugHandler.o: src/globalDebugHandler.C
-	$(CXX) $(CXXFLAGS) -fPIC -c src/globalDebugHandler.C -o obj/globalDebugHandler.o $(ROOT) $(INCLUDE)
 
 obj/configParser.o: src/configParser.C
 	$(CXX) $(CXXFLAGS) -fPIC -c src/configParser.C -o obj/configParser.o $(INCLUDE) $(ROOT)
 
-obj/centralityFromInput.o: src/centralityFromInput.C
-	$(CXX) $(CXXFLAGS) -fPIC -c src/centralityFromInput.C -o obj/centralityFromInput.o $(INCLUDE) $(ROOT)
+obj/globalDebugHandler.o: src/globalDebugHandler.C
+	$(CXX) $(CXXFLAGS) -fPIC -c src/globalDebugHandler.C -o obj/globalDebugHandler.o $(ROOT) $(INCLUDE)
+
+obj/sampleHandler.o: src/sampleHandler.C
+	$(CXX) $(CXXFLAGS) -fPIC -c src/sampleHandler.C -o obj/sampleHandler.o $(ROOT) $(INCLUDE)
 
 lib/libATLASGDJ.so:
-	$(CXX) $(CXXFLAGS) -fPIC -shared -o lib/libATLASGDJ.so obj/checkMakeDir.o obj/globalDebugHandler.o obj/configParser.o obj/centralityFromInput.o $(ROOT) $(INCLUDE)
+	$(CXX) $(CXXFLAGS) -fPIC -shared -o lib/libATLASGDJ.so obj/centralityFromInput.o obj/checkMakeDir.o obj/configParser.o obj/globalDebugHandler.o obj/sampleHandler.o $(ROOT) $(INCLUDE)
 
 bin/gdjMCNtuplePreProc.exe: src/gdjMCNtuplePreProc.C
 	$(CXX) $(CXXFLAGS) src/gdjMCNtuplePreProc.C -o bin/gdjMCNtuplePreProc.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
@@ -68,6 +71,9 @@ bin/gdjNTupleToHist.exe: src/gdjNTupleToHist.C
 
 bin/gdjHistDumper.exe: src/gdjHistDumper.C
 	$(CXX) $(CXXFLAGS) src/gdjHistDumper.C -o bin/gdjHistDumper.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
+
+bin/testSampleHandler.exe: src/testSampleHandler.C
+	$(CXX) $(CXXFLAGS) src/testSampleHandler.C -o bin/testSampleHandler.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
 
 clean:
 	rm -f ./*~

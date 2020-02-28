@@ -385,7 +385,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
   std::cout << "Processing " << nEntries << " events..." << std::endl;
 
   bool didOneFireMiss = false;
-
+  std::vector<int> skippedCent;
+  
   for(ULong64_t entry = 0; entry < nEntries; ++entry){
     if(entry%nDiv == 0) std::cout << " Entry " << entry << "/" << nEntries << "..." << std::endl;
     inTree_p->GetEntry(entry);
@@ -413,16 +414,28 @@ int gdjNTupleToHist(std::string inConfigFileName)
       }
     }
 
-    runNumber_p->Fill(runNumber);
-    
     Int_t centPos = -1;
+    Double_t cent = -1;
     if(!isPP){
-     Double_t cent = centTable.GetCent(fcalA_et + fcalC_et);
-      centPos = ghostPos(centBins, cent, false);
-      centrality_p->Fill(cent);      
+      cent = centTable.GetCent(fcalA_et + fcalC_et);
+      centPos = ghostPos(centBins, cent, true, doGlobalDebug);
     }
     else centPos = 0;
 
+    if(centPos < 0){
+      bool vectContainsCent = vectContainsInt((Int_t)cent, &skippedCent);
+
+      if(!vectContainsCent){
+	std::cout << "gdjNTupleToHist Warning - Skipping centrality \'" << (Int_t)cent << "\' as given centrality binning is \'" << centBins[0] << "-" << centBins[centBins.size()-1] << "\'. if this is incorrect please fix." << std::endl;
+	skippedCent.push_back((Int_t)cent);
+      }
+      
+      continue;
+    }
+
+    runNumber_p->Fill(runNumber);	
+    if(!isPP) centrality_p->Fill(cent);
+    
     for(unsigned int pI = 0; pI < photon_pt_p->size(); ++pI){
       if(photon_pt_p->at(pI) < gammaPtBins[0]) continue;
       if(photon_pt_p->at(pI) >= gammaPtBins[nGammaPtBins]) continue;
@@ -435,8 +448,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
       if(etaValMain <= etaBins[0]) continue;
       if(etaValMain >= etaBins[nEtaBins]) continue;
       
-      Int_t ptPos = ghostPos(nGammaPtBinsSub, gammaPtBinsSub, photon_pt_p->at(pI), false);
-      Int_t etaPos = ghostPos(nEtaBinsSub, etaBinsSub, etaValSub, false);
+      Int_t ptPos = ghostPos(nGammaPtBinsSub, gammaPtBinsSub, photon_pt_p->at(pI), true, doGlobalDebug);
+      Int_t etaPos = ghostPos(nEtaBinsSub, etaBinsSub, etaValSub, true, doGlobalDebug);
 
       if(etaPos >= 0){
 	photonPtVCentEta_p[centPos][etaPos]->Fill(photon_pt_p->at(pI));
@@ -496,7 +509,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       if(isMC){
 	photonJtFakeVCentPt_p[cI][pI]->Divide(photonJtPtVCentPt_p[cI][pI]);
       }
-
+      
       photonJtDPhiVCentPt_p[cI][pI]->Scale(1./gammaCounts[pI]);
       photonJtPtVCentPt_p[cI][pI]->Scale(1./gammaCounts[pI]);
       photonJtEtaVCentPt_p[cI][pI]->Scale(1./gammaCounts[pI]);

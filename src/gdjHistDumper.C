@@ -162,8 +162,6 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::str
     }
     if(labelName.find(";") != std::string::npos) labelName.replace(labelName.rfind(";"), labelName.size(), "");
 
-    std::cout << "LABEL SIZE: " << labelName.size() << std::endl;
-    
     label_p->DrawLatex(xPos, yPos, labelName.c_str());
     gStyle->SetOptStat(0);
 
