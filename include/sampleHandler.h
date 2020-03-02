@@ -10,10 +10,11 @@
 
 class sampleHandler{
  public:
-  sampleHandler(){Clean();};
+  sampleHandler(){Clean(); PreInit();}
   sampleHandler(bool in_isPP, bool in_isMC, int in_year, int in_minPthat);
   ~sampleHandler();
 
+  bool Init(std::string sampleString);
   bool Init(bool in_isPP, bool in_isMC, int in_year, int in_minPthat);
   int GetTag();
   double GetXSection();
@@ -24,6 +25,7 @@ class sampleHandler{
  private:
   int CreateTag();
   int CreateTag(bool in_isPP, bool in_isMC, int in_year, int in_minPthat);
+  void PreInit();
   
   bool m_isInit;
   bool m_isPP;
@@ -37,6 +39,11 @@ class sampleHandler{
   std::map<int, std::vector<int>> validMinPthatsByYear;
   std::map<int, double> tagToXSec;
   std::map<int, double> tagToFilterEff;
+
+  std::map<std::string, bool> dataSetNameToIsPP;
+  std::map<std::string, bool> dataSetNameToIsMC;
+  std::map<std::string, int> dataSetNameToYear;
+  std::map<std::string, int> dataSetNameToMinPthat;
 };
 
 #endif

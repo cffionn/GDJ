@@ -20,13 +20,54 @@ sampleHandler::~sampleHandler()
   return;
 }
 
-bool sampleHandler::Init(bool in_isPP, bool in_isMC, int in_year, int in_minPthat)
+void sampleHandler::PreInit()
 {
-  //Initialize the validpthatmin map
   validMinPthatsByYear[2015] = {};
   validMinPthatsByYear[2017] = {35, 50, 70, 140, 280};
-  validMinPthatsByYear[2018] = {50, 70, 140};  
+  validMinPthatsByYear[2018] = {50, 70, 140};
+
+  //PYTHIA8 + Overlay
+  dataSetNameToIsPP["mc16_5TeV.423102.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP50_70.merge.AOD.e5094_d1516_r11439_r11217"] = 0;
+  dataSetNameToIsMC["mc16_5TeV.423102.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP50_70.merge.AOD.e5094_d1516_r11439_r11217"] = 1;
+  dataSetNameToYear["mc16_5TeV.423102.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP50_70.merge.AOD.e5094_d1516_r11439_r11217"] = 2018;
+  dataSetNameToMinPthat["mc16_5TeV.423102.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP50_70.merge.AOD.e5094_d1516_r11439_r11217"] = 50;
+
+  dataSetNameToIsPP["mc16_5TeV.423103.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP70_140.merge.AOD.e5094_d1516_r11439_r11217"] = 0;
+  dataSetNameToIsMC["mc16_5TeV.423103.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP70_140.merge.AOD.e5094_d1516_r11439_r11217"] = 1;
+  dataSetNameToYear["mc16_5TeV.423103.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP70_140.merge.AOD.e5094_d1516_r11439_r11217"] = 2018;
+  dataSetNameToMinPthat["mc16_5TeV.423103.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP70_140.merge.AOD.e5094_d1516_r11439_r11217"] = 70;
   
+  dataSetNameToIsPP["mc16_5TeV.423104.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP140_280.merge.AOD.e5094_d1516_r11439_r11217"] = 0;
+  dataSetNameToIsMC["mc16_5TeV.423104.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP140_280.merge.AOD.e5094_d1516_r11439_r11217"] = 1;
+  dataSetNameToYear["mc16_5TeV.423104.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP140_280.merge.AOD.e5094_d1516_r11439_r11217"] = 2018;
+  dataSetNameToMinPthat["mc16_5TeV.423104.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP140_280.merge.AOD.e5094_d1516_r11439_r11217"] = 140;
+
+  //PYTHIA8
+  dataSetNameToIsPP["mc16_5TeV.423101.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP35_50.merge.AOD.e5094_s3238_r10441_r10210"] = 1;
+  dataSetNameToIsMC["mc16_5TeV.423101.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP35_50.merge.AOD.e5094_s3238_r10441_r10210"] = 1;
+  dataSetNameToYear["mc16_5TeV.423101.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP35_50.merge.AOD.e5094_s3238_r10441_r10210"] = 2017;
+  dataSetNameToMinPthat["mc16_5TeV.423101.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP35_50.merge.AOD.e5094_s3238_r10441_r10210"] = 35;
+ 
+  dataSetNameToIsPP["mc16_5TeV.423102.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP50_70.merge.AOD.e5094_s3238_r10441_r10210"] = 1;
+  dataSetNameToIsMC["mc16_5TeV.423102.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP50_70.merge.AOD.e5094_s3238_r10441_r10210"] = 1;
+  dataSetNameToYear["mc16_5TeV.423102.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP50_70.merge.AOD.e5094_s3238_r10441_r10210"] = 2017;
+  dataSetNameToMinPthat["mc16_5TeV.423102.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP50_70.merge.AOD.e5094_s3238_r10441_r10210"] = 50;
+
+  dataSetNameToIsPP["mc16_5TeV.423103.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP70_140.merge.AOD.e5094_s3238_r10441_r10210"] = 1;
+  dataSetNameToIsMC["mc16_5TeV.423103.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP70_140.merge.AOD.e5094_s3238_r10441_r10210"] = 1;
+  dataSetNameToYear["mc16_5TeV.423103.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP70_140.merge.AOD.e5094_s3238_r10441_r10210"] = 2017;
+  dataSetNameToMinPthat["mc16_5TeV.423103.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP70_140.merge.AOD.e5094_s3238_r10441_r10210"] = 70;
+
+  dataSetNameToIsPP["mc16_5TeV.423104.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP140_280.merge.AOD.e5094_s3238_r10441_r10210"] = 1;
+  dataSetNameToIsMC["mc16_5TeV.423104.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP140_280.merge.AOD.e5094_s3238_r10441_r10210"] = 1;
+  dataSetNameToYear["mc16_5TeV.423104.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP140_280.merge.AOD.e5094_s3238_r10441_r10210"] = 2017;
+  dataSetNameToMinPthat["mc16_5TeV.423104.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP140_280.merge.AOD.e5094_s3238_r10441_r10210"] = 140;
+
+  dataSetNameToIsPP["mc16_5TeV.423105.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP280_500.merge.AOD.e5094_s3238_r10441_r10210"] = 1;
+  dataSetNameToIsMC["mc16_5TeV.423105.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP280_500.merge.AOD.e5094_s3238_r10441_r10210"] = 1;
+  dataSetNameToYear["mc16_5TeV.423105.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP280_500.merge.AOD.e5094_s3238_r10441_r10210"] = 2017;
+  dataSetNameToMinPthat["mc16_5TeV.423105.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP280_500.merge.AOD.e5094_s3238_r10441_r10210"] = 280;
+
   for(int ppI = 0; ppI < 2; ++ppI){
     for(int mcI = 0; mcI < 2; ++mcI){
       for(auto const & year : validYears){
@@ -61,7 +102,7 @@ bool sampleHandler::Init(bool in_isPP, bool in_isMC, int in_year, int in_minPtha
 	    tagToFilterEff[tag] = 0.000043848;
 	  }
 	  else if(tag == 50201810){
-	    tagToXSec[tag] = 85898;//in nanobarn
+	    tagToXSec[tag] = 85898;//in nanobar
 	    tagToFilterEff[tag] = 0.00003339;
 	  }
 	  else if(tag == 70201810){
@@ -80,7 +121,45 @@ bool sampleHandler::Init(bool in_isPP, bool in_isMC, int in_year, int in_minPtha
       }      
     }
   }
-   
+
+  return;
+}
+
+bool sampleHandler::Init(std::string sampleString)
+{
+  //Pre-Initialize the maps
+  PreInit();
+     
+  m_isInit = false;
+
+  if(dataSetNameToIsPP.count(sampleString) == 0){
+    std::cout << "sampleHandler error - Given sample string \'" << sampleString << "\' is not valid. Initialization failed." << std::endl;
+    std::cout << "To fix, pick from: " << std::endl;
+    for(auto const & sample : dataSetNameToIsPP){
+      std::cout << " " << sample.first << std::endl;
+    }
+    std::cout << "Or modify sampleHandler class. return false" << std::endl;
+    Clean();    
+    return m_isInit;
+  }
+
+  m_isInit = true;
+
+  m_isPP = dataSetNameToIsPP[sampleString];
+  m_isMC = dataSetNameToIsMC[sampleString];
+  m_year = dataSetNameToYear[sampleString];
+  m_minPthat = dataSetNameToMinPthat[sampleString];
+
+  m_tagVal = CreateTag();
+  
+  return m_isInit;
+}
+
+bool sampleHandler::Init(bool in_isPP, bool in_isMC, int in_year, int in_minPthat)
+{
+  //Pre-Initialize the maps
+  PreInit();
+     
   m_isInit = false;
 
   if(!vectContainsInt(in_year, &validYears)){

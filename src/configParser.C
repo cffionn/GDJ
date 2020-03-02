@@ -73,6 +73,15 @@ bool configParser::Init(TEnv* inConfigEnv_p)
   for(Int_t entry = 0; entry < hash_p->GetEntries(); ++entry){
     m_configVals[hash_p->At(entry)->GetName()] = inConfigEnv_p->GetValue(hash_p->At(entry)->GetName(), "");
   }
+
+  for(auto const & vals : m_configVals){
+    std::string sec = vals.second;
+    while(sec.find(" ") != std::string::npos){
+      sec.replace(sec.find(" "), 1, "");
+    }
+    m_configVals[vals.first] = sec;
+  }
+
   return true;
 }
 

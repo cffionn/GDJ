@@ -1,0 +1,2 @@
+MCPREPROCDIRNAME,/home/cfmcginn/Samples/ATLASGDJ/20200228
+OUTFILENAME,ntupleMCPreProc_TEST.root
