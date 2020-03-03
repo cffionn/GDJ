@@ -2,7 +2,6 @@
 
 //cpp
 #include <iostream>
-#include <vector>
 
 //ROOT
 #include "THashList.h"
@@ -103,6 +102,15 @@ bool configParser::ContainsParam(std::string inStr)
     return false;
   }
   return true;
+}
+
+bool configParser::ContainsParamSet(std::vector<std::string> inParamVect)
+{
+  bool retVal = true;
+  for(auto const & param : inParamVect){
+    retVal = retVal && ContainsParam(param);
+  }
+  return retVal;
 }
 
 std::string configParser::GetConfigVal(std::string inStr)

@@ -6,6 +6,7 @@
 #include <fstream>
 #include <map>
 #include <string>
+#include <vector>
 
 //ROOT
 #include "TEnv.h"
@@ -27,6 +28,7 @@ class configParser
   bool Init(TEnv* inConfigEnv_p);
   bool Init(TEnv* inConfigEnv_p, TEnv* inDefinitionEnv_p);
   bool ContainsParam(std::string inStr);
+  bool ContainsParamSet(std::vector<std::string> inParamVect);
   std::string GetConfigVal(std::string inStr);
   std::map<std::string, std::string> GetConfigMap();
   void SetConfigVal(std::string inStrParam, std::string inStrVal);

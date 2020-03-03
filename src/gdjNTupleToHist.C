@@ -30,6 +30,7 @@
 #include "include/histDefUtility.h"
 #include "include/plotUtilities.h"
 #include "include/stringUtil.h"
+#include "include/treeUtil.h"
 
 int gdjNTupleToHist(std::string inConfigFileName)
 {
@@ -292,15 +293,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
   inFile_p->cd();
   
   //Grab the hltbranches for some basic prescale checks
-  TObjArray* listOfBranches_p = (TObjArray*)inTree_p->GetListOfBranches();
+  std::vector<std::string> listOfBranches = getVectBranchList(inTree_p);
   std::vector<std::string> hltList;
   std::vector<std::string> hltListPres;
   std::string hltStr = "HLT_";
   std::string prescaleStr = "_prescale";
 
   //HLTLists are built
-  for(Int_t bI = 0; bI < listOfBranches_p->GetEntries(); ++bI){
-    std::string branchStr = listOfBranches_p->At(bI)->GetName();
+  for(auto const & branchStr : listOfBranches){
     if(branchStr.size() < hltStr.size()) continue;
     if(!isStrSame(branchStr.substr(0, hltStr.size()), hltStr)) continue;
 

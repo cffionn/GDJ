@@ -19,6 +19,7 @@ class sampleHandler{
   int GetTag();
   double GetXSection();
   double GetFilterEff();
+  int GetMinPthat();
   void Clean();
   void PrintTags();  
   
@@ -39,6 +40,7 @@ class sampleHandler{
   std::map<int, std::vector<int>> validMinPthatsByYear;
   std::map<int, double> tagToXSec;
   std::map<int, double> tagToFilterEff;
+  std::map<int, int> tagToMinPthat;
 
   std::map<std::string, bool> dataSetNameToIsPP;
   std::map<std::string, bool> dataSetNameToIsMC;

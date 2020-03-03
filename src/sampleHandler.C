@@ -80,10 +80,12 @@ void sampleHandler::PreInit()
 	  //Values as extracted in AMI
 	  //PYT.8 search: mc16_5TeV.%.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP%.merge.AOD.e5094_s3238_r10441_r10210
 	  //PYT.8+Overlay search: mc16_5TeV.%.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP%.merge.AOD.e5094_d1516_r11439_r11217
+
+	  tagToMinPthat[tag] = min;
 	  
 	  if(tag == 35201711){
 	    tagToXSec[tag] = 351620;//in nanobarn
-	    tagToFilterEff[tag] = 0.000029108;
+	    tagToFilterEff[tag] = 0.000029108;	    
 	  }
 	  else if(tag == 50201711){
 	    tagToXSec[tag] = 85898;//in nanobarn
@@ -229,6 +231,14 @@ double sampleHandler::GetFilterEff()
   if(m_isInit) eff = tagToFilterEff[m_tagVal];
   else std::cout << "SAMPLEHANDLER ERROR - GetFilterEff() called despite no init. returning 0.0" << std::endl;
   return eff;
+}
+
+int sampleHandler::GetMinPthat()
+{
+  int minPthat = 0;
+  if(m_isInit) minPthat = tagToMinPthat[m_tagVal];
+  else std::cout << "SAMPLEHANDLER ERROR - GetMinPthat() called despite no init. returning 0" << std::endl;
+  return minPthat;
 }
 
 void sampleHandler::Clean()
