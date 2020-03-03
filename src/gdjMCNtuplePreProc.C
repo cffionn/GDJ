@@ -16,6 +16,7 @@
 #include "include/checkMakeDir.h"
 #include "include/configParser.h"
 #include "include/globalDebugHandler.h"
+#include "include/ncollFunctions_5TeV.h"
 #include "include/returnFileList.h"
 #include "include/sampleHandler.h"
 #include "include/stringUtil.h"
@@ -39,6 +40,7 @@ int gdjMCNtuplePreProc(std::string inConfigFileName)
   
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
+  const bool isPP = std::stoi(config.GetConfigVal("ISPP"));
   const std::string inDirStr = config.GetConfigVal("MCPREPROCDIRNAME");
   const std::string inCentFileName = config.GetConfigVal("CENTFILENAME");
   if(!check.checkDir(inDirStr)){
@@ -49,6 +51,17 @@ int gdjMCNtuplePreProc(std::string inConfigFileName)
 
   centralityFromInput centTable(inCentFileName);
   if(doGlobalDebug) centTable.PrintTableTex();
+
+  //NColl weights
+  std::vector<double> ncollWeights;
+  std::vector<double> centCounts;
+  for(Int_t cI = 0; cI < 100; ++cI){
+    ncollWeights.push_back(findAvgNColl_Cent(cI, cI+1));
+    centCounts.push_back(0.0);
+  }
+  for(Int_t cI = 0; cI < 100; ++cI){
+    ncollWeights[99-cI] /= ncollWeights[0];
+  }  
   
   const std::string dateStr = getDateStr();
   check.doCheckMakeDir("output");
@@ -164,10 +177,10 @@ int gdjMCNtuplePreProc(std::string inConfigFileName)
   outTree_p->Branch("passesToroid", &passesToroid_, "passesToroid/i");
 
   outTree_p->Branch("pthat", &pthat_, "pthat/F");
-  outTree_p->Branch("cent", &cent_, "cent/I");
+  if(!isPP) outTree_p->Branch("cent", &cent_, "cent/I");
   outTree_p->Branch("sampleTag", &sampleTag_, "sampleTag/I");
   outTree_p->Branch("sampleWeight", &sampleWeight_, "sampleWeight/F");
-  outTree_p->Branch("ncollWeight", &ncollWeight_, "ncollWeight/F");
+  if(!isPP) outTree_p->Branch("ncollWeight", &ncollWeight_, "ncollWeight/F");
   outTree_p->Branch("fullWeight", &fullWeight_, "fullWeight/F");
 
   outTree_p->Branch("treePartonPt", treePartonPt_, ("treePartonPt[" + std::to_string(nTreeParton_) + "]/F").c_str());
@@ -285,6 +298,22 @@ int gdjMCNtuplePreProc(std::string inConfigFileName)
     TTree* inTree_p = (TTree*)inFile_p->Get("gammaJetTree_p");
     totalNEntries += inTree_p->GetEntries();
     TEnv* inConfig_p = (TEnv*)inFile_p->Get("config");
+
+    if(!isPP){
+      inTree_p->SetBranchStatus("*", 0);
+      inTree_p->SetBranchStatus("fcalA_et", 1);
+      inTree_p->SetBranchStatus("fcalC_et", 1);
+      
+      inTree_p->SetBranchAddress("fcalA_et", &fcalA_et_);
+      inTree_p->SetBranchAddress("fcalC_et", &fcalC_et_);
+      
+      for(Long64_t entry = 0; entry < inTree_p->GetEntries(); ++entry){
+	inTree_p->GetEntry(entry);
+
+	cent_ = centTable.GetCent(fcalA_et_ + fcalC_et_);
+	++(centCounts[cent_]);
+      }
+    }
     
     configParser tempConfig(inConfig_p);
     std::map<std::string, std::string> tempConfigMap = tempConfig.GetConfigMap();
@@ -384,6 +413,13 @@ int gdjMCNtuplePreProc(std::string inConfigFileName)
     outFile_p->Close();
     delete outFile_p;
     return 1;
+  }
+
+  if(!isPP){
+    for(unsigned int cI = 0; cI < ncollWeights.size(); ++cI){      
+      if(centCounts[cI] < 0.5) continue;
+      ncollWeights[cI] /= centCounts[cI];
+    }
   }
   
   sampleHandler sHandler;
@@ -511,6 +547,14 @@ int gdjMCNtuplePreProc(std::string inConfigFileName)
       if(currTotalEntries%nDiv == 0) std::cout << " Entry " << currTotalEntries << "/" << totalNEntries << "... (File " << nFile << "/" << fileList.size() << ")"  << std::endl;
       inTree_p->GetEntry(entry);
 
+      if(!isPP){
+	cent_ = centTable.GetCent(fcalA_et_ + fcalC_et_);
+	ncollWeight_ = ncollWeights[cent_];
+      }
+      else ncollWeight_ = 1.0;
+
+      fullWeight_ = sampleWeight_*ncollWeight_;
+      
       outTree_p->Fill();
       ++currTotalEntries;
     }
