@@ -76,8 +76,9 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::str
       if(topDir.size() == 0) retVal = retVal && recursiveHistSearch(dateStr, inFile_p, labelMap, name);
       else retVal = retVal && recursiveHistSearch(dateStr, inFile_p, labelMap, topDir + "/" + name);
     }
-    if(!isStrSame(className, "TH1D") && !isStrSame(className, "TH2D") && !isStrSame(className, "TH1F") && !isStrSame(className, "TH2F")) continue;
 
+    if(!isStrSame(className, "TH1D") && !isStrSame(className, "TH2D") && !isStrSame(className, "TH1F") && !isStrSame(className, "TH2F")) continue;
+    else if(name.find("GenRes") != std::string::npos && name.find("GenPt") != std::string::npos && name.find("RecoPt") != std::string::npos) continue;
 
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
