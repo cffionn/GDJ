@@ -454,7 +454,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   }
   for(auto const & branchHLTPre : listOfBranchesHLTPre){
     hltPreVect.push_back(new Float_t(0.0));
-    outTree_p->Branch(branchHLTPre.c_str(), hltPreVect[hltPreVect.size()-1], (branchHLTPre + "/O").c_str());
+    outTree_p->Branch(branchHLTPre.c_str(), hltPreVect[hltPreVect.size()-1], (branchHLTPre + "/F").c_str());
   }
   
   bool allBranchesGood = true;
