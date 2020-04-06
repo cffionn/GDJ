@@ -8,21 +8,84 @@
 #include <string>
 
 //ROOT
+#include "TArrow.h"
 #include "TCanvas.h"
 #include "TEnv.h"
 #include "TFile.h"
 #include "TH2F.h"
 #include "TLatex.h"
+#include "TLine.h"
 #include "TPad.h"
 #include "TStyle.h"
 
 //Local
 #include "include/checkMakeDir.h"
 #include "include/configParser.h"
+#include "include/getLogBins.h"
 #include "include/globalDebugHandler.h"
 #include "include/histDefUtility.h"
 #include "include/plotUtilities.h"
 #include "include/stringUtil.h"
+
+void getLogNDC(TCanvas* canv_p, TH2F* hist_p, bool isX)
+{
+  double lowVal = hist_p->GetXaxis()->GetBinLowEdge(1);
+  double highVal = hist_p->GetXaxis()->GetBinLowEdge(hist_p->GetXaxis()->GetNbins()+1);
+  if(!isX){
+    lowVal = hist_p->GetYaxis()->GetBinLowEdge(1);
+    highVal = hist_p->GetYaxis()->GetBinLowEdge(hist_p->GetYaxis()->GetNbins()+1);
+  }
+  
+  double lowTen = 100000000000;
+  double highTen = .0000000000001;
+  while(lowTen > lowVal){lowTen /= 10.;}
+  while(highTen < highVal){highTen *= 10.;}
+
+  const Int_t nBins = 1000;
+  Double_t bins[nBins+1];
+  getLogBins(lowTen, highTen, nBins, bins);
+
+  Int_t nearestLowPos = -1;
+  Double_t nearestLow = highTen - lowTen;
+  for(Int_t bI = 0; bI < nBins+1; ++bI){
+    if(TMath::Abs(bins[bI] - lowVal) < nearestLow){
+      nearestLow = TMath::Abs(bins[bI] - lowVal);
+      nearestLowPos = bI;
+    }
+  }
+  Int_t nearestHighPos = -1;
+  Double_t nearestHigh = highTen - lowTen;
+  for(Int_t bI = 0; bI < nBins+1; ++bI){
+    if(TMath::Abs(bins[bI] - highVal) < nearestHigh){
+      nearestHigh = TMath::Abs(bins[bI] - highVal);
+      nearestHighPos = bI;
+    }
+  }
+
+  int deltaPos1 = (nearestHighPos - nearestLowPos)*0.03;
+  int deltaPos2 = (nearestHighPos - nearestLowPos)*0.03;
+  if(isX){
+    deltaPos1 = (nearestHighPos - nearestLowPos)*0.025;
+    deltaPos2 = (nearestHighPos - nearestLowPos)*0.04;
+  }
+  
+  double arrowVal = bins[nearestLowPos - deltaPos1];
+  double low = bins[nearestLowPos + deltaPos2];
+  double high = bins[nearestHighPos - deltaPos2];
+  
+  canv_p->cd();
+  TArrow* arrow_p = new TArrow();
+  arrow_p->SetLineWidth(2);
+  arrow_p->SetFillColor(1);  
+  
+  if(isX) arrow_p->DrawArrow(arrowVal, low, arrowVal, high, 0.02, ">");
+  else arrow_p->DrawArrow(low, arrowVal, high, arrowVal, 0.02, ">");
+  
+
+  delete arrow_p;
+
+  return;
+}
 
 int gdjGammaJetResponsePlot(std::string inFileName)
 {
@@ -51,6 +114,8 @@ int gdjGammaJetResponsePlot(std::string inFileName)
   configParser config(configEnv_p);
   configParser label(labelEnv_p);
 
+  configEnv_p->Print();
+  
   std::map<std::string, std::string> labelMap = label.GetConfigMap();
   std::vector<int> recoGammaPtVals, genGammaPtVals;
   std::vector<std::string> centBinsStr, recoGammaPtStr, genGammaPtStr;
@@ -139,12 +204,48 @@ int gdjGammaJetResponsePlot(std::string inFileName)
     TH2F* hist_p = new TH2F("hist_h", ";Reco. p_{T,#gamma};Gen. p_{T,#gamma}", nRecoGammaPtBins, recoGammaPtBins, nGenGammaPtBins, genGammaPtBins);
 
     hist_p->GetXaxis()->SetTitleOffset(1.3);
+    hist_p->GetYaxis()->SetTitleOffset(1.3);
+
+    hist_p->GetXaxis()->SetLabelSize(0.00001);
+    hist_p->GetYaxis()->SetLabelSize(0.00001);
+    
     centerTitles(hist_p);   
-    std::cout << "OFF: " << hist_p->GetXaxis()->GetTitleOffset() << std::endl;
     hist_p->DrawCopy("COL");    
 
-    std::cout << "Y FONT, SIZE: " << hist_p->GetYaxis()->GetTitleFont() << ", " << hist_p->GetYaxis()->GetTitleSize() << std::endl;
+    getLogNDC(canv_p, hist_p, 1);
+    getLogNDC(canv_p, hist_p, 0);
     
+    std::string lowXValStr = configEnv_p->GetValue("GAMMAPTBINSLOW", "");
+    std::string highXValStr = configEnv_p->GetValue("GAMMAPTBINSHIGH", "");
+
+    if(lowXValStr.size() == 2) label_p->DrawLatex(margin/2. + 0.02, margin, lowXValStr.c_str());
+    else if(lowXValStr.size() == 3) label_p->DrawLatex(margin/2., margin, lowXValStr.c_str());
+
+
+    if(highXValStr.size() == 2) label_p->DrawLatex(margin/2. + 0.02, 1.0 - subMarginTop, highXValStr.c_str());
+    else if(highXValStr.size() == 3) label_p->DrawLatex(margin/2., 1.0 - subMarginTop, highXValStr.c_str());
+
+    //    TArrow* arrow_p = new TArrow(margin/2., margin + 0.02, margin/2., 1.0 - subMarginTop - 0.02, 0.05, ">");
+    TArrow* arrow_p = new TArrow(45, 50, 45, 250);
+    arrow_p->SetFillColor(1);
+    arrow_p->SetLineColor(1);
+    arrow_p->SetLineWidth(2);
+    arrow_p->SetNDC();
+    arrow_p->SetX1(margin/2.);
+    arrow_p->SetX2(margin/2.);
+    arrow_p->SetY1(margin + 0.02);
+    arrow_p->SetY2(1.0 - subMarginTop - 0.02);
+    arrow_p->Draw("SAME");
+    //    arrow_p->DrawArrow(45, 50, 45, 250);
+
+    std::cout << "ARROW COORD: " << margin/2. << ", " << margin + 0.02 << ", " << margin/2. << ", " << 1.0 - subMarginTop - 0.02 << std::endl;
+    //    arrow_p->PaintArrow(margin/2., margin + 0.02, margin/2., 1.0 - subMarginTop - 0.02, 2, ">");
+        
+    label_p->DrawLatex(margin, margin*3./4., lowXValStr.c_str());
+    label_p->DrawLatex(1.0 - subMarginRight - 0.05, margin*3./4., highXValStr.c_str());
+
+    //    arrow_p->PaintArrow(margin, margin*3./4., 1.0, margin*3./4., 2, ">");
+
     gPad->SetLogy();
     gPad->SetLogx();
 
@@ -218,6 +319,7 @@ int gdjGammaJetResponsePlot(std::string inFileName)
     delete canv_p;
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
     delete hist_p;
+    delete arrow_p;
   }
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;

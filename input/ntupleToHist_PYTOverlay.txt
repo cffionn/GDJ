@@ -1,5 +1,5 @@
-INFILENAME,/home/cfmcginn/Projects/ATLASGammaJet/GDJ/output/20200327/ntupleMCPreProc_TEST_20200327.root
-OUTFILENAME,ntupleMCPreProc_TEST_HIST_20200327.root
+INFILENAME,/home/cfmcginn/Projects/ATLASGammaJet/GDJ/output/20200402/ntupleMCPreProc_TEST_20200402.root
+OUTFILENAME,ntupleMCPreProc_TEST_HIST_20200402.root
 CENTFILENAME,input/centrality_cuts_Gv32_proposed_RCMOD2.txt
 MIXFILENAME,PLACEHOLDER
 DOMIX,0

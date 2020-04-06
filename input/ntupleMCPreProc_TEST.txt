@@ -1,4 +1,4 @@
-MCPREPROCDIRNAME,/home/cfmcginn/Samples/ATLASGDJ/20200326
+MCPREPROCDIRNAME,/home/cfmcginn/Samples/ATLASGDJ/20200402
 OUTFILENAME,ntupleMCPreProc_TEST.root
 CENTFILENAME,input/centrality_cuts_Gv32_proposed_RCMOD2.txt
 ISPP,0

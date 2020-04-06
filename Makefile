@@ -28,7 +28,7 @@ MKDIR_OBJ=mkdir -p $(GDJDIR)/obj
 MKDIR_OUTPUT=mkdir -p $(GDJDIR)/output
 MKDIR_PDF=mkdir -p $(GDJDIR)/pdfDir
 
-all: mkdirBin mkdirLib mkdirObj mkdirOutput mkdirPdf obj/centralityFromInput.o obj/checkMakeDir.o obj/configParser.o obj/globalDebugHandler.o obj/keyHandler.o obj/sampleHandler.o lib/libATLASGDJ.so bin/gdjMCNtuplePreProc.exe bin/gdjNTupleToHist.exe bin/gdjHistDumper.exe bin/gdjGammaJetResponsePlot.exe bin/grlToTex.exe bin/testKeyHandler.exe bin/testSampleHandler.exe
+all: mkdirBin mkdirLib mkdirObj mkdirOutput mkdirPdf obj/centralityFromInput.o obj/checkMakeDir.o obj/configParser.o obj/globalDebugHandler.o obj/keyHandler.o obj/sampleHandler.o lib/libATLASGDJ.so bin/gdjNtuplePreProc.exe bin/gdjNTupleToHist.exe bin/gdjHistDumper.exe bin/gdjGammaJetResponsePlot.exe bin/grlToTex.exe bin/testKeyHandler.exe bin/testSampleHandler.exe
 
 mkdirBin:
 	$(MKDIR_BIN)
@@ -66,8 +66,8 @@ obj/sampleHandler.o: src/sampleHandler.C
 lib/libATLASGDJ.so:
 	$(CXX) $(CXXFLAGS) -fPIC -shared -o lib/libATLASGDJ.so obj/centralityFromInput.o obj/checkMakeDir.o obj/configParser.o obj/globalDebugHandler.o obj/keyHandler.o obj/sampleHandler.o $(ROOT) $(INCLUDE)
 
-bin/gdjMCNtuplePreProc.exe: src/gdjMCNtuplePreProc.C
-	$(CXX) $(CXXFLAGS) src/gdjMCNtuplePreProc.C -o bin/gdjMCNtuplePreProc.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
+bin/gdjNtuplePreProc.exe: src/gdjNtuplePreProc.C
+	$(CXX) $(CXXFLAGS) src/gdjNtuplePreProc.C -o bin/gdjNtuplePreProc.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
 
 bin/gdjNTupleToHist.exe: src/gdjNTupleToHist.C
 	$(CXX) $(CXXFLAGS) src/gdjNTupleToHist.C -o bin/gdjNTupleToHist.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ

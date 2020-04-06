@@ -481,14 +481,13 @@ int gdjNTupleToHist(std::string inConfigFileName)
   Float_t fullWeight;
   Float_t fcalA_et, fcalC_et;
   std::vector<float>* vert_z_p=nullptr;
-
-  /*
+  
   std::vector<float>* truth_pt_p=nullptr;
   std::vector<float>* truth_phi_p=nullptr;
   std::vector<float>* truth_eta_p=nullptr;
-  */
+  std::vector<int>* truth_pdg_p=nullptr;
   
-  std::vector<float>* photon_pt_p=nullptr;
+    std::vector<float>* photon_pt_p=nullptr;
   std::vector<float>* photon_eta_p=nullptr;
   std::vector<float>* photon_phi_p=nullptr;
 
@@ -585,6 +584,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
     inTree_p->SetBranchStatus("sampleWeight", 1);
     inTree_p->SetBranchStatus("ncollWeight", 1);
     inTree_p->SetBranchStatus("fullWeight", 1);
+
+    inTree_p->SetBranchStatus("truth_pt", 1);
+    inTree_p->SetBranchStatus("truth_eta", 1);
+    inTree_p->SetBranchStatus("truth_phi", 1);
+    inTree_p->SetBranchStatus("truth_pdg", 1);
   }
   
   if(!isPP){
@@ -623,6 +627,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
     inTree_p->SetBranchAddress("sampleWeight", &sampleWeight);
     inTree_p->SetBranchAddress("ncollWeight", &ncollWeight);
     inTree_p->SetBranchAddress("fullWeight", &fullWeight);
+
+    inTree_p->SetBranchAddress("truth_pt", &truth_pt_p);
+    inTree_p->SetBranchAddress("truth_eta", &truth_eta_p);
+    inTree_p->SetBranchAddress("truth_phi", &truth_phi_p);
+    inTree_p->SetBranchAddress("truth_pdg", &truth_pdg_p);
   }
 
   if(!isPP){
@@ -664,6 +673,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
   bool didOneFireMiss = false;
   std::vector<int> skippedCent;
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
   
   for(ULong64_t entry = 0; entry < nEntries; ++entry){
     if(entry%nDiv == 0) std::cout << " Entry " << entry << "/" << nEntries << "..." << std::endl;
@@ -696,6 +706,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
       }
     }
 
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+
+
     Int_t centPos = -1;
     Double_t cent = -1;
     if(!isPP){
@@ -727,7 +740,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
       fillTH1(pthat_p, pthat, fullWeight);
       pthat_Unweighted_p->Fill(pthat);
     }
-    
+
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+
     for(unsigned int pI = 0; pI < photon_pt_p->size(); ++pI){
       if(photon_pt_p->at(pI) < gammaPtBins[0]) continue;
       if(photon_pt_p->at(pI) >= gammaPtBins[nGammaPtBins]) continue;
@@ -742,15 +757,36 @@ int gdjNTupleToHist(std::string inConfigFileName)
       
       Int_t ptPos = ghostPos(nGammaPtBinsSub, gammaPtBinsSub, photon_pt_p->at(pI), true, doGlobalDebug);
       Int_t etaPos = ghostPos(nEtaBinsSub, etaBinsSub, etaValSub, true, doGlobalDebug);
+    
+      Int_t truthPos = -1;
+      if(isMC){
+	if(doGlobalDebug){
+	  std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+	  std::cout << truth_eta_p->size() << ", " << truth_pt_p->size() << ", " << truth_phi_p->size() << ", " << truth_pdg_p->size() << std::endl;
+	}
+	
+	for(unsigned int tI = 0; tI < truth_pt_p->size(); ++tI){
+	  if(truth_pdg_p->at(tI) != 22) continue;
+	  if(getDR(truth_eta_p->at(tI), truth_phi_p->at(tI), photon_eta_p->at(pI), photon_phi_p->at(pI)) < 0.2){
+	    truthPos = tI;
+	    break;
+	  }
+	}
+	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+      }
       
       if(etaPos >= 0){
 	fillTH1(photonPtVCentEta_p[centPos][etaPos], photon_pt_p->at(pI), fullWeight);
 	fillTH1(photonPtVCentEta_p[centPos][nEtaBinsSub], photon_pt_p->at(pI), fullWeight);
 
-	
+
+	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+
 	if(isMC){
-	  fillTH2(photonGenResVCentEta_p[centPos][etaPos], photon_pt_p->at(pI), photon_pt_p->at(pI), fullWeight);
-	  fillTH2(photonGenResVCentEta_p[centPos][nEtaBinsSub], photon_pt_p->at(pI), photon_pt_p->at(pI), fullWeight);
+	  if(truthPos >= 0){
+	    fillTH2(photonGenResVCentEta_p[centPos][etaPos], photon_pt_p->at(pI), truth_pt_p->at(truthPos), fullWeight);
+	    fillTH2(photonGenResVCentEta_p[centPos][nEtaBinsSub], photon_pt_p->at(pI), truth_pt_p->at(truthPos), fullWeight);
+	  }
 	}
       }
       
@@ -798,15 +834,20 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		fillTH1(photonJtFakeVCentPt_p[centPos][ptPos], akt4hi_em_xcalib_jet_pt_p->at(jI), fullWeight);
 	      }
 	      else{
-		Int_t genPtPos = ghostPos(nGammaPtBins, gammaPtBins, photon_pt_p->at(pI), true, doGlobalDebug);
-		Int_t recoPtPos = ghostPos(nGammaPtBins, gammaPtBins, photon_pt_p->at(pI), true, doGlobalDebug);		
-
-		fillTH2(photonJtGenResVCentGenPtRecoPt_p[centPos][genPtPos][recoPtPos], akt4hi_em_xcalib_jet_pt_p->at(jI), akt4_truth_jet_pt_p->at(akt4hi_truthpos_p->at(jI)), fullWeight);
+		if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+		if(truthPos >= 0){
+		  if(truth_pt_p->at(truthPos) >= gammaPtBins[0] && truth_pt_p->at(truthPos) < gammaPtBins[nGammaPtBins]){
+		    Int_t genPtPos = ghostPos(nGammaPtBins, gammaPtBins, truth_pt_p->at(truthPos), true, doGlobalDebug);
+		    Int_t recoPtPos = ghostPos(nGammaPtBins, gammaPtBins, photon_pt_p->at(pI), true, doGlobalDebug);		
+		
+		    fillTH2(photonJtGenResVCentGenPtRecoPt_p[centPos][genPtPos][recoPtPos], akt4hi_em_xcalib_jet_pt_p->at(jI), akt4_truth_jet_pt_p->at(akt4hi_truthpos_p->at(jI)), fullWeight);
+		  }
+		}
 	      }
 	    }
 	  }
 	}
-
+      
 	if(doMix){
 	  unsigned long long centMixPos = 0;
 	  if(!isPP) centMixPos = ghostPos(nCentMixBins, centMixBins, cent);

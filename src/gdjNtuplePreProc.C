@@ -22,7 +22,7 @@
 #include "include/stringUtil.h"
 #include "include/treeUtil.h"
 
-int gdjMCNtuplePreProc(std::string inConfigFileName)
+int gdjNtuplePreProc(std::string inConfigFileName)
 {
   checkMakeDir check;
   if(!check.checkFileExt(inConfigFileName, ".txt")) return 1;
@@ -34,13 +34,15 @@ int gdjMCNtuplePreProc(std::string inConfigFileName)
   std::vector<std::string> necessaryParams = {"MCPREPROCDIRNAME",
 					      "OUTFILENAME",
 					      "CENTFILENAME",
-					      "ISPP"};
+					      "ISPP",
+					      "ISMC"};
 
   if(!config.ContainsParamSet(necessaryParams)) return 1;
   
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   const bool isPP = std::stoi(config.GetConfigVal("ISPP"));
+  const bool isMC = std::stoi(config.GetConfigVal("ISMC"));
   const std::string inDirStr = config.GetConfigVal("MCPREPROCDIRNAME");
   const std::string inCentFileName = config.GetConfigVal("CENTFILENAME");
   if(!check.checkDir(inDirStr)){
@@ -99,13 +101,14 @@ int gdjMCNtuplePreProc(std::string inConfigFileName)
   std::vector<int>* vert_type_p=nullptr;
   std::vector<int>* vert_ntrk_p=nullptr;
 
-  Float_t fcalA_et_, fcalC_et_;
+  Float_t fcalA_et_, fcalC_et_, fcalA_et_Cos2_, fcalC_et_Cos2_, fcalA_et_Sin2_, fcalC_et_Sin2_, fcalA_et_Cos3_, fcalC_et_Cos3_, fcalA_et_Sin3_, fcalC_et_Sin3_, fcalA_et_Cos4_, fcalC_et_Cos4_, fcalA_et_Sin4_, fcalC_et_Sin4_, evtPlane2Phi_, evtPlane3Phi_, evtPlane4Phi_;
 
   Int_t truth_n_;
   std::vector<float>* truth_charge_p=nullptr;
   std::vector<float>* truth_pt_p=nullptr;
   std::vector<float>* truth_eta_p=nullptr;
   std::vector<float>* truth_phi_p=nullptr;
+  std::vector<float>* truth_pdg_p=nullptr;
 
   Int_t akt2hi_jet_n_;
   std::vector<float>* akt2hi_em_xcalib_jet_pt_p=nullptr;
@@ -176,17 +179,19 @@ int gdjMCNtuplePreProc(std::string inConfigFileName)
   outTree_p->Branch("lumiBlock", &lumiBlock_, "lumiBlock/i");
   outTree_p->Branch("passesToroid", &passesToroid_, "passesToroid/i");
 
-  outTree_p->Branch("pthat", &pthat_, "pthat/F");
+  if(isMC) outTree_p->Branch("pthat", &pthat_, "pthat/F");
   if(!isPP) outTree_p->Branch("cent", &cent_, "cent/I");
   outTree_p->Branch("sampleTag", &sampleTag_, "sampleTag/I");
-  outTree_p->Branch("sampleWeight", &sampleWeight_, "sampleWeight/F");
-  if(!isPP) outTree_p->Branch("ncollWeight", &ncollWeight_, "ncollWeight/F");
-  outTree_p->Branch("fullWeight", &fullWeight_, "fullWeight/F");
+  if(isMC) outTree_p->Branch("sampleWeight", &sampleWeight_, "sampleWeight/F");
+  if(!isPP && isMC) outTree_p->Branch("ncollWeight", &ncollWeight_, "ncollWeight/F");
+  if(isMC) outTree_p->Branch("fullWeight", &fullWeight_, "fullWeight/F");
 
-  outTree_p->Branch("treePartonPt", treePartonPt_, ("treePartonPt[" + std::to_string(nTreeParton_) + "]/F").c_str());
-  outTree_p->Branch("treePartonEta", treePartonEta_, ("treePartonEta[" + std::to_string(nTreeParton_) + "]/F").c_str());
-  outTree_p->Branch("treePartonPhi", treePartonPhi_, ("treePartonPhi[" + std::to_string(nTreeParton_) + "]/F").c_str());
-  outTree_p->Branch("treePartonId", treePartonId_, ("treePartonId[" + std::to_string(nTreeParton_) + "]/I").c_str());
+  if(isMC){
+    outTree_p->Branch("treePartonPt", treePartonPt_, ("treePartonPt[" + std::to_string(nTreeParton_) + "]/F").c_str());
+    outTree_p->Branch("treePartonEta", treePartonEta_, ("treePartonEta[" + std::to_string(nTreeParton_) + "]/F").c_str());
+    outTree_p->Branch("treePartonPhi", treePartonPhi_, ("treePartonPhi[" + std::to_string(nTreeParton_) + "]/F").c_str());
+    outTree_p->Branch("treePartonId", treePartonId_, ("treePartonId[" + std::to_string(nTreeParton_) + "]/I").c_str());
+  }
   
   outTree_p->Branch("actualInteractionsPerCrossing", &actualInteractionsPerCrossing_, "actualInteractionsPerCrossing/F");
   outTree_p->Branch("averageInteractionsPerCrossing", &averageInteractionsPerCrossing_, "averageInteractionsPerCrossing/F");
@@ -199,14 +204,35 @@ int gdjMCNtuplePreProc(std::string inConfigFileName)
   outTree_p->Branch("vert_ntrk", &vert_ntrk_p);
 
   outTree_p->Branch("fcalA_et", &fcalA_et_, "fcalA_et/F");
-  outTree_p->Branch("fcalC_et", &fcalC_et_, "fcalC_et/F");
+  outTree_p->Branch("fcalC_et", &fcalC_et_, "fcalC_et/F"); 
+  outTree_p->Branch("fcalA_et_Cos2", &fcalA_et_Cos2_, "fcalA_et_Cos2/F");
+  outTree_p->Branch("fcalC_et_Cos2", &fcalC_et_Cos2_, "fcalC_et_Cos2/F");
+  outTree_p->Branch("fcalA_et_Sin2", &fcalA_et_Sin2_, "fcalA_et_Sin2/F");
+  outTree_p->Branch("fcalC_et_Sin2", &fcalC_et_Sin2_, "fcalC_et_Sin2/F");
 
-  outTree_p->Branch("truth_n", &truth_n_, "truth_n/I");
-  outTree_p->Branch("truth_charge", &truth_charge_p);
-  outTree_p->Branch("truth_pt", &truth_pt_p);
-  outTree_p->Branch("truth_eta", &truth_eta_p);
-  outTree_p->Branch("truth_phi", &truth_phi_p);
+  outTree_p->Branch("fcalA_et_Cos3", &fcalA_et_Cos3_, "fcalA_et_Cos3/F");
+  outTree_p->Branch("fcalC_et_Cos3", &fcalC_et_Cos3_, "fcalC_et_Cos3/F");
+  outTree_p->Branch("fcalA_et_Sin3", &fcalA_et_Sin3_, "fcalA_et_Sin3/F");
+  outTree_p->Branch("fcalC_et_Sin3", &fcalC_et_Sin3_, "fcalC_et_Sin3/F");
 
+  outTree_p->Branch("fcalA_et_Cos4", &fcalA_et_Cos4_, "fcalA_et_Cos4/F");
+  outTree_p->Branch("fcalC_et_Cos4", &fcalC_et_Cos4_, "fcalC_et_Cos4/F");
+  outTree_p->Branch("fcalA_et_Sin4", &fcalA_et_Sin4_, "fcalA_et_Sin4/F");
+  outTree_p->Branch("fcalC_et_Sin4", &fcalC_et_Sin4_, "fcalC_et_Sin4/F");
+
+  outTree_p->Branch("evtPlane2Phi", &evtPlane2Phi_, "evtPlane2Phi/F");
+  outTree_p->Branch("evtPlane3Phi", &evtPlane3Phi_, "evtPlane3Phi/F");
+  outTree_p->Branch("evtPlane4Phi", &evtPlane4Phi_, "evtPlane4Phi/F");
+  
+  if(isMC){
+    outTree_p->Branch("truth_n", &truth_n_, "truth_n/I");
+    outTree_p->Branch("truth_charge", &truth_charge_p);
+    outTree_p->Branch("truth_pt", &truth_pt_p);
+    outTree_p->Branch("truth_eta", &truth_eta_p);
+    outTree_p->Branch("truth_phi", &truth_phi_p);
+    outTree_p->Branch("truth_pdg", &truth_pdg_p);
+  }
+  
   outTree_p->Branch("akt2hi_jet_n", &akt2hi_jet_n_, "akt2hi_jet_n/I");
   outTree_p->Branch("akt2hi_em_xcalib_jet_pt", &akt2hi_em_xcalib_jet_pt_p);
   outTree_p->Branch("akt2hi_em_xcalib_jet_eta", &akt2hi_em_xcalib_jet_eta_p);
@@ -216,7 +242,7 @@ int gdjMCNtuplePreProc(std::string inConfigFileName)
   outTree_p->Branch("akt2hi_constit_xcalib_jet_eta", &akt2hi_constit_xcalib_jet_eta_p);
   outTree_p->Branch("akt2hi_constit_xcalib_jet_phi", &akt2hi_constit_xcalib_jet_phi_p);
   outTree_p->Branch("akt2hi_constit_xcalib_jet_e", &akt2hi_constit_xcalib_jet_e_p);
-  outTree_p->Branch("akt2hi_truthpos", &akt2hi_truthpos_p);
+  if(isMC) outTree_p->Branch("akt2hi_truthpos", &akt2hi_truthpos_p);
 
   outTree_p->Branch("akt4hi_jet_n", &akt4hi_jet_n_, "akt4hi_jet_n/I");
   outTree_p->Branch("akt4hi_em_xcalib_jet_pt", &akt4hi_em_xcalib_jet_pt_p);
@@ -227,7 +253,7 @@ int gdjMCNtuplePreProc(std::string inConfigFileName)
   outTree_p->Branch("akt4hi_constit_xcalib_jet_eta", &akt4hi_constit_xcalib_jet_eta_p);
   outTree_p->Branch("akt4hi_constit_xcalib_jet_phi", &akt4hi_constit_xcalib_jet_phi_p);
   outTree_p->Branch("akt4hi_constit_xcalib_jet_e", &akt4hi_constit_xcalib_jet_e_p);
-  outTree_p->Branch("akt4hi_truthpos", &akt4hi_truthpos_p);
+  if(isMC) outTree_p->Branch("akt4hi_truthpos", &akt4hi_truthpos_p);
 
   outTree_p->Branch("photon_n", &photon_n_, "photon_n/I");
   outTree_p->Branch("photon_pt", &photon_pt_p);
@@ -259,20 +285,22 @@ int gdjMCNtuplePreProc(std::string inConfigFileName)
   outTree_p->Branch("photon_DeltaE", &photon_DeltaE_p);
   outTree_p->Branch("photon_Eratio", &photon_Eratio_p);
 
-  outTree_p->Branch("akt2_truth_jet_n", &akt2_truth_jet_n_, "akt2_truth_jet_n/I");
-  outTree_p->Branch("akt2_truth_jet_pt", &akt2_truth_jet_pt_p);
-  outTree_p->Branch("akt2_truth_jet_eta", &akt2_truth_jet_eta_p);
-  outTree_p->Branch("akt2_truth_jet_phi", &akt2_truth_jet_phi_p);
-  outTree_p->Branch("akt2_truth_jet_e", &akt2_truth_jet_e_p);
-  outTree_p->Branch("akt2_truth_jet_recopos", &akt2_truth_jet_recopos_p);
-
-  outTree_p->Branch("akt4_truth_jet_n", &akt4_truth_jet_n_, "akt4_truth_jet_n/I");
-  outTree_p->Branch("akt4_truth_jet_pt", &akt4_truth_jet_pt_p);
-  outTree_p->Branch("akt4_truth_jet_eta", &akt4_truth_jet_eta_p);
-  outTree_p->Branch("akt4_truth_jet_phi", &akt4_truth_jet_phi_p);
-  outTree_p->Branch("akt4_truth_jet_e", &akt4_truth_jet_e_p);
-  outTree_p->Branch("akt4_truth_jet_recopos", &akt4_truth_jet_recopos_p);
-
+  if(isMC){
+    outTree_p->Branch("akt2_truth_jet_n", &akt2_truth_jet_n_, "akt2_truth_jet_n/I");
+    outTree_p->Branch("akt2_truth_jet_pt", &akt2_truth_jet_pt_p);
+    outTree_p->Branch("akt2_truth_jet_eta", &akt2_truth_jet_eta_p);
+    outTree_p->Branch("akt2_truth_jet_phi", &akt2_truth_jet_phi_p);
+    outTree_p->Branch("akt2_truth_jet_e", &akt2_truth_jet_e_p);
+    outTree_p->Branch("akt2_truth_jet_recopos", &akt2_truth_jet_recopos_p);
+    
+    outTree_p->Branch("akt4_truth_jet_n", &akt4_truth_jet_n_, "akt4_truth_jet_n/I");
+    outTree_p->Branch("akt4_truth_jet_pt", &akt4_truth_jet_pt_p);
+    outTree_p->Branch("akt4_truth_jet_eta", &akt4_truth_jet_eta_p);
+    outTree_p->Branch("akt4_truth_jet_phi", &akt4_truth_jet_phi_p);
+    outTree_p->Branch("akt4_truth_jet_e", &akt4_truth_jet_e_p);
+    outTree_p->Branch("akt4_truth_jet_recopos", &akt4_truth_jet_recopos_p);
+  }
+  
   std::vector<std::string> fileList = returnFileList(inDirStr, ".root");
   if(fileList.size() == 0){
     std::cout << "GDJMCNTUPLEPREPROC ERROR - Given MCPREPROCDIRNAME \'" << inDirStr << "\' in config \'" << inConfigFileName << "\' contains no root files. return 1" << std::endl;
@@ -290,7 +318,7 @@ int gdjMCNtuplePreProc(std::string inConfigFileName)
   configMap["MCPREPROCDIRNAME"] = {inDirStr};
 
   //Basic pre-processing for output config
-  std::vector<std::string> listOfBranchesIn;
+  std::vector<std::string> listOfBranchesIn, listOfBranchesHLT, listOfBranchesHLTPre;
   std::vector<std::string> listOfBranchesOut = getVectBranchList(outTree_p);
   ULong64_t totalNEntries = 0;
   for(auto const & file : fileList){
@@ -318,32 +346,34 @@ int gdjMCNtuplePreProc(std::string inConfigFileName)
     configParser tempConfig(inConfig_p);
     std::map<std::string, std::string> tempConfigMap = tempConfig.GetConfigMap();
 
-    sampleHandler sHandler;
-    
-    std::string inDataSetName = tempConfig.GetConfigVal("INDATASET");
-    if(inDataSetName.size() == 0 || !sHandler.Init(inDataSetName)){
-      std::cout << "GDJMCNTUPLEPREPROC ERROR - Given input \'" << file << "\' contains INDATASET \'" << inDataSetName << "\' that is not valid. return 1" << std::endl;
-
-      inFile_p->Close();
-      delete inFile_p;
-
-      outFile_p->Close();
-      delete outFile_p;
+    if(isMC){
+      sampleHandler sHandler;
       
-      return 1;
+      std::string inDataSetName = tempConfig.GetConfigVal("INDATASET");
+      if(inDataSetName.size() == 0 || !sHandler.Init(inDataSetName)){
+	std::cout << "GDJMCNTUPLEPREPROC ERROR - Given input \'" << file << "\' contains INDATASET \'" << inDataSetName << "\' that is not valid. return 1" << std::endl;
+	
+	inFile_p->Close();
+	delete inFile_p;
+	
+	outFile_p->Close();
+	delete outFile_p;
+	
+	return 1;
+      }
+      
+      sampleTag_ = sHandler.GetTag();
+      
+      if(tagToCounts.count(sampleTag_) == 0){
+	tagToCounts[sampleTag_] = inTree_p->GetEntries();
+	tagToXSec[sampleTag_] = sHandler.GetXSection();
+	tagToFilterEff[sampleTag_] = sHandler.GetFilterEff();
+	int minPthat = sHandler.GetMinPthat();
+	minPthats.push_back(minPthat);
+	minPthatToTag[sHandler.GetMinPthat()] = sampleTag_;
+      }
+      else tagToCounts[sampleTag_] += inTree_p->GetEntries();
     }
-
-    sampleTag_ = sHandler.GetTag();
-    
-    if(tagToCounts.count(sampleTag_) == 0){
-      tagToCounts[sampleTag_] = inTree_p->GetEntries();
-      tagToXSec[sampleTag_] = sHandler.GetXSection();
-      tagToFilterEff[sampleTag_] = sHandler.GetFilterEff();
-      int minPthat = sHandler.GetMinPthat();
-      minPthats.push_back(minPthat);
-      minPthatToTag[sHandler.GetMinPthat()] = sampleTag_;
-    }
-    else tagToCounts[sampleTag_] += inTree_p->GetEntries();
     
     for(auto const & val : tempConfigMap){
       bool isFound = false;
@@ -362,12 +392,22 @@ int gdjMCNtuplePreProc(std::string inConfigFileName)
     }
 
     std::vector<std::string> tempBranches = getVectBranchList(inTree_p);
-    if(listOfBranchesIn.size() == 0) listOfBranchesIn = tempBranches;
-    else{
-      for(auto const & branch : tempBranches){
-	if(!vectContainsStr(branch, &listOfBranchesIn)){
-	  listOfBranchesIn.push_back(branch);
+    for(auto const & branch : tempBranches){
+      if(branch.size() >= 4){
+	if(branch.substr(0,4).find("HLT_") != std::string::npos){
+	  if(branch.find("presc") != std::string::npos){
+	    if(!vectContainsStr(branch, &listOfBranchesHLTPre)) listOfBranchesHLTPre.push_back(branch);
+	  }
+	  else{
+	    if(!vectContainsStr(branch, &listOfBranchesHLT)) listOfBranchesHLT.push_back(branch);
+	  }	    
+	  
+	  continue;
 	}
+      }
+	
+      if(!vectContainsStr(branch, &listOfBranchesIn)){
+	listOfBranchesIn.push_back(branch);
       }
     }
         
@@ -375,32 +415,48 @@ int gdjMCNtuplePreProc(std::string inConfigFileName)
     delete inFile_p;
   }
 
-  std::sort(std::begin(minPthats), std::end(minPthats));
-  std::cout << "Min pthats: " << std::endl;
-  for(unsigned int pI = 0; pI < minPthats.size(); ++pI){
-    int tag = minPthatToTag[minPthats[pI]];
-    double weight = tagToXSec[tag]*tagToFilterEff[tag]/(double)tagToCounts[tag];
-    tagToWeight[tag] = weight;
-  }
-
-  for(unsigned int pI = 0; pI < minPthats.size(); ++pI){
-    if(pI == 0) continue;
-
-    int tag = minPthatToTag[minPthats[pI]];
+  if(isMC){
+    std::sort(std::begin(minPthats), std::end(minPthats));
+    std::cout << "Min pthats: " << std::endl;
+    for(unsigned int pI = 0; pI < minPthats.size(); ++pI){
+      int tag = minPthatToTag[minPthats[pI]];
+      double weight = tagToXSec[tag]*tagToFilterEff[tag]/(double)tagToCounts[tag];
+      tagToWeight[tag] = weight;
+    }
+    
+    for(unsigned int pI = 0; pI < minPthats.size(); ++pI){
+      if(pI == 0) continue;
+      
+      int tag = minPthatToTag[minPthats[pI]];
+      int tag0 = minPthatToTag[minPthats[0]];
+      
+      tagToWeight[tag] /= tagToWeight[tag0];
+    }
+    
     int tag0 = minPthatToTag[minPthats[0]];
-
-    tagToWeight[tag] /= tagToWeight[tag0];
-  }
+    tagToWeight[tag0] = 1.0;
   
-  int tag0 = minPthatToTag[minPthats[0]];
-  tagToWeight[tag0] = 1.0;
-  
-  for(unsigned int pI = 0; pI < minPthats.size(); ++pI){
-    int tag = minPthatToTag[minPthats[pI]];
+    for(unsigned int pI = 0; pI < minPthats.size(); ++pI){
+      int tag = minPthatToTag[minPthats[pI]];
 
-    std::cout << " " << pI << "/" << minPthats.size() << ": " << minPthats[pI] << ", " << tagToWeight[tag] << std::endl;
+      std::cout << " " << pI << "/" << minPthats.size() << ": " << minPthats[pI] << ", " << tagToWeight[tag] << std::endl;
+    }
   }
 
+  std::vector<Bool_t*> hltVect;
+  std::vector<Float_t*> hltPreVect;
+  hltVect.reserve(listOfBranchesHLT.size());
+  hltPreVect.reserve(listOfBranchesHLTPre.size());
+  
+  for(auto const & branchHLT : listOfBranchesHLT){
+    hltVect.push_back(new Bool_t(false));
+    outTree_p->Branch(branchHLT.c_str(), hltVect[hltVect.size()-1], (branchHLT + "/O").c_str());
+  }
+  for(auto const & branchHLTPre : listOfBranchesHLTPre){
+    hltPreVect.push_back(new Float_t(0.0));
+    outTree_p->Branch(branchHLTPre.c_str(), hltPreVect[hltPreVect.size()-1], (branchHLTPre + "/O").c_str());
+  }
+  
   bool allBranchesGood = true;
   for(auto const & branchIn : listOfBranchesIn){
     bool containsBranch = vectContainsStr(branchIn, &listOfBranchesOut);
@@ -415,7 +471,7 @@ int gdjMCNtuplePreProc(std::string inConfigFileName)
     return 1;
   }
 
-  if(!isPP){
+  if(!isPP && isMC){
     for(unsigned int cI = 0; cI < ncollWeights.size(); ++cI){      
       if(centCounts[cI] < 0.5) continue;
       ncollWeights[cI] /= centCounts[cI];
@@ -433,31 +489,47 @@ int gdjMCNtuplePreProc(std::string inConfigFileName)
     TEnv* inConfig_p = (TEnv*)inFile_p->Get("config");
     configParser tempConfig(inConfig_p);
     std::string inDataSetName = tempConfig.GetConfigVal("INDATASET");
-    if(inDataSetName.size() == 0 || !sHandler.Init(inDataSetName)){
-      std::cout << "GDJMCNTUPLEPREPROC ERROR - Given input \'" << file << "\' contains INDATASET \'" << inDataSetName << "\' that is not valid. return 1" << std::endl;
 
-      inFile_p->Close();
-      delete inFile_p;
-
-      outFile_p->Close();
-      delete outFile_p;
-      
-      return 1;
+    if(isMC){
+      if(inDataSetName.size() == 0 || !sHandler.Init(inDataSetName)){
+	std::cout << "GDJMCNTUPLEPREPROC ERROR - Given input \'" << file << "\' contains INDATASET \'" << inDataSetName << "\' that is not valid. return 1" << std::endl;
+	
+	inFile_p->Close();
+	delete inFile_p;
+	
+	outFile_p->Close();
+	delete outFile_p;
+	
+	return 1;
+      }
+    
+      sampleTag_ = sHandler.GetTag();
+      sampleWeight_ = tagToWeight[sampleTag_];
     }
 
-    sampleTag_ = sHandler.GetTag();
-    sampleWeight_ = tagToWeight[sampleTag_];
-   
+    for(unsigned int bI = 0; bI < listOfBranchesHLT.size(); ++bI){
+      inTree_p->SetBranchAddress(listOfBranchesHLT[bI].c_str(), hltVect[bI]);
+    }
+
+    for(unsigned int bI = 0; bI < listOfBranchesHLTPre.size(); ++bI){
+      inTree_p->SetBranchAddress(listOfBranchesHLTPre[bI].c_str(), hltPreVect[bI]);
+    }
+
+
+    
     inTree_p->SetBranchAddress("runNumber", &runNumber_);
     inTree_p->SetBranchAddress("eventNumber", &eventNumber_);
     inTree_p->SetBranchAddress("lumiBlock", &lumiBlock_);
-    inTree_p->SetBranchAddress("pthat", &pthat_);
 
-    inTree_p->SetBranchAddress("treePartonPt", treePartonPt_);
-    inTree_p->SetBranchAddress("treePartonEta", treePartonEta_);
-    inTree_p->SetBranchAddress("treePartonPhi", treePartonPhi_);
-    inTree_p->SetBranchAddress("treePartonId", treePartonId_);
+    if(isMC){
+      inTree_p->SetBranchAddress("pthat", &pthat_);
 
+      inTree_p->SetBranchAddress("treePartonPt", treePartonPt_);
+      inTree_p->SetBranchAddress("treePartonEta", treePartonEta_);
+      inTree_p->SetBranchAddress("treePartonPhi", treePartonPhi_);
+      inTree_p->SetBranchAddress("treePartonId", treePartonId_);
+    }
+    
     inTree_p->SetBranchAddress("actualInteractionsPerCrossing", &actualInteractionsPerCrossing_);
     inTree_p->SetBranchAddress("averageInteractionsPerCrossing", &averageInteractionsPerCrossing_);
 
@@ -471,12 +543,14 @@ int gdjMCNtuplePreProc(std::string inConfigFileName)
     inTree_p->SetBranchAddress("fcalA_et", &fcalA_et_);
     inTree_p->SetBranchAddress("fcalC_et", &fcalC_et_);
 
-    inTree_p->SetBranchAddress("truth_n", &truth_n_);
-    inTree_p->SetBranchAddress("truth_charge", &truth_charge_p);
-    inTree_p->SetBranchAddress("truth_pt", &truth_pt_p);
-    inTree_p->SetBranchAddress("truth_eta", &truth_eta_p);
-    inTree_p->SetBranchAddress("truth_phi", &truth_phi_p);
-
+    if(isMC){
+      inTree_p->SetBranchAddress("truth_n", &truth_n_);
+      inTree_p->SetBranchAddress("truth_charge", &truth_charge_p);
+      inTree_p->SetBranchAddress("truth_pt", &truth_pt_p);
+      inTree_p->SetBranchAddress("truth_eta", &truth_eta_p);
+      inTree_p->SetBranchAddress("truth_phi", &truth_phi_p);
+    }
+    
     inTree_p->SetBranchAddress("akt2hi_jet_n", &akt2hi_jet_n_);
     inTree_p->SetBranchAddress("akt2hi_em_xcalib_jet_pt", &akt2hi_em_xcalib_jet_pt_p);
     inTree_p->SetBranchAddress("akt2hi_em_xcalib_jet_eta", &akt2hi_em_xcalib_jet_eta_p);
@@ -486,7 +560,7 @@ int gdjMCNtuplePreProc(std::string inConfigFileName)
     inTree_p->SetBranchAddress("akt2hi_constit_xcalib_jet_eta", &akt2hi_constit_xcalib_jet_eta_p);
     inTree_p->SetBranchAddress("akt2hi_constit_xcalib_jet_phi", &akt2hi_constit_xcalib_jet_phi_p);
     inTree_p->SetBranchAddress("akt2hi_constit_xcalib_jet_e", &akt2hi_constit_xcalib_jet_e_p);
-    inTree_p->SetBranchAddress("akt2hi_truthpos", &akt2hi_truthpos_p);
+    if(isMC) inTree_p->SetBranchAddress("akt2hi_truthpos", &akt2hi_truthpos_p);
 
     inTree_p->SetBranchAddress("akt4hi_jet_n", &akt4hi_jet_n_);
     inTree_p->SetBranchAddress("akt4hi_em_xcalib_jet_pt", &akt4hi_em_xcalib_jet_pt_p);
@@ -497,7 +571,7 @@ int gdjMCNtuplePreProc(std::string inConfigFileName)
     inTree_p->SetBranchAddress("akt4hi_constit_xcalib_jet_eta", &akt4hi_constit_xcalib_jet_eta_p);
     inTree_p->SetBranchAddress("akt4hi_constit_xcalib_jet_phi", &akt4hi_constit_xcalib_jet_phi_p);
     inTree_p->SetBranchAddress("akt4hi_constit_xcalib_jet_e", &akt4hi_constit_xcalib_jet_e_p);
-    inTree_p->SetBranchAddress("akt4hi_truthpos", &akt4hi_truthpos_p);
+    if(isMC) inTree_p->SetBranchAddress("akt4hi_truthpos", &akt4hi_truthpos_p);
 
     inTree_p->SetBranchAddress("photon_n", &photon_n_);
     inTree_p->SetBranchAddress("photon_pt", &photon_pt_p);
@@ -528,20 +602,22 @@ int gdjMCNtuplePreProc(std::string inConfigFileName)
     inTree_p->SetBranchAddress("photon_DeltaE", &photon_DeltaE_p);
     inTree_p->SetBranchAddress("photon_Eratio", &photon_Eratio_p);
 
-    inTree_p->SetBranchAddress("akt2_truth_jet_n", &akt2_truth_jet_n_);
-    inTree_p->SetBranchAddress("akt2_truth_jet_pt", &akt2_truth_jet_pt_p);
-    inTree_p->SetBranchAddress("akt2_truth_jet_eta", &akt2_truth_jet_eta_p);
-    inTree_p->SetBranchAddress("akt2_truth_jet_phi", &akt2_truth_jet_phi_p);
-    inTree_p->SetBranchAddress("akt2_truth_jet_e", &akt2_truth_jet_e_p);
-    inTree_p->SetBranchAddress("akt2_truth_jet_recopos", &akt2_truth_jet_recopos_p);
+    if(isMC){
+      inTree_p->SetBranchAddress("akt2_truth_jet_n", &akt2_truth_jet_n_);
+      inTree_p->SetBranchAddress("akt2_truth_jet_pt", &akt2_truth_jet_pt_p);
+      inTree_p->SetBranchAddress("akt2_truth_jet_eta", &akt2_truth_jet_eta_p);
+      inTree_p->SetBranchAddress("akt2_truth_jet_phi", &akt2_truth_jet_phi_p);
+      inTree_p->SetBranchAddress("akt2_truth_jet_e", &akt2_truth_jet_e_p);
+      inTree_p->SetBranchAddress("akt2_truth_jet_recopos", &akt2_truth_jet_recopos_p);
 
-    inTree_p->SetBranchAddress("akt4_truth_jet_n", &akt4_truth_jet_n_);
-    inTree_p->SetBranchAddress("akt4_truth_jet_pt", &akt4_truth_jet_pt_p);
-    inTree_p->SetBranchAddress("akt4_truth_jet_eta", &akt4_truth_jet_eta_p);
-    inTree_p->SetBranchAddress("akt4_truth_jet_phi", &akt4_truth_jet_phi_p);
-    inTree_p->SetBranchAddress("akt4_truth_jet_e", &akt4_truth_jet_e_p);
-    inTree_p->SetBranchAddress("akt4_truth_jet_recopos", &akt4_truth_jet_recopos_p);
-
+      inTree_p->SetBranchAddress("akt4_truth_jet_n", &akt4_truth_jet_n_);
+      inTree_p->SetBranchAddress("akt4_truth_jet_pt", &akt4_truth_jet_pt_p);
+      inTree_p->SetBranchAddress("akt4_truth_jet_eta", &akt4_truth_jet_eta_p);
+      inTree_p->SetBranchAddress("akt4_truth_jet_phi", &akt4_truth_jet_phi_p);
+      inTree_p->SetBranchAddress("akt4_truth_jet_e", &akt4_truth_jet_e_p);
+      inTree_p->SetBranchAddress("akt4_truth_jet_recopos", &akt4_truth_jet_recopos_p);
+    }
+    
     const ULong64_t nEntries = inTree_p->GetEntries();
     for(ULong64_t entry = 0; entry < nEntries; ++entry){
       if(currTotalEntries%nDiv == 0) std::cout << " Entry " << currTotalEntries << "/" << totalNEntries << "... (File " << nFile << "/" << fileList.size() << ")"  << std::endl;
@@ -591,7 +667,7 @@ int gdjMCNtuplePreProc(std::string inConfigFileName)
 int main(int argc, char* argv[])
 {
   if(argc != 2){
-    std::cout << "Usage: ./bin/gdjMCNtuplePreProc.exe <inConfigFileName>" << std::endl;
+    std::cout << "Usage: ./bin/gdjNtuplePreProc.exe <inConfigFileName>" << std::endl;
     std::cout << "TO DEBUG:" << std::endl;
     std::cout << " export DOGLOBALDEBUGROOT=1 #from command line" << std::endl;
     std::cout << "TO TURN OFF DEBUG:" << std::endl;
@@ -601,6 +677,6 @@ int main(int argc, char* argv[])
   }
  
   int retVal = 0;
-  retVal += gdjMCNtuplePreProc(argv[1]);
+  retVal += gdjNtuplePreProc(argv[1]);
   return retVal;
 }
