@@ -1,0 +1,5 @@
+MCPREPROCDIRNAME,/home/cfmcginn/Samples/ATLASGDJ/SruthySample20200410
+OUTFILENAME,ntuplePreProc_PbPbCCSruthy.root
+CENTFILENAME,input/centrality_cuts_Gv32_proposed_RCMOD2.txt
+ISPP,0
+ISMC,0
