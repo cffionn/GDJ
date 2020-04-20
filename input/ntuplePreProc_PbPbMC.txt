@@ -1,0 +1,6 @@
+MCPREPROCDIRNAME,/home/cfmcginn/Samples/ATLASGDJ/20200414_MC
+OUTFILENAME,ntuplePreProc_PbPbMC.root
+CENTFILENAME,input/centrality_cuts_Gv32_proposed_RCMOD2.txt
+ISPP,0
+ISMC,1
+ISMIX,0
