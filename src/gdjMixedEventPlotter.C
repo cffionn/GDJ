@@ -26,179 +26,6 @@
 #include "include/plotUtilities.h"
 #include "include/stringUtil.h"
 
-bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::string, std::string>* labelMap, std::string topDir = "")
-{
-  globalDebugHandler gDebug;
-  bool doGlobalDebug = gDebug.GetDoGlobalDebug();
-  
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
-  bool retVal = true;
-  TIter* next;
-  
-  if(topDir.size() == 0){
-    next = new TIter(inFile_p->GetListOfKeys());
-  }
-  else{
-    TDirectoryFile* dir_p = (TDirectoryFile*)inFile_p->Get(topDir.c_str());
-    next = new TIter(dir_p->GetListOfKeys());
-  }
-
-  TLatex* label_p = new TLatex();
-  label_p->SetNDC();
-  label_p->SetTextFont(43);
-  label_p->SetTextSize(16);
-
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
-  const Int_t markerSize = 1;
-  const Int_t markerStyle = 24;
-  const Int_t markerColor = 1;
-  const Int_t lineColor = 1;
-
-  const Float_t yOffset = 1.8;
-
-  const Float_t topMargin = 0.06;
-  const Float_t leftMargin = 0.16;
-  const Float_t rightMargin = 0.12;
-  const Float_t bottomMargin = 0.12;
-
-  const Float_t height = 450;
-  const Float_t width = height*(1.0 - topMargin - bottomMargin)/(1.0 - leftMargin - rightMargin);
-
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
-  TLine* line_p = new TLine();
-  line_p->SetLineWidth(2);
-  line_p->SetLineColor(1);
-  line_p->SetLineStyle(2);
-  
-  TKey* key;
-  while((key=(TKey*)((*next)()))){
-    const std::string name = key->GetName();
-    const std::string className = key->GetClassName();
-
-    if(isStrSame(className, "TDirectory") || isStrSame(className, "TDirectoryFile")){
-      if(topDir.size() == 0) retVal = retVal && recursiveHistSearch(dateStr, inFile_p, labelMap, name);
-      else retVal = retVal && recursiveHistSearch(dateStr, inFile_p, labelMap, topDir + "/" + name);
-    }
-
-    if(!isStrSame(className, "TH1D") && !isStrSame(className, "TH2D") && !isStrSame(className, "TH1F") && !isStrSame(className, "TH2F")) continue;
-    else if(name.find("GenRes") != std::string::npos && name.find("GenPt") != std::string::npos && name.find("RecoPt") != std::string::npos) continue;
-
-    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
-    TCanvas* canv_p = new TCanvas("canv_p", "", width, height);
-    canv_p->SetLeftMargin(leftMargin);
-    canv_p->SetTopMargin(topMargin);
-    canv_p->SetRightMargin(rightMargin);
-    canv_p->SetBottomMargin(bottomMargin);
-
-    if(isStrSame(className, "TH1D")){
-      TH1D* tempHist_p = (TH1D*)key->ReadObj();
-      
-      tempHist_p->SetMaximum(1.15*getMax(tempHist_p));
-      tempHist_p->SetMinimum(0.0);
-
-      tempHist_p->SetMarkerSize(markerSize);
-      tempHist_p->SetMarkerStyle(markerStyle);
-      tempHist_p->SetMarkerColor(markerColor);
-      tempHist_p->SetLineColor(lineColor);
-
-      tempHist_p->GetYaxis()->SetTitleOffset(yOffset);
-
-      if(name.find("JtDPhi") != std::string::npos){
-	tempHist_p->SetMaximum(0.5);
-	tempHist_p->SetMinimum(-0.02);
-      }
-      
-      tempHist_p->DrawCopy("HIST E1 P");
-
-      if(name.find("JtDPhi") != std::string::npos) line_p->DrawLine(tempHist_p->GetBinLowEdge(1), 0.0, tempHist_p->GetBinLowEdge(tempHist_p->GetXaxis()->GetNbins()+1), 0.0);
-    }
-    else if(isStrSame(className, "TH1F")){
-      TH1F* tempHist_p = (TH1F*)key->ReadObj();
-      tempHist_p->SetMaximum(1.15*getMax(tempHist_p));
-      tempHist_p->SetMinimum(0.0);
-
-      tempHist_p->SetMarkerSize(markerSize);
-      tempHist_p->SetMarkerStyle(markerStyle);
-      tempHist_p->SetMarkerColor(markerColor);
-      tempHist_p->SetLineColor(lineColor);
-
-      tempHist_p->GetYaxis()->SetTitleOffset(yOffset);
-
-      if(name.find("JtDPhi") != std::string::npos){
-	tempHist_p->SetMaximum(0.5);
-	tempHist_p->SetMinimum(-0.02);
-      }
-
-      tempHist_p->DrawCopy("HIST E1 P");
-
-      if(name.find("JtDPhi") != std::string::npos) line_p->DrawLine(tempHist_p->GetBinLowEdge(1), 0.0, tempHist_p->GetBinLowEdge(tempHist_p->GetXaxis()->GetNbins()+1), 0.0);
-    }
-    else if(isStrSame(className, "TH2D")){
-      TH2D* tempHist_p = (TH2D*)key->ReadObj();
-      tempHist_p->DrawCopy("COLZ");
-    }
-    else{
-      TH2F* tempHist_p = (TH2F*)key->ReadObj();
-      tempHist_p->DrawCopy("COLZ");
-    }
-
-    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
-    std::string saveName = name;
-    while(saveName.find("/") != std::string::npos){
-      saveName.replace(0, saveName.find("/")+1, "");
-    }
-
-    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
-    std::string labelName = saveName.substr(saveName.find("_")+1, saveName.size());//First part of the name should be clear from the figure itself so to simplify chop it off
-    labelName.replace(labelName.rfind("_h"), 2, "");
-    std::vector<std::string> preLabels;
-    while(labelName.find("_") != std::string::npos){
-      preLabels.push_back(labelName.substr(0, labelName.find("_")));
-      labelName.replace(0, labelName.find("_")+1, "");
-    }
-    if(labelName.size() != 0) preLabels.push_back(labelName);
-
-    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-	
-    labelName = "";
-
-    const double xPos = 0.22;
-    double yPos = 0.965;
-    for(unsigned int pI = 0; pI < preLabels.size(); ++pI){
-      if(labelMap->count(preLabels[pI]) != 0) preLabels[pI] = (*labelMap)[preLabels[pI]];
-
-      if(labelName.size() + preLabels[pI].size() > 60){
-	if(labelName.find(";") != std::string::npos) labelName.replace(labelName.rfind(";"), labelName.size(), "");
-	label_p->DrawLatex(xPos, yPos, labelName.c_str());	
-	yPos -= 0.065;
-	labelName = "";
-      }
-      labelName = labelName + preLabels[pI] + "; ";
-    }
-    if(labelName.find(";") != std::string::npos) labelName.replace(labelName.rfind(";"), labelName.size(), "");
-
-    label_p->DrawLatex(xPos, yPos, labelName.c_str());
-    gStyle->SetOptStat(0);
-
-    saveName = "pdfDir/" + dateStr + "/" + saveName + "_" + dateStr + ".pdf";
-    quietSaveAs(canv_p, saveName);
-    delete canv_p;
-  }
-
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
-  delete line_p;
-  delete label_p;
-  
-  return retVal;
-}
-
 int gdjMixedEventPlotter(std::string inFileName)
 {
   checkMakeDir check;
@@ -209,15 +36,15 @@ int gdjMixedEventPlotter(std::string inFileName)
   check.doCheckMakeDir("pdfDir/" + dateStr);
   
   TFile* inFile_p = new TFile(inFileName.c_str(), "READ");
+  //  TEnv* config_p = (TEnv*)inFile_p->Get("config");
   TEnv* label_p = (TEnv*)inFile_p->Get("label");
-  configParser config(label_p);
-  std::map<std::string, std::string> labelMap = config.GetConfigMap();
-  recursiveHistSearch(dateStr, inFile_p, &labelMap);  
+  configParser labels(label_p);
+  std::map<std::string, std::string> labelMap = labels.GetConfigMap();
   
   inFile_p->Close();
   delete inFile_p;
   
-  std::cout << "HISTDUMPING COMPLETE. return 0" << std::endl;
+  std::cout << "GDJMIXEDEVENTPLOTTER COMPLETE. return 0" << std::endl;
 
   return 0;
 }
