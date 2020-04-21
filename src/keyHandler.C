@@ -8,16 +8,28 @@
 #include "include/globalDebugHandler.h"
 #include "include/keyHandler.h"
 
-keyHandler::keyHandler(std::vector<unsigned long long> in_valMaxes)
+keyHandler::keyHandler(std::string in_handlerName)
 {
-  Init(in_valMaxes);
+  m_handlerName = in_handlerName;
   return;
 }
- 
+
+keyHandler::keyHandler(std::string in_handlerName, std::vector<unsigned long long> in_valMaxes)
+{
+  Init(in_handlerName, in_valMaxes);
+  return;
+}
+
 keyHandler::~keyHandler()
 {
   Clean();
   return;
+}
+
+bool keyHandler::Init(std::string in_handlerName, std::vector<unsigned long long> in_valMaxes)
+{
+  m_handlerName = in_handlerName;
+  return Init(in_valMaxes);
 }
 
 bool keyHandler::Init(std::vector<unsigned long long> in_valMaxes)
@@ -38,7 +50,7 @@ bool keyHandler::Init(std::vector<unsigned long long> in_valMaxes)
   }
 
   for(unsigned int mI = 0; mI < m_valMaxes.size(); ++mI){
-    std::cout << "MaxVal, multiplier: " << m_valMaxes[mI] << ", " << m_multipliers[mI] << std::endl;
+    std::cout << "MaxVal, multiplier for " << m_handlerName << ": " << m_valMaxes[mI] << ", " << m_multipliers[mI] << std::endl;
   }
   
   if(m_doDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
@@ -81,7 +93,29 @@ unsigned long long keyHandler::GetKey(std::vector<unsigned long long> in_vals)
   for(unsigned int mI = 0; mI < m_valMaxes.size(); ++mI){
     retVal += in_vals[mI]*m_multipliers[mI];
   }
+  if(m_doDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
   return retVal;
+}
+
+std::vector<unsigned long long> keyHandler::InvertKey(unsigned long long inVal)
+{
+  std::vector<unsigned long long> retVals;
+  for(unsigned int mI = 1; mI < m_valMaxes.size(); ++mI){
+    if(mI == 1){
+      retVals.push_back(inVal%m_multipliers[mI]);
+    }
+    
+    unsigned long long outVal = inVal/m_multipliers[mI];
+    if(mI < m_valMaxes.size()-1){
+      //      std::cout << "OUTVAL : " << outVal << ", " <<  m_multipliers[mI+1] << ", " << outVal%m_multipliers[mI+1] << std::endl;
+      outVal = outVal%(m_multipliers[mI+1]/m_multipliers[mI]);
+    }
+
+    retVals.push_back(outVal);
+  }
+  
+  return retVals;
 }
 
 void keyHandler::Clean()

@@ -1,4 +1,5 @@
-MCPREPROCDIRNAME,/home/cfmcginn/Samples/ATLASGDJ/20200402
+MCPREPROCDIRNAME,/home/cfmcginn/CUBHIG/tempPlots2020/Apr9plots
 OUTFILENAME,ntupleMCPreProc_TEST.root
 CENTFILENAME,input/centrality_cuts_Gv32_proposed_RCMOD2.txt
 ISPP,0
+ISMC,1

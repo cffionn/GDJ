@@ -15,7 +15,10 @@
 #include "include/centralityFromInput.h"
 #include "include/checkMakeDir.h"
 #include "include/configParser.h"
+#include "include/getLinBins.h"
+#include "include/ghostUtil.h"
 #include "include/globalDebugHandler.h"
+#include "include/keyHandler.h"
 #include "include/ncollFunctions_5TeV.h"
 #include "include/returnFileList.h"
 #include "include/sampleHandler.h"
@@ -37,12 +40,17 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 					      "ISPP",
 					      "ISMC"};
 
+  
   if(!config.ContainsParamSet(necessaryParams)) return 1;
   
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   const bool isPP = std::stoi(config.GetConfigVal("ISPP"));
   const bool isMC = std::stoi(config.GetConfigVal("ISMC"));
+
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
+  
   const std::string inDirStr = config.GetConfigVal("MCPREPROCDIRNAME");
   const std::string inCentFileName = config.GetConfigVal("CENTFILENAME");
   if(!check.checkDir(inDirStr)){
@@ -64,7 +72,27 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   for(Int_t cI = 0; cI < 100; ++cI){
     ncollWeights[99-cI] /= ncollWeights[0];
   }  
+
+  std::vector<std::string> fileList = returnFileList(inDirStr, ".root");
+  if(fileList.size() == 0){
+    std::cout << "GDJMCNTUPLEPREPROC ERROR - Given MCPREPROCDIRNAME \'" << inDirStr << "\' in config \'" << inConfigFileName << "\' contains no root files. return 1" << std::endl;
+    return 1;
+  }
+  TFile* inFile_p = new TFile(fileList[0].c_str(), "READ");
+  TTree* inTree_p = (TTree*)inFile_p->Get("gammaJetTree_p");
+  TEnv* inConfigGlobal_p = (TEnv*)inFile_p->Get("config");
   
+  configParser inConfigGlobal(inConfigGlobal_p);
+
+  inFile_p->Close();
+  delete inFile_p;
+
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
+  
+  bool getTracks = false;
+  if(inConfigGlobal.GetConfigVal("GETTRACKS").size() != 0) getTracks = std::stoi(inConfigGlobal.GetConfigVal("GETTRACKS"));
+
   const std::string dateStr = getDateStr();
   check.doCheckMakeDir("output");
   check.doCheckMakeDir("output/" + dateStr);
@@ -75,6 +103,17 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 
   TFile* outFile_p = new TFile(outFileName.c_str(), "RECREATE");
   TTree* outTree_p = new TTree("gammaJetTree_p", "");
+  
+  std::vector<std::string> outBranchesToAdd = {"cent",
+					       "sampleTag",
+					       "sampleWeight",
+					       "ncollWeight",
+					       "fullWeight",
+					       "truthPhotonPt",
+					       "truthPhotonEta",
+					       "truthPhotonPhi"};
+
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   Int_t runNumber_, eventNumber_;
   UInt_t lumiBlock_;
@@ -103,13 +142,34 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 
   Float_t fcalA_et_, fcalC_et_, fcalA_et_Cos2_, fcalC_et_Cos2_, fcalA_et_Sin2_, fcalC_et_Sin2_, fcalA_et_Cos3_, fcalC_et_Cos3_, fcalA_et_Sin3_, fcalC_et_Sin3_, fcalA_et_Cos4_, fcalC_et_Cos4_, fcalA_et_Sin4_, fcalC_et_Sin4_, evtPlane2Phi_, evtPlane3Phi_, evtPlane4Phi_;
 
+  Int_t ntrk_;
+  std::vector<float> *trk_pt_p=nullptr;
+  std::vector<float> *trk_eta_p=nullptr;
+  std::vector<float> *trk_phi_p=nullptr;
+  std::vector<float> *trk_charge_p=nullptr;
+  std::vector<bool> *trk_tight_primary_p=nullptr;
+  std::vector<bool> *trk_minbias_p=nullptr;
+  std::vector<float> *trk_d0_p=nullptr;
+  std::vector<float> *trk_z0_p=nullptr;
+  std::vector<float> *trk_vz_p=nullptr;
+  std::vector<float> *trk_theta_p=nullptr;
+  std::vector<int> *trk_nPixelHits_p=nullptr;
+  std::vector<int> *trk_nSCTHits_p=nullptr;
+  std::vector<int> *trk_nBlayerHits_p=nullptr;
+  
   Int_t truth_n_;
   std::vector<float>* truth_charge_p=nullptr;
   std::vector<float>* truth_pt_p=nullptr;
   std::vector<float>* truth_eta_p=nullptr;
   std::vector<float>* truth_phi_p=nullptr;
   std::vector<float>* truth_pdg_p=nullptr;
+  std::vector<int>* truth_type_p=nullptr;
+  std::vector<int>* truth_origin_p=nullptr;
 
+  Float_t truthPhotonPt_;
+  Float_t truthPhotonEta_;
+  Float_t truthPhotonPhi_;
+  
   Int_t akt2hi_jet_n_;
   std::vector<float>* akt2hi_em_xcalib_jet_pt_p=nullptr;
   std::vector<float>* akt2hi_em_xcalib_jet_eta_p=nullptr;
@@ -173,7 +233,9 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   std::vector<float>* akt4_truth_jet_phi_p=nullptr;
   std::vector<float>* akt4_truth_jet_e_p=nullptr;
   std::vector<int>* akt4_truth_jet_recopos_p=nullptr;
-  
+
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
   outTree_p->Branch("runNumber", &runNumber_, "runNumber/I");
   outTree_p->Branch("eventNumber", &eventNumber_, "eventNumber/I");
   outTree_p->Branch("lumiBlock", &lumiBlock_, "lumiBlock/i");
@@ -185,7 +247,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   if(isMC) outTree_p->Branch("sampleWeight", &sampleWeight_, "sampleWeight/F");
   if(!isPP && isMC) outTree_p->Branch("ncollWeight", &ncollWeight_, "ncollWeight/F");
   if(isMC) outTree_p->Branch("fullWeight", &fullWeight_, "fullWeight/F");
-
+  
   if(isMC){
     outTree_p->Branch("treePartonPt", treePartonPt_, ("treePartonPt[" + std::to_string(nTreeParton_) + "]/F").c_str());
     outTree_p->Branch("treePartonEta", treePartonEta_, ("treePartonEta[" + std::to_string(nTreeParton_) + "]/F").c_str());
@@ -196,13 +258,13 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   outTree_p->Branch("actualInteractionsPerCrossing", &actualInteractionsPerCrossing_, "actualInteractionsPerCrossing/F");
   outTree_p->Branch("averageInteractionsPerCrossing", &averageInteractionsPerCrossing_, "averageInteractionsPerCrossing/F");
   outTree_p->Branch("nvert", &nvert_, "nvert/I");
-
+  
   outTree_p->Branch("vert_x", &vert_x_p);
   outTree_p->Branch("vert_y", &vert_y_p);
   outTree_p->Branch("vert_z", &vert_z_p);
   outTree_p->Branch("vert_type", &vert_type_p);
   outTree_p->Branch("vert_ntrk", &vert_ntrk_p);
-
+  
   outTree_p->Branch("fcalA_et", &fcalA_et_, "fcalA_et/F");
   outTree_p->Branch("fcalC_et", &fcalC_et_, "fcalC_et/F"); 
   outTree_p->Branch("fcalA_et_Cos2", &fcalA_et_Cos2_, "fcalA_et_Cos2/F");
@@ -214,15 +276,33 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   outTree_p->Branch("fcalC_et_Cos3", &fcalC_et_Cos3_, "fcalC_et_Cos3/F");
   outTree_p->Branch("fcalA_et_Sin3", &fcalA_et_Sin3_, "fcalA_et_Sin3/F");
   outTree_p->Branch("fcalC_et_Sin3", &fcalC_et_Sin3_, "fcalC_et_Sin3/F");
-
+    
   outTree_p->Branch("fcalA_et_Cos4", &fcalA_et_Cos4_, "fcalA_et_Cos4/F");
   outTree_p->Branch("fcalC_et_Cos4", &fcalC_et_Cos4_, "fcalC_et_Cos4/F");
   outTree_p->Branch("fcalA_et_Sin4", &fcalA_et_Sin4_, "fcalA_et_Sin4/F");
   outTree_p->Branch("fcalC_et_Sin4", &fcalC_et_Sin4_, "fcalC_et_Sin4/F");
-
+  
   outTree_p->Branch("evtPlane2Phi", &evtPlane2Phi_, "evtPlane2Phi/F");
   outTree_p->Branch("evtPlane3Phi", &evtPlane3Phi_, "evtPlane3Phi/F");
   outTree_p->Branch("evtPlane4Phi", &evtPlane4Phi_, "evtPlane4Phi/F");
+  
+  if(getTracks){
+    outTree_p->Branch("ntrk", &ntrk_, "ntrk/I");
+    outTree_p->Branch("trk_pt", &trk_pt_p);
+    outTree_p->Branch("trk_eta", &trk_eta_p);
+    outTree_p->Branch("trk_phi", &trk_phi_p);
+    
+    outTree_p->Branch("trk_charge", &trk_charge_p);
+    outTree_p->Branch("trk_tight_primary", &trk_tight_primary_p);
+    outTree_p->Branch("trk_minbias", &trk_minbias_p);
+    outTree_p->Branch("trk_d0", &trk_d0_p);
+    outTree_p->Branch("trk_z0", &trk_z0_p);
+    outTree_p->Branch("trk_vz", &trk_vz_p);
+    outTree_p->Branch("trk_theta", &trk_theta_p);
+    outTree_p->Branch("trk_nPixelHits", &trk_nPixelHits_p);
+    outTree_p->Branch("trk_nSCTHits", &trk_nSCTHits_p);
+    outTree_p->Branch("trk_nBlayerHits", &trk_nBlayerHits_p);
+  }
   
   if(isMC){
     outTree_p->Branch("truth_n", &truth_n_, "truth_n/I");
@@ -231,6 +311,12 @@ int gdjNtuplePreProc(std::string inConfigFileName)
     outTree_p->Branch("truth_eta", &truth_eta_p);
     outTree_p->Branch("truth_phi", &truth_phi_p);
     outTree_p->Branch("truth_pdg", &truth_pdg_p);
+    outTree_p->Branch("truth_type", &truth_type_p);
+    outTree_p->Branch("truth_origin", &truth_origin_p);
+    
+    outTree_p->Branch("truthPhotonPt", &truthPhotonPt_, "truthPhotonPt/F");
+    outTree_p->Branch("truthPhotonPhi", &truthPhotonPhi_, "truthPhotonPhi/F");
+    outTree_p->Branch("truthPhotonEta", &truthPhotonEta_, "truthPhotonEta/F");
   }
   
   outTree_p->Branch("akt2hi_jet_n", &akt2hi_jet_n_, "akt2hi_jet_n/I");
@@ -243,7 +329,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   outTree_p->Branch("akt2hi_constit_xcalib_jet_phi", &akt2hi_constit_xcalib_jet_phi_p);
   outTree_p->Branch("akt2hi_constit_xcalib_jet_e", &akt2hi_constit_xcalib_jet_e_p);
   if(isMC) outTree_p->Branch("akt2hi_truthpos", &akt2hi_truthpos_p);
-
+  
   outTree_p->Branch("akt4hi_jet_n", &akt4hi_jet_n_, "akt4hi_jet_n/I");
   outTree_p->Branch("akt4hi_em_xcalib_jet_pt", &akt4hi_em_xcalib_jet_pt_p);
   outTree_p->Branch("akt4hi_em_xcalib_jet_eta", &akt4hi_em_xcalib_jet_eta_p);
@@ -254,7 +340,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   outTree_p->Branch("akt4hi_constit_xcalib_jet_phi", &akt4hi_constit_xcalib_jet_phi_p);
   outTree_p->Branch("akt4hi_constit_xcalib_jet_e", &akt4hi_constit_xcalib_jet_e_p);
   if(isMC) outTree_p->Branch("akt4hi_truthpos", &akt4hi_truthpos_p);
-
+  
   outTree_p->Branch("photon_n", &photon_n_, "photon_n/I");
   outTree_p->Branch("photon_pt", &photon_pt_p);
   outTree_p->Branch("photon_eta", &photon_eta_p);
@@ -284,7 +370,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   outTree_p->Branch("photon_fracs1", &photon_fracs1_p);
   outTree_p->Branch("photon_DeltaE", &photon_DeltaE_p);
   outTree_p->Branch("photon_Eratio", &photon_Eratio_p);
-
+  
   if(isMC){
     outTree_p->Branch("akt2_truth_jet_n", &akt2_truth_jet_n_, "akt2_truth_jet_n/I");
     outTree_p->Branch("akt2_truth_jet_pt", &akt2_truth_jet_pt_p);
@@ -300,12 +386,8 @@ int gdjNtuplePreProc(std::string inConfigFileName)
     outTree_p->Branch("akt4_truth_jet_e", &akt4_truth_jet_e_p);
     outTree_p->Branch("akt4_truth_jet_recopos", &akt4_truth_jet_recopos_p);
   }
-  
-  std::vector<std::string> fileList = returnFileList(inDirStr, ".root");
-  if(fileList.size() == 0){
-    std::cout << "GDJMCNTUPLEPREPROC ERROR - Given MCPREPROCDIRNAME \'" << inDirStr << "\' in config \'" << inConfigFileName << "\' contains no root files. return 1" << std::endl;
-    return 1;
-  }
+
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   std::map<int, unsigned long long> tagToCounts;
   std::map<int, double> tagToXSec;
@@ -317,13 +399,14 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   std::map<std::string, std::vector<std::string> > configMap;
   configMap["MCPREPROCDIRNAME"] = {inDirStr};
 
+  
   //Basic pre-processing for output config
   std::vector<std::string> listOfBranchesIn, listOfBranchesHLT, listOfBranchesHLTPre;
   std::vector<std::string> listOfBranchesOut = getVectBranchList(outTree_p);
   ULong64_t totalNEntries = 0;
   for(auto const & file : fileList){
-    TFile* inFile_p = new TFile(file.c_str(), "READ");
-    TTree* inTree_p = (TTree*)inFile_p->Get("gammaJetTree_p");
+    inFile_p = new TFile(file.c_str(), "READ");
+    inTree_p = (TTree*)inFile_p->Get("gammaJetTree_p");
     totalNEntries += inTree_p->GetEntries();
     TEnv* inConfig_p = (TEnv*)inFile_p->Get("config");
 
@@ -447,13 +530,15 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   std::vector<Float_t*> hltPreVect;
   hltVect.reserve(listOfBranchesHLT.size());
   hltPreVect.reserve(listOfBranchesHLTPre.size());
-  
+
   for(auto const & branchHLT : listOfBranchesHLT){
     hltVect.push_back(new Bool_t(false));
+
     outTree_p->Branch(branchHLT.c_str(), hltVect[hltVect.size()-1], (branchHLT + "/O").c_str());
   }
   for(auto const & branchHLTPre : listOfBranchesHLTPre){
     hltPreVect.push_back(new Float_t(0.0));
+
     outTree_p->Branch(branchHLTPre.c_str(), hltPreVect[hltPreVect.size()-1], (branchHLTPre + "/F").c_str());
   }
   
@@ -465,7 +550,17 @@ int gdjNtuplePreProc(std::string inConfigFileName)
     if(!containsBranch) std::cout << "GDJMCNTUPLEPREPROC ERROR - \'" << branchIn << "\' branch is not part of output tree. please fix macro, return 1" << std::endl;
   }
 
-  if(!allBranchesGood){
+  bool allBranchesGood2 = true;
+  for(auto const & branchOut : listOfBranchesOut){
+    if(vectContainsStr(branchOut, &outBranchesToAdd)) continue;//Dont want to throw error on branches we added
+
+    bool containsBranch = vectContainsStr(branchOut, &listOfBranchesIn);
+    allBranchesGood2 = allBranchesGood2 && containsBranch;
+
+    if(!containsBranch) std::cout << "GDJMCNTUPLEPREPROC ERROR - \'" << branchOut << "\' branch is not part of input tree. please fix macro, return 1" << std::endl;
+  }
+
+  if(!allBranchesGood || !allBranchesGood2){
     outFile_p->Close();
     delete outFile_p;
     return 1;
@@ -484,11 +579,14 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   ULong64_t currTotalEntries = 0;
   UInt_t nFile = 0;
   for(auto const & file : fileList){
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
     TFile* inFile_p = new TFile(file.c_str(), "READ");
     TTree* inTree_p = (TTree*)inFile_p->Get("gammaJetTree_p");
     TEnv* inConfig_p = (TEnv*)inFile_p->Get("config");
     configParser tempConfig(inConfig_p);
     std::string inDataSetName = tempConfig.GetConfigVal("INDATASET");
+
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
     if(isMC){
       if(inDataSetName.size() == 0 || !sHandler.Init(inDataSetName)){
@@ -515,6 +613,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       inTree_p->SetBranchAddress(listOfBranchesHLTPre[bI].c_str(), hltPreVect[bI]);
     }
 
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
     
     inTree_p->SetBranchAddress("runNumber", &runNumber_);
@@ -542,15 +641,58 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 
     inTree_p->SetBranchAddress("fcalA_et", &fcalA_et_);
     inTree_p->SetBranchAddress("fcalC_et", &fcalC_et_);
+    inTree_p->SetBranchAddress("fcalA_et_Cos2", &fcalA_et_Cos2_);
+    inTree_p->SetBranchAddress("fcalC_et_Cos2", &fcalC_et_Cos2_);
+    inTree_p->SetBranchAddress("fcalA_et_Sin2", &fcalA_et_Sin2_);
+    inTree_p->SetBranchAddress("fcalC_et_Sin2", &fcalC_et_Sin2_);
+    
+    inTree_p->SetBranchAddress("fcalA_et_Cos3", &fcalA_et_Cos3_);
+    inTree_p->SetBranchAddress("fcalC_et_Cos3", &fcalC_et_Cos3_);
+    inTree_p->SetBranchAddress("fcalA_et_Sin3", &fcalA_et_Sin3_);
+    inTree_p->SetBranchAddress("fcalC_et_Sin3", &fcalC_et_Sin3_);
+    
+    inTree_p->SetBranchAddress("fcalA_et_Cos4", &fcalA_et_Cos4_);
+    inTree_p->SetBranchAddress("fcalC_et_Cos4", &fcalC_et_Cos4_);
+    inTree_p->SetBranchAddress("fcalA_et_Sin4", &fcalA_et_Sin4_);
+    inTree_p->SetBranchAddress("fcalC_et_Sin4", &fcalC_et_Sin4_);
+    
+    inTree_p->SetBranchAddress("evtPlane2Phi", &evtPlane2Phi_);
+    inTree_p->SetBranchAddress("evtPlane3Phi", &evtPlane3Phi_);
+    inTree_p->SetBranchAddress("evtPlane4Phi", &evtPlane4Phi_);
 
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
+    if(getTracks){
+      inTree_p->SetBranchAddress("ntrk", &ntrk_);
+      inTree_p->SetBranchAddress("trk_pt", &trk_pt_p);
+      inTree_p->SetBranchAddress("trk_eta", &trk_eta_p);
+      inTree_p->SetBranchAddress("trk_phi", &trk_phi_p);
+      
+      inTree_p->SetBranchAddress("trk_charge", &trk_charge_p);
+      inTree_p->SetBranchAddress("trk_tight_primary", &trk_tight_primary_p);
+      inTree_p->SetBranchAddress("trk_minbias", &trk_minbias_p);
+      inTree_p->SetBranchAddress("trk_d0", &trk_d0_p);
+      inTree_p->SetBranchAddress("trk_z0", &trk_z0_p);
+      inTree_p->SetBranchAddress("trk_vz", &trk_vz_p);
+      inTree_p->SetBranchAddress("trk_theta", &trk_theta_p);
+      inTree_p->SetBranchAddress("trk_nPixelHits", &trk_nPixelHits_p);
+      inTree_p->SetBranchAddress("trk_nSCTHits", &trk_nSCTHits_p);
+      inTree_p->SetBranchAddress("trk_nBlayerHits", &trk_nBlayerHits_p);
+    }
+    
     if(isMC){
       inTree_p->SetBranchAddress("truth_n", &truth_n_);
       inTree_p->SetBranchAddress("truth_charge", &truth_charge_p);
       inTree_p->SetBranchAddress("truth_pt", &truth_pt_p);
       inTree_p->SetBranchAddress("truth_eta", &truth_eta_p);
       inTree_p->SetBranchAddress("truth_phi", &truth_phi_p);
+      inTree_p->SetBranchAddress("truth_pdg", &truth_pdg_p);
+      inTree_p->SetBranchAddress("truth_type", &truth_type_p);
+      inTree_p->SetBranchAddress("truth_origin", &truth_origin_p);
     }
-    
+
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
     inTree_p->SetBranchAddress("akt2hi_jet_n", &akt2hi_jet_n_);
     inTree_p->SetBranchAddress("akt2hi_em_xcalib_jet_pt", &akt2hi_em_xcalib_jet_pt_p);
     inTree_p->SetBranchAddress("akt2hi_em_xcalib_jet_eta", &akt2hi_em_xcalib_jet_eta_p);
@@ -602,6 +744,8 @@ int gdjNtuplePreProc(std::string inConfigFileName)
     inTree_p->SetBranchAddress("photon_DeltaE", &photon_DeltaE_p);
     inTree_p->SetBranchAddress("photon_Eratio", &photon_Eratio_p);
 
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
     if(isMC){
       inTree_p->SetBranchAddress("akt2_truth_jet_n", &akt2_truth_jet_n_);
       inTree_p->SetBranchAddress("akt2_truth_jet_pt", &akt2_truth_jet_pt_p);
@@ -617,7 +761,9 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       inTree_p->SetBranchAddress("akt4_truth_jet_e", &akt4_truth_jet_e_p);
       inTree_p->SetBranchAddress("akt4_truth_jet_recopos", &akt4_truth_jet_recopos_p);
     }
-    
+
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+  
     const ULong64_t nEntries = inTree_p->GetEntries();
     for(ULong64_t entry = 0; entry < nEntries; ++entry){
       if(currTotalEntries%nDiv == 0) std::cout << " Entry " << currTotalEntries << "/" << totalNEntries << "... (File " << nFile << "/" << fileList.size() << ")"  << std::endl;
@@ -630,7 +776,33 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       else ncollWeight_ = 1.0;
 
       fullWeight_ = sampleWeight_*ncollWeight_;
-      
+
+      if(isMC){
+	truthPhotonPt_ = -999.;     
+	truthPhotonPhi_ = -999.;      
+	truthPhotonEta_ = -999.;
+	
+	for(unsigned int tI = 0; tI < truth_pt_p->size(); ++tI){
+	  if(truth_type_p->at(tI) != 14) continue;
+	  if(truth_origin_p->at(tI) != 37) continue;
+	  if(truth_pdg_p->at(tI) != 22) continue;
+	  
+	  if(truthPhotonPt_ > 0){
+	    std::cout << "WARNING: MORE THAN ONE GEN LEVEL PHOTON FOUND IN FILE, ENTRY: " << file << ", " << entry << std::endl;
+	    if(truth_pt_p->at(tI) > truthPhotonPt_){
+	      truthPhotonPt_ = truth_pt_p->at(tI);
+	      truthPhotonPhi_ = truth_phi_p->at(tI);
+	      truthPhotonEta_ = truth_eta_p->at(tI);
+	    }
+	  }
+	  else{
+	    truthPhotonPt_ = truth_pt_p->at(tI);
+	    truthPhotonPhi_ = truth_phi_p->at(tI);
+	    truthPhotonEta_ = truth_eta_p->at(tI);
+	  }
+	}
+      }
+
       outTree_p->Fill();
       ++currTotalEntries;
     }

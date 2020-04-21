@@ -3,3 +3,4 @@ OUTFILENAME,ntuplePreProc_PbPbData.root
 CENTFILENAME,input/centrality_cuts_Gv32_proposed_RCMOD2.txt
 ISPP,0
 ISMC,0
+ISMIX,0

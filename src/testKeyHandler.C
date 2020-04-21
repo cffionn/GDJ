@@ -43,6 +43,12 @@ int testKeyHandler(float cent, float vz, float evtPlane)
   unsigned long long key = test.GetKey({centPos, vzPos, evtPlanePos});
   std::cout << " " << key << std::endl;
   std::cout << " BINS: " << centPos << ", " << vzPos << ", " << evtPlanePos << std::endl;
+  std::cout << "Inverting key: " << std::endl;
+  std::vector<unsigned long long> invertKey = test.InvertKey(key);
+
+  for(unsigned int eI = 0; eI < invertKey.size(); ++eI){
+    std::cout << " " << invertKey[eI] << std::endl;
+  }
   
   return 0;
 }

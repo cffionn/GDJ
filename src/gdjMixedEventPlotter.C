@@ -1,4 +1,4 @@
-//Author: Chris McGinn (2020.02.10)
+//Author: Chris McGinn (2020.04.20)
 //Contact at chmc7718@colorado.edu or cffionn on skype for bugs
 
 //c+cpp
@@ -199,7 +199,7 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::str
   return retVal;
 }
 
-int gdjHistDumper(std::string inFileName)
+int gdjMixedEventPlotter(std::string inFileName)
 {
   checkMakeDir check;
   if(!check.checkFileExt(inFileName, "root")) return 1;
@@ -225,7 +225,7 @@ int gdjHistDumper(std::string inFileName)
 int main(int argc, char* argv[])
 {
   if(argc != 2){
-    std::cout << "Usage: ./bin/gdjHistDumper.exe <inFileName>" << std::endl;
+    std::cout << "Usage: ./bin/gdjMixedEventPlotter.exe <inFileName>" << std::endl;
     std::cout << "TO DEBUG:" << std::endl;
     std::cout << " export DOGLOBALDEBUGROOT=1 #from command line" << std::endl;
     std::cout << "TO TURN OFF DEBUG:" << std::endl;
@@ -235,6 +235,6 @@ int main(int argc, char* argv[])
   }
  
   int retVal = 0;
-  retVal += gdjHistDumper(argv[1]);
+  retVal += gdjMixedEventPlotter(argv[1]);
   return retVal;
 }

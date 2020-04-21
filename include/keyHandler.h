@@ -5,19 +5,25 @@
 #define KEYHANDLER_H
 
 //c+cpp
+#include <string>
 #include <vector>
 
 class keyHandler{
  public:
   keyHandler(){};
-  keyHandler(std::vector<unsigned long long> in_valMaxes);
+  keyHandler(std::string in_handlerName);
+  keyHandler(std::string in_handlerName, std::vector<unsigned long long> in_valMaxes);
   ~keyHandler();
 
+  bool Init(std::string in_handlerName, std::vector<unsigned long long> in_valMaxes);
   bool Init(std::vector<unsigned long long> in_valMaxes);
+
   unsigned long long GetKey(std::vector<unsigned long long> in_vals);
+  std::vector<unsigned long long> InvertKey(unsigned long long);
   void Clean();
   
  private:
+  std::string m_handlerName;
   bool m_doDebug;
   std::vector<unsigned long long> m_valMaxes;
   std::vector<unsigned long long> m_multipliers;
