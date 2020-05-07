@@ -788,7 +788,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	  if(truth_pdg_p->at(tI) != 22) continue;
 	  
 	  if(truthPhotonPt_ > 0){
-	    std::cout << "WARNING: MORE THAN ONE GEN LEVEL PHOTON FOUND IN FILE, ENTRY: " << file << ", " << entry << std::endl;
+	    if(doGlobalDebug) std::cout << "WARNING: MORE THAN ONE GEN LEVEL PHOTON FOUND IN FILE, ENTRY: " << file << ", " << entry << std::endl;
 	    if(truth_pt_p->at(tI) > truthPhotonPt_){
 	      truthPhotonPt_ = truth_pt_p->at(tI);
 	      truthPhotonPhi_ = truth_phi_p->at(tI);

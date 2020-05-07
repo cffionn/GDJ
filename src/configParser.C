@@ -42,7 +42,7 @@ bool configParser::Init(std::string inConfigFileName)
   std::string tempStr;
   std::vector<std::string> tempVect;
   while(std::getline(*m_configFile, tempStr)){
-    while(tempStr.find(" ") != std::string::npos){tempStr.replace(tempStr.find(" "),1,"");}
+    //    while(tempStr.find(" ") != std::string::npos){tempStr.replace(tempStr.find(" "),1,"");}
     if(tempStr.size()==0) continue;
     if(tempStr.substr(0,1).find("#") != std::string::npos) continue;//# is comment
 
@@ -93,6 +93,31 @@ bool configParser::Init(TEnv* inConfigEnv_p, TEnv* inDefinitionEnv_p)
     m_definitionVals[hash_p->At(entry)->GetName()] = inDefinitionEnv_p->GetValue(hash_p->At(entry)->GetName(), "");
   }
   return true;
+}
+
+bool configParser::CheckConfigParams(configParser* compareConfig_p, std::vector<std::string> paramsToCheck)
+{
+  if(!ContainsParamSet(paramsToCheck)){
+    std::cout << "CONFIGPARSER::CheckConfigParams() ERROR - Missing params. return false" << std::endl;
+    return false;
+  }
+  if(!compareConfig_p->ContainsParamSet(paramsToCheck)){
+    std::cout << "CONFIGPARSER::CheckConfigParams() ERROR - Missing params. return false" << std::endl;
+    return false;
+  }
+
+  bool retVal = true;
+  for(auto const & param : paramsToCheck){
+    std::string val1 = GetConfigVal(param);
+    std::string val2 = compareConfig_p->GetConfigVal(param);
+
+    if(!isStrSame(val1, val2)){
+      std::cout << "Values for param \'" << param << "\' don't match (" << val1 << "!=" << val2 << "). return false" << std::endl;
+      retVal = false;
+    }
+  }
+  
+  return retVal;
 }
 
 bool configParser::ContainsParam(std::string inStr)

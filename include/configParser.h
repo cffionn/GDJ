@@ -27,6 +27,7 @@ class configParser
   bool Init(std::string inConfigFileName);
   bool Init(TEnv* inConfigEnv_p);
   bool Init(TEnv* inConfigEnv_p, TEnv* inDefinitionEnv_p);
+  bool CheckConfigParams(configParser* compareConfig_p, std::vector<std::string> paramsToCheck);
   bool ContainsParam(std::string inStr);
   bool ContainsParamSet(std::vector<std::string> inParamVect);
   std::string GetConfigVal(std::string inStr);
