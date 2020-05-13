@@ -93,13 +93,22 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   bool getTracks = false;
   if(inConfigGlobal.GetConfigVal("GETTRACKS").size() != 0) getTracks = std::stoi(inConfigGlobal.GetConfigVal("GETTRACKS"));
 
+  std::string topOutDir = "output";
+  if(config.ContainsParam("OUTDIRNAME")){
+    topOutDir = config.GetConfigVal("OUTDIRNAME");  
+    if(!check.checkDir(topOutDir)){
+      std::cout << "Given output directory \'" << topOutDir << "\' does not exist. Please create it or remove param to use local default \'output\' directory. return 1" << std::endl;
+      return 1;
+    }
+  }
+
   const std::string dateStr = getDateStr();
-  check.doCheckMakeDir("output");
-  check.doCheckMakeDir("output/" + dateStr);
+  check.doCheckMakeDir(topOutDir);
+  check.doCheckMakeDir(topOutDir + "/" + dateStr);
 
   std::string outFileName = config.GetConfigVal("OUTFILENAME");
   if(outFileName.find(".") != std::string::npos) outFileName = outFileName.substr(0, outFileName.rfind("."));
-  outFileName = "output/" + dateStr + "/" + outFileName + "_" + dateStr + ".root";
+  outFileName = topOutDir + "/" + dateStr + "/" + outFileName + "_" + dateStr + ".root";
 
   TFile* outFile_p = new TFile(outFileName.c_str(), "RECREATE");
   TTree* outTree_p = new TTree("gammaJetTree_p", "");
