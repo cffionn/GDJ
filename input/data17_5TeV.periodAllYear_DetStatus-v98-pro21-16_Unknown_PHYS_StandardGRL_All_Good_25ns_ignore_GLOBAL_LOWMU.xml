@@ -1,0 +1,76 @@
+<?xml version="1.0"?>
+<!DOCTYPE LumiRangeCollection SYSTEM "http://atlas-runquery.cern.ch/LumiRangeCollection.dtd">
+<!--This document is created by GoodRunsListWriter.-->
+<?xml-stylesheet type="text/xsl" href="/atlasdqm/grlview/grl.xsl" title="grlview" ?>
+<LumiRangeCollection>
+<NamedLumiRange>
+<Name>PHYS_StandardGRL_All_Good_25ns</Name>
+<Version>2.1</Version>
+<Metadata Name="ARQEquivalentQuery">find run data17_5TeV.periodAllYear and dq PHYS_StandardGRL_All_Good_25ns \GLOBAL_LOWMU DEFECTS#DetStatus-v98-pro21-16 g and dq GLOBAL_LOWMU DEFECTS#DetStatus-v98-pro21-16 r</Metadata>
+<Metadata Name="Query">Period: data17_5TeV.AllYear; Defect: PHYS_StandardGRL_All_Good_25ns; Defect tag: DetStatus-v98-pro21-16; Ignoring GLOBAL_LOWMU</Metadata>
+<Metadata Name="RunList">340644,340683,340697,340718,340814,340849,340850,340910,340925,340973,341027,341123,341184</Metadata>
+<LumiBlockCollection>
+<Run>340644</Run>
+<LBRange Start="34" End="64"/>
+<LBRange Start="66" End="89"/>
+<LBRange Start="95" End="115"/>
+<LBRange Start="187" End="319"/>
+<LBRange Start="321" End="325"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>340683</Run>
+<LBRange Start="40" End="92"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>340697</Run>
+<LBRange Start="50" End="687"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>340718</Run>
+<LBRange Start="75" End="208"/>
+<LBRange Start="210" End="412"/>
+<LBRange Start="414" End="1370"/>
+<LBRange Start="1372" End="1619"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>340814</Run>
+<LBRange Start="33" End="731"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>340849</Run>
+<LBRange Start="44" End="56"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>340850</Run>
+<LBRange Start="84" End="515"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>340910</Run>
+<LBRange Start="47" End="545"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>340925</Run>
+<LBRange Start="7" End="198"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>340973</Run>
+<LBRange Start="208" End="1315"/>
+<LBRange Start="1327" End="1713"/>
+<LBRange Start="1725" End="2439"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>341027</Run>
+<LBRange Start="35" End="1776"/>
+<LBRange Start="1786" End="1865"/>
+<LBRange Start="1870" End="1939"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>341123</Run>
+<LBRange Start="15" End="782"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>341184</Run>
+<LBRange Start="56" End="1130"/>
+</LumiBlockCollection>
+</NamedLumiRange>
+</LumiRangeCollection>
