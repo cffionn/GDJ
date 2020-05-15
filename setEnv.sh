@@ -1,6 +1,6 @@
 #!/bin/bash
 
-GDJDIR=/home/cfmcginn/Projects/ATLASGammaJet/GDJ
+GDJDIR=/usatlas/u/cfmcginn/Projects/GDJ/
 if [[ -d $GDJDIR ]]
 then
     echo "GDJDIR set to '$GDJDIR'; if wrong please fix"
