@@ -753,6 +753,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   std::vector<float>* photon_eta_p=nullptr;
   std::vector<float>* photon_phi_p=nullptr;
   std::vector<bool>* photon_tight_p=nullptr;  
+  std::vector<float>* photon_etcone30_p=nullptr;
   
   std::vector<float>* akt4hi_em_xcalib_jet_pt_p=nullptr;
   std::vector<float>* akt4hi_em_xcalib_jet_eta_p=nullptr;
@@ -905,6 +906,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   inTree_p->SetBranchStatus("photon_eta", 1);
   inTree_p->SetBranchStatus("photon_phi", 1);
   inTree_p->SetBranchStatus("photon_tight", 1);
+  inTree_p->SetBranchStatus("photon_tight", 1);
   
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   inTree_p->SetBranchStatus("akt4hi_em_xcalib_jet_pt", 1);
@@ -955,6 +957,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   inTree_p->SetBranchAddress("photon_pt", &photon_pt_p);
   inTree_p->SetBranchAddress("photon_eta", &photon_eta_p);
   inTree_p->SetBranchAddress("photon_phi", &photon_phi_p);
+  inTree_p->SetBranchAddress("photon_tight", &photon_tight_p);
   inTree_p->SetBranchAddress("photon_tight", &photon_tight_p);
 
   inTree_p->SetBranchAddress("akt4hi_em_xcalib_jet_pt", &akt4hi_em_xcalib_jet_pt_p);
@@ -1070,6 +1073,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
       if(photon_pt_p->at(pI) < gammaPtBins[0]) continue;
       if(photon_pt_p->at(pI) >= gammaPtBins[nGammaPtBins]) continue;
 
+      //Isolation as taken from internal note of 2015 data analysis      
+      if(isPbPb){
+	if(photon_etcone30_p->at(pI) > 8.0) continue;
+      }
+      else{
+	if(photon_etcone30_p->at(pI) > 3.0) continue;
+      }
+      
       Float_t etaValMain = photon_eta_p->at(pI);
       Float_t etaValSub = etaValMain;
       if(etaBinsDoAbs) etaValMain = TMath::Abs(etaValMain);
