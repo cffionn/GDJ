@@ -294,9 +294,6 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
 
   std::vector<std::string> paramsToCheck = {"CENTBINS",
 					    "DOMIX",
-					    "DOMIXCENT",
-					    "DOMIXPSI2",
-					    "DOMIXVZ",
 					    "ETABINSDOABS",
 					    "ETABINSHIGH",
 					    "ETABINSLOW",
@@ -332,8 +329,9 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
   if(!configData.CheckConfigParams(&configMC, paramsToCheck)) return 1;
 
   const Bool_t doMix = std::stoi(configData.GetConfigVal("DOMIX"));
-  if(!doMix){
-    std::cout << "GDJDATAMCRAWPLOTTER - DOMIX must be true. return 1" << std::endl;
+  const Bool_t isPP = std::stoi(configData.GetConfigVal("ISPP"));
+  if(!doMix && !isPP){
+    std::cout << "GDJDATAMCRAWPLOTTER - DOMIX must be true if Pb+Pb. return 1" << std::endl;
     return 1;
   }
 
@@ -368,7 +366,8 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
   
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   for(Int_t cI = 0; cI < nCentBins; ++cI){
-    std::string centStr = "Cent" + std::to_string(centBins[cI]) + "to" + std::to_string(centBins[cI+1]);
+    std::string centStr = "PP";
+    if(!isPP) centStr = "Cent" + std::to_string(centBins[cI]) + "to" + std::to_string(centBins[cI+1]);
     
     for(Int_t pI = 0; pI < nGammaPtBinsSub; ++pI){
       photonSubJtDPhiVCentPt_MC_p[cI][pI] = (TH1F*)inMCFile_p->Get((centStr + "/photonSubJtDPhiVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_GlobalJtPt0_h").c_str());
@@ -393,7 +392,7 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
       photonSubMultiJtPtVCentPt_Data_p[cI][pI] = (TH1F*)inDataFile_p->Get((centStr + "/photonSubMultiJtPtVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_DPhi0_MultiJt0_h").c_str());
 
       std::vector<std::string> tempGlobalLabels = globalLabels;
-      tempGlobalLabels.push_back(labelData.GetConfigVal(centStr));
+      if(!isPP) tempGlobalLabels.push_back(labelData.GetConfigVal(centStr));
       tempGlobalLabels.push_back(labelData.GetConfigVal("GammaPt" + std::to_string(pI)));
       tempGlobalLabels.push_back(labelData.GetConfigVal("GlobalJtPt0"));
       
