@@ -1074,7 +1074,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       if(photon_pt_p->at(pI) >= gammaPtBins[nGammaPtBins]) continue;
 
       //Isolation as taken from internal note of 2015 data analysis      
-      if(isPbPb){
+      if(!isPP){
 	if(photon_etcone30_p->at(pI) > 8.0) continue;
       }
       else{
