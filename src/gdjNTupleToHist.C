@@ -1622,6 +1622,37 @@ int gdjNTupleToHist(std::string inConfigFileName)
     std::cout << "\\end{tabular}" << std::endl;
     std::cout << "\\end{center}" << std::endl;
     std::cout << "\\end{table}" << std::endl;
+
+    std::cout << std::endl;
+    std::cout << "\\begin{table}" << std::endl;
+    std::cout << "\\fontsize{9}{9}\\selectfont" << std::endl;
+    std::cout << "\\vspace{-0.6cm}" << std::endl;
+    std::cout << "\\begin{center}" << std::endl;
+    std::cout << "\\hspace*{-2cm}\\begin{tabular}{ " << lStr << " }" << std::endl;
+    std::cout << "\\multicolumn{" << multiColumn << "}{c}{Event Counts With 1 or More Jets (" << jtPtStr << ")} \\\\" << std::endl;
+    std::cout << columnStr << std::endl;
+    
+    for(Int_t cI = 0; cI < nCentBins; ++cI){ 
+      std::string outStr = binsToLabelStr[centBinsStr[cI]];
+      if(outStr.find("%") != std::string::npos){
+	outStr.replace(outStr.find("%"), 1, "\\%");
+      }
+      
+      for(Int_t pI = 0; pI < nGammaPtBinsSub+1; ++pI){
+	int countNJet = 0;
+	
+	for(Int_t bIX = 1; bIX < photonJtMultVCentPt_p[cI][pI]->GetXaxis()->GetNbins(); ++bIX){
+	  countNJet += photonJtMultVCentPt_p[cI][pI]->GetBinContent(bIX+1);
+	}
+	
+	outStr = outStr + " & " + std::to_string(countNJet);
+      }
+
+      std::cout << outStr << " \\\\" << std::endl;
+    }  
+    std::cout << "\\end{tabular}" << std::endl;
+    std::cout << "\\end{center}" << std::endl;
+    std::cout << "\\end{table}" << std::endl;
   }
   
   delete runNumber_p;
