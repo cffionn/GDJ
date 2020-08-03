@@ -23,7 +23,7 @@ bool checkMakeDir::checkFileExt(const std::string inFile, const std::string ext)
     std::cout << "Given file \'" << inFile << "\' does not exist. return false" << std::endl;
     return false;
   }
-  
+
   if(ext.size() == 0){
     std::cout << "Given extension \'" << ext << "\' is invalid. return false" << std::endl;
     return false;

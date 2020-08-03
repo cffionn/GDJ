@@ -243,4 +243,18 @@ inline std::string rootFileNameProc(std::string inFileName, std::vector<std::str
   return outFileName;
 }
 
+inline std::string strLowerToUpper(std::string inStr)
+{
+  const std::string upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const std::string lower = "abcdefghijklmnopqrstuvwxyz";
+
+  for(unsigned int i = 0; i < inStr.size(); ++i){
+    if(lower.find(inStr.substr(i, 1)) != std::string::npos){
+      
+      inStr.replace(i,1,upper.substr(lower.find(inStr.substr(i, 1)),1));
+    }
+  }
+  return inStr;
+}
+
 #endif

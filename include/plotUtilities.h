@@ -331,4 +331,16 @@ inline void getNXNYPanels(int inTotal, int* nXVal, int* nYVal)
   return;
 }
 
+inline void drawWhiteBoxNDC(TCanvas* canv_p, Double_t x1, Double_t y1, Double_t x2, Double_t y2)
+{
+  canv_p->cd();
+  TBox* box_p = new TBox();
+  box_p->SetFillColor(0);
+  box_p->DrawBox(x1, y1, x2, y2);
+  delete box_p;
+
+  return;
+}
+
+
 #endif
