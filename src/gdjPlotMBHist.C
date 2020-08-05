@@ -12,6 +12,8 @@
 #include "TFile.h"
 #include "TH1F.h"
 #include "TLatex.h"
+#include "TLegend.h"
+#include "TMath.h"
 #include "TStyle.h"
 
 //Local
@@ -46,7 +48,9 @@ int gdjPlotMBHist(std::string inConfigFileName)
 					"MIXEDJTPTYMIN",
 					"MIXEDJTPTYMAX",
 					"MIXEDJTPTLABELX",
-					"MIXEDJTPTLABELY"};
+					"MIXEDJTPTLABELY",
+					"MIXEDJTPTLEGX",
+					"MIXEDJTPTLEGY"};
   if(!checkEnvForParams(inConfig_p, reqParams)) return 1;
 
   const std::string inFileName = inConfig_p->GetValue("INFILENAME", "");
@@ -57,7 +61,10 @@ int gdjPlotMBHist(std::string inConfigFileName)
 
   const Double_t mixedJtPtLabelX = inConfig_p->GetValue("MIXEDJTPTLABELX", -1.0); 
   const Double_t mixedJtPtLabelY = inConfig_p->GetValue("MIXEDJTPTLABELY", -1.0);
- 
+
+  const Double_t mixedJtPtLegX = inConfig_p->GetValue("MIXEDJTPTLEGX", -1.0); 
+  const Double_t mixedJtPtLegY = inConfig_p->GetValue("MIXEDJTPTLEGY", -1.0); 
+  
   std::vector<std::string> globalLabels;
   for(Int_t gI = 0; gI < 20; ++gI){
     std::string globalLabel = inConfig_p->GetValue(("GLOBALLABEL." + std::to_string(gI)).c_str(), "");
@@ -73,7 +80,7 @@ int gdjPlotMBHist(std::string inConfigFileName)
 					    "CENTBINSHIGH",
 					    "JETETABINSLOW",
 					    "JETETABINSHIGH",
-					    "JETeTABINSDOABS",
+					    "JETETABINSDOABS",
 					    "JETR"};
   if(!checkEnvForParams(prevConfig_p, prevReqParams)) return 1;
   
@@ -108,31 +115,34 @@ int gdjPlotMBHist(std::string inConfigFileName)
   const std::string jetRStr = prettyString(((double)jetR)/10., 1, false);
   globalLabels.push_back("anti-k_{t} R=" + jetRStr);
 
-  const Float_t jetEtaBinsLow = prevConfig_p->GetValue("JETETABINSLOW", 0);
-  const Float_t jetEtaBinsHigh = prevConfig_p->GetValue("JETETABINSHIGH", 0);
+  const Float_t jetEtaBinsLow = prevConfig_p->GetValue("JETETABINSLOW", 0.0);
+  const Float_t jetEtaBinsHigh = prevConfig_p->GetValue("JETETABINSHIGH", 0.0);
   const Bool_t jetEtaBinsDoAbs = prevConfig_p->GetValue("JETETABINSDOABS", 0);
   std::string jetEtaLabelStr = "#eta_{jet}";
-  if(jetEtaBinsDoAbs) jetEtaLabelStr = "|" + jetEtaLabelStr + "|";
-  if(jetEtaBinsDoAbs && jetEtaBinsLow < 0.000001) jetEtaLabelStr = jetEtaLabelStr + "<" + prettyString(jetEtaBinsHigh, 1, false);  
-  else jetEtaLabelStr = prettyString(jetEtaBinsLow, 1, false) + "<" + jetEtaLabelStr + "<" + prettyString(jetEtaBinsHigh, 1, false);
 
-  globalLabels.push_back(jetEtaLabelStr);
+  if(jetEtaBinsDoAbs) jetEtaLabelStr = "|" + jetEtaLabelStr + "|";
+  if(jetEtaBinsDoAbs && jetEtaBinsLow < 0.000001) jetEtaLabelStr = jetEtaLabelStr + " < " + prettyString(jetEtaBinsHigh, 1, false);  
+  else jetEtaLabelStr = prettyString(jetEtaBinsLow, 1, false) + " < " + jetEtaLabelStr + " < " + prettyString(jetEtaBinsHigh, 1, false);
+
+  globalLabels.push_back(jetEtaLabelStr);  
   
   const std::string dateStr = getDateStr();
   check.doCheckMakeDir("pdfDir");
   check.doCheckMakeDir("pdfDir/" + dateStr);
 
-  Double_t titleSizeX = 0.04;
-  Double_t titleSizeY = 0.04;
-  Double_t labelSizeX = 0.035;
-  Double_t labelSizeY = 0.035;
-  Int_t titleFont = 42;
+  const Double_t titleSizeX = 0.04;
+  const Double_t titleSizeY = 0.04;
+  const Double_t labelSizeX = 0.035;
+  const Double_t labelSizeY = 0.035;
+  const Int_t titleFont = 42;
   
   TLatex* label_p = new TLatex();
   label_p->SetTextFont(titleFont);
   label_p->SetTextSize(titleSizeX);
   label_p->SetNDC();
-
+  
+  std::vector<double> phiFractions = {2*TMath::Pi(), TMath::Pi(), TMath::Pi()/2., TMath::Pi()/3., TMath::Pi()/4.};
+  std::vector<std::string> phiLabels = {"No #Delta#phi cut", "#Delta#phi_{#gamma,Jet}>#pi/2", "#Delta#phi_{#gamma,Jet}>3#pi/4", "#Delta#phi_{#gamma,Jet}>5#pi/6", "#Delta#phi_{#gamma,Jet}>7#pi/8"};
   
   for(Int_t cI = 0; cI < nCentBins; ++cI){
     TCanvas* canv_p = new TCanvas("canv_p", "", 450, 450);
@@ -141,17 +151,20 @@ int gdjPlotMBHist(std::string inConfigFileName)
     canv_p->SetLeftMargin(0.15);
     canv_p->SetBottomMargin(0.15);
 
+    TLegend* leg_p = new TLegend(mixedJtPtLegX, mixedJtPtLegY - 0.063*(double)phiLabels.size(), mixedJtPtLegX + 0.25, mixedJtPtLegY);
+    leg_p->SetTextFont(titleFont);
+    leg_p->SetTextSize(titleSizeX);
+    leg_p->SetBorderSize(0);
+    leg_p->SetFillColor(0);
+    leg_p->SetFillStyle(0);
+
+
     std::string histName = "jtMultPerCent_" + centBinsStr[cI] + "_h";
     TH1F* inHist_p = (TH1F*)inFile_p->Get(histName.c_str());
 
-    inHist_p->SetMarkerSize(sizes[0]);
-    inHist_p->SetMarkerStyle(styles[0]);
-    inHist_p->SetMarkerColor(colors[0]);
-    inHist_p->SetLineColor(colors[0]);
-
     inHist_p->GetXaxis()->SetNdivisions(505);
-    inHist_p->GetYaxis()->SetNdivisions(505);
-    
+    inHist_p->GetYaxis()->SetNdivisions(505);    
+
     inHist_p->SetMinimum(mixedJtPtYMin);
     inHist_p->SetMaximum(mixedJtPtYMax);
 
@@ -159,15 +172,39 @@ int gdjPlotMBHist(std::string inConfigFileName)
     inHist_p->GetYaxis()->SetTitleFont(titleFont);
     inHist_p->GetXaxis()->SetTitleSize(titleSizeX);
     inHist_p->GetYaxis()->SetTitleSize(titleSizeY);
-    
+
     inHist_p->GetXaxis()->SetLabelFont(titleFont);
     inHist_p->GetYaxis()->SetLabelFont(titleFont);
     inHist_p->GetXaxis()->SetLabelSize(labelSizeX);
     inHist_p->GetYaxis()->SetLabelSize(labelSizeY);
 
-    inHist_p->DrawCopy("HIST E1 P");
-    gStyle->SetOptStat(0);
+    std::vector<TH1F*> dummyHists_p;
+    
+    for(unsigned int pI = 0; pI < phiFractions.size(); ++pI){
+      inHist_p->SetMarkerSize(sizes[pI]);
+      inHist_p->SetMarkerStyle(styles[pI]);
+      inHist_p->SetMarkerColor(colors[pI]);
+      inHist_p->SetLineColor(colors[pI]);    
 
+      dummyHists_p.push_back(new TH1F(("dummy_" + std::to_string(pI)).c_str(), "", 1, 0, 1));
+
+      dummyHists_p[pI]->SetMarkerSize(sizes[pI]);
+      dummyHists_p[pI]->SetMarkerStyle(styles[pI]);
+      dummyHists_p[pI]->SetMarkerColor(colors[pI]);
+      dummyHists_p[pI]->SetLineColor(colors[pI]);    
+
+      leg_p->AddEntry(dummyHists_p[pI], phiLabels[pI].c_str(), "P L");
+      
+      if(pI == 0) inHist_p->DrawCopy("HIST E1 P");
+      else{
+	inHist_p->Scale(phiFractions[pI]/phiFractions[pI-1]);
+	inHist_p->DrawCopy("HIST E1 P SAME");
+      }
+      gStyle->SetOptStat(0);
+    }
+
+    leg_p->Draw("SAME");
+    
     std::vector<std::string> tempLabels = globalLabels;
     tempLabels.push_back("#bf{" + std::to_string((int)centBins[cI]) + "-" + std::to_string((int)centBins[cI+1]) + "%}");
     for(unsigned int gI = 0; gI < tempLabels.size(); ++gI){
@@ -177,6 +214,12 @@ int gdjPlotMBHist(std::string inConfigFileName)
     histName = "jtMultPerCent_" + centBinsStr2[cI] + "_h";
     std::string saveName = "pdfDir/" + dateStr + "/" + histName + "_R" + std::to_string(jetR) + "_" + dateStr + ".pdf";
     quietSaveAs(canv_p, saveName);
+
+    for(unsigned int lI = 0; lI < dummyHists_p.size(); ++lI){
+      delete dummyHists_p[lI];
+    }
+
+    delete leg_p;
     delete canv_p;    
   }
 
