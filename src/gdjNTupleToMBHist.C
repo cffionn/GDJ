@@ -46,7 +46,13 @@ int gdjNTupleToMBHist(std::string inConfigFileName)
 					"FCALETBINSHIGH",
 					"FCALETBINSDOLOG",
 					"FCALETBINSDOLIN",
-					"JETR"};
+					"JETR",
+					"NJETPTBINS",
+					"JETPTBINSLOW",
+					"JETPTBINSHIGH",
+					"JETETABINSLOW",
+					"JETETABINSHIGH",
+					"JETETABINSDOABS"};
   
   if(!checkEnvForParams(inConfig_p, reqParams)) return 1;
   std::string outFileName = inConfig_p->GetValue("OUTFILENAME", "");
@@ -110,6 +116,17 @@ int gdjNTupleToMBHist(std::string inConfigFileName)
   const Float_t jetPtBinsLow = inConfig_p->GetValue("JETPTBINSLOW", 30);
   const Float_t jetPtBinsHigh = inConfig_p->GetValue("JETPTBINSHIGH", 50);
 
+  //  const Int_t nJetEtaBins = inConfig_p->GetValue("NJETETABINS", 28);
+  const Float_t jetEtaBinsLow = inConfig_p->GetValue("JETETABINSLOW", -2.8);
+  const Float_t jetEtaBinsHigh = inConfig_p->GetValue("JETETABINSHIGH", 2.8);
+  const Bool_t jetEtaBinsDoAbs = inConfig_p->GetValue("JETETABINSDOABS", 0);
+
+  if(jetEtaBinsDoAbs && jetEtaBinsLow < 0){
+    std::cout << "ERROR - config \'" << inConfigFileName << "\' contains jetEtaBinsLow \'" << jetEtaBinsLow << "\' less than 0 despite requested jetEtaBinsDoAbs \'" << jetEtaBinsDoAbs << "\'. return 1" << std::endl;
+    return 1;
+  }
+
+  
   Double_t centBins[nMaxCentBins+1];
   getLinBins(centBinsLow, centBinsHigh, nCentBins, centBins);
 
@@ -170,7 +187,7 @@ int gdjNTupleToMBHist(std::string inConfigFileName)
   Float_t fcalA_et_, fcalC_et_;
 
   std::vector<float>* aktRhi_em_xcalib_jet_pt_p=nullptr;
-  //  std::vector<float>* aktRhi_em_xcalib_jet_eta_p=nullptr;
+  std::vector<float>* aktRhi_em_xcalib_jet_eta_p=nullptr;
   //  std::vector<float>* aktRhi_em_xcalib_jet_phi_p=nullptr;
 
   inTree_p->SetBranchStatus("*", 0);
@@ -178,14 +195,14 @@ int gdjNTupleToMBHist(std::string inConfigFileName)
   inTree_p->SetBranchStatus("fcalA_et", 1);
   inTree_p->SetBranchStatus("fcalC_et", 1);
   inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_pt").c_str(), 1);
-  //  inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_eta").c_str(), 1);
+  inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_eta").c_str(), 1);
   //  inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_phi").c_str(), 1);
 
   inTree_p->SetBranchAddress("cent", &cent_);
   inTree_p->SetBranchAddress("fcalA_et", &fcalA_et_);
   inTree_p->SetBranchAddress("fcalC_et", &fcalC_et_);
   inTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_pt").c_str(), &aktRhi_em_xcalib_jet_pt_p);
-  //  inTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_eta").c_str(), &aktRhi_em_xcalib_jet_eta_p);
+  inTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_eta").c_str(), &aktRhi_em_xcalib_jet_eta_p);
   //  inTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_phi").c_str(), &aktRhi_em_xcalib_jet_phi_p);
 
 
@@ -215,11 +232,17 @@ int gdjNTupleToMBHist(std::string inConfigFileName)
     
     if(doPrint && doGlobalDebug) std::cout << "NJET: " << aktRhi_em_xcalib_jet_pt_p->size() << std::endl;
     for(unsigned int jI = 0; jI < aktRhi_em_xcalib_jet_pt_p->size(); ++jI){
-      if(doPrint && doGlobalDebug) std::cout << " PT " << jI << ": " << aktRhi_em_xcalib_jet_pt_p->at(jI) << std::endl;
-
+      if(doPrint && doGlobalDebug) std::cout << " PT " << jI << ": " << aktRhi_em_xcalib_jet_pt_p->at(jI) << std::endl;      
+      
       if(aktRhi_em_xcalib_jet_pt_p->at(jI) < jetPtBinsLow) continue;
       if(aktRhi_em_xcalib_jet_pt_p->at(jI) >= jetPtBinsHigh) continue;
 
+      double jetEtaVal = aktRhi_em_xcalib_jet_eta_p->at(jI);
+      if(jetEtaBinsDoAbs) jetEtaVal = TMath::Abs(jetEtaVal);
+
+      if(jetEtaVal < jetEtaBinsLow) continue;
+      if(jetEtaVal >= jetEtaBinsHigh) continue;
+      
       if(doPrint && doGlobalDebug) std::cout << "  JET FILLS" << std::endl;
       jtMultPerCent_p[centPos]->Fill(aktRhi_em_xcalib_jet_pt_p->at(jI));
     }
