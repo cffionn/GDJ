@@ -37,6 +37,7 @@ int gdjNTupleToMBHist(std::string inConfigFileName)
 
   TEnv* inConfig_p = new TEnv(inConfigFileName.c_str());
   std::vector<std::string> reqParams = {"INFILENAME",
+					"INDATAFILENAME",
 					"OUTFILENAME",
 					"NCENTBINS",
 					"CENTBINSLOW",
@@ -138,6 +139,7 @@ int gdjNTupleToMBHist(std::string inConfigFileName)
   getLinBins(jetPtBinsLow, jetPtBinsHigh, nJetPtBins, jetPtBins);
 
   TH1F* cent_p = new TH1F("cent_h", ";Centrality (%); Counts", nCentBins, centBins);
+  TH1F* centData_p = new TH1F("centData_h", ";Centrality (%); Counts", nCentBins, centBins);
   TH1F* fcalEt_p = new TH1F("fcalEt_h", ";#Sigma_{FCal} E_{T};Counts", nFCalEtBins, fcalEtBins);
   TH2F* centVFCalEt_p = new TH2F("centVFCalEt_h", ";Centrality (%);#Sigma_{FCal} E_{T}", nCentBins, centBins, nFCalEtBins, fcalEtBins);
 
@@ -160,18 +162,48 @@ int gdjNTupleToMBHist(std::string inConfigFileName)
   const std::string inFileName = inConfig_p->GetValue("INFILENAME", "");
   if(!check.checkFileExt(inFileName, ".root")) return 1;
 
-  TFile* inFile_p = new TFile(inFileName.c_str(), "READ");
+  const std::string inDataFileName = inConfig_p->GetValue("INDATAFILENAME", "");
+  if(!check.checkFileExt(inDataFileName, ".root")) return 1;
+  
+  TFile* inFile_p = new TFile(inDataFileName.c_str(), "READ");
   TEnv* inFileConfig_p = (TEnv*)inFile_p->Get("config");
-
   std::vector<std::string> inFileReqParams = {"ISPP",
 					      "ISCOLLISIONS"};
-
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
   if(!checkEnvForParams(inFileConfig_p, inFileReqParams)) return 1; 
 
-  const bool isPP = inFileConfig_p->GetValue("ISPP", 0);
-  const bool isCollisions = inFileConfig_p->GetValue("ISCOLLISIONS", 0);
+  bool isPP = inFileConfig_p->GetValue("ISPP", 0);
+  bool isCollisions = inFileConfig_p->GetValue("ISCOLLISIONS", 0);
+  
+  if(isPP){
+    std::cout << "Given input \'" << inDataFileName << "\' is not Pb+Pb. return 1" << std::endl;
+    return 1;
+  }
+  if(!isCollisions){
+    std::cout << "Given input \'" << inDataFileName << "\' is not data. return 1" << std::endl;
+    return 1;
+  }
+
+  TTree* inTree_p = (TTree*)inFile_p->Get("gammaJetTree_p");
+  Int_t cent_;
+  inTree_p->SetBranchStatus("*", 0);
+  inTree_p->SetBranchStatus("cent", 1);
+
+  inTree_p->SetBranchAddress("cent", &cent_);
+
+  for(ULong64_t entry = 0; entry < (ULong64_t)inTree_p->GetEntries(); ++entry){
+    inTree_p->GetEntry(entry);
+    centData_p->Fill(cent_);
+  }
+  
+  inFile_p->Close();
+  delete inFile_p;
+  
+  inFile_p = new TFile(inFileName.c_str(), "READ");
+  inFileConfig_p = (TEnv*)inFile_p->Get("config");
+  if(!checkEnvForParams(inFileConfig_p, inFileReqParams)) return 1; 
+
+  isPP = inFileConfig_p->GetValue("ISPP", 0);
+  isCollisions = inFileConfig_p->GetValue("ISCOLLISIONS", 0);
 
   if(isPP){
     std::cout << "Given input \'" << inFileName << "\' is not Pb+Pb. return 1" << std::endl;
@@ -182,10 +214,9 @@ int gdjNTupleToMBHist(std::string inConfigFileName)
     return 1;
   }
 
-  TTree* inTree_p = (TTree*)inFile_p->Get("gammaJetTree_p");
-  Int_t cent_;
-  Float_t fcalA_et_, fcalC_et_;
+  inTree_p = (TTree*)inFile_p->Get("gammaJetTree_p");
 
+  Float_t fcalA_et_, fcalC_et_;
   std::vector<float>* aktRhi_em_xcalib_jet_pt_p=nullptr;
   std::vector<float>* aktRhi_em_xcalib_jet_eta_p=nullptr;
   //  std::vector<float>* aktRhi_em_xcalib_jet_phi_p=nullptr;
@@ -262,6 +293,9 @@ int gdjNTupleToMBHist(std::string inConfigFileName)
  
   cent_p->Write("", TObject::kOverwrite);
   delete cent_p;
+
+  centData_p->Write("", TObject::kOverwrite);
+  delete centData_p;
 
   fcalEt_p->Write("", TObject::kOverwrite);
   delete fcalEt_p;
