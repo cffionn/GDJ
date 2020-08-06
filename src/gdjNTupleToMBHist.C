@@ -37,7 +37,7 @@ int gdjNTupleToMBHist(std::string inConfigFileName)
 
   TEnv* inConfig_p = new TEnv(inConfigFileName.c_str());
   std::vector<std::string> reqParams = {"INFILENAME",
-					"INDATAFILENAME",
+					"INGAMMAFILENAME",
 					"OUTFILENAME",
 					"NCENTBINS",
 					"CENTBINSLOW",
@@ -162,10 +162,10 @@ int gdjNTupleToMBHist(std::string inConfigFileName)
   const std::string inFileName = inConfig_p->GetValue("INFILENAME", "");
   if(!check.checkFileExt(inFileName, ".root")) return 1;
 
-  const std::string inDataFileName = inConfig_p->GetValue("INDATAFILENAME", "");
-  if(!check.checkFileExt(inDataFileName, ".root")) return 1;
+  const std::string inGammaFileName = inConfig_p->GetValue("INGAMMAFILENAME", "");
+  if(!check.checkFileExt(inGammaFileName, ".root")) return 1;
   
-  TFile* inFile_p = new TFile(inDataFileName.c_str(), "READ");
+  TFile* inFile_p = new TFile(inGammaFileName.c_str(), "READ");
   TEnv* inFileConfig_p = (TEnv*)inFile_p->Get("config");
   std::vector<std::string> inFileReqParams = {"ISPP",
 					      "ISCOLLISIONS"};
@@ -175,11 +175,11 @@ int gdjNTupleToMBHist(std::string inConfigFileName)
   bool isCollisions = inFileConfig_p->GetValue("ISCOLLISIONS", 0);
   
   if(isPP){
-    std::cout << "Given input \'" << inDataFileName << "\' is not Pb+Pb. return 1" << std::endl;
+    std::cout << "Given input \'" << inGammaFileName << "\' is not Pb+Pb. return 1" << std::endl;
     return 1;
   }
   if(!isCollisions){
-    std::cout << "Given input \'" << inDataFileName << "\' is not data. return 1" << std::endl;
+    std::cout << "Given input \'" << inGammaFileName << "\' is not data. return 1" << std::endl;
     return 1;
   }
 
