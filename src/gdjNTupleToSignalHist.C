@@ -1,0 +1,153 @@
+//Author: Chris McGinn (2020.08.06)
+//Contact at chmc7718@colorado.edu or cffionn on skype for bugs
+//c+cpp
+#include <iostream>
+#include <string>
+#include <vector>
+
+//ROOT
+#include "TEnv.h"
+#include "TFile.h"
+#include "TTree.h"
+
+//Local
+#include "include/checkMakeDir.h"
+#include "include/envUtil.h"
+#include "include/globalDebugHandler.h"
+#include "include/stringUtil.h"
+
+int gdjNTupleToSignalHist(std::string inConfigFileName)
+{
+  globalDebugHandler gBug;
+  const bool doGlobalDebug = gBug.GetDoGlobalDebug();
+  
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
+  checkMakeDir check;
+  if(!check.checkFileExt(inConfigFileName, ".config")) return 1;
+
+  TEnv* inConfig_p = new TEnv(inConfigFileName.c_str());
+  std::vector<std::string> reqParams = {"INFILENAME",
+					"OUTFILENAME",
+					"JETR",
+                                        "NGAMMAPTBINS",
+                                        "GAMMAPTBINSLOW",
+                                        "GAMMAPTBINSHIGH",
+                                        "NJETPTBINS",
+                                        "JETPTBINSLOW",
+                                        "JETPTBINSHIGH",
+                                        "JETETABINSLOW",
+                                        "JETETABINSHIGH",
+                                        "JETETABINSDOABS"};
+  if(!checkEnvForParams(inConfig_p, reqParams)) return 1;
+
+  const std::string inFileName = inConfig_p->GetValue("INFILENAME", "");
+  if(!check.checkFileExt(inFileName, ".root")) return 1;
+
+  const std::string dateStr = getDateStr();
+  check.doCheckMakeDir("output");
+  check.doCheckMakeDir("output/" + dateStr);
+  std::string outFileName = inConfig_p->GetValue("OUTFILENAME", "");
+  if(outFileName.rfind(".") != std::string::npos) outFileName.replace(outFileName.rfind("."), outFileName.size(), "");
+  outFileName = "output/" + dateStr + "/" + outFileName + "_" + dateStr + ".root";
+
+  const Int_t nGammaPtBins = inConfig_p->GetValue("NGAMMAPTBINS", 20);
+  const Float_t gammaPtBinsLow = inConfig_p->GetValue("GAMMAPTBINSLOW", 50);
+  const Float_t gammaPtBinsHigh = inConfig_p->GetValue("GAMMAPTBINSHIGH", 70);
+
+  const Int_t nJetPtBins = inConfig_p->GetValue("NJETPTBINS", 20);
+  const Float_t jetPtBinsLow = inConfig_p->GetValue("JETPTBINSLOW", 30);
+  const Float_t jetPtBinsHigh = inConfig_p->GetValue("JETPTBINSHIGH", 50);
+ 
+  const Float_t jetEtaBinsLow = inConfig_p->GetValue("JETETABINSLOW", -2.8);
+  const Float_t jetEtaBinsHigh = inConfig_p->GetValue("JETETABINSHIGH", 2.8);
+  const Bool_t jetEtaBinsDoAbs = inConfig_p->GetValue("JETETABINSDOABS", 0);
+
+  const int jetR = inConfig_p->GetValue("JETR", 4);
+  if(jetR != 2 && jetR != 4){
+    std::cout << "Given parameter jetR, \'" << jetR << "\' is not \'2\' or \'4\\'. return 1" << std::endl;
+    return 1;
+  }
+  const std::string jetRStr = prettyString(((double)jetR)/10., 1, false);
+
+  const Int_t nMaxBins = 500;
+
+  if(nGammaPtBins > nMaxBins){
+    std::cout << "REQUESTED NGAMMAPTBINS \'" << nGammaPtBins << "\' EXCEEDS MAX BINS \'" << nMaxBins << "\'. Either expand max bins or reduce request. return 1" << std::endl;
+    return 1;
+  }
+  
+  if(nJetPtBins > nMaxBins){
+    std::cout << "REQUESTED NJETPTBINS \'" << nJetPtBins << "\' EXCEEDS MAX BINS \'" << nMaxBins << "\'. Either expand max bins or reduce request. return 1" << std::endl;
+    return 1;
+  }
+
+  std::vector<double> dphiCuts;
+  std::vector<std::string> dphiCutLabels;
+  
+  for(unsigned int dI = 0; dI < 20; ++dI){
+
+  }
+
+  
+  Double_t gammaPtBins[nMaxBins+1];
+  getLinBins(gammaPtBinsLow, gammaPtBinsHigh, nGammaPtBins, gammaPtBins);
+
+  Double_t jetPtBins[nMaxBins+1];
+  getLinBins(jetPtBinsLow, jetPtBinsHigh, nJetPtBins, jetPtBins);
+
+  
+  TFile* outFile_p = new TFile(outFileName.c_str(), "RECREATE");
+
+  TH1F* jtPtPerGammaPtDPhi_h[nMaxBins][nMaxBins];
+  
+  
+  TFile* inFile_p = new TFile(inFileName.c_str(), "READ");
+  TTree* inTree_p = (TTree*)inFile_p->Get("gammaJetTree_p");
+
+  const ULong64_t coutInterval = inConfig_p->GetValue("COUTINTERVAL", 20);
+  ULong64_t nEvt = inConfig_p->GetValue("NEVT", -1);
+  ULong64_t nEntries = (ULong64_t)inTree_p->GetEntries();
+  if(nEvt > 0) nEntries = TMath::Min(nEntries, nEvt);
+  const ULong64_t nDiv = TMath::Max((ULong64_t)1, nEntries/coutInterval);
+
+  std::cout << "Processing " << nEntries << " events..." << std::endl;
+  for(ULong64_t entry = 0; entry < nEntries; ++entry){
+    const bool doPrint = entry%nDiv == 0;
+    if(doPrint) std::cout << " Entry " << entry << "/" << nEntries << "..." << std::endl;
+
+    inTree_p->GetEntry(entry);
+
+  }
+
+  inFile_p->Close();
+  delete inFile_p;
+
+  outFile_p->cd();
+
+  
+
+  outFile_p->Close();
+  delete outFile_p;  
+
+  std::cout << "GDJNTUPLETOSIGNALHIST COMPLETE. return 0." << std::endl;
+  return 0;
+}
+
+int main(int argc, char* argv[])
+{
+  if(argc != 2){
+    std::cout << "Usage: ./bin/gdjNTupleToSignalHist.exe <inConfigFileName>" << std::endl;
+    std::cout << "TO DEBUG:" << std::endl;
+    std::cout << " export DOGLOBALDEBUGROOT=1 #from command line" << std::endl;
+    std::cout << "TO TURN OFF DEBUG:" << std::endl;
+    std::cout << " export DOGLOBALDEBUGROOT=0 #from command line" << std::endl;
+    std::cout << "return 1." << std::endl;
+    return 1;
+  }
+
+  int retVal = 0;
+  retVal += gdjNTupleToSignalHist(argv[1]);
+  return retVal;
+}
+
