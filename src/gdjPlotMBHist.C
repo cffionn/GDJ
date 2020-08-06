@@ -207,6 +207,7 @@ int gdjPlotMBHist(std::string inConfigFileName)
   cent_p->SetMaximum(0.045);
   cent_p->SetMinimum(0.00);
 
+  cent_p->GetYaxis()->SetTitle("Shape (Unity Normalization)");
   cent_p->DrawCopy("HIST E1 P");
 
   centData_p->SetMarkerSize(sizes[1]);
@@ -235,7 +236,7 @@ int gdjPlotMBHist(std::string inConfigFileName)
   leg_p->SetFillStyle(0);
 
   leg_p->AddEntry(cent_p, "CC + PC", "P L");
-  leg_p->AddEntry(centData_p, "#gamma Triggered", "P L");
+  leg_p->AddEntry(centData_p, "#gamma-triggered", "P L");
 
   leg_p->Draw("SAME");
   

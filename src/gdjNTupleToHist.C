@@ -32,6 +32,7 @@
 #include "include/globalDebugHandler.h"
 #include "include/histDefUtility.h"
 #include "include/keyHandler.h"
+#include "include/photonUtil.h"
 #include "include/plotUtilities.h"
 #include "include/stringUtil.h"
 #include "include/treeUtil.h"
@@ -1098,20 +1099,25 @@ int gdjNTupleToHist(std::string inConfigFileName)
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 
     for(unsigned int pI = 0; pI < photon_pt_p->size(); ++pI){
-      if(!photon_tight_p->at(pI)) continue;
+      if(!isGoodPhoton(isPP, photon_tight_p->at(pI), photon_etcone30_p->at(pI), photon_eta_p->at(pI))) continue;
+      //      if(!photon_tight_p->at(pI)) continue;
+      // above now handled with photonutil.h
       if(photon_pt_p->at(pI) < gammaPtBins[0]) continue;
       if(photon_pt_p->at(pI) >= gammaPtBins[nGammaPtBins]) continue;
 
       //Isolation as taken from internal note of 2015 data analysis      
+      //now handled by photonutil.h
+      /*
       if(!isPP){
 	if(photon_etcone30_p->at(pI) > 8.0) continue;
       }
       else{
 	if(photon_etcone30_p->at(pI) > 3.0) continue;
       }
-
-      Float_t gammaAbsEta = TMath::Abs(photon_eta_p->at(pI));
-      if(gammaAbsEta >= 1.37 && gammaAbsEta < 1.52) continue;
+      */
+      //Gap now handled by photonUtil.h
+      //Float_t gammaAbsEta = TMath::Abs(photon_eta_p->at(pI));
+      //if(gammaAbsEta >= 1.37 && gammaAbsEta < 1.52) continue;
       
       Float_t etaValMain = photon_eta_p->at(pI);
       Float_t etaValSub = etaValMain;
