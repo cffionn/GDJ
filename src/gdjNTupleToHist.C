@@ -1587,7 +1587,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
     for(int gI = 0; gI < nGammaPtBinsSub; ++gI){
       lStr = lStr + "l | ";
     }
-    lStr = lStr + "l";
+    // lStr = lStr + "l";
     std::string multiColumn = std::to_string(nGammaPtBinsSub+2);
 
     std::string tempDPhiStr = gammaJtDPhiLabel.substr(gammaJtDPhiLabel.find(">")+2, gammaJtDPhiLabel.size());
