@@ -263,6 +263,7 @@ int gdjNTupleToSignalHist(std::string inConfigFileName)
     }
   }
 
+  inConfig_p->SetValue("NDPHICUTS", std::to_string((int)dphiCuts.size()).c_str());
   inConfig_p->Write("config", TObject::kOverwrite);
   
   outFile_p->Close();
