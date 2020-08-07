@@ -172,7 +172,7 @@ int gdjPlotMBHist(std::string inConfigFileName)
   label_p->SetNDC();
   
   std::vector<double> phiFractions = {2*TMath::Pi(), TMath::Pi(), TMath::Pi()/2., TMath::Pi()/3., TMath::Pi()/4.};
-  std::vector<std::string> phiLabels = {"No #Delta#phi cut", "#Delta#phi_{#gamma,\\mathrm{Jet}}$>#pi/2", "#Delta#phi_{#gamma,\\mathrm{Jet}}$>3#pi/4", "#Delta#phi_{#gamma,\\mathrm{Jet}}$>5#pi/6", "#Delta#phi_{#gamma,\\mathrm{Jet}}$>7#pi/8"};
+  std::vector<std::string> phiLabels = {"No #Delta#phi cut", "#Delta#phi_{#gamma,Jet}>#pi/2", "#Delta#phi_{#gamma,Jet}>3#pi/4", "#Delta#phi_{#gamma,Jet}>5#pi/6", "#Delta#phi_{#gamma,Jet}>7#pi/8"};
   std::vector<std::string> phiLabels2 = {"No $\\Delta\\phi$ cut", "$\\Delta\\phi_{\\gamma,\\mathrm{Jet}}$>$\\pi$/2", "$\\Delta\\phi_{\\gamma,\\mathrm{Jet}}$>3$\\pi$/4", "$\\Delta\\phi_{\\gamma,\\mathrm{Jet}}$>5$\\pi$/6", "$\\Delta\\phi_{\\gamma,\\mathrm{Jet}}$>7$\\pi$/8"};
   std::vector<double> phiCenters = {0.0, TMath::Pi()/2.0, 3.0*TMath::Pi()/4.0, 5.0*TMath::Pi()/6.0, 7.0*TMath::Pi()/8.0};
 
