@@ -120,14 +120,18 @@ int gdjNTupleToSignalHist(std::string inConfigFileName)
   getLinBins(jetPtBinsLow, jetPtBinsHigh, nJetPtBins, jetPtBins);
   
   TFile* outFile_p = new TFile(outFileName.c_str(), "RECREATE");
+  std::vector<unsigned long long> nGammaPerMinPt;
   TH1F* jetPtPerGammaPtDPhi_h[nMaxBins][nMaxBins];
 
   for(Int_t gI = 0; gI < nGammaPtBins; ++gI){
     const std::string gammaStr = "GammaPt" + std::to_string(gI);
-
+    nGammaPerMinPt.push_back(0);
+    
     for(unsigned int dI = 0; dI < dphiCuts.size(); ++dI){
       const std::string dphiStr = "DPhi" + std::to_string(dI);
       jetPtPerGammaPtDPhi_h[gI][dI] = new TH1F(("jetPtPerGammaPtDPhi_" + gammaStr + "_" + dphiStr + "_h").c_str(), (";Reco. Jet p_{T} [GeV];N_{Jet,R=" + jetRStr+ "}/N_{#gamma}").c_str(), nJetPtBins, jetPtBins);
+
+      jetPtPerGammaPtDPhi_h[gI][dI]->Sumw2();
     }
   }
     
@@ -233,6 +237,8 @@ int gdjNTupleToSignalHist(std::string inConfigFileName)
       for(Int_t gI = 0; gI < nGammaPtBins; ++gI){
 	if(goodPhotonPts[pI] < gammaPtBins[gI]) break;
 
+	++(nGammaPerMinPt[gI]);
+
 	for(unsigned int jI = 0; jI < goodJetPts.size(); ++jI){
 	  double deltaPhi = TMath::Abs(getDPHI(goodPhotonPhis[pI], goodJetPhis[jI]));
 
@@ -258,6 +264,8 @@ int gdjNTupleToSignalHist(std::string inConfigFileName)
   
   for(Int_t gI = 0; gI < nGammaPtBins; ++gI){
     for(unsigned int dI = 0; dI < dphiCuts.size(); ++dI){
+      jetPtPerGammaPtDPhi_h[gI][dI]->Scale(1./(double)nGammaPerMinPt[gI]);
+      
       jetPtPerGammaPtDPhi_h[gI][dI]->Write("", TObject::kOverwrite);
       delete jetPtPerGammaPtDPhi_h[gI][dI];
     }
