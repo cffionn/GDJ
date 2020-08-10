@@ -97,8 +97,8 @@ int gdjPlotSignalHist(std::string inConfigFileName)
 
   const Int_t nMaxBins = 500;
   const Int_t nGammaPtBins = fileConfig_p->GetValue("NGAMMAPTBINS", -1);
-  const Float_t gammaPtBinsLow = fileConfig_p->GetValue("NGAMMAPTBINSLOW", -1);
-  const Float_t gammaPtBinsHigh = fileConfig_p->GetValue("NGAMMAPTBINSHIGH", -1);
+  const Float_t gammaPtBinsLow = fileConfig_p->GetValue("GAMMAPTBINSLOW", -1);
+  const Float_t gammaPtBinsHigh = fileConfig_p->GetValue("GAMMAPTBINSHIGH", -1);
   Double_t gammaPtBins[nMaxBins+1];
   getLinBins(gammaPtBinsLow, gammaPtBinsHigh, nGammaPtBins, gammaPtBins);
 
@@ -152,21 +152,29 @@ int gdjPlotSignalHist(std::string inConfigFileName)
       hists_p[dI]->GetYaxis()->SetTitleSize(titleSizeY);
       hists_p[dI]->GetXaxis()->SetLabelSize(labelSizeX);
       hists_p[dI]->GetYaxis()->SetLabelSize(labelSizeY);
+
+      hists_p[dI]->GetXaxis()->SetNdivisions(505);
+      hists_p[dI]->GetYaxis()->SetNdivisions(505);
       
       if(dI == 0) hists_p[dI]->DrawCopy("HIST E1 P");
       else hists_p[dI]->DrawCopy("HIST E1 P SAME");
     }
 
-    for(unsigned int gI = 0; gI < globalLabels.size(); ++gI){
-      label_p->DrawLatex(signalJtPtLabelX, signalJtPtLabelY - gI*0.055, globalLabels[gI].c_str());
+    std::vector<std::string> tempLabels = globalLabels;
+    tempLabels.push_back("p_{T}^{#gamma} > " + prettyString(gammaPtBins[gI], 1, false));
+    for(unsigned int gI = 0; gI < tempLabels.size(); ++gI){
+      label_p->DrawLatex(signalJtPtLabelX, signalJtPtLabelY - gI*0.055, tempLabels[gI].c_str());
     }
 
     
     
     gStyle->SetOptStat(0);
     leg_p->Draw("SAME");
+
+    std::string gIStr = std::to_string(gI);
+    if(gI < 10) gIStr = "0" + gIStr;
     
-    std::string saveName = "pdfDir/" + dateStr + "/jetPtPerGammaPtDPhi_GammaPt" + std::to_string(gI) + "_" + dateStr + ".pdf";
+    std::string saveName = "pdfDir/" + dateStr + "/jetPtPerGammaPtDPhi_GammaPt" + gIStr + "_" + dateStr + ".pdf";
     quietSaveAs(canv_p, saveName);
 
     delete leg_p;
