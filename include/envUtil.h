@@ -38,4 +38,49 @@ inline bool checkEnvForParams(TEnv* inEnv_p, std::vector<std::string> inParams)
   return retVal;
 }
 
+inline bool compEnvParams(TEnv* inEnv1_p, TEnv* inEnv2_p, std::vector<std::string> inParams)
+{
+  bool retVal = true;
+
+  for(auto const & param : inParams){
+    std::string val1 = inEnv1_p->GetValue(param.c_str(), "");
+    std::string val2 = inEnv2_p->GetValue(param.c_str(), "");
+
+    if(val1.size() != 0){
+      while(val1.substr(0,1).find(" ") != std::string::npos){
+	val1.replace(0, 1, "");
+	if(val1.size() == 0) break;
+      }
+
+      if(val1.size() != 0){
+	while(val1.substr(val1.size()-1,1).find(" ") != std::string::npos){
+	  val1.replace(val1.size()-1, 1, "");
+	  if(val1.size() == 0) break;
+	}
+      }
+    }
+    
+    if(val2.size() != 0){
+      while(val2.substr(0,1).find(" ") != std::string::npos){
+	val2.replace(0, 1, "");
+	if(val2.size() == 0) break;
+      }
+
+      if(val2.size() != 0){
+	while(val2.substr(val2.size()-1,1).find(" ") != std::string::npos){
+	  val2.replace(val2.size()-1, 1, "");
+	  if(val2.size() == 0) break;
+	}
+      }
+    }
+    
+    if(isStrSame(val1, val2)) continue;
+
+    std::cout << "Values for param \'" << param << "\' differ. \'" << val1 << "\' vs. \'" << val2 << "\'. return false" << std::endl;
+    retVal = false;
+  }
+
+  return retVal;
+}
+
 #endif

@@ -15,6 +15,7 @@
 #include "TLatex.h"
 #include "TLegend.h"
 #include "TMath.h"
+#include "TPad.h"
 #include "TStyle.h"
 
 //Local
@@ -45,7 +46,7 @@ int gdjPlotMBHist(std::string inConfigFileName)
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   TEnv* inConfig_p = new TEnv(inConfigFileName.c_str());
-  std::vector<std::string> reqParams = {"INFILENAME",
+  std::vector<std::string> reqParams = {"INFILENAME",			     
 					"MIXEDJTPTYMIN",
 					"MIXEDJTPTYMAX",
 					"MIXEDJTPTLABELX",
@@ -57,30 +58,50 @@ int gdjPlotMBHist(std::string inConfigFileName)
 					"PERCENTLABELX",
 					"PERCENTLABELY",
 					"PERCENTLEGX",
-					"PERCENTLEGY"};
+					"PERCENTLEGY",
+    					"SOBYDOLOG",
+    					"SOBYMIN",
+					"SOBYMAX",
+					"SOBLABELX",
+					"SOBLABELY",
+					"SOBLEGX",
+					"SOBLEGY"};
   if(!checkEnvForParams(inConfig_p, reqParams)) return 1;
 
   const std::string inFileName = inConfig_p->GetValue("INFILENAME", "");
   if(!check.checkFileExt(inFileName, ".root")) return 1;
 
+  const std::string signalFileName = inConfig_p->GetValue("SIGNALFILENAME", "");
+  bool hasSignal = false;
+  if(signalFileName.size() != 0){
+    if(!check.checkFileExt(signalFileName, ".root")) return 1;
+    std::cout << "RUNNING IN SIGNAL MODE, SIGNAL FILE \'" << signalFileName << "\'" << std::endl;
+    hasSignal = true;
+  }
+  
+  
   const Double_t mixedJtPtYMin = inConfig_p->GetValue("MIXEDJTPTYMIN", -1.0);
   const Double_t mixedJtPtYMax = inConfig_p->GetValue("MIXEDJTPTYMAX", 1.0);
-
   const Double_t mixedJtPtLabelX = inConfig_p->GetValue("MIXEDJTPTLABELX", -1.0); 
   const Double_t mixedJtPtLabelY = inConfig_p->GetValue("MIXEDJTPTLABELY", -1.0);
-
   const Double_t mixedJtPtLegX = inConfig_p->GetValue("MIXEDJTPTLEGX", -1.0); 
   const Double_t mixedJtPtLegY = inConfig_p->GetValue("MIXEDJTPTLEGY", -1.0); 
 
   const Double_t percentYMin = inConfig_p->GetValue("PERCENTYMIN", -1.0);
   const Double_t percentYMax = inConfig_p->GetValue("PERCENTYMAX", 1.0);
-
   const Double_t percentLabelX = inConfig_p->GetValue("PERCENTLABELX", -1.0); 
   const Double_t percentLabelY = inConfig_p->GetValue("PERCENTLABELY", -1.0);
-
   const Double_t percentLegX = inConfig_p->GetValue("PERCENTLEGX", -1.0); 
   const Double_t percentLegY = inConfig_p->GetValue("PERCENTLEGY", -1.0); 
-  
+
+  const Bool_t sobYDoLog = inConfig_p->GetValue("SOBYDOLOG", 0);
+  const Double_t sobYMin = inConfig_p->GetValue("SOBYMIN", -1.0);
+  const Double_t sobYMax = inConfig_p->GetValue("SOBYMAX", 1.0);
+  const Double_t sobLabelX = inConfig_p->GetValue("SOBLABELX", -1.0); 
+  const Double_t sobLabelY = inConfig_p->GetValue("SOBLABELY", -1.0);
+  const Double_t sobLegX = inConfig_p->GetValue("SOBLEGX", -1.0); 
+  const Double_t sobLegY = inConfig_p->GetValue("SOBLEGY", -1.0); 
+
   std::vector<std::string> globalLabels;
   for(Int_t gI = 0; gI < 20; ++gI){
     std::string globalLabel = inConfig_p->GetValue(("GLOBALLABEL." + std::to_string(gI)).c_str(), "");
@@ -91,24 +112,53 @@ int gdjPlotMBHist(std::string inConfigFileName)
   
   TFile* inFile_p = new TFile(inFileName.c_str(), "READ");  
   TEnv* prevConfig_p = (TEnv*)inFile_p->Get("config");
-  std::vector<std::string> prevReqParams = {"NCENTBINS",
-					    "CENTBINSLOW",
-					    "CENTBINSHIGH",
-					    "JETETABINSLOW",
+  std::vector<std::string> prevReqParams = {"JETETABINSLOW",
 					    "JETETABINSHIGH",
 					    "JETETABINSDOABS",	
 					    "NJETPTBINS",
 					    "JETPTBINSLOW",
 					    "JETPTBINSHIGH",
 					    "JETR"};
+  std::vector<std::string> prevReqParams2 = {"NCENTBINS",
+					    "CENTBINSLOW",
+					    "CENTBINSHIGH"};
   if(!checkEnvForParams(prevConfig_p, prevReqParams)) return 1;
+  if(!checkEnvForParams(prevConfig_p, prevReqParams2)) return 1;
 
+  const Int_t nMaxCentBins = 500;
+  TFile* signalFile_p = nullptr;
+  Int_t nDPhiCutsSignal = -1;
+  Int_t nGammaPtBinsSignal = -1;
+  Float_t gammaPtBinsLowSignal = -1.0;
+  Float_t gammaPtBinsHighSignal = -1.0;
+  Double_t gammaPtBinsSignal[nMaxCentBins+1];
+  if(hasSignal){
+    signalFile_p = new TFile(signalFileName.c_str(), "READ");
+    TEnv* signalConfig_p = (TEnv*)signalFile_p->Get("config");
+    std::vector<std::string> addedReqParams = {"NDPHICUTS",
+					       "NGAMMAPTBINS",
+					       "GAMMAPTBINSLOW",
+					       "GAMMAPTBINSHIGH"};
+
+    if(!checkEnvForParams(signalConfig_p, prevReqParams)) return 1;  
+    if(!checkEnvForParams(signalConfig_p, addedReqParams)) return 1;  
+    if(!compEnvParams(prevConfig_p, signalConfig_p, prevReqParams)) return 1;
+
+    nDPhiCutsSignal = signalConfig_p->GetValue("NDPHICUTS", -1);
+    nGammaPtBinsSignal = signalConfig_p->GetValue("NGAMMAPTBINS", -1);
+    if(nGammaPtBinsSignal > nMaxCentBins) return 1;
+
+    gammaPtBinsLowSignal = signalConfig_p->GetValue("GAMMAPTBINSLOW", -1.0);
+    gammaPtBinsHighSignal = signalConfig_p->GetValue("GAMMAPTBINSHIGH", -1.0);
+
+    getLinBins(gammaPtBinsLowSignal, gammaPtBinsHighSignal, nGammaPtBinsSignal, gammaPtBinsSignal);
+  }
+  
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   TH1F* cent_p = (TH1F*)inFile_p->Get("cent_h");
   TH1F* centData_p = (TH1F*)inFile_p->Get("centData_h");
   
-  const Int_t nMaxCentBins = 500;
   const Int_t nCentBins = prevConfig_p->GetValue("NCENTBINS", 0);
   if(nCentBins > nMaxCentBins) return 1;
 
@@ -176,6 +226,13 @@ int gdjPlotMBHist(std::string inConfigFileName)
   std::vector<std::string> phiLabels2 = {"No $\\Delta\\phi$ cut", "$\\Delta\\phi_{\\gamma,\\mathrm{Jet}}$>$\\pi$/2", "$\\Delta\\phi_{\\gamma,\\mathrm{Jet}}$>3$\\pi$/4", "$\\Delta\\phi_{\\gamma,\\mathrm{Jet}}$>5$\\pi$/6", "$\\Delta\\phi_{\\gamma,\\mathrm{Jet}}$>7$\\pi$/8"};
   std::vector<double> phiCenters = {0.0, TMath::Pi()/2.0, 3.0*TMath::Pi()/4.0, 5.0*TMath::Pi()/6.0, 7.0*TMath::Pi()/8.0};
 
+  if(hasSignal){
+    if(nDPhiCutsSignal != (Int_t)phiCenters.size()){
+      std::cout << "NDPhi cuts must match between signal and background. return 1" << std::endl;
+      return 1;
+    }
+  }
+  
   std::vector<double> percentiles = {0.01, 0.05, 0.10};
   
   TCanvas* canv_p = new TCanvas("canv_p", "", 450, 450);
@@ -356,6 +413,20 @@ int gdjPlotMBHist(std::string inConfigFileName)
     TH1F* jetPt_CentCombo_p = new TH1F("jetPt_CentCombo_h", (";Reco. Jet p_{T} [GeV];N_{Jet,R=" + jetRStr + "}/N_{Event," + centLowStr + "-" + centHighStr + "%}").c_str(), nJetPtBins, jetPtBins);
 
     std::vector<TGraph*> graphs_p;
+    std::vector<std::vector<TH1F*> > signalOverBkgd_p;
+    if(hasSignal){
+      signalOverBkgd_p.reserve(nGammaPtBinsSignal);
+      for(Int_t gI = 0; gI < nGammaPtBinsSignal; ++gI){
+	signalOverBkgd_p.push_back({});
+	signalOverBkgd_p[gI].reserve(nDPhiCutsSignal);
+
+	for(Int_t dI = 0; dI < nDPhiCutsSignal; ++dI){
+	  std::string histName = "signalOverBkgd_GammaPt" + std::to_string(gI) + "_DPhiCut" + std::to_string(dI) + "_h";
+	    
+	  signalOverBkgd_p[gI][dI] = new TH1F(histName.c_str(), ";Reco. Jet p_{T} [GeV];Signal/Background", nJetPtBins, jetPtBins);
+	}
+      }	   
+    }
 
     
     for(unsigned int pI = 0; pI < percentiles.size(); ++pI){
@@ -396,22 +467,14 @@ int gdjPlotMBHist(std::string inConfigFileName)
       jtPtVals.push_back({});
       jtPtErrs.push_back({});
 
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-      
       centSum += centData_p->GetBinContent(cI+1);
       centVals.push_back(centData_p->GetBinContent(cI+1));
       
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
       for(Int_t jI = 0; jI < inHist_p->GetXaxis()->GetNbins(); ++jI){
 	jtPtVals[cI-centLow].push_back(inHist_p->GetBinContent(jI+1));
 	jtPtErrs[cI-centLow].push_back(inHist_p->GetBinError(jI+1));
       }
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
     }
-
-    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
     for(Int_t jI = 0; jI < nJetPtBins; ++jI){
       double binVal = 0.0;
@@ -456,31 +519,51 @@ int gdjPlotMBHist(std::string inConfigFileName)
       jetPt_CentCombo_p->SetMarkerColor(colors[pI]);
       jetPt_CentCombo_p->SetLineColor(colors[pI]);    
 
-          if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
       dummyHists_p.push_back(new TH1F(("dummy_" + std::to_string(pI)).c_str(), "", 1, 0, 1));
 
-          if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
       dummyHists_p[pI]->SetMarkerSize(sizes[pI]);
       dummyHists_p[pI]->SetMarkerStyle(styles[pI]);
       dummyHists_p[pI]->SetMarkerColor(colors[pI]);
       dummyHists_p[pI]->SetLineColor(colors[pI]);    
 
-          if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
       leg_p->AddEntry(dummyHists_p[pI], phiLabels[pI].c_str(), "P L");
 
-          if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
-
       if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-      
+
       if(pI == 0) jetPt_CentCombo_p->DrawCopy("HIST E1 P");
       else{
 	jetPt_CentCombo_p->Scale(phiFractions[pI]/phiFractions[pI-1]);
 	jetPt_CentCombo_p->DrawCopy("HIST E1 P SAME");
       }
+          
+      if(hasSignal){
+	signalFile_p->cd();
+     
+	for(Int_t gI = 0; gI < nGammaPtBinsSignal; ++gI){
+	  TH1F* tempHist_p = (TH1F*)signalFile_p->Get(("jetPtPerGammaPtDPhi_GammaPt" + std::to_string(gI) + "_DPhi" + std::to_string(pI) + "_h").c_str());
+
+	  for(Int_t jI = 0; jI < nJetPtBins; ++jI){
+	    double num = tempHist_p->GetBinContent(jI+1);
+	    double numErr = tempHist_p->GetBinError(jI+1);
+
+	    double denom = jetPt_CentCombo_p->GetBinContent(jI+1);
+	    double denomErr = jetPt_CentCombo_p->GetBinError(jI+1);
+
+	    double val = num/denom;
+	    double relErr = TMath::Sqrt(numErr*numErr/(num*num) + denomErr*denomErr/(denom*denom));
+	    
+	    signalOverBkgd_p[gI][pI]->SetBinContent(jI+1, val);
+	    signalOverBkgd_p[gI][pI]->SetBinError(jI+1, val*relErr);
+	  }	  
+	}
+      }
+
       unsigned int percentilesPos = 0;    
       for(Int_t bIX = jetPt_CentCombo_p->GetXaxis()->GetNbins()+1; bIX >= 0; --bIX){
 	if(jetPt_CentCombo_p->GetBinContent(bIX+1) > percentiles.at(percentilesPos)){
@@ -493,7 +576,13 @@ int gdjPlotMBHist(std::string inConfigFileName)
       while(percentilesPos < percentiles.size()){
 	graphs_p[percentilesPos]->SetPoint(pI, phiCenters[pI], jetPt_CentCombo_p->GetXaxis()->GetBinLowEdge(1));	
 	++percentilesPos;
+     }
+
+      /*
+      if(hasSignal){
+
       }
+      */
       
       gStyle->SetOptStat(0);
     }
@@ -513,11 +602,65 @@ int gdjPlotMBHist(std::string inConfigFileName)
     saveName = "pdfDir/" + dateStr + "/jtMultPerCent_" + centBinsStrCombo + "_R" + std::to_string(jetR) + "_" + dateStr +  ".pdf";
     quietSaveAs(canv_p, saveName);
     delete jetPt_CentCombo_p;
+    delete canv_p;  
+
+    if(hasSignal){
+      for(Int_t gI = 0; gI < nGammaPtBinsSignal; ++gI){
+	
+	canv_p = new TCanvas("canv_p", "", 450, 450);
+	canv_p->SetTopMargin(0.02);
+	canv_p->SetRightMargin(0.02);
+	canv_p->SetLeftMargin(0.15);
+	canv_p->SetBottomMargin(0.15);
+
+        for(Int_t dI = 0; dI < nDPhiCutsSignal; ++dI){
+	  signalOverBkgd_p[gI][dI]->SetMarkerStyle(styles[dI]);
+	  signalOverBkgd_p[gI][dI]->SetMarkerSize(sizes[dI]);
+	  signalOverBkgd_p[gI][dI]->SetMarkerColor(colors[dI]);
+	  signalOverBkgd_p[gI][dI]->SetLineColor(colors[dI]);
+
+	  signalOverBkgd_p[gI][dI]->SetMinimum(sobYMin);
+	  signalOverBkgd_p[gI][dI]->SetMaximum(sobYMax);
+	  
+	  if(dI == 0) signalOverBkgd_p[gI][dI]->DrawCopy("HIST E1 P");
+	  else signalOverBkgd_p[gI][dI]->DrawCopy("HIST E1 P SAME");
+	}
+
+	leg_p->SetX2(sobLegX+0.25);
+	leg_p->SetY1(sobLegY - 0.063*(double)phiLabels.size());
+	leg_p->SetY2(sobLegY);
+
+	leg_p->Draw("SAME");
+	gStyle->SetOptStat(0);
+
+	if(sobYDoLog) gPad->SetLogy();
+	
+	std::vector<std::string> tempLabels2 = tempLabels;
+	tempLabels2.push_back("p_{T}^{#gamma} > " + prettyString(gammaPtBinsSignal[gI], 1, false));
+	for(unsigned int gI = 0; gI < tempLabels2.size(); ++gI){
+	  label_p->DrawLatex(sobLabelX, sobLabelY - gI*0.055, tempLabels2[gI].c_str());
+	}
+
+	std::string gIStr = std::to_string(gI);
+	if(gI < 10) gIStr = "0" + gIStr;
+	saveName = "pdfDir/" + dateStr + "/signalOverBkgd_GammaPt" + gIStr + "_" + centBinsStrCombo + "_R" + std::to_string(jetR) + "_" + dateStr + ".pdf";
+	quietSaveAs(canv_p, saveName);
+	delete canv_p;
+      }
+
+      for(Int_t gI = 0; gI < nGammaPtBinsSignal; ++gI){
+        for(Int_t dI = 0; dI < nDPhiCutsSignal; ++dI){
+	  delete signalOverBkgd_p[gI][dI];
+	}
+	signalOverBkgd_p[gI].clear();
+      }
+      signalOverBkgd_p.clear();
+    }
+
     for(unsigned int lI = 0; lI < dummyHists_p.size(); ++lI){
       delete dummyHists_p[lI];
     }
     delete leg_p;
-    delete canv_p;  
 
     canv_p = new TCanvas("canv_p", "", 450, 450);
     canv_p->SetTopMargin(0.02);
@@ -610,6 +753,11 @@ int gdjPlotMBHist(std::string inConfigFileName)
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
   delete label_p;
+
+  if(hasSignal){
+    signalFile_p->Close();
+    delete signalFile_p;
+  }
   
   inFile_p->Close();
   delete inFile_p;
