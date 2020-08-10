@@ -44,6 +44,9 @@ int gdjNTupleToSignalHist(std::string inConfigFileName)
                                         "NJETPTBINS",
                                         "JETPTBINSLOW",
                                         "JETPTBINSHIGH",
+                                        "NTWOJETPTBINS",
+                                        "TWOJETPTBINSLOW",
+                                        "TWOJETPTBINSHIGH",
                                         "JETETABINSLOW",
                                         "JETETABINSHIGH",
                                         "JETETABINSDOABS"};
@@ -71,7 +74,10 @@ int gdjNTupleToSignalHist(std::string inConfigFileName)
   const Int_t nJetPtBins = inConfig_p->GetValue("NJETPTBINS", 20);
   const Float_t jetPtBinsLow = inConfig_p->GetValue("JETPTBINSLOW", 30);
   const Float_t jetPtBinsHigh = inConfig_p->GetValue("JETPTBINSHIGH", 50);
- 
+
+  const Int_t nTwoJetPtBins = inConfig_p->GetValue("NTWOJETPTBINS", 20);
+  const Float_t twoJetPtBinsLow = inConfig_p->GetValue("TWOJETPTBINSLOW", 30);
+  const Float_t twoJetPtBinsHigh = inConfig_p->GetValue("TWOJETPTBINSHIGH", 50); 
   const Float_t jetEtaBinsLow = inConfig_p->GetValue("JETETABINSLOW", -2.8);
   const Float_t jetEtaBinsHigh = inConfig_p->GetValue("JETETABINSHIGH", 2.8);
   const Bool_t jetEtaBinsDoAbs = inConfig_p->GetValue("JETETABINSDOABS", 0);
@@ -84,6 +90,7 @@ int gdjNTupleToSignalHist(std::string inConfigFileName)
   const std::string jetRStr = prettyString(((double)jetR)/10., 1, false);
 
   const Int_t nMaxBins = 500;
+  const Int_t nMaxBinsHist = 100;
 
   if(nGammaPtBins > nMaxBins){
     std::cout << "REQUESTED NGAMMAPTBINS \'" << nGammaPtBins << "\' EXCEEDS MAX BINS \'" << nMaxBins << "\'. Either expand max bins or reduce request. return 1" << std::endl;
@@ -118,10 +125,14 @@ int gdjNTupleToSignalHist(std::string inConfigFileName)
 
   Double_t jetPtBins[nMaxBins+1];
   getLinBins(jetPtBinsLow, jetPtBinsHigh, nJetPtBins, jetPtBins);
+
+  Double_t twoJetPtBins[nMaxBins+1];
+  getLinBins(twoJetPtBinsLow, twoJetPtBinsHigh, nTwoJetPtBins, twoJetPtBins);
   
   TFile* outFile_p = new TFile(outFileName.c_str(), "RECREATE");
   std::vector<unsigned long long> nGammaPerMinPt;
-  TH1F* jetPtPerGammaPtDPhi_h[nMaxBins][nMaxBins];
+  TH1F* jetPtPerGammaPtDPhi_h[nMaxBinsHist][nMaxBinsHist];
+  TH1F* jetPtPerGammaPtDPhi_TwoJets_h[nMaxBinsHist][nMaxBinsHist][nMaxBinsHist];
 
   for(Int_t gI = 0; gI < nGammaPtBins; ++gI){
     const std::string gammaStr = "GammaPt" + std::to_string(gI);
@@ -132,6 +143,13 @@ int gdjNTupleToSignalHist(std::string inConfigFileName)
       jetPtPerGammaPtDPhi_h[gI][dI] = new TH1F(("jetPtPerGammaPtDPhi_" + gammaStr + "_" + dphiStr + "_h").c_str(), (";Reco. Jet p_{T} [GeV];N_{Jet,R=" + jetRStr+ "}/N_{#gamma}").c_str(), nJetPtBins, jetPtBins);
 
       jetPtPerGammaPtDPhi_h[gI][dI]->Sumw2();
+      
+      for(int jI = 0; jI < nTwoJetPtBins; ++jI){
+	const std::string jStr = "JetPt" + std::to_string(jI);
+	jetPtPerGammaPtDPhi_TwoJets_h[gI][dI][jI] = new TH1F(("jetPtPerGammaPtDPhi_" + gammaStr + "_" + dphiStr + "_" + jStr + "_TwoJets_h").c_str(), (";Reco. Jet p_{T} [GeV];N_{Jet,R=" + jetRStr+ "}/N_{#gamma}").c_str(), nJetPtBins, jetPtBins);
+
+	jetPtPerGammaPtDPhi_TwoJets_h[gI][dI][jI]->Sumw2();
+      }
     }
   }
     
@@ -239,18 +257,41 @@ int gdjNTupleToSignalHist(std::string inConfigFileName)
 
 	++(nGammaPerMinPt[gI]);
 
+	std::vector<std::vector<double> > jetsPerDPhi;
+	for(unsigned dI = 0; dI < dphiCuts.size(); ++dI){
+	  jetsPerDPhi.push_back({});
+	}
+	
 	for(unsigned int jI = 0; jI < goodJetPts.size(); ++jI){
 	  double deltaPhi = TMath::Abs(getDPHI(goodPhotonPhis[pI], goodJetPhis[jI]));
 
 	  double deltaR = getDR(goodPhotonEtas[pI], goodPhotonPhis[pI], goodJetEtas[jI], goodJetPhis[jI]);
 	  if(deltaR < 0.4) continue;
+	  
 
 	  for(unsigned dI = 0; dI < dphiCuts.size(); ++dI){
 	    if(deltaPhi < dphiCuts[dI]) break;
-
+	    
+	    jetsPerDPhi[dI].push_back(goodJetPts[jI]);
 	    jetPtPerGammaPtDPhi_h[gI][dI]->Fill(goodJetPts[jI]);
 	  }
 	}
+     
+	for(unsigned dI = 0; dI < dphiCuts.size(); ++dI){
+	  for(Int_t jI = 0; jI < nTwoJetPtBins; ++jI){
+	    Int_t counter = 0;
+	    
+	    for(unsigned int dI2 = 0; dI2 < jetsPerDPhi[dI].size(); ++dI2){
+	      if(jetsPerDPhi[dI][dI2] >= twoJetPtBins[jI]) ++counter;
+	    }
+
+	    if(counter >= 2){
+	      for(unsigned int dI2 = 0; dI2 < jetsPerDPhi[dI].size(); ++dI2){
+		jetPtPerGammaPtDPhi_TwoJets_h[gI][dI][jI]->Fill(jetsPerDPhi[dI][dI2]);
+	      }
+	    }
+	  }
+	}	 
       }
     }
 
@@ -268,6 +309,13 @@ int gdjNTupleToSignalHist(std::string inConfigFileName)
       
       jetPtPerGammaPtDPhi_h[gI][dI]->Write("", TObject::kOverwrite);
       delete jetPtPerGammaPtDPhi_h[gI][dI];
+
+      for(Int_t jI = 0; jI < nJetPtBins; ++jI){
+	jetPtPerGammaPtDPhi_TwoJets_h[gI][dI][jI]->Scale(1./(double)nGammaPerMinPt[gI]);
+
+	jetPtPerGammaPtDPhi_TwoJets_h[gI][dI][jI]->Write("", TObject::kOverwrite);
+	delete jetPtPerGammaPtDPhi_TwoJets_h[gI][dI][jI];	
+      }
     }
   }
 
