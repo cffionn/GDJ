@@ -91,9 +91,21 @@ int gdjPlotSignalHist(std::string inConfigFileName)
   std::vector<std::string> reqFileParams = {"NGAMMAPTBINS",
 					    "GAMMAPTBINSLOW",
 					    "GAMMAPTBINSHIGH",
-					    "NDPHICUTS"};
+					    "NDPHICUTS",
+					    "NTWOJETPTBINS",
+					    "TWOJETPTBINSLOW",
+					    "TWOJETPTBINSHIGH",
+					    "JETR"};
 
   if(!checkEnvForParams(fileConfig_p, reqFileParams)) return 1;
+
+  const int jetR = fileConfig_p->GetValue("JETR", 4);
+  if(jetR != 2 && jetR != 4){
+    std::cout << "Given parameter jetR, \'" << jetR << "\' is not \'2\' or \'4\\
+'. return 1" << std::endl;
+    return 1;
+  }
+  const std::string jetRStr = prettyString(((double)jetR)/10., 1, false);
 
   const Int_t nMaxBins = 500;
   const Int_t nGammaPtBins = fileConfig_p->GetValue("NGAMMAPTBINS", -1);
@@ -102,6 +114,12 @@ int gdjPlotSignalHist(std::string inConfigFileName)
   Double_t gammaPtBins[nMaxBins+1];
   getLinBins(gammaPtBinsLow, gammaPtBinsHigh, nGammaPtBins, gammaPtBins);
 
+  const Int_t nTwoJetPtBins = fileConfig_p->GetValue("NTWOJETPTBINS", -1);
+  const Float_t twoJetPtBinsLow = fileConfig_p->GetValue("TWOJETPTBINSLOW", -1);
+  const Float_t twoJetPtBinsHigh = fileConfig_p->GetValue("TWOJETPTBINSHIGH", -1);
+  Double_t twoJetPtBins[nMaxBins+1];
+  getLinBins(twoJetPtBinsLow, twoJetPtBinsHigh, nTwoJetPtBins, twoJetPtBins);
+  
   const Int_t nDPhiCuts = fileConfig_p->GetValue("NDPHICUTS", 0);
 
   std::vector<std::string> dphiLabels;
@@ -174,13 +192,146 @@ int gdjPlotSignalHist(std::string inConfigFileName)
     std::string gIStr = std::to_string(gI);
     if(gI < 10) gIStr = "0" + gIStr;
     
-    std::string saveName = "pdfDir/" + dateStr + "/jetPtPerGammaPtDPhi_GammaPt" + gIStr + "_" + dateStr + ".pdf";
+    std::string saveName = "pdfDir/" + dateStr + "/jetPtPerGammaPtDPhi_GammaPt" + gIStr + "_R" + std::to_string(jetR) + "_" + dateStr + ".pdf";
     quietSaveAs(canv_p, saveName);
 
     delete leg_p;
     delete canv_p;
   }
-  
+
+
+  for(Int_t gI = 0; gI < nGammaPtBins; ++gI){
+    for(Int_t jI = 0; jI < nTwoJetPtBins; ++jI){
+      TCanvas* canv_p = new TCanvas("canv_p", "", 450, 450);
+      canv_p->SetTopMargin(0.02);
+      canv_p->SetRightMargin(0.02);
+      canv_p->SetBottomMargin(0.15);
+      canv_p->SetLeftMargin(0.15);
+      
+      TLegend* leg_p = new TLegend(signalJtPtLegX, signalJtPtLegY - 0.063*(double)dphiLabels.size(), signalJtPtLegX + 0.25, signalJtPtLegY);
+      leg_p->SetTextFont(titleFont);
+      leg_p->SetTextSize(titleSizeX);
+      leg_p->SetBorderSize(0);
+      leg_p->SetFillColor(0);
+      leg_p->SetFillStyle(0);
+      
+      std::vector<TH1F*> hists_p;
+      hists_p.reserve(nDPhiCuts);
+      for(Int_t dI = 0; dI < nDPhiCuts; ++dI){
+	hists_p.push_back((TH1F*)inFile_p->Get(("jetPtPerGammaPtDPhi_GammaPt" + std::to_string(gI) + "_DPhi" + std::to_string(dI) + "_JetPt" + std::to_string(jI) + "_TwoJets_h").c_str()));
+	
+	hists_p[dI]->SetMarkerSize(sizes[dI]);
+	hists_p[dI]->SetMarkerStyle(styles[dI]);
+	hists_p[dI]->SetMarkerColor(colors[dI]);
+	hists_p[dI]->SetLineColor(colors[dI]);
+	
+	leg_p->AddEntry(hists_p[dI], dphiLabels[dI].c_str(), "P L");
+	
+	hists_p[dI]->SetMinimum(signalJtPtYMin);
+	hists_p[dI]->SetMaximum(signalJtPtYMax);
+
+	hists_p[dI]->GetXaxis()->SetTitleSize(titleSizeX);
+	hists_p[dI]->GetYaxis()->SetTitleSize(titleSizeY);
+	hists_p[dI]->GetXaxis()->SetLabelSize(labelSizeX);
+	hists_p[dI]->GetYaxis()->SetLabelSize(labelSizeY);
+	
+	hists_p[dI]->GetXaxis()->SetNdivisions(505);
+	hists_p[dI]->GetYaxis()->SetNdivisions(505);
+	
+	if(dI == 0) hists_p[dI]->DrawCopy("HIST E1 P");
+	else hists_p[dI]->DrawCopy("HIST E1 P SAME");
+      }
+
+      std::vector<std::string> tempLabels = globalLabels;
+      tempLabels.push_back("p_{T}^{#gamma} > " + prettyString(gammaPtBins[gI], 1, false));
+      tempLabels.push_back("2 jets p_{T} > " + prettyString(twoJetPtBins[jI], 1, false));
+      for(unsigned int gI = 0; gI < tempLabels.size(); ++gI){
+	label_p->DrawLatex(signalJtPtLabelX, signalJtPtLabelY - gI*0.055, tempLabels[gI].c_str());
+      }
+               
+      gStyle->SetOptStat(0);
+      leg_p->Draw("SAME");
+      
+      std::string gIStr = std::to_string(gI);
+      if(gI < 10) gIStr = "0" + gIStr;
+
+      std::string jIStr = std::to_string(jI);
+      if(jI < 10) jIStr = "0" + jIStr;
+      
+      std::string saveName = "pdfDir/" + dateStr + "/jetPtPerGammaPtDPhi_GammaPt" + gIStr + "_JetPt" + jIStr + "_TwoJets_R" + std::to_string(jetR) + "_" + dateStr + ".pdf";
+      quietSaveAs(canv_p, saveName);
+      
+      delete leg_p;
+      delete canv_p;
+    }
+  }
+
+  for(Int_t gI = 0; gI < nGammaPtBins; ++gI){
+    for(Int_t jI = 0; jI < nTwoJetPtBins; ++jI){
+      TCanvas* canv_p = new TCanvas("canv_p", "", 450, 450);
+      canv_p->SetTopMargin(0.02);
+      canv_p->SetRightMargin(0.02);
+      canv_p->SetBottomMargin(0.15);
+      canv_p->SetLeftMargin(0.15);
+      
+      TLegend* leg_p = new TLegend(signalJtPtLegX, signalJtPtLegY - 0.063*(double)dphiLabels.size(), signalJtPtLegX + 0.25, signalJtPtLegY);
+      leg_p->SetTextFont(titleFont);
+      leg_p->SetTextSize(titleSizeX);
+      leg_p->SetBorderSize(0);
+      leg_p->SetFillColor(0);
+      leg_p->SetFillStyle(0);
+      
+      std::vector<TH1F*> hists_p;
+      hists_p.reserve(nDPhiCuts);
+      for(Int_t dI = 0; dI < nDPhiCuts; ++dI){
+	hists_p.push_back((TH1F*)inFile_p->Get(("jetVectPtPerGammaPtDPhi_GammaPt" + std::to_string(gI) + "_DPhi" + std::to_string(dI) + "_JetPt" + std::to_string(jI) + "_TwoJets_h").c_str()));
+	
+	hists_p[dI]->SetMarkerSize(sizes[dI]);
+	hists_p[dI]->SetMarkerStyle(styles[dI]);
+	hists_p[dI]->SetMarkerColor(colors[dI]);
+	hists_p[dI]->SetLineColor(colors[dI]);
+	
+	leg_p->AddEntry(hists_p[dI], dphiLabels[dI].c_str(), "P L");
+	
+	hists_p[dI]->SetMinimum(signalJtPtYMin);
+	hists_p[dI]->SetMaximum(signalJtPtYMax);
+
+	hists_p[dI]->GetXaxis()->SetTitleSize(titleSizeX);
+	hists_p[dI]->GetYaxis()->SetTitleSize(titleSizeY);
+	hists_p[dI]->GetXaxis()->SetLabelSize(labelSizeX);
+	hists_p[dI]->GetYaxis()->SetLabelSize(labelSizeY);
+	
+	hists_p[dI]->GetXaxis()->SetNdivisions(505);
+	hists_p[dI]->GetYaxis()->SetNdivisions(505);
+	
+	if(dI == 0) hists_p[dI]->DrawCopy("HIST E1 P");
+	else hists_p[dI]->DrawCopy("HIST E1 P SAME");
+      }
+
+      std::vector<std::string> tempLabels = globalLabels;
+      tempLabels.push_back("p_{T}^{#gamma} > " + prettyString(gammaPtBins[gI], 1, false));
+      tempLabels.push_back("2 jets p_{T} > " + prettyString(twoJetPtBins[jI], 1, false));
+      for(unsigned int gI = 0; gI < tempLabels.size(); ++gI){
+	label_p->DrawLatex(signalJtPtLabelX, signalJtPtLabelY - gI*0.055, tempLabels[gI].c_str());
+      }
+               
+      gStyle->SetOptStat(0);
+      leg_p->Draw("SAME");
+      
+      std::string gIStr = std::to_string(gI);
+      if(gI < 10) gIStr = "0" + gIStr;
+
+      std::string jIStr = std::to_string(jI);
+      if(jI < 10) jIStr = "0" + jIStr;
+      
+      std::string saveName = "pdfDir/" + dateStr + "/jetVectPtPerGammaPtDPhi_GammaPt" + gIStr + "_JetPt" + jIStr + "_TwoJets_R" + std::to_string(jetR) + "_" + dateStr + ".pdf";
+      quietSaveAs(canv_p, saveName);
+      
+      delete leg_p;
+      delete canv_p;
+    }
+  }
+
   inFile_p->Close();
   delete inFile_p;
   delete inConfig_p;
