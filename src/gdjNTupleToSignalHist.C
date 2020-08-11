@@ -46,6 +46,9 @@ int gdjNTupleToSignalHist(std::string inConfigFileName)
                                         "NJETPTBINS",
                                         "JETPTBINSLOW",
                                         "JETPTBINSHIGH",
+                                        "NVECTJETPTBINS",
+                                        "VECTJETPTBINSLOW",
+                                        "VECTJETPTBINSHIGH",
                                         "NTWOJETPTBINS",
                                         "TWOJETPTBINSLOW",
                                         "TWOJETPTBINSHIGH",
@@ -76,6 +79,10 @@ int gdjNTupleToSignalHist(std::string inConfigFileName)
   const Int_t nJetPtBins = inConfig_p->GetValue("NJETPTBINS", 20);
   const Float_t jetPtBinsLow = inConfig_p->GetValue("JETPTBINSLOW", 30);
   const Float_t jetPtBinsHigh = inConfig_p->GetValue("JETPTBINSHIGH", 50);
+
+  const Int_t nVectJetPtBins = inConfig_p->GetValue("NVECTJETPTBINS", 20);
+  const Float_t vectJetPtBinsLow = inConfig_p->GetValue("VECTJETPTBINSLOW", 30);
+  const Float_t vectJetPtBinsHigh = inConfig_p->GetValue("VECTJETPTBINSHIGH", 50);
 
   const Int_t nTwoJetPtBins = inConfig_p->GetValue("NTWOJETPTBINS", 20);
   const Float_t twoJetPtBinsLow = inConfig_p->GetValue("TWOJETPTBINSLOW", 30);
@@ -128,6 +135,9 @@ int gdjNTupleToSignalHist(std::string inConfigFileName)
   Double_t jetPtBins[nMaxBins+1];
   getLinBins(jetPtBinsLow, jetPtBinsHigh, nJetPtBins, jetPtBins);
 
+  Double_t vectJetPtBins[nMaxBins+1];
+  getLinBins(vectJetPtBinsLow, vectJetPtBinsHigh, nVectJetPtBins, vectJetPtBins);
+
   Double_t twoJetPtBins[nMaxBins+1];
   getLinBins(twoJetPtBinsLow, twoJetPtBinsHigh, nTwoJetPtBins, twoJetPtBins);
   
@@ -154,7 +164,7 @@ int gdjNTupleToSignalHist(std::string inConfigFileName)
       for(int jI = 0; jI < nTwoJetPtBins; ++jI){
 	const std::string jStr = "JetPt" + std::to_string(jI);
 	jetPtPerGammaPtDPhi_TwoJets_h[gI][dI][jI] = new TH1F(("jetPtPerGammaPtDPhi_" + gammaStr + "_" + dphiStr + "_" + jStr + "_TwoJets_h").c_str(), (";Reco. Jet p_{T} [GeV];N_{Jet,R=" + jetRStr+ "}/N_{#gamma}").c_str(), nJetPtBins, jetPtBins);
-	jetVectPtPerGammaPtDPhi_TwoJets_h[gI][dI][jI] = new TH1F(("jetVectPtPerGammaPtDPhi_" + gammaStr + "_" + dphiStr + "_" + jStr + "_TwoJets_h").c_str(), (";Reco. Jet #Sigma #vec{p}_{T} [GeV];N_{Jet,R=" + jetRStr+ "}/N_{#gamma}").c_str(), nJetPtBins, jetPtBins);
+	jetVectPtPerGammaPtDPhi_TwoJets_h[gI][dI][jI] = new TH1F(("jetVectPtPerGammaPtDPhi_" + gammaStr + "_" + dphiStr + "_" + jStr + "_TwoJets_h").c_str(), (";Reco. Jet #Sigma #vec{p}_{T} [GeV];N_{Jet,R=" + jetRStr+ "}/N_{#gamma}").c_str(), nVectJetPtBins, vectJetPtBins);
 
 	setSumW2({jetPtPerGammaPtDPhi_TwoJets_h[gI][dI][jI], jetVectPtPerGammaPtDPhi_TwoJets_h[gI][dI][jI]});
       }
