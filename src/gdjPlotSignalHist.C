@@ -48,7 +48,13 @@ int gdjPlotSignalHist(std::string inConfigFileName)
 					"SIGNALJTPTLABELX",
 					"SIGNALJTPTLABELY",
 					"SIGNALJTPTLEGX",
-					"SIGNALJTPTLEGY"};
+					"SIGNALJTPTLEGY",
+					"SIGNALVECTJTPTYMIN",
+					"SIGNALVECTJTPTYMAX",
+					"SIGNALVECTJTPTLABELX",
+					"SIGNALVECTJTPTLABELY",
+					"SIGNALVECTJTPTLEGX",
+					"SIGNALVECTJTPTLEGY"};
 
   if(!checkEnvForParams(inConfig_p, reqParams)) return 1;
 
@@ -64,6 +70,13 @@ int gdjPlotSignalHist(std::string inConfigFileName)
   const Double_t signalJtPtLabelY = inConfig_p->GetValue("SIGNALJTPTLABELY", -1.0);
   const Double_t signalJtPtLegX = inConfig_p->GetValue("SIGNALJTPTLEGX", -1.0);
   const Double_t signalJtPtLegY = inConfig_p->GetValue("SIGNALJTPTLEGY", -1.0);
+
+  const Double_t signalVectJtPtYMin = inConfig_p->GetValue("SIGNALVECTJTPTYMIN", -1.0);
+  const Double_t signalVectJtPtYMax = inConfig_p->GetValue("SIGNALVECTJTPTYMAX", 1.0);
+  const Double_t signalVectJtPtLabelX = inConfig_p->GetValue("SIGNALVECTJTPTLABELX", -1.0);
+  const Double_t signalVectJtPtLabelY = inConfig_p->GetValue("SIGNALVECTJTPTLABELY", -1.0);
+  const Double_t signalVectJtPtLegX = inConfig_p->GetValue("SIGNALVECTJTPTLEGX", -1.0);
+  const Double_t signalVectJtPtLegY = inConfig_p->GetValue("SIGNALVECTJTPTLEGY", -1.0);
   
   std::vector<std::string> globalLabels;
   for(Int_t gI = 0; gI < 20; ++gI){
@@ -274,7 +287,7 @@ int gdjPlotSignalHist(std::string inConfigFileName)
       canv_p->SetBottomMargin(0.15);
       canv_p->SetLeftMargin(0.15);
       
-      TLegend* leg_p = new TLegend(signalJtPtLegX, signalJtPtLegY - 0.063*(double)dphiLabels.size(), signalJtPtLegX + 0.25, signalJtPtLegY);
+      TLegend* leg_p = new TLegend(signalVectJtPtLegX, signalVectJtPtLegY - 0.063*(double)dphiLabels.size(), signalVectJtPtLegX + 0.25, signalVectJtPtLegY);
       leg_p->SetTextFont(titleFont);
       leg_p->SetTextSize(titleSizeX);
       leg_p->SetBorderSize(0);
@@ -293,8 +306,8 @@ int gdjPlotSignalHist(std::string inConfigFileName)
 	
 	leg_p->AddEntry(hists_p[dI], dphiLabels[dI].c_str(), "P L");
 	
-	hists_p[dI]->SetMinimum(signalJtPtYMin);
-	hists_p[dI]->SetMaximum(signalJtPtYMax);
+	hists_p[dI]->SetMinimum(signalVectJtPtYMin);
+	hists_p[dI]->SetMaximum(signalVectJtPtYMax);
 
 	hists_p[dI]->GetXaxis()->SetTitleSize(titleSizeX);
 	hists_p[dI]->GetYaxis()->SetTitleSize(titleSizeY);
@@ -312,7 +325,7 @@ int gdjPlotSignalHist(std::string inConfigFileName)
       tempLabels.push_back("p_{T}^{#gamma} > " + prettyString(gammaPtBins[gI], 1, false));
       tempLabels.push_back("2 jets p_{T} > " + prettyString(twoJetPtBins[jI], 1, false));
       for(unsigned int gI = 0; gI < tempLabels.size(); ++gI){
-	label_p->DrawLatex(signalJtPtLabelX, signalJtPtLabelY - gI*0.055, tempLabels[gI].c_str());
+	label_p->DrawLatex(signalVectJtPtLabelX, signalVectJtPtLabelY - gI*0.055, tempLabels[gI].c_str());
       }
                
       gStyle->SetOptStat(0);
