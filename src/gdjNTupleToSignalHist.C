@@ -8,6 +8,7 @@
 //ROOT
 #include "TEnv.h"
 #include "TFile.h"
+#include "TLorentzVector.h"
 #include "TTree.h"
 
 //Local
@@ -17,6 +18,7 @@
 #include "include/getLinBins.h"
 #include "include/ghostUtil.h"
 #include "include/globalDebugHandler.h"
+#include "include/histDefUtility.h"
 #include "include/photonUtil.h"
 #include "include/plotUtilities.h"
 #include "include/stringUtil.h"
@@ -90,7 +92,7 @@ int gdjNTupleToSignalHist(std::string inConfigFileName)
   const std::string jetRStr = prettyString(((double)jetR)/10., 1, false);
 
   const Int_t nMaxBins = 500;
-  const Int_t nMaxBinsHist = 100;
+  const Int_t nMaxBinsHist = 50;
 
   if(nGammaPtBins > nMaxBins){
     std::cout << "REQUESTED NGAMMAPTBINS \'" << nGammaPtBins << "\' EXCEEDS MAX BINS \'" << nMaxBins << "\'. Either expand max bins or reduce request. return 1" << std::endl;
@@ -133,6 +135,11 @@ int gdjNTupleToSignalHist(std::string inConfigFileName)
   std::vector<unsigned long long> nGammaPerMinPt;
   TH1F* jetPtPerGammaPtDPhi_h[nMaxBinsHist][nMaxBinsHist];
   TH1F* jetPtPerGammaPtDPhi_TwoJets_h[nMaxBinsHist][nMaxBinsHist][nMaxBinsHist];
+  TH1F* jetVectPtPerGammaPtDPhi_TwoJets_h[nMaxBinsHist][nMaxBinsHist][nMaxBinsHist];
+
+  if(nMaxBinsHist < nGammaPtBins) return 1;
+  if(nMaxBinsHist < (int)dphiCuts.size()) return 1;
+  if(nMaxBinsHist < nTwoJetPtBins) return 1;
 
   for(Int_t gI = 0; gI < nGammaPtBins; ++gI){
     const std::string gammaStr = "GammaPt" + std::to_string(gI);
@@ -147,8 +154,9 @@ int gdjNTupleToSignalHist(std::string inConfigFileName)
       for(int jI = 0; jI < nTwoJetPtBins; ++jI){
 	const std::string jStr = "JetPt" + std::to_string(jI);
 	jetPtPerGammaPtDPhi_TwoJets_h[gI][dI][jI] = new TH1F(("jetPtPerGammaPtDPhi_" + gammaStr + "_" + dphiStr + "_" + jStr + "_TwoJets_h").c_str(), (";Reco. Jet p_{T} [GeV];N_{Jet,R=" + jetRStr+ "}/N_{#gamma}").c_str(), nJetPtBins, jetPtBins);
+	jetVectPtPerGammaPtDPhi_TwoJets_h[gI][dI][jI] = new TH1F(("jetVectPtPerGammaPtDPhi_" + gammaStr + "_" + dphiStr + "_" + jStr + "_TwoJets_h").c_str(), (";Reco. Jet #Sigma #vec{p}_{T} [GeV];N_{Jet,R=" + jetRStr+ "}/N_{#gamma}").c_str(), nJetPtBins, jetPtBins);
 
-	jetPtPerGammaPtDPhi_TwoJets_h[gI][dI][jI]->Sumw2();
+	setSumW2({jetPtPerGammaPtDPhi_TwoJets_h[gI][dI][jI], jetVectPtPerGammaPtDPhi_TwoJets_h[gI][dI][jI]});
       }
     }
   }
@@ -257,7 +265,7 @@ int gdjNTupleToSignalHist(std::string inConfigFileName)
 
 	++(nGammaPerMinPt[gI]);
 
-	std::vector<std::vector<double> > jetsPerDPhi;
+	std::vector<std::vector<TLorentzVector> > jetsPerDPhi;
 	for(unsigned dI = 0; dI < dphiCuts.size(); ++dI){
 	  jetsPerDPhi.push_back({});
 	}
@@ -271,8 +279,11 @@ int gdjNTupleToSignalHist(std::string inConfigFileName)
 
 	  for(unsigned dI = 0; dI < dphiCuts.size(); ++dI){
 	    if(deltaPhi < dphiCuts[dI]) break;
+
+	    TLorentzVector tL;
+	    tL.SetPtEtaPhiM(goodJetPts[jI], goodJetEtas[jI], goodJetPhis[jI], 0.0);
 	    
-	    jetsPerDPhi[dI].push_back(goodJetPts[jI]);
+	    jetsPerDPhi[dI].push_back(tL);
 	    jetPtPerGammaPtDPhi_h[gI][dI]->Fill(goodJetPts[jI]);
 	  }
 	}
@@ -282,13 +293,19 @@ int gdjNTupleToSignalHist(std::string inConfigFileName)
 	    Int_t counter = 0;
 	    
 	    for(unsigned int dI2 = 0; dI2 < jetsPerDPhi[dI].size(); ++dI2){
-	      if(jetsPerDPhi[dI][dI2] >= twoJetPtBins[jI]) ++counter;
+	      if(jetsPerDPhi[dI][dI2].Pt() >= twoJetPtBins[jI]) ++counter;
 	    }
 
 	    if(counter >= 2){
+	      TLorentzVector tL;
+	      tL.SetPtEtaPhiM(0,0,0,0);
+
 	      for(unsigned int dI2 = 0; dI2 < jetsPerDPhi[dI].size(); ++dI2){
-		jetPtPerGammaPtDPhi_TwoJets_h[gI][dI][jI]->Fill(jetsPerDPhi[dI][dI2]);
+		tL += jetsPerDPhi[dI][dI2];
+		jetPtPerGammaPtDPhi_TwoJets_h[gI][dI][jI]->Fill(jetsPerDPhi[dI][dI2].Pt());
 	      }
+
+	      jetVectPtPerGammaPtDPhi_TwoJets_h[gI][dI][jI]->Fill(tL.Pt());
 	    }
 	  }
 	}	 
@@ -315,6 +332,11 @@ int gdjNTupleToSignalHist(std::string inConfigFileName)
 
 	jetPtPerGammaPtDPhi_TwoJets_h[gI][dI][jI]->Write("", TObject::kOverwrite);
 	delete jetPtPerGammaPtDPhi_TwoJets_h[gI][dI][jI];	
+
+	jetVectPtPerGammaPtDPhi_TwoJets_h[gI][dI][jI]->Scale(1./(double)nGammaPerMinPt[gI]);
+
+	jetVectPtPerGammaPtDPhi_TwoJets_h[gI][dI][jI]->Write("", TObject::kOverwrite);
+	delete jetVectPtPerGammaPtDPhi_TwoJets_h[gI][dI][jI];	
       }
     }
   }
