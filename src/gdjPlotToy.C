@@ -45,6 +45,7 @@ int gdjPlotToy(std::string inConfigFileName)
   
   TEnv* inConfig_p = new TEnv(inConfigFileName.c_str());
   std::vector<std::string> reqParams = {"INFILENAME",
+					"GLOBALTAG",
 					"MIXEDYMIN",
 					"MIXEDYMAX",
 					"MIXEDYRATMIN",
@@ -61,6 +62,8 @@ int gdjPlotToy(std::string inConfigFileName)
   const std::string inFileName = inConfig_p->GetValue("INFILENAME", "");
   if(!check.checkFileExt(inFileName, ".root")) return 1;
 
+  const std::string globalTag = inConfig_p->GetValue("GLOBALTAG", "");
+  
   const double mixedYMin = inConfig_p->GetValue("MIXEDYMIN", 100.0);
   const double mixedYMax = inConfig_p->GetValue("MIXEDYMAX", -1.0);
   const double mixedYRatMin = inConfig_p->GetValue("MIXEDYRATMIN", 100.0);
@@ -82,6 +85,14 @@ int gdjPlotToy(std::string inConfigFileName)
   check.doCheckMakeDir("pdfDir/" + dateStr);
 
   TFile* inFile_p = new TFile(inFileName.c_str(), "READ");
+  TEnv* fileConfig_p = (TEnv*)inFile_p->Get("config");
+  std::vector<std::string> fileReqParams = {"NEVT"};
+  if(!checkEnvForParams(fileConfig_p, fileReqParams)) return 1;
+
+  const ULong64_t nEvt = fileConfig_p->GetValue("NEVT", 0);
+
+  globalLabels.push_back(prettyStringE(nEvt,1,false) + " Toys");
+  
   std::vector<std::string> histNames = {"gammaHist_h",
 					"jet1Hist_h", 
 					"jet2Hist_h",
@@ -97,7 +108,7 @@ int gdjPlotToy(std::string inConfigFileName)
 
   const double topMargin = 0.04;
   const double rightMargin = topMargin;
-  const double leftMargin = 0.14;
+  const double leftMargin = 0.16;
   const double bottomMargin = leftMargin;
   const double tinyMargin = 0.000001;
 
@@ -136,7 +147,10 @@ int gdjPlotToy(std::string inConfigFileName)
     hist_p->GetYaxis()->SetTitleSize(titleSizeY);
     hist_p->GetXaxis()->SetLabelSize(labelSizeX);
     hist_p->GetYaxis()->SetLabelSize(labelSizeY);
-        
+
+    hist_p->GetXaxis()->SetTitleOffset(1.2);
+    hist_p->GetYaxis()->SetTitleOffset(1.2);
+    
     hist_p->DrawCopy("HIST E1 P");
     
     gStyle->SetOptStat(0);
@@ -218,9 +232,7 @@ int gdjPlotToy(std::string inConfigFileName)
   signalAndBkgdHist_p->SetMarkerColor(colors[2]);
   signalAndBkgdHist_p->SetLineColor(colors[2]);
 
-  mixedHist_p->GetYaxis()->SetTitle("Counts");
-  std::cout << "OFFSET: " << mixedHist_p->GetYaxis()->GetTitleOffset() << std::endl;
-  mixedHist_p->GetYaxis()->SetTitleOffset(1.2);
+  mixedHist_p->GetYaxis()->SetTitleOffset(1.05);
   
   mixedHist_p->SetMinimum(mixedYMin);
   mixedHist_p->SetMaximum(mixedYMax);
@@ -231,7 +243,7 @@ int gdjPlotToy(std::string inConfigFileName)
 
   label_p->SetTextSize(titleSizeX/(1.0 - padSplit));
   for(unsigned int gI = 0; gI < globalLabels.size(); ++gI){
-    label_p->DrawLatex(mixedLabelX, mixedLabelY - gI*0.055, globalLabels[gI].c_str());
+    label_p->DrawLatex(mixedLabelX, mixedLabelY - gI*0.08, globalLabels[gI].c_str());
   }
 
   leg_p->AddEntry(mixedHist_p, "Mixed Event", "P L");
@@ -257,14 +269,15 @@ int gdjPlotToy(std::string inConfigFileName)
   bkgdHist_p->Divide(mixedHist_p);
   bkgdHist_p->GetYaxis()->SetNdivisions(505);
   bkgdHist_p->GetYaxis()->SetTitle("Ratio");
-  bkgdHist_p->GetYaxis()->SetTitleOffset(1.2*padSplit/(1.0 - padSplit));
+  bkgdHist_p->GetYaxis()->SetTitleOffset(1.05*padSplit/(1.0 - padSplit));
+  bkgdHist_p->GetXaxis()->SetTitleOffset(1.05);
 
   bkgdHist_p->SetMinimum(mixedYRatMin);
   bkgdHist_p->SetMaximum(mixedYRatMax);
 
   bkgdHist_p->DrawCopy("HIST E1 P");
   
-  std::string saveName = "pdfDir/" + dateStr + "/mixedEventToy_" + dateStr + ".pdf";
+  std::string saveName = "pdfDir/" + dateStr + "/mixedEventToy_" + globalTag + "_" + dateStr + ".pdf";
   quietSaveAs(canv_p, saveName);
   delete pads_p[0];
   delete pads_p[1];
