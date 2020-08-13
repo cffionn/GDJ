@@ -369,6 +369,8 @@ int gdjPlotMBHist(std::string inConfigFileName)
     inHist_p->Scale(phiFractions[0]/phiFractions[phiFractions.size()-1]);
     
     leg_p->Draw("SAME");
+
+    //    label_p->SetTitleSize(titleSizeX/(1.0 - padSplit));
     
     std::vector<std::string> tempLabels = globalLabels;
     tempLabels.push_back("#bf{" + std::to_string((int)centBins[cI]) + "-" + std::to_string((int)centBins[cI+1]) + "%}");

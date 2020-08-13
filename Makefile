@@ -28,7 +28,7 @@ MKDIR_OBJ=mkdir -p $(GDJDIR)/obj
 MKDIR_OUTPUT=mkdir -p $(GDJDIR)/output
 MKDIR_PDF=mkdir -p $(GDJDIR)/pdfDir
 
-all: mkdirBin mkdirLib mkdirObj mkdirOutput mkdirPdf obj/centralityFromInput.o obj/checkMakeDir.o obj/configParser.o obj/globalDebugHandler.o obj/keyHandler.o obj/sampleHandler.o lib/libATLASGDJ.so bin/gdjNtuplePreProc.exe bin/gdjNTupleToHist.exe bin/gdjNTupleToMBHist.exe bin/gdjHistDumper.exe bin/gdjGammaJetResponsePlot.exe bin/gdjMixedEventPlotter.exe bin/gdjResponsePlotter.exe bin/gdjDataMCRawPlotter.exe bin/grlToTex.exe bin/testKeyHandler.exe bin/testSampleHandler.exe bin/gdjPlotMBHist.exe  bin/gdjNTupleToSignalHist.exe bin/gdjPlotSignalHist.exe
+all: mkdirBin mkdirLib mkdirObj mkdirOutput mkdirPdf obj/centralityFromInput.o obj/checkMakeDir.o obj/configParser.o obj/globalDebugHandler.o obj/keyHandler.o obj/sampleHandler.o lib/libATLASGDJ.so bin/gdjNtuplePreProc.exe bin/gdjNTupleToHist.exe bin/gdjNTupleToMBHist.exe bin/gdjHistDumper.exe bin/gdjGammaJetResponsePlot.exe bin/gdjMixedEventPlotter.exe bin/gdjResponsePlotter.exe bin/gdjDataMCRawPlotter.exe bin/grlToTex.exe bin/testKeyHandler.exe bin/testSampleHandler.exe bin/gdjPlotMBHist.exe  bin/gdjNTupleToSignalHist.exe bin/gdjPlotSignalHist.exe bin/gdjToyMultiMix.exe bin/gdjPlotToy.exe
 
 mkdirBin:
 	$(MKDIR_BIN)
@@ -107,6 +107,12 @@ bin/testKeyHandler.exe: src/testKeyHandler.C
 
 bin/testSampleHandler.exe: src/testSampleHandler.C
 	$(CXX) $(CXXFLAGS) src/testSampleHandler.C -o bin/testSampleHandler.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
+
+bin/gdjToyMultiMix.exe: src/gdjToyMultiMix.C
+	$(CXX) $(CXXFLAGS) src/gdjToyMultiMix.C -o bin/gdjToyMultiMix.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
+
+bin/gdjPlotToy.exe: src/gdjPlotToy.C
+	$(CXX) $(CXXFLAGS) src/gdjPlotToy.C -o bin/gdjPlotToy.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
 
 clean:
 	rm -f ./*~
