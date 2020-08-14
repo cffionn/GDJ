@@ -12,6 +12,8 @@
 #include "TH1F.h"
 #include "TLatex.h"
 #include "TLegend.h"
+#include "TLine.h"
+#include "TPad.h"
 #include "TStyle.h"
 
 //Local
@@ -33,6 +35,9 @@ int gdjPlotToy(std::string inConfigFileName)
   const int nSizes = 15;
   const double sizes[nSizes] = {1,1,1.6,1.2,1.6,1,1,1,1.6,1,1,1,1,1.6,1.2};
 
+  const int nAlphas = 15;
+  const double alphas[nAlphas] = {0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8};
+
   globalDebugHandler gBug;
   const bool doGlobalDebug = gBug.GetDoGlobalDebug();
 
@@ -53,7 +58,17 @@ int gdjPlotToy(std::string inConfigFileName)
 					"MIXEDLABELX",
 					"MIXEDLABELY",
 					"MIXEDLEGX",
-					"MIXEDLEGY"};  
+					"MIXEDLEGY",
+					"SPECYMIN",
+					"SPECYMAX",
+					"SPECYDOLOG",
+					"SPECYRATMIN",
+					"SPECYRATMAX",
+					"SPECYRATDOLOG",
+					"SPECLABELX",
+					"SPECLABELY",
+					"SPECLEGX",
+					"SPECLEGY"};  
 
   if(!checkEnvForParams(inConfig_p, reqParams)) return 1;
 
@@ -74,6 +89,27 @@ int gdjPlotToy(std::string inConfigFileName)
   const double mixedLegX = inConfig_p->GetValue("MIXEDLEGX", 100.0);
   const double mixedLegY = inConfig_p->GetValue("MIXEDLEGY", 100.0);
 
+  const double specYMin = inConfig_p->GetValue("SPECYMIN", 100.0);
+  const double specYMax = inConfig_p->GetValue("SPECYMAX", -1.0);
+  const bool specYDoLog = inConfig_p->GetValue("SPECYDOLOG", 0);
+  const double specYRatMin = inConfig_p->GetValue("SPECYRATMIN", 100.0);
+  const double specYRatMax = inConfig_p->GetValue("SPECYRATMAX", -1.0);
+  const bool specYRatDoLog = inConfig_p->GetValue("SPECYRATDOLOG", 0);
+
+  const double specLabelX = inConfig_p->GetValue("SPECLABELX", 100.0);
+  const double specLabelY = inConfig_p->GetValue("SPECLABELY", 100.0);
+  const double specLegX = inConfig_p->GetValue("SPECLEGX", 100.0);
+  const double specLegY = inConfig_p->GetValue("SPECLEGY", 100.0);
+
+  std::vector<std::vector<float> > specBoxes;
+  for(Int_t gI = 0; gI < 20; ++gI){
+    std::string specBoxStr = inConfig_p->GetValue(("SPECBOX." + std::to_string(gI)).c_str(), "");
+    if(specBoxStr.size() == 0) continue;
+
+    specBoxes.push_back(strToVectF(specBoxStr));
+  }
+  
+  
   std::vector<std::string> globalLabels;
   for(Int_t gI = 0; gI < 20; ++gI){
     std::string globalLabel = inConfig_p->GetValue(("GLOBALLABEL." + std::to_string(gI)).c_str(), "");
@@ -94,9 +130,11 @@ int gdjPlotToy(std::string inConfigFileName)
   globalLabels.push_back(prettyStringE(nEvt,1,false) + " Toys");
   
   std::vector<std::string> histNames = {"gammaHist_h",
+					"jetSignalHist_h",
 					"jet1Hist_h", 
 					"jet2Hist_h",
 					"jetBkgdHist_h",
+					"jetTotalHist_h",
 					"signalHist_h",
 					"bkgdHist_h", 
 					"mixedBkgdHist_h", 
@@ -108,7 +146,7 @@ int gdjPlotToy(std::string inConfigFileName)
 
   const double topMargin = 0.04;
   const double rightMargin = topMargin;
-  const double leftMargin = 0.16;
+  const double leftMargin = 0.18;
   const double bottomMargin = leftMargin;
   const double tinyMargin = 0.000001;
 
@@ -149,8 +187,8 @@ int gdjPlotToy(std::string inConfigFileName)
     hist_p->GetYaxis()->SetLabelSize(labelSizeY);
 
     hist_p->GetXaxis()->SetTitleOffset(1.2);
-    hist_p->GetYaxis()->SetTitleOffset(1.2);
-    
+    hist_p->GetYaxis()->SetTitleOffset(1.8);
+
     hist_p->DrawCopy("HIST E1 P");
     
     gStyle->SetOptStat(0);
@@ -276,6 +314,17 @@ int gdjPlotToy(std::string inConfigFileName)
   bkgdHist_p->SetMaximum(mixedYRatMax);
 
   bkgdHist_p->DrawCopy("HIST E1 P");
+
+  TLine* line_p = new TLine();
+  line_p->SetLineStyle(2);
+  line_p->SetLineWidth(2);
+
+  double lowEdge = bkgdHist_p->GetXaxis()->GetBinLowEdge(1);
+  double highEdge = bkgdHist_p->GetXaxis()->GetBinLowEdge(bkgdHist_p->GetXaxis()->GetNbins()+1);
+  line_p->DrawLine(lowEdge, 1.0, highEdge, 1.0);
+  
+  delete line_p;
+  
   
   std::string saveName = "pdfDir/" + dateStr + "/mixedEventToy_" + globalTag + "_" + dateStr + ".pdf";
   quietSaveAs(canv_p, saveName);
@@ -284,6 +333,182 @@ int gdjPlotToy(std::string inConfigFileName)
   delete canv_p;
   
   delete leg_p;
+
+
+  canv_p =  new TCanvas("canv_p", "", 450, 450);
+  canv_p->SetTopMargin(tinyMargin);
+  canv_p->SetRightMargin(tinyMargin);
+  canv_p->SetLeftMargin(tinyMargin);
+  canv_p->SetBottomMargin(tinyMargin);
+
+  leg_p = new TLegend(specLegX, specLegY - 0.063*3, specLegX + 0.25, specLegY);
+  leg_p->SetTextFont(titleFont);
+  leg_p->SetTextSize(titleSizeX/(1.0-padSplit));
+  leg_p->SetBorderSize(0);
+  leg_p->SetFillColor(0);
+  leg_p->SetFillStyle(0);
+
+  pads_p[0] = new TPad("pad0", "", 0.0, padSplit, 1.0, 1.0);
+  pads_p[0]->SetLeftMargin(leftMargin);
+  pads_p[0]->SetTopMargin(topMargin/(1.0-padSplit));
+  pads_p[0]->SetRightMargin(rightMargin);
+  pads_p[0]->SetBottomMargin(tinyMargin);
+
+  canv_p->cd();
+  pads_p[0]->Draw("SAME");
+  
+  pads_p[1] = new TPad("pad1", "", 0.0, 0.0, 1.0, padSplit);
+  pads_p[1]->SetLeftMargin(leftMargin);
+  pads_p[1]->SetTopMargin(tinyMargin);
+  pads_p[1]->SetRightMargin(rightMargin);
+  pads_p[1]->SetBottomMargin(leftMargin/padSplit);
+
+  canv_p->cd();
+  pads_p[1]->Draw("SAME");
+
+  canv_p->cd();
+  pads_p[0]->cd();
+  
+  TH1F* jetSignalHist_p = (TH1F*)inFile_p->Get("jetSignalHist_h");
+  TH1F* jet1Hist_p = (TH1F*)inFile_p->Get("jet1Hist_h");
+  TH1F* jet2Hist_p = (TH1F*)inFile_p->Get("jet2Hist_h");
+  TH1F* jetBkgdHist_p = (TH1F*)inFile_p->Get("jetBkgdHist_h");
+  TH1F* jetTotalHist_p = (TH1F*)inFile_p->Get("jetTotalHist_h");
+  
+  setSumW2({jetSignalHist_p, jet1Hist_p, jet2Hist_p, jetBkgdHist_p, jetTotalHist_p});
+  
+  jetTotalHist_p->SetMarkerStyle(styles[0]);
+  jetTotalHist_p->SetMarkerSize(sizes[0]);
+  jetTotalHist_p->SetMarkerColor(colors[0]);
+  jetTotalHist_p->SetLineColor(colors[0]);
+
+  jetTotalHist_p->GetXaxis()->SetTitleFont(titleFont);
+  jetTotalHist_p->GetYaxis()->SetTitleFont(titleFont);
+  jetTotalHist_p->GetXaxis()->SetLabelFont(titleFont);
+  jetTotalHist_p->GetYaxis()->SetLabelFont(titleFont);
+  
+  jetTotalHist_p->GetXaxis()->SetTitleSize(titleSizeX/(1.0 - padSplit));
+  jetTotalHist_p->GetYaxis()->SetTitleSize(titleSizeY/(1.0 - padSplit));
+  jetTotalHist_p->GetXaxis()->SetLabelSize(labelSizeX/(1.0 - padSplit));
+  jetTotalHist_p->GetYaxis()->SetLabelSize(labelSizeY/(1.0 - padSplit));    
+
+  /*
+  bkgdHist_p->SetMarkerStyle(styles[0]);
+  bkgdHist_p->SetMarkerSize(sizes[0]);
+  bkgdHist_p->SetMarkerColor(colors[0]);
+  bkgdHist_p->SetLineColor(colors[0]);
+
+  signalAndBkgdHist_p->SetMarkerStyle(styles[2]);
+  signalAndBkgdHist_p->SetMarkerSize(sizes[2]);
+  signalAndBkgdHist_p->SetMarkerColor(colors[2]);
+  signalAndBkgdHist_p->SetLineColor(colors[2]);
+  */
+  
+  jetTotalHist_p->GetYaxis()->SetTitleOffset(1.05);
+  
+  jetTotalHist_p->SetMinimum(specYMin);
+  jetTotalHist_p->SetMaximum(specYMax);
+
+  jetTotalHist_p->GetYaxis()->SetNdivisions(505);
+  jetTotalHist_p->DrawCopy("HIST E1 P");
+
+  jet1Hist_p->Add(jetBkgdHist_p);
+  jet1Hist_p->Add(jet2Hist_p);
+  
+  jet1Hist_p->SetMarkerStyle(styles[2]);
+  jet1Hist_p->SetMarkerSize(0.0);
+  jet1Hist_p->SetMarkerColor(colors[2]);
+  jet1Hist_p->SetLineColor(1);
+  jet1Hist_p->SetFillColorAlpha(colors[2], alphas[2]);
+  
+  jet1Hist_p->DrawCopy("HIST E1 SAME");
+
+  jet2Hist_p->Add(jetBkgdHist_p);
+  
+  jet2Hist_p->SetMarkerStyle(styles[3]);
+  jet2Hist_p->SetMarkerSize(0.0);
+  jet2Hist_p->SetMarkerColor(colors[3]);
+  jet2Hist_p->SetLineColor(1);
+  jet2Hist_p->SetFillColorAlpha(colors[3], alphas[3]);
+  
+  jet2Hist_p->DrawCopy("HIST E1 SAME");
+  
+  jetBkgdHist_p->SetMarkerStyle(styles[1]);
+  jetBkgdHist_p->SetMarkerSize(0.0);
+  jetBkgdHist_p->SetMarkerColor(colors[1]);
+  jetBkgdHist_p->SetLineColor(1);
+  jetBkgdHist_p->SetFillColorAlpha(colors[1], alphas[1]);
+  
+  jetBkgdHist_p->DrawCopy("HIST E1 SAME");
+
+  jetTotalHist_p->DrawCopy("HIST E1 P SAME");
+  
+  if(specYDoLog) gPad->SetLogy();
+
+  
+  label_p->SetTextSize(titleSizeX/(1.0 - padSplit));
+  for(unsigned int gI = 0; gI < globalLabels.size(); ++gI){
+    label_p->DrawLatex(specLabelX, specLabelY - gI*0.08, globalLabels[gI].c_str());
+  }
+
+  leg_p->AddEntry(jetTotalHist_p, "All Jets", "P L");
+  leg_p->AddEntry(jet1Hist_p, "Leading Jets", "F");
+  leg_p->AddEntry(jet2Hist_p, "Subleading Jets", "F");
+  leg_p->AddEntry(jetBkgdHist_p, "Fake Jets", "F");
+  /*
+  leg_p->AddEntry(bkgdHist_p, "Pure Bkgd", "P L");
+  leg_p->AddEntry(signalAndBkgdHist_p, "Signal+Bkgd", "P L");
+  */
+  leg_p->Draw("SAME");
+  gStyle->SetOptStat(0);
+  
+  canv_p->cd();
+  pads_p[1]->cd();
+
+  jetSignalHist_p->SetMarkerStyle(styles[0]);
+  jetSignalHist_p->SetMarkerSize(sizes[0]);
+  jetSignalHist_p->SetMarkerColor(colors[0]);
+  jetSignalHist_p->SetLineColor(colors[0]); 
+  
+  jetSignalHist_p->GetXaxis()->SetTitleFont(titleFont);
+  jetSignalHist_p->GetYaxis()->SetTitleFont(titleFont);
+  jetSignalHist_p->GetXaxis()->SetLabelFont(titleFont);
+  jetSignalHist_p->GetYaxis()->SetLabelFont(titleFont);
+  
+  jetSignalHist_p->GetXaxis()->SetTitleSize(titleSizeX/padSplit);
+  jetSignalHist_p->GetYaxis()->SetTitleSize(titleSizeY/padSplit);
+  jetSignalHist_p->GetXaxis()->SetLabelSize(labelSizeX/padSplit);
+  jetSignalHist_p->GetYaxis()->SetLabelSize(labelSizeY/padSplit);    
+  
+  jetSignalHist_p->Divide(jetBkgdHist_p);
+  jetSignalHist_p->GetYaxis()->SetNdivisions(505);
+  jetSignalHist_p->GetXaxis()->SetTitle("Reco. Jet p_{T} [GeV]");
+  jetSignalHist_p->GetYaxis()->SetTitle("Signal/Bkgd");
+  jetSignalHist_p->GetYaxis()->SetTitleOffset(1.05*padSplit/(1.0 - padSplit));
+  jetSignalHist_p->GetXaxis()->SetTitleOffset(1.05);
+
+  jetSignalHist_p->SetMinimum(specYRatMin);
+  jetSignalHist_p->SetMaximum(specYRatMax);
+
+  jetSignalHist_p->DrawCopy("HIST E1 P");
+
+  if(specYRatDoLog) gPad->SetLogy();
+
+  canv_p->cd();
+
+  for(unsigned int sI = 0; sI < specBoxes.size(); ++sI){
+    drawWhiteBoxNDC(canv_p, specBoxes[sI][0], specBoxes[sI][1], specBoxes[sI][2], specBoxes[sI][3]);
+  }
+  
+  saveName = "pdfDir/" + dateStr + "/jetSpectraToy_" + globalTag + "_" + dateStr + ".pdf";
+  quietSaveAs(canv_p, saveName);
+  delete pads_p[0];
+  delete pads_p[1];
+  delete canv_p;
+  
+  delete leg_p;
+
+
   delete label_p;
   
   inFile_p->Close();

@@ -51,9 +51,12 @@ int gdjToyMultiMix(std::string inConfigFileName)
   TFile* outFile_p = new TFile(outFileName.c_str(), "RECREATE");  
   
   TH1F* gammaHist_p = new TH1F("gammaHist_h", ";#gamma p_{T} [GeV];#frac{1}{N_{#gamma}} #frac{dN_{#gamma}}{dp_{T}^{#gamma}}", 60, 60, 120);
+  TH1F* jetSignalHist_p = new TH1F("jetSignalHist_h", ";Signal Jet p_{T} [GeV];#frac{1}{N_{#gamma}} #frac{dN_{Signal}}{dp_{T}^{Signal}}", 120, 0, 120);
   TH1F* jet1Hist_p = new TH1F("jet1Hist_h", ";Leading Jet p_{T} [GeV];#frac{1}{N_{#gamma}} #frac{dN_{Leading}}{dp_{T}^{Leading}}", 120, 0, 120);
   TH1F* jet2Hist_p = new TH1F("jet2Hist_h", ";Subleading Jet p_{T} [GeV];#frac{1}{N_{#gamma}} #frac{dN_{Subleading}}{dp_{T}^{Subleading}}", 120, 0, 120);
   TH1F* jetBkgdHist_p = new TH1F("jetBkgdHist_h", ";Background Jet p_{T} [GeV];#frac{1}{N_{#gamma}} #frac{dN_{Fake Jet}}{dp_{T}^{Fake Jet}}", 120, 0, 120);
+
+  TH1F* jetTotalHist_p = new TH1F("jetTotalHist_h", ";All Jet p_{T} [GeV];#frac{1}{N_{#gamma}} #frac{dN_{Jet}}{dp_{T}^{Jet}}", 120, 0, 120);
   
   TH1F* signalHist_p = new TH1F("signalHist_h", ";#vec{x}_{JJ#gamma}=(#Sigma #vec{p}_{Dijet})_{T}/#gamma p_{T};#frac{1}{N_{#gamma}} #frac{dN}{d#vec{x}_{JJ#gamma}}", 40, 0, 2.0);
   TH1F* bkgdHist_p = new TH1F("bkgdHist_h", ";#vec{x}_{JJ#gamma}=(#Sigma #vec{p}_{Dijet})_{T}/#gamma p_{T};#frac{1}{N_{#gamma}} #frac{dN}{d#vec{x}_{JJ#gamma}}", 40, 0, 2.0);
@@ -65,7 +68,7 @@ int gdjToyMultiMix(std::string inConfigFileName)
   TH1F* mixedHist_p = new TH1F("mixedHist_h", ";#vec{x}_{JJ#gamma}=(#Sigma #vec{p}_{Dijet})_{T}/#gamma p_{T};#frac{1}{N_{#gamma}} #frac{dN}{d#vec{x}_{JJ#gamma}}", 40, 0, 2.0);
   TH1F* mixedHistCorrection_p = new TH1F("mixedHistCorrection_h", ";#vec{x}_{JJ#gamma}=(#Sigma #vec{p}_{Dijet})_{T}/#gamma p_{T};#frac{1}{N_{#gamma}} #frac{dN}{d#vec{x}_{JJ#gamma}}", 40, 0, 2.0);
 
-  std::vector<TH1F*> hists_p = {gammaHist_p, jet1Hist_p, jet2Hist_p, jetBkgdHist_p, signalHist_p, bkgdHist_p, pureBkgdHist_p, mixedBkgdHist_p, signalAndBkgdHist_p, mixedHistTrue_p, mixedHist_p, mixedHistCorrection_p};  
+  std::vector<TH1F*> hists_p = {gammaHist_p, jetSignalHist_p, jet1Hist_p, jet2Hist_p, jetBkgdHist_p, jetTotalHist_p, signalHist_p, bkgdHist_p, pureBkgdHist_p, mixedBkgdHist_p, signalAndBkgdHist_p, mixedHistTrue_p, mixedHist_p, mixedHistCorrection_p};  
 
   const Double_t absEtaMax = 2.8;
   const Int_t nDraws = 2.0*absEtaMax*2.0/(0.4*0.4);
@@ -113,8 +116,14 @@ int gdjToyMultiMix(std::string inConfigFileName)
     jet1Hist_p->Fill(jetsSignal[0].Pt());//, 1.0/(double)nEvt);
     jet2Hist_p->Fill(jetsSignal[1].Pt());//, 1.0/(double)nEvt);
 
+    jetSignalHist_p->Fill(jetsSignal[0].Pt());
+    jetSignalHist_p->Fill(jetsSignal[1].Pt());   
+    
+    jetTotalHist_p->Fill(jetsSignal[0].Pt());
+    jetTotalHist_p->Fill(jetsSignal[1].Pt());
     for(unsigned int gI = 0; gI < jetsBkgd.size(); ++gI){
       jetBkgdHist_p->Fill(jetsBkgd[gI].Pt());//, 1.0/(double)nEvt);
+      jetTotalHist_p->Fill(jetsBkgd[gI].Pt());
     }
   
     jets = jetsSignal;
