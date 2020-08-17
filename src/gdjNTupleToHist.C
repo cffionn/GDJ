@@ -24,7 +24,8 @@
 #include "include/binUtils.h"
 #include "include/centralityFromInput.h"
 #include "include/checkMakeDir.h"
-#include "include/configParser.h"
+//#include "include/configParser.h"
+#include "include/envUtil.h"
 #include "include/etaPhiFunc.h"
 #include "include/getLinBins.h"
 #include "include/getLogBins.h"
@@ -63,12 +64,12 @@ int gdjNTupleToHist(std::string inConfigFileName)
   TRandom3* randGen_p = new TRandom3(randSeed);
 
   checkMakeDir check;
-  if(!check.checkFileExt(inConfigFileName, ".txt")) return 1;
+  if(!check.checkFileExt(inConfigFileName, ".config")) return 1;
 
   globalDebugHandler gDebug;
   const bool doGlobalDebug = gDebug.GetDoGlobalDebug();
   
-  configParser config(inConfigFileName);
+  TEnv* config_p = new TEnv(inConfigFileName.c_str());
 
   std::vector<std::string> necessaryParams = {"INFILENAME",
                                               "OUTFILENAME",
@@ -123,26 +124,28 @@ int gdjNTupleToHist(std::string inConfigFileName)
 					"NMIXVZBINS",
 					"MIXVZBINSLOW",
 					"MIXVZBINSHIGH"};
-				       
-  
-  if(!config.ContainsParamSet(necessaryParams)) return 1;  
- 
-  std::string inROOTFileName = config.GetConfigVal("INFILENAME");
-  std::string inCentFileName = config.GetConfigVal("CENTFILENAME");
-  std::string outFileName = config.GetConfigVal("OUTFILENAME");
-  std::string inGRLFileName = config.GetConfigVal("GRLFILENAME");
-  std::string inMixFileName = config.GetConfigVal("MIXFILENAME");
 
-  const int jetR = std::stoi(config.GetConfigVal("JETR"));
+  if(!checkEnvForParams(config_p, necessaryParams)) return 1;
+  //  if(!config.ContainsParamSet(necessaryParams)) return 1;  
+ 
+  std::string inROOTFileName = config_p->GetValue("INFILENAME", "");
+  std::string inCentFileName = config_p->GetValue("CENTFILENAME", "");
+  std::string outFileName = config_p->GetValue("OUTFILENAME", "");
+  std::string inGRLFileName = config_p->GetValue("GRLFILENAME", "");
+  std::string inMixFileName = config_p->GetValue("MIXFILENAME", "");
+
+  const int jetR = config_p->GetValue("JETR", 4);
   if(jetR != 2 && jetR != 4){
     std::cout << "Given parameter jetR, \'" << jetR << "\' is not \'2\' or \'4\'. return 1" << std::endl;
     return 1;
   }
   const std::string jetRStr = prettyString(((double)jetR)/10., 1, false);
 
-  const bool doMix = std::stoi(config.GetConfigVal("DOMIX"));
+  const bool doMix = config_p->GetValue("DOMIX", 0);
 
-  if(doMix && !config.ContainsParamSet(mixParams)) return 1;
+  if(doMix){
+    if(!checkEnvForParams(config_p, mixParams)) return 1;
+  }
   
   //Mixing categories, temp hardcoding
   //Centrality, percent level
@@ -174,16 +177,16 @@ int gdjNTupleToHist(std::string inConfigFileName)
   if(doMix){
     if(!check.checkFileExt(inMixFileName, ".root")) return 1;
 
-    doMixCent = (bool)std::stoi(config.GetConfigVal("DOMIXCENT"));
+    doMixCent = (bool)config_p->GetValue("DOMIXCENT", 0);
 
     if(doMixCent){      
-      nMixCentBins = std::stoi(config.GetConfigVal("NMIXCENTBINS"));
+      nMixCentBins = config_p->GetValue("NMIXCENTBINS", 10);
       if(nMixCentBins > nMaxMixBins){
 	std::cout << "GDJNTUPLETOHIST ERROR - centrality mixing bins \'" << nMixCentBins << "\' exceeds max \'" << nMaxMixBins << "\'. return 1" << std::endl;
 	return 1;
       }
-      mixCentBinsLow = std::stof(config.GetConfigVal("MIXCENTBINSLOW"));
-      mixCentBinsHigh = std::stof(config.GetConfigVal("MIXCENTBINSHIGH"));    
+      mixCentBinsLow = config_p->GetValue("MIXCENTBINSLOW", 0.0);
+      mixCentBinsHigh = config_p->GetValue("MIXCENTBINSHIGH", 80.0);
       getLinBins(mixCentBinsLow, mixCentBinsHigh, nMixCentBins, mixCentBins);
 
       mixVect.push_back({});
@@ -193,16 +196,16 @@ int gdjNTupleToHist(std::string inConfigFileName)
       }
     }
 
-    doMixPsi2 = (bool)std::stoi(config.GetConfigVal("DOMIXPSI2"));
+    doMixPsi2 = (bool)config_p->GetValue("DOMIXPSI2", 0);
 
     if(doMixPsi2){
-      nMixPsi2Bins = std::stoi(config.GetConfigVal("NMIXPSI2BINS"));
+      nMixPsi2Bins = config_p->GetValue("NMIXPSI2BINS", 16);
       if(nMixPsi2Bins > nMaxMixBins){
 	std::cout << "GDJNTUPLETOHIST ERROR - centrality mixing bins \'" << nMixPsi2Bins << "\' exceeds max \'" << nMaxMixBins << "\'. return 1" << std::endl;
 	return 1;
       }
-      mixPsi2BinsLow = std::stof(config.GetConfigVal("MIXPSI2BINSLOW"));
-      mixPsi2BinsHigh = std::stof(config.GetConfigVal("MIXPSI2BINSHIGH"));    
+      mixPsi2BinsLow = config_p->GetValue("MIXPSI2BINSLOW", 0.0);
+      mixPsi2BinsHigh = config_p->GetValue("MIXPSI2BINSHIGH", TMath::Pi()/2.0);
       getLinBins(mixPsi2BinsLow, mixPsi2BinsHigh, nMixPsi2Bins, mixPsi2Bins);
 
       std::vector<std::vector<unsigned long long> > tempKeyVect;
@@ -223,16 +226,16 @@ int gdjNTupleToHist(std::string inConfigFileName)
       keyVect = tempKeyVect;
     }
 
-    doMixVz = (bool)std::stoi(config.GetConfigVal("DOMIXVZ"));
+    doMixVz = (bool)config_p->GetValue("DOMIXVZ", 0);
 
     if(doMixVz){
-      nMixVzBins = std::stoi(config.GetConfigVal("NMIXVZBINS"));
+      nMixVzBins = config_p->GetValue("NMIXVZBINS", 10);
       if(nMixVzBins > nMaxMixBins){
 	std::cout << "GDJNTUPLETOHIST ERROR - centrality mixing bins \'" << nMixVzBins << "\' exceeds max \'" << nMaxMixBins << "\'. return 1" << std::endl;
 	return 1;
       }
-      mixVzBinsLow = std::stof(config.GetConfigVal("MIXVZBINSLOW"));
-      mixVzBinsHigh = std::stof(config.GetConfigVal("MIXVZBINSHIGH"));    
+      mixVzBinsLow = config_p->GetValue("MIXVZBINSLOW", -15.0);
+      mixVzBinsHigh = config_p->GetValue("MIXVZBINSHIGH", 15.0);    
       getLinBins(mixVzBinsLow, mixVzBinsHigh, nMixVzBins, mixVzBins);
 
       std::vector<std::vector<unsigned long long> > tempKeyVect;
@@ -278,7 +281,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
     }
   }  
   
-  const bool isMC = std::stoi(config.GetConfigVal("ISMC"));
+  const bool isMC = config_p->GetValue("ISMC", 0);
 
   if(!check.checkFileExt(inROOTFileName, "root")) return 1; // Check input is valid ROOT file
   if(!check.checkFileExt(inCentFileName, "txt")) return 1; // Check centrality table is valid TXT file   
@@ -297,7 +300,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
-  const bool isPP = std::stoi(config.GetConfigVal("ISPP"));
+  const bool isPP = config_p->GetValue("ISPP", 1);
   const Int_t nMaxSubBins = 10;
   const Int_t nMaxCentBins = 10;
   Int_t nCentBins = 1;
@@ -309,7 +312,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   std::vector<std::string> centBinsStr = {systStr};
   std::map<std::string, std::string> binsToLabelStr;
   if(!isPP){
-    centBins = strToVectI(config.GetConfigVal("CENTBINS"));
+    centBins = strToVectI(config_p->GetValue("CENTBINS", "0,10,30,80"));
     nCentBins = centBins.size()-1;
 
     if(!goodBinning(inConfigFileName, nMaxCentBins, nCentBins, "CENTBINS")) return 1;
@@ -324,11 +327,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
   else binsToLabelStr[centBinsStr[0]] = "pp";
 
   const Int_t nMaxPtBins = 200;
-  const Int_t nGammaPtBins = std::stoi(config.GetConfigVal("NGAMMAPTBINS"));
+  const Int_t nGammaPtBins = config_p->GetValue("NGAMMAPTBINS", 10);
   if(!goodBinning(inConfigFileName, nMaxPtBins, nGammaPtBins, "NGAMMAPTBINS")) return 1;
-  const Float_t gammaPtBinsLow = std::stof(config.GetConfigVal("GAMMAPTBINSLOW"));
-  const Float_t gammaPtBinsHigh = std::stof(config.GetConfigVal("GAMMAPTBINSHIGH"));
-  const Bool_t gammaPtBinsDoLog = std::stof(config.GetConfigVal("GAMMAPTBINSDOLOG"));
+  const Float_t gammaPtBinsLow = config_p->GetValue("GAMMAPTBINSLOW", 80.0);
+  const Float_t gammaPtBinsHigh = config_p->GetValue("GAMMAPTBINSHIGH", 280.0);
+  const Bool_t gammaPtBinsDoLog = (bool)config_p->GetValue("GAMMAPTBINSDOLOG", 1);
   Double_t gammaPtBins[nMaxPtBins+1];
   if(gammaPtBinsDoLog) getLogBins(gammaPtBinsLow, gammaPtBinsHigh, nGammaPtBins, gammaPtBins);
   else getLinBins(gammaPtBinsLow, gammaPtBinsHigh, nGammaPtBins, gammaPtBins);
@@ -348,11 +351,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
   const Int_t nMaxEtaPhiBins = 100;
 
-  const Int_t nGammaEtaBins = std::stoi(config.GetConfigVal("NGAMMAETABINS"));
+  const Int_t nGammaEtaBins = config_p->GetValue("NGAMMAETABINS", 12);
   if(!goodBinning(inConfigFileName, nMaxEtaPhiBins, nGammaEtaBins, "NGAMMAETABINS")) return 1;
-  const Float_t gammaEtaBinsLow = std::stof(config.GetConfigVal("GAMMAETABINSLOW"));
-  const Float_t gammaEtaBinsHigh = std::stof(config.GetConfigVal("GAMMAETABINSHIGH"));
-  const Bool_t gammaEtaBinsDoAbs = std::stoi(config.GetConfigVal("GAMMAETABINSDOABS"));
+  const Float_t gammaEtaBinsLow = config_p->GetValue("GAMMAETABINSLOW", 0.0);
+  const Float_t gammaEtaBinsHigh = config_p->GetValue("GAMMAETABINSHIGH", 2.37);
+  const Bool_t gammaEtaBinsDoAbs = (bool)config_p->GetValue("GAMMAETABINSDOABS", 1);
   if(gammaEtaBinsDoAbs && gammaEtaBinsLow < 0){
     std::cout << "ERROR - config \'" << inConfigFileName << "\' contains gammaEtaBinsLow \'" << gammaEtaBinsLow << "\' less than 0 despite requested gammaEtaBinsDoAbs \'" << gammaEtaBinsDoAbs << "\'. return 1" << std::endl;
     return 1;
@@ -363,11 +366,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
   Double_t gammaEtaBins[nMaxEtaPhiBins+1];
   getLinBins(gammaEtaBinsLow, gammaEtaBinsHigh, nGammaEtaBins, gammaEtaBins);
 
-  const Int_t nJtEtaBins = std::stoi(config.GetConfigVal("NJTETABINS"));
+  const Int_t nJtEtaBins = config_p->GetValue("NJTETABINS", 14);
   if(!goodBinning(inConfigFileName, nMaxEtaPhiBins, nJtEtaBins, "NJTETABINS")) return 1;
-  const Float_t jtEtaBinsLow = std::stof(config.GetConfigVal("JTETABINSLOW"));
-  const Float_t jtEtaBinsHigh = std::stof(config.GetConfigVal("JTETABINSHIGH"));
-  const Bool_t jtEtaBinsDoAbs = std::stoi(config.GetConfigVal("JTETABINSDOABS"));
+  const Float_t jtEtaBinsLow = config_p->GetValue("JTETABINSLOW", 0.0);
+  const Float_t jtEtaBinsHigh = config_p->GetValue("JTETABINSHIGH", 2.8);
+  const Bool_t jtEtaBinsDoAbs = config_p->GetValue("JTETABINSDOABS", 1);
   if(jtEtaBinsDoAbs && jtEtaBinsLow < 0){
     std::cout << "ERROR - config \'" << inConfigFileName << "\' contains jtEtaBinsLow \'" << jtEtaBinsLow << "\' less than 0 despite requested jtEtaBinsDoAbs \'" << jtEtaBinsDoAbs << "\'. return 1" << std::endl;
     return 1;
@@ -378,7 +381,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   Double_t jtEtaBins[nMaxEtaPhiBins+1];
   getLinBins(jtEtaBinsLow, jtEtaBinsHigh, nJtEtaBins, jtEtaBins);
 
-  const Int_t nPhiBins = std::stoi(config.GetConfigVal("NPHIBINS"));
+  const Int_t nPhiBins = config_p->GetValue("NPHIBINS", 32);
   if(!goodBinning(inConfigFileName, nMaxEtaPhiBins, nPhiBins, "NPHIBINS")) return 1;
   Double_t phiBins[nMaxEtaPhiBins+1];
   getLinBins(-TMath::Pi()+0.01, TMath::Pi()+0.01, nPhiBins, phiBins);
@@ -386,14 +389,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
  
  //Pt sub bins handling
-  const Int_t nGammaPtBinsSub = std::stoi(config.GetConfigVal("NGAMMAPTBINSSUB"));
+  const Int_t nGammaPtBinsSub = config_p->GetValue("NGAMMAPTBINSSUB", 4);
   if(!goodBinning(inConfigFileName, nMaxSubBins, nGammaPtBinsSub, "NGAMMAPTBINSSUB")) return 1;
-  const Float_t gammaPtBinsSubLow = std::stof(config.GetConfigVal("GAMMAPTBINSSUBLOW"));
-  const Float_t gammaPtBinsSubHigh = std::stof(config.GetConfigVal("GAMMAPTBINSSUBHIGH"));
+  const Float_t gammaPtBinsSubLow = config_p->GetValue("GAMMAPTBINSSUBLOW", 80.0);
+  const Float_t gammaPtBinsSubHigh = config_p->GetValue("GAMMAPTBINSSUBHIGH", 280.0);
   if(gammaPtBinsSubLow < gammaPtBinsLow) std::cout << "ERROR - config \'" << inConfigFileName << "\' contains gammaPtBinsSubLow \'" << gammaPtBinsSubLow << "\' less than gammaPtBinsLow \'" << gammaPtBinsLow << "\'. return 1" << std::endl;
   if(gammaPtBinsSubHigh > gammaPtBinsHigh) std::cout << "ERROR - config \'" << inConfigFileName << "\' contains gammaPtBinsSubHigh \'" << gammaPtBinsSubHigh << "\' greater than gammaPtBinsHigh \'" << gammaPtBinsHigh << "\'. return 1" << std::endl;
   if(gammaPtBinsSubLow < gammaPtBinsLow || gammaPtBinsSubHigh > gammaPtBinsHigh) return 1;
-  const Bool_t gammaPtBinsSubDoLog = std::stof(config.GetConfigVal("GAMMAPTBINSDOLOG"));
+  const Bool_t gammaPtBinsSubDoLog = config_p->GetValue("GAMMAPTBINSDOLOG", 1);
   Double_t gammaPtBinsSub[nMaxSubBins+1];
   if(gammaPtBinsSubDoLog) getLogBins(gammaPtBinsSubLow, gammaPtBinsSubHigh, nGammaPtBinsSub, gammaPtBinsSub);
   else getLinBins(gammaPtBinsSubLow, gammaPtBinsSubHigh, nGammaPtBinsSub, gammaPtBinsSub);
@@ -410,15 +413,15 @@ int gdjNTupleToHist(std::string inConfigFileName)
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   //Eta sub bins handling
-  const Int_t nGammaEtaBinsSub = std::stoi(config.GetConfigVal("NGAMMAETABINSSUB"));
+  const Int_t nGammaEtaBinsSub = config_p->GetValue("NGAMMAETABINSSUB", 4);
   if(!goodBinning(inConfigFileName, nMaxSubBins, nGammaEtaBinsSub, "NGAMMAETABINSSUB")) return 1;
-  const Float_t gammaEtaBinsSubLow = std::stof(config.GetConfigVal("GAMMAETABINSSUBLOW"));
-  const Float_t gammaEtaBinsSubHigh = std::stof(config.GetConfigVal("GAMMAETABINSSUBHIGH"));
+  const Float_t gammaEtaBinsSubLow = config_p->GetValue("GAMMAETABINSSUBLOW", 0.0);
+  const Float_t gammaEtaBinsSubHigh = config_p->GetValue("GAMMAETABINSSUBHIGH", 2.37);
   //  if(etaBinsSubLow < etaBinsLow) std::cout << "ERROR - config \'" << inConfigFileName << "\' contains etaBinsSubLow \'" << etaBinsSubLow << "\' less than etaBinsLow \'" << etaBinsLow << "\'. return 1" << std::endl;
   //  if(etaBinsSubHigh > etaBinsHigh) std::cout << "ERROR - config \'" << inConfigFileName << "\' contains etaBinsSubHigh \'" << etaBinsSubHigh << "\' greater than etaBinsHigh \'" << etaBinsHigh << "\'. return 1" << std::endl;
   //  if(etaBinsSubLow < etaBinsLow || etaBinsSubHigh > etaBinsHigh) return 1;
 
-  const	Bool_t gammaEtaBinsSubDoAbs = std::stoi(config.GetConfigVal("GAMMAETABINSSUBDOABS"));
+  const	Bool_t gammaEtaBinsSubDoAbs = config_p->GetValue("GAMMAETABINSSUBDOABS", 1);
   if(gammaEtaBinsSubDoAbs && gammaEtaBinsSubLow < 0){
     std::cout << "ERROR - config \'" << inConfigFileName << "\' contains gammaEtaBinsSubLow \'" << gammaEtaBinsSubLow << "\' less than 0 despite requested gammaEtaBinsSubDoAbs \'" << gammaEtaBinsSubDoAbs << "\'. return 1" << std::endl;
     return 1;
@@ -440,11 +443,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
-  const Int_t nJtPtBins = std::stoi(config.GetConfigVal("NJTPTBINS"));
+  const Int_t nJtPtBins = config_p->GetValue("NJTPTBINS", 20);
   if(!goodBinning(inConfigFileName, nMaxPtBins, nJtPtBins, "NJTPTBINS")) return 1;
-  const Float_t jtPtBinsLow = std::stof(config.GetConfigVal("JTPTBINSLOW"));
-  const Float_t jtPtBinsHigh = std::stof(config.GetConfigVal("JTPTBINSHIGH"));
-  const Bool_t jtPtBinsDoLog = std::stof(config.GetConfigVal("JTPTBINSDOLOG"));
+  const Float_t jtPtBinsLow = config_p->GetValue("JTPTBINSLOW", 30.0);
+  const Float_t jtPtBinsHigh = config_p->GetValue("JTPTBINSHIGH", 230.0);
+  const Bool_t jtPtBinsDoLog = config_p->GetValue("JTPTBINSDOLOG", 1);
   Double_t jtPtBins[nMaxPtBins+1];
   if(jtPtBinsDoLog) getLogBins(jtPtBinsLow, jtPtBinsHigh, nJtPtBins, jtPtBins);
   else getLinBins(jtPtBinsLow, jtPtBinsHigh, nJtPtBins, jtPtBins);
@@ -471,11 +474,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
-  const Int_t nDPhiBins = std::stoi(config.GetConfigVal("NDPHIBINS"));
-  const Double_t gammaJtDPhiCut = mathStringToNum(config.GetConfigVal("GAMMAJTDPHI"), doGlobalDebug);  
+  const Int_t nDPhiBins = config_p->GetValue("NDPHIBINS", 16);
+  const Double_t gammaJtDPhiCut = mathStringToNum(config_p->GetValue("GAMMAJTDPHI", ""), doGlobalDebug);  
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   const std::string gammaJtDPhiStr = "DPhi0";
-  std::string gammaJtDPhiLabel = returnAllCapsString(config.GetConfigVal("GAMMAJTDPHI"));
+  std::string gammaJtDPhiLabel = returnAllCapsString(config_p->GetValue("GAMMAJTDPHI", ""));
   if(gammaJtDPhiLabel.find("PI") != std::string::npos) gammaJtDPhiLabel.replace(gammaJtDPhiLabel.find("PI"), 2, "#pi");
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   gammaJtDPhiLabel = "|#Delta#phi_{#gamma,jet}| > " + gammaJtDPhiLabel;
@@ -483,9 +486,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
-  const Int_t nXJBins = std::stoi(config.GetConfigVal("NXJBINS"));
-  const Float_t xjBinsLow = std::stof(config.GetConfigVal("XJBINSLOW"));
-  const Float_t xjBinsHigh = std::stof(config.GetConfigVal("XJBINSHIGH"));
+  const Int_t nXJBins = config_p->GetValue("NXJBINS", 20);
+  const Float_t xjBinsLow = config_p->GetValue("XJBINSLOW", 0.0);
+  const Float_t xjBinsHigh = config_p->GetValue("XJBINSHIGH", 2.0);
   Double_t xjBins[nMaxPtBins+1];
   getLinBins(xjBinsLow, xjBinsHigh, nXJBins, xjBins);
 
@@ -1958,14 +1961,19 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
+  /*
   std::map<std::string, std::string> configMap = config.GetConfigMap(); //grab the config in map form          
   configMap["RECOJTPTMIN"] = prettyString(recoJtPtMin, 1, false);
-
+  
   TEnv configEnv; // We will convert to tenv and store in file
   for(auto const & val : configMap){
     configEnv.SetValue(val.first.c_str(), val.second.c_str()); //Fill out the map
   }
   configEnv.Write("config", TObject::kOverwrite);  
+  */
+
+  config_p->SetValue("RECOJTPTMIN", prettyString(recoJtPtMin, 1, false).c_str());
+  config_p->Write("config", TObject::kOverwrite);
 
   TEnv labelEnv;
   for(auto const & lab : binsToLabelStr){
