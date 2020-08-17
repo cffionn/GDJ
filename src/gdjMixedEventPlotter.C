@@ -29,6 +29,7 @@
 #include "include/getLinBins.h"
 #include "include/getLogBins.h"
 #include "include/globalDebugHandler.h"
+#include "include/HIJetPlotStyle.h"
 #include "include/histDefUtility.h"
 #include "include/kirchnerPalette.h"
 #include "include/plotUtilities.h"
@@ -154,12 +155,6 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
   
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
-  kirchnerPalette kPal;
-  const int nMarkers = 4;
-  int markers[nMarkers] = {24,25,28,46};
-  const int nColors = 4;
-  int colors[nColors] = {0,1,3,4};
-
 
   const double legX = plotConfig_p->GetValue(("MIXEDEVTPLOT." + envStr + "LEGX").c_str(), 0.7);
   const double legY = plotConfig_p->GetValue(("MIXEDEVTPLOT." + envStr + "LEGY").c_str(), 0.9);
@@ -187,10 +182,7 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
     canv_p->cd();
     pads_p[0]->cd();
 
-    hists_p[cI]->SetMarkerSize(1);
-    hists_p[cI]->SetMarkerStyle(markers[cI%nMarkers]);
-    hists_p[cI]->SetMarkerColor(kPal.getColor(colors[cI%nColors]));
-    hists_p[cI]->SetLineColor(kPal.getColor(colors[cI%nColors]));
+    HIJet::Style::EquipHistogram(hists_p[cI], cI);
 
     hists_p[cI]->SetMaximum(max);
     hists_p[cI]->SetMinimum(min);

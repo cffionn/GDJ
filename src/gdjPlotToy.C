@@ -20,24 +20,13 @@
 #include "include/checkMakeDir.h"
 #include "include/envUtil.h"
 #include "include/globalDebugHandler.h"
+#include "include/HIJetPlotStyle.h"
 #include "include/histDefUtility.h"
 #include "include/plotUtilities.h"
 #include "include/stringUtil.h"
 
 int gdjPlotToy(std::string inConfigFileName)
-{
-  const Int_t nStyles = 15;
-  const Int_t styles[nStyles] = {20,21,33,34,29,24,25,27,28,30,23,20,21,33,34};
-
-  const int nColors = 15;
-  const int colors[nColors]={1,kRed-4,kAzure-3,kGreen+2,kMagenta+2,kOrange+2,kRed-4,kAzure-3,kGreen+2,kMagenta+2,kOrange+2,kCyan+3,28,41,kGray};
-
-  const int nSizes = 15;
-  const double sizes[nSizes] = {1,1,1.6,1.2,1.6,1,1,1,1.6,1,1,1,1,1.6,1.2};
-
-  const int nAlphas = 15;
-  const double alphas[nAlphas] = {0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8};
-
+{  
   globalDebugHandler gBug;
   const bool doGlobalDebug = gBug.GetDoGlobalDebug();
 
@@ -171,11 +160,7 @@ int gdjPlotToy(std::string inConfigFileName)
 
     TH1F* hist_p = (TH1F*)inFile_p->Get(histNames[hI].c_str());
 
-    hist_p->SetMarkerStyle(styles[0]);
-    hist_p->SetMarkerSize(sizes[0]);
-    hist_p->SetMarkerColor(colors[0]);
-    hist_p->SetLineColor(colors[0]);
-
+    HIJet::Style::EquipHistogram(hist_p, 0);
     hist_p->GetXaxis()->SetTitleFont(titleFont);
     hist_p->GetYaxis()->SetTitleFont(titleFont);
     hist_p->GetXaxis()->SetLabelFont(titleFont);
@@ -243,10 +228,7 @@ int gdjPlotToy(std::string inConfigFileName)
   
   setSumW2({bkgdHist_p, mixedHist_p, mixedHistCorrection_p, signalAndBkgdHist_p});
   
-  mixedHist_p->SetMarkerStyle(styles[1]);
-  mixedHist_p->SetMarkerSize(sizes[1]);
-  mixedHist_p->SetMarkerColor(colors[1]);
-  mixedHist_p->SetLineColor(colors[1]);
+  HIJet::Style::EquipHistogram(mixedHist_p, 1);
 
   mixedHist_p->GetXaxis()->SetTitleFont(titleFont);
   mixedHist_p->GetYaxis()->SetTitleFont(titleFont);
@@ -259,16 +241,9 @@ int gdjPlotToy(std::string inConfigFileName)
   mixedHist_p->GetYaxis()->SetLabelSize(labelSizeY/(1.0 - padSplit));    
 
   mixedHist_p->Add(mixedHistCorrection_p, -1);
-  
-  bkgdHist_p->SetMarkerStyle(styles[0]);
-  bkgdHist_p->SetMarkerSize(sizes[0]);
-  bkgdHist_p->SetMarkerColor(colors[0]);
-  bkgdHist_p->SetLineColor(colors[0]);
 
-  signalAndBkgdHist_p->SetMarkerStyle(styles[2]);
-  signalAndBkgdHist_p->SetMarkerSize(sizes[2]);
-  signalAndBkgdHist_p->SetMarkerColor(colors[2]);
-  signalAndBkgdHist_p->SetLineColor(colors[2]);
+  HIJet::Style::EquipHistogram(bkgdHist_p, 0);
+  HIJet::Style::EquipHistogram(signalAndBkgdHist_p, 2);
 
   mixedHist_p->GetYaxis()->SetTitleOffset(1.05);
   
@@ -376,12 +351,9 @@ int gdjPlotToy(std::string inConfigFileName)
   TH1F* jetTotalHist_p = (TH1F*)inFile_p->Get("jetTotalHist_h");
   
   setSumW2({jetSignalHist_p, jet1Hist_p, jet2Hist_p, jetBkgdHist_p, jetTotalHist_p});
-  
-  jetTotalHist_p->SetMarkerStyle(styles[0]);
-  jetTotalHist_p->SetMarkerSize(sizes[0]);
-  jetTotalHist_p->SetMarkerColor(colors[0]);
-  jetTotalHist_p->SetLineColor(colors[0]);
 
+  HIJet::Style::EquipHistogram(jetTotalHist_p, 0);
+  
   jetTotalHist_p->GetXaxis()->SetTitleFont(titleFont);
   jetTotalHist_p->GetYaxis()->SetTitleFont(titleFont);
   jetTotalHist_p->GetXaxis()->SetLabelFont(titleFont);
@@ -391,18 +363,6 @@ int gdjPlotToy(std::string inConfigFileName)
   jetTotalHist_p->GetYaxis()->SetTitleSize(titleSizeY/(1.0 - padSplit));
   jetTotalHist_p->GetXaxis()->SetLabelSize(labelSizeX/(1.0 - padSplit));
   jetTotalHist_p->GetYaxis()->SetLabelSize(labelSizeY/(1.0 - padSplit));    
-
-  /*
-  bkgdHist_p->SetMarkerStyle(styles[0]);
-  bkgdHist_p->SetMarkerSize(sizes[0]);
-  bkgdHist_p->SetMarkerColor(colors[0]);
-  bkgdHist_p->SetLineColor(colors[0]);
-
-  signalAndBkgdHist_p->SetMarkerStyle(styles[2]);
-  signalAndBkgdHist_p->SetMarkerSize(sizes[2]);
-  signalAndBkgdHist_p->SetMarkerColor(colors[2]);
-  signalAndBkgdHist_p->SetLineColor(colors[2]);
-  */
   
   jetTotalHist_p->GetYaxis()->SetTitleOffset(1.05);
   
@@ -414,31 +374,25 @@ int gdjPlotToy(std::string inConfigFileName)
 
   jet1Hist_p->Add(jetBkgdHist_p);
   jet1Hist_p->Add(jet2Hist_p);
-  
-  jet1Hist_p->SetMarkerStyle(styles[2]);
+
+  HIJet::Style::EquipHistogram(jet1Hist_p, 2);
   jet1Hist_p->SetMarkerSize(0.0);
-  jet1Hist_p->SetMarkerColor(colors[2]);
-  jet1Hist_p->SetLineColor(1);
-  jet1Hist_p->SetFillColorAlpha(colors[2], alphas[2]);
-  
+  jet1Hist_p->SetLineColor(1);  
+  jet1Hist_p->SetFillColor(jet1Hist_p->GetMarkerColor());  
   jet1Hist_p->DrawCopy("HIST E1 SAME");
 
   jet2Hist_p->Add(jetBkgdHist_p);
   
-  jet2Hist_p->SetMarkerStyle(styles[3]);
+  HIJet::Style::EquipHistogram(jet2Hist_p, 3);
   jet2Hist_p->SetMarkerSize(0.0);
-  jet2Hist_p->SetMarkerColor(colors[3]);
   jet2Hist_p->SetLineColor(1);
-  jet2Hist_p->SetFillColorAlpha(colors[3], alphas[3]);
-  
+  jet2Hist_p->SetFillColor(jet2Hist_p->GetMarkerColor());  
   jet2Hist_p->DrawCopy("HIST E1 SAME");
-  
-  jetBkgdHist_p->SetMarkerStyle(styles[1]);
+
+  HIJet::Style::EquipHistogram(jetBkgdHist_p, 1);
   jetBkgdHist_p->SetMarkerSize(0.0);
-  jetBkgdHist_p->SetMarkerColor(colors[1]);
-  jetBkgdHist_p->SetLineColor(1);
-  jetBkgdHist_p->SetFillColorAlpha(colors[1], alphas[1]);
-  
+  jetBkgdHist_p->SetLineColor(1);  
+  jetBkgdHist_p->SetFillColor(jetBkgdHist_p->GetMarkerColor());  
   jetBkgdHist_p->DrawCopy("HIST E1 SAME");
 
   jetTotalHist_p->DrawCopy("HIST E1 P SAME");
@@ -465,11 +419,8 @@ int gdjPlotToy(std::string inConfigFileName)
   canv_p->cd();
   pads_p[1]->cd();
 
-  jetSignalHist_p->SetMarkerStyle(styles[0]);
-  jetSignalHist_p->SetMarkerSize(sizes[0]);
-  jetSignalHist_p->SetMarkerColor(colors[0]);
-  jetSignalHist_p->SetLineColor(colors[0]); 
-  
+  HIJet::Style::EquipHistogram(jetSignalHist_p, 0);
+    
   jetSignalHist_p->GetXaxis()->SetTitleFont(titleFont);
   jetSignalHist_p->GetYaxis()->SetTitleFont(titleFont);
   jetSignalHist_p->GetXaxis()->SetLabelFont(titleFont);
