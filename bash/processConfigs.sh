@@ -40,7 +40,7 @@ if [[ $length -gt 0 ]]
 then
     searchStr="$searchStr$wildcard"*
 fi
-searchStr=$searchStr.txt
+searchStr=$searchStr.config
 
 while [[ $searchStr == *"//"* ]]
 do
