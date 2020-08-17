@@ -125,6 +125,7 @@ clean:
 	rm -f include/#*#
 	rm -f input/*~
 	rm -f input/#*#
+	rm -f input/ntupleToHist/*~
 	rm -f lib/*.so
 	rm -rf lib
 	rm -f obj/*.o

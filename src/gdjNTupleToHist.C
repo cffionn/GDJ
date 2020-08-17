@@ -382,6 +382,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
   if(!goodBinning(inConfigFileName, nMaxEtaPhiBins, nPhiBins, "NPHIBINS")) return 1;
   Double_t phiBins[nMaxEtaPhiBins+1];
   getLinBins(-TMath::Pi()+0.01, TMath::Pi()+0.01, nPhiBins, phiBins);
+
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
  
  //Pt sub bins handling
   const Int_t nGammaPtBinsSub = std::stoi(config.GetConfigVal("NGAMMAPTBINSSUB"));
@@ -404,6 +406,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
   gammaPtBinsSubStr.push_back("GammaPt" + std::to_string(nGammaPtBinsSub));
 
   binsToLabelStr[gammaPtBinsSubStr[gammaPtBinsSubStr.size()-1]] = prettyString(gammaPtBinsSub[0], 1, false) + " < p_{T,#gamma} < " + prettyString(gammaPtBinsSub[nGammaPtBinsSub], 1, false);
+
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   //Eta sub bins handling
   const Int_t nGammaEtaBinsSub = std::stoi(config.GetConfigVal("NGAMMAETABINSSUB"));
@@ -433,6 +437,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
   gammaEtaBinsSubStr.push_back(preStr + "Eta" + std::to_string(nGammaEtaBinsSub));
   if(gammaEtaBinsSubDoAbs) binsToLabelStr[gammaEtaBinsSubStr[gammaEtaBinsSubStr.size()-1]] = prettyString(gammaEtaBinsSub[0], 2, false) + "<|#eta_{#gamma}|<" + prettyString(gammaEtaBinsSub[nGammaEtaBinsSub], 2, false);
   else binsToLabelStr[gammaEtaBinsSubStr[gammaEtaBinsSubStr.size()-1]] = prettyString(gammaEtaBinsSub[0], 2, false) + " < #eta_{#gamma} < " + prettyString(gammaEtaBinsSub[nGammaEtaBinsSub], 2, false);
+
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
   const Int_t nJtPtBins = std::stoi(config.GetConfigVal("NJTPTBINS"));
   if(!goodBinning(inConfigFileName, nMaxPtBins, nJtPtBins, "NJTPTBINS")) return 1;
@@ -450,6 +456,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
   std::string multiJtCutGlobalStr = "MultiJt0";
   std::string multiJtCutGlobalLabel = "N_{Jet,Reco.} >= 2";
   binsToLabelStr[multiJtCutGlobalStr] = multiJtCutGlobalLabel;   
+
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
   std::vector<std::string> jtPtBinsStr;
   for(Int_t pI = 0; pI < nJtPtBins; ++pI){
@@ -461,20 +469,27 @@ int gdjNTupleToHist(std::string inConfigFileName)
   jtPtBinsStr.push_back("JtPt" + std::to_string(nJtPtBins));
   binsToLabelStr[jtPtBinsStr[jtPtBinsStr.size()-1]] = prettyString(jtPtBins[0], 1, false) + " < p_{T,Jet} < " + prettyString(jtPtBins[nJtPtBins], 1, false);
 
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
   const Int_t nDPhiBins = std::stoi(config.GetConfigVal("NDPHIBINS"));
-  const Double_t gammaJtDPhiCut = mathStringToNum(config.GetConfigVal("GAMMAJTDPHI"));  
+  const Double_t gammaJtDPhiCut = mathStringToNum(config.GetConfigVal("GAMMAJTDPHI"), doGlobalDebug);  
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   const std::string gammaJtDPhiStr = "DPhi0";
   std::string gammaJtDPhiLabel = returnAllCapsString(config.GetConfigVal("GAMMAJTDPHI"));
   if(gammaJtDPhiLabel.find("PI") != std::string::npos) gammaJtDPhiLabel.replace(gammaJtDPhiLabel.find("PI"), 2, "#pi");
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   gammaJtDPhiLabel = "|#Delta#phi_{#gamma,jet}| > " + gammaJtDPhiLabel;
   binsToLabelStr[gammaJtDPhiStr] = gammaJtDPhiLabel;
+
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
   const Int_t nXJBins = std::stoi(config.GetConfigVal("NXJBINS"));
   const Float_t xjBinsLow = std::stof(config.GetConfigVal("XJBINSLOW"));
   const Float_t xjBinsHigh = std::stof(config.GetConfigVal("XJBINSHIGH"));
   Double_t xjBins[nMaxPtBins+1];
   getLinBins(xjBinsLow, xjBinsHigh, nXJBins, xjBins);
+
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
   TFile* outFile_p = new TFile(outFileName.c_str(), "RECREATE");
   TH1F* runNumber_p = nullptr;
@@ -1346,19 +1361,32 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    return 1;
 	  }
 
+	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+
 	  unsigned long long jetPos = maxPos;
 	  while(jetPos == maxPos){jetPos = randGen_p->Uniform(0, maxPos-1);}
 	  std::vector<TLorentzVector> jets = mixingMap[key][jetPos];
 
+	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+
 	  unsigned long long jetPos2 = maxPos;
 	  while(jetPos2 == jetPos || jetPos2 == maxPos){jetPos2 = randGen_p->Uniform(0, maxPos-1);}
+	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+
 	  std::vector<TLorentzVector> jets2 = mixingMap[key][jetPos2];
 		       
+	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+
 	  int multCounterMix = 0;
+	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 	  goodJetsMix[0].clear();
+	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 	  goodJetsDPhiMix[0].clear();
+	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 	  goodJetsMix[1].clear();
+	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 	  goodJetsDPhiMix[1].clear();
+	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 	  for(unsigned int jI = 0; jI < jets.size(); ++jI){
 	    if(jets[jI].Pt()< jtPtBinsLow) continue;
 	    if(jets[jI].Eta() <= jtEtaBinsLow) continue;
@@ -1374,6 +1402,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    fillTH1(photonMixJtDPhiVCentPt_p[centPos][ptPos], dPhi, fullWeight);
 	    fillTH1(photonMixJtDPhiVCentPt_p[centPos][nGammaPtBinsSub], dPhi, fullWeight);
 	    
+
+	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+
 	    if(dPhi >= gammaJtDPhiCut){
 	      goodJetsDPhiMix[0].push_back(jets[jI]);
 	      fillTH1(photonMixJtPtVCentPt_p[centPos][ptPos], jets[jI].Pt(), fullWeight);
@@ -1402,6 +1433,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	      goodJetsDPhiMix[1].push_back(jets[jI]);
 	    }	    
 	  }
+
+	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+
 	
 	  if(goodJetsDPhiMix[0].size() >= 2){
 	    for(auto const & jet : goodJetsDPhiMix[0]){
@@ -1426,6 +1460,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
 	      }
 	    }
+
+	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+
 	  
 	    //Now do mixed background (signal jet + associated w/ fake jets)
 	    for(unsigned int sI = 0; sI < goodJetsDPhi.size(); ++sI){
@@ -1441,6 +1478,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	      }
 	    }
 
+	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+
+
 	    //Now calculate the mixed event correction, for cases where your gamma + single jet embed accidentally picked a fake jet
 	    for(unsigned int bI = 0; bI < goodJetsDPhiMix[0].size(); ++bI){
 	      TLorentzVector jet1 = goodJetsDPhiMix[0][bI];
@@ -1455,6 +1495,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	      }
 	    }
 	    
+	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+
 	    
 	  }
 	  

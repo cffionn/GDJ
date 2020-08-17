@@ -53,7 +53,7 @@ bool keyHandler::Init(std::vector<unsigned long long> in_valMaxes)
     std::cout << "MaxVal, multiplier for " << m_handlerName << ": " << m_valMaxes[mI] << ", " << m_multipliers[mI] << std::endl;
   }
   
-  if(m_doDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+  if(false && m_doDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   //Test that we will not hit our cap
   float val = 0;
@@ -87,13 +87,13 @@ unsigned long long keyHandler::GetKey(std::vector<unsigned long long> in_vals)
   }
   if(!allValsBelowMax) return __LONG_MAX__;
 
-  if(m_doDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+  if(false && m_doDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   unsigned long long retVal = 0;
   for(unsigned int mI = 0; mI < m_valMaxes.size(); ++mI){
     retVal += in_vals[mI]*m_multipliers[mI];
   }
-  if(m_doDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+  if(false && m_doDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   return retVal;
 }
