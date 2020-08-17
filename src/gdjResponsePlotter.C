@@ -28,8 +28,8 @@
 #include "include/getLinBins.h"
 #include "include/getLogBins.h"
 #include "include/globalDebugHandler.h"
+#include "include/HIJetPlotStyle.h"
 #include "include/histDefUtility.h"
-#include "include/kirchnerPalette.h"
 #include "include/plotUtilities.h"
 #include "include/stringUtil.h"
 
@@ -104,11 +104,6 @@ void plotMeanAndSigma(const bool doGlobalDebug, std::map<std::string, std::strin
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   bool isPP = centBins[0].find("PP") != std::string::npos;
-  kirchnerPalette kPal;
-  const int nMarkers = 4;
-  int markers[nMarkers] = {24,25,28,46};
-  const int nColors = 4;
-  int colors[nColors] = {0,1,3,4};
 
   TLegend* leg_p = new TLegend(0.35, 0.6, 0.9, 0.9);
   leg_p->SetTextFont(43);
@@ -132,10 +127,7 @@ void plotMeanAndSigma(const bool doGlobalDebug, std::map<std::string, std::strin
     canv_p->cd();
     pads_p[0]->cd();
 
-    histWidth_p[cI]->SetMarkerSize(1);
-    histWidth_p[cI]->SetMarkerStyle(markers[cI%nMarkers]);
-    histWidth_p[cI]->SetMarkerColor(kPal.getColor(colors[cI%nColors]));
-    histWidth_p[cI]->SetLineColor(kPal.getColor(colors[cI%nColors]));
+    HIJet::Style::EquipHistogram(histWidth_p[cI], cI);
     
     histWidth_p[cI]->SetMaximum(0.65);
     histWidth_p[cI]->SetMinimum(0.0);
@@ -171,8 +163,7 @@ void plotMeanAndSigma(const bool doGlobalDebug, std::map<std::string, std::strin
 
     if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
-    csnFit_p->SetMarkerColor(kPal.getColor(colors[cI%nColors]));
-    csnFit_p->SetLineColor(kPal.getColor(colors[cI%nColors]));
+    HIJet::Style::EquipTF1(csnFit_p, cI);
 
     if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
@@ -191,11 +182,8 @@ void plotMeanAndSigma(const bool doGlobalDebug, std::map<std::string, std::strin
     canv_p->cd();
     pads_p[1]->cd();
 
-    histMean_p[cI]->SetMarkerSize(1);
-    histMean_p[cI]->SetMarkerStyle(markers[cI%nMarkers]);
-    histMean_p[cI]->SetMarkerColor(kPal.getColor(colors[cI%nColors]));
-    histMean_p[cI]->SetLineColor(kPal.getColor(colors[cI%nColors]));
-
+    HIJet::Style::EquipHistogram(histMean_p[cI], cI);
+    
     histMean_p[cI]->SetMaximum(1.15);
     histMean_p[cI]->SetMinimum(0.85);
 
@@ -389,11 +377,7 @@ int gdjResponsePlotter(std::string inFileName)
 	 
       std::string histStr = centStr + "/photonJtRecoOverGenVCentJtPt_" + centStr + "_" + jtPtStr + "_GammaPt" + std::to_string(nGammaPtBinsSub) + "_DPhi0_h";
       TH1F* hist_p = (TH1F*)inFile_p->Get(histStr.c_str());
-
-      hist_p->SetMarkerSize(1);
-      hist_p->SetMarkerColor(1);
-      hist_p->SetLineColor(1);
-      hist_p->SetMarkerStyle(24);
+      HIJet::Style::EquipHistogram(hist_p, 0);
       
       hist_p->DrawCopy("HIST E1 P");
       gStyle->SetOptStat(0);

@@ -23,20 +23,12 @@
 #include "include/envUtil.h"
 #include "include/getLinBins.h"
 #include "include/globalDebugHandler.h"
+#include "include/HIJetPlotStyle.h"
 #include "include/plotUtilities.h"
 #include "include/stringUtil.h"
 
 int gdjPlotMBHist(std::string inConfigFileName)
 {
-  const Int_t nStyles = 15;
-  const Int_t styles[nStyles] = {20,21,33,34,29,24,25,27,28,30,23,20,21,33,34};
-
-  const int nColors = 15;
-  const int colors[nColors]={1,kRed-4,kAzure-3,kGreen+2,kMagenta+2,kOrange+2,kRed-4,kAzure-3,kGreen+2,kMagenta+2,kOrange+2,kCyan+3,28,41,kGray};
-
-  const int nSizes = 15;
-  const double sizes[nSizes] = {1,1,1.6,1.2,1.6,1,1,1,1.6,1,1,1,1,1.6,1.2};
-
   checkMakeDir check;
   if(!check.checkFileExt(inConfigFileName, ".config")) return 1;
 
@@ -254,10 +246,7 @@ int gdjPlotMBHist(std::string inConfigFileName)
   cent_p->GetXaxis()->SetLabelSize(labelSizeX);
   cent_p->GetYaxis()->SetLabelSize(labelSizeY);
 
-  cent_p->SetMarkerSize(sizes[0]);
-  cent_p->SetMarkerStyle(styles[0]);
-  cent_p->SetMarkerColor(colors[0]);
-  cent_p->SetLineColor(colors[0]);      
+  HIJet::Style::EquipHistogram(cent_p, 0);
 
   cent_p->Scale(1./cent_p->Integral());
 
@@ -267,10 +256,8 @@ int gdjPlotMBHist(std::string inConfigFileName)
   cent_p->GetYaxis()->SetTitle("Shape (Unity Normalization)");
   cent_p->DrawCopy("HIST E1 P");
 
-  centData_p->SetMarkerSize(sizes[1]);
-  centData_p->SetMarkerStyle(styles[1]);
-  centData_p->SetMarkerColor(colors[1]);
-  centData_p->SetLineColor(colors[1]);      
+  HIJet::Style::EquipHistogram(centData_p, 1);
+
   centData_p->Scale(1./centData_p->Integral());
   centData_p->DrawCopy("HIST E1 P SAME");
 
@@ -344,17 +331,12 @@ int gdjPlotMBHist(std::string inConfigFileName)
 
     std::vector<TH1F*> dummyHists_p;    
     for(unsigned int pI = 0; pI < phiFractions.size(); ++pI){
-      inHist_p->SetMarkerSize(sizes[pI]);
-      inHist_p->SetMarkerStyle(styles[pI]);
-      inHist_p->SetMarkerColor(colors[pI]);
-      inHist_p->SetLineColor(colors[pI]);    
+      HIJet::Style::EquipHistogram(inHist_p, pI);
 
       dummyHists_p.push_back(new TH1F(("dummy_" + std::to_string(pI)).c_str(), "", 1, 0, 1));
 
-      dummyHists_p[pI]->SetMarkerSize(sizes[pI]);
-      dummyHists_p[pI]->SetMarkerStyle(styles[pI]);
-      dummyHists_p[pI]->SetMarkerColor(colors[pI]);
-      dummyHists_p[pI]->SetLineColor(colors[pI]);    
+      
+      HIJet::Style::EquipHistogram(dummyHists_p[pI], pI);
 
       leg_p->AddEntry(dummyHists_p[pI], phiLabels[pI].c_str(), "P L");
       
@@ -516,27 +498,14 @@ int gdjPlotMBHist(std::string inConfigFileName)
     
     std::vector<TH1F*> dummyHists_p;    
     for(unsigned int pI = 0; pI < phiFractions.size(); ++pI){
-      jetPt_CentCombo_p->SetMarkerSize(sizes[pI]);
-      jetPt_CentCombo_p->SetMarkerStyle(styles[pI]);
-      jetPt_CentCombo_p->SetMarkerColor(colors[pI]);
-      jetPt_CentCombo_p->SetLineColor(colors[pI]);    
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+      HIJet::Style::EquipHistogram(jetPt_CentCombo_p, pI);
 
       dummyHists_p.push_back(new TH1F(("dummy_" + std::to_string(pI)).c_str(), "", 1, 0, 1));
 
       if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
-      dummyHists_p[pI]->SetMarkerSize(sizes[pI]);
-      dummyHists_p[pI]->SetMarkerStyle(styles[pI]);
-      dummyHists_p[pI]->SetMarkerColor(colors[pI]);
-      dummyHists_p[pI]->SetLineColor(colors[pI]);    
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
+      HIJet::Style::EquipHistogram(dummyHists_p[pI], pI);
       leg_p->AddEntry(dummyHists_p[pI], phiLabels[pI].c_str(), "P L");
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
       if(pI == 0) jetPt_CentCombo_p->DrawCopy("HIST E1 P");
       else{
@@ -616,10 +585,7 @@ int gdjPlotMBHist(std::string inConfigFileName)
 	canv_p->SetBottomMargin(0.15);
 
         for(Int_t dI = 0; dI < nDPhiCutsSignal; ++dI){
-	  signalOverBkgd_p[gI][dI]->SetMarkerStyle(styles[dI]);
-	  signalOverBkgd_p[gI][dI]->SetMarkerSize(sizes[dI]);
-	  signalOverBkgd_p[gI][dI]->SetMarkerColor(colors[dI]);
-	  signalOverBkgd_p[gI][dI]->SetLineColor(colors[dI]);
+	  HIJet::Style::EquipHistogram(signalOverBkgd_p[gI][dI], dI);
 
 	  signalOverBkgd_p[gI][dI]->SetMinimum(sobYMin);
 	  signalOverBkgd_p[gI][dI]->SetMaximum(sobYMax);
@@ -687,11 +653,7 @@ int gdjPlotMBHist(std::string inConfigFileName)
     deltaPhi_p->DrawCopy("HIST E1 P");
 
     for(unsigned int gI = 0; gI < graphs_p.size(); ++gI){
-      graphs_p[gI]->SetLineColor(colors[gI]);
-      graphs_p[gI]->SetMarkerColor(colors[gI]);
-      graphs_p[gI]->SetMarkerSize(sizes[gI]);
-      graphs_p[gI]->SetMarkerStyle(styles[gI]);
-
+      HIJet::Style::EquipGraph(graphs_p[gI], gI);
       graphs_p[gI]->Draw("P");
 
       leg_p->AddEntry(graphs_p[gI], (prettyString(percentiles[gI], 2, false) + " fake").c_str(), "P L");

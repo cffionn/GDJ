@@ -19,6 +19,7 @@
 #include "include/checkMakeDir.h"
 #include "include/configParser.h"
 #include "include/globalDebugHandler.h"
+#include "include/HIJetPlotStyle.h"
 #include "include/plotUtilities.h"
 #include "include/stringUtil.h"
 
@@ -34,15 +35,6 @@ void plotDataMC(std::string saveName, TH1F* histData_p, TH1F* histMC_p, std::vec
       break;
     }
   } 
-
-  const Int_t nStyles = 15;
-  const Int_t styles[nStyles] = {20,21,33,34,29,24,25,27,28,30,23,20,21,33,34};
-
-  const int nColors = 15;
-  const int colors[nColors]={1,kRed-4,kAzure-3,kGreen+2,kMagenta+2,kOrange+2,kRed-4,kAzure-3,kGreen+2,kMagenta+2,kOrange+2,kCyan+3,28,41,kGray};
-
-  const int nSizes = 15;
-  const double sizes[nSizes] = {1,1,1.6,1.2,1.6,1,1,1,1.6,1,1,1,1,1.6,1.2};
     
   const Double_t padSplit = 0.45;
   const Double_t leftMargin = 0.125;
@@ -140,16 +132,9 @@ void plotDataMC(std::string saveName, TH1F* histData_p, TH1F* histMC_p, std::vec
   label_p->SetTextSize(titleSizeX/(1.0 - padSplit));
   label_p->SetNDC();
 
-  histData_p->SetMarkerColor(colors[0]);
-  histData_p->SetLineColor(colors[0]);
-  histData_p->SetMarkerStyle(styles[0]);
-  histData_p->SetMarkerSize(sizes[0]);
-
-  histMC_p->SetMarkerColor(colors[1]);
-  histMC_p->SetLineColor(colors[1]);
-  histMC_p->SetMarkerStyle(styles[1]);
-  histMC_p->SetMarkerSize(sizes[1]);
-
+  HIJet::Style::EquipHistogram(histData_p, 0);
+  HIJet::Style::EquipHistogram(histMC_p, 1);
+  
   histData_p->GetYaxis()->SetNdivisions(505);
   histData_p->GetXaxis()->SetNdivisions(505);
 

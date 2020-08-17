@@ -19,20 +19,12 @@
 #include "include/envUtil.h"
 #include "include/getLinBins.h"
 #include "include/globalDebugHandler.h"
+#include "include/HIJetPlotStyle.h"
 #include "include/plotUtilities.h"
 #include "include/stringUtil.h"
 
 int gdjPlotSignalHist(std::string inConfigFileName)
 {
-  const Int_t nStyles = 15;
-  const Int_t styles[nStyles] = {20,21,33,34,29,24,25,27,28,30,23,20,21,33,34};
-
-  const int nColors = 15;
-  const int colors[nColors]={1,kRed-4,kAzure-3,kGreen+2,kMagenta+2,kOrange+2,kRed-4,kAzure-3,kGreen+2,kMagenta+2,kOrange+2,kCyan+3,28,41,kGray};
-
-  const int nSizes = 15;
-  const double sizes[nSizes] = {1,1,1.6,1.2,1.6,1,1,1,1.6,1,1,1,1,1.6,1.2};
-
   globalDebugHandler gBug;
   const bool doGlobalDebug = gBug.GetDoGlobalDebug();
 
@@ -169,10 +161,7 @@ int gdjPlotSignalHist(std::string inConfigFileName)
     for(Int_t dI = 0; dI < nDPhiCuts; ++dI){
       hists_p.push_back((TH1F*)inFile_p->Get(("jetPtPerGammaPtDPhi_GammaPt" + std::to_string(gI) + "_DPhi" + std::to_string(dI) + "_h").c_str()));
 
-      hists_p[dI]->SetMarkerSize(sizes[dI]);
-      hists_p[dI]->SetMarkerStyle(styles[dI]);
-      hists_p[dI]->SetMarkerColor(colors[dI]);
-      hists_p[dI]->SetLineColor(colors[dI]);
+      HIJet::Style::EquipHistogram(hists_p[dI], dI);
 
       leg_p->AddEntry(hists_p[dI], dphiLabels[dI].c_str(), "P L");
 
@@ -232,11 +221,8 @@ int gdjPlotSignalHist(std::string inConfigFileName)
       hists_p.reserve(nDPhiCuts);
       for(Int_t dI = 0; dI < nDPhiCuts; ++dI){
 	hists_p.push_back((TH1F*)inFile_p->Get(("jetPtPerGammaPtDPhi_GammaPt" + std::to_string(gI) + "_DPhi" + std::to_string(dI) + "_JetPt" + std::to_string(jI) + "_TwoJets_h").c_str()));
-	
-	hists_p[dI]->SetMarkerSize(sizes[dI]);
-	hists_p[dI]->SetMarkerStyle(styles[dI]);
-	hists_p[dI]->SetMarkerColor(colors[dI]);
-	hists_p[dI]->SetLineColor(colors[dI]);
+
+	HIJet::Style::EquipHistogram(hists_p[dI], dI);
 	
 	leg_p->AddEntry(hists_p[dI], dphiLabels[dI].c_str(), "P L");
 	
@@ -298,12 +284,9 @@ int gdjPlotSignalHist(std::string inConfigFileName)
       hists_p.reserve(nDPhiCuts);
       for(Int_t dI = 0; dI < nDPhiCuts; ++dI){
 	hists_p.push_back((TH1F*)inFile_p->Get(("jetVectPtPerGammaPtDPhi_GammaPt" + std::to_string(gI) + "_DPhi" + std::to_string(dI) + "_JetPt" + std::to_string(jI) + "_TwoJets_h").c_str()));
-	
-	hists_p[dI]->SetMarkerSize(sizes[dI]);
-	hists_p[dI]->SetMarkerStyle(styles[dI]);
-	hists_p[dI]->SetMarkerColor(colors[dI]);
-	hists_p[dI]->SetLineColor(colors[dI]);
-	
+
+	HIJet::Style::EquipHistogram(hists_p[dI], dI);
+
 	leg_p->AddEntry(hists_p[dI], dphiLabels[dI].c_str(), "P L");
 	
 	hists_p[dI]->SetMinimum(signalVectJtPtYMin);
