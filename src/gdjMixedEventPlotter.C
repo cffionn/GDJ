@@ -57,8 +57,8 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
   }
 
 
-  std::vector<std::string> legStrs = {"Raw", "Mixed", "Raw - Mixed"};
-  if(legStrs.size() != hists_p.size()) return;
+  std::vector<std::string> legStrs = {"Raw", "Mixed", "Raw - Mixed", "Gen. Matched"};
+  if(legStrs.size() < hists_p.size()) return;
 
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
@@ -87,6 +87,14 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
     ++nGlobalLabels;
   }
 
+  int jetR = plotConfig_p->GetValue("JETR", 100);
+  std::string jetRStr = "anti-k_{t} #it{R}=";
+  if(jetR < 10) jetRStr = jetRStr + "0." + std::to_string(jetR) + " jets";
+  else{
+    jetRStr = jetRStr + prettyString(((double)jetR)/10., 1, false) + " jets";
+  }
+  preLabels.push_back(jetRStr);
+  
   /*
   if(isMC) preLabels.push_back("#bf{ATLAS Internal} Monte Carlo");
   else preLabels.push_back("#bf{ATLAS Internal} Data");
@@ -254,13 +262,15 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
 
   std::string preLabelSaveStr = "";
   for(unsigned int pI = nGlobalLabels; pI < preLabels.size(); ++pI){
-    if(preLabels[pI].find("ATLAS") != std::string::npos){
-      if(isMC) preLabelSaveStr = preLabelSaveStr + "MC_";
-      else preLabelSaveStr = preLabelSaveStr + "DATA_";
-    }
+    if(preLabels[pI].find("anti-k") != std::string::npos) continue;
+    if(preLabels[pI].find("ATLAS") != std::string::npos) continue;
     else preLabelSaveStr = preLabelSaveStr + preLabels[pI] + "_";
   }
 
+  if(isMC) preLabelSaveStr = preLabelSaveStr + "MC_";
+  else preLabelSaveStr = preLabelSaveStr + "DATA_";
+  preLabelSaveStr = preLabelSaveStr + "R" + std::to_string(jetR) + "_";
+  
   double maxX = 0.0;
   for(unsigned int pI = 0; pI < preLabels.size(); ++pI){
     std::string preStr = "";
@@ -368,13 +378,14 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
   
   std::vector<std::string> necessaryParams = {"ISMC",
 					      "NGAMMAPTBINSSUB",
-					      "ISPP"};
+					      "ISPP",
+					      "JETR"};
 
   std::vector<std::string> pbpbParams = {"CENTBINS"};
   
   if(!configs.ContainsParamSet(necessaryParams)) return 1;
 
-  plotConfig_p->SetValue(config_p->GetValue("ISMC", ""));
+  plotConfig_p->SetValue("ISMC", config_p->GetValue("ISMC", ""));
 
   const int nGammaPtBinsSub = std::stoi(configs.GetConfigVal("NGAMMAPTBINSSUB"));
   const bool isPP = std::stoi(configs.GetConfigVal("ISPP"));
@@ -388,25 +399,49 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
     nCentBins = centBins.size()-1;
   }
 
-  std::vector<std::string> observables1 = {"JtDPhi", "JtXJ", "JtPt", "JtMult", "MultiJtPt", "MultiJtXJ"};
-  std::vector<std::string> backStr1 = {"_GlobalJtPt0", "_GlobalJtPt0_DPhi0", "_DPhi0", "_GlobalJtPt0_DPhi0", "_DPhi0_MultiJt0", "_GlobalJtPt0_DPhi0_MultiJt0"};
+  std::vector<std::string> observables1 = {"JtDPhi", "JtXJ", "JtPt", "JtMult", "MultiJtPt", "MultiJtXJ", "MultiJtXJJ"};//, "MultiJtDPhiJJ"};
+  std::vector<std::string> backStr1 = {"_GlobalJtPt0", "_GlobalJtPt0_DPhi0", "_DPhi0", "_GlobalJtPt0_DPhi0", "_DPhi0_MultiJt0", "_GlobalJtPt0_DPhi0_MultiJt0", "_GlobalJtPt0_DPhi0_MultiJt0"};//, "_GlobalJtPt0_DPhi0_MultiJt0"};
+
+  plotConfig_p->SetValue("JETR", config_p->GetValue("JETR", 100));
+  int jetR = plotConfig_p->GetValue("JETR", 100);
+  if(jetR != 2 && jetR != 4){
+    std::cout << "JETR given \'" << jetR << "\' is not valid. Please pick \'2\' or \'4\'. return 1" << std::endl;
+    return 1;
+  }
+
+  const bool isMC = plotConfig_p->GetValue("ISMC", 0);
   
   for(Int_t cI = 0; cI < nCentBins; ++cI){
     std::string centStr = "PP";
     if(!isPP) centStr = "Cent" + centBins[cI] + "to" + centBins[cI+1];
     
-    for(Int_t gI = 0; gI < nGammaPtBinsSub+1; ++gI){
+   for(Int_t gI = 0; gI < nGammaPtBinsSub+1; ++gI){
       for(unsigned int oI = 0; oI < observables1.size(); ++oI){     
 	std::string rawName = centStr + "/photon" + observables1[oI] + "VCentPt_" + centStr + "_GammaPt" + std::to_string(gI) + backStr1[oI] + "_h";
 	
 	TH1F* raw_p = (TH1F*)inFile_p->Get(rawName.c_str());
-	rawName.replace(rawName.find("photon"), std::string("photon").size(), "photonMix");
-	TH1F* mix_p = (TH1F*)inFile_p->Get(rawName.c_str());
-	rawName.replace(rawName.find("photonMix"), std::string("photonMix").size(), "photonSub");
+	rawName.replace(rawName.find("photon"), std::string("photon").size(), "photonSub");
 	TH1F* sub_p = (TH1F*)inFile_p->Get(rawName.c_str());
 
+	rawName.replace(rawName.find("photonSub"), std::string("photonSub").size(), "photonMix");
+	
+	if(isStrSame(observables1[oI], "MultiJtXJJ") || isStrSame(observables1[oI], "MultiJtDPhiJJ")){
+	  rawName.replace(rawName.find("photonMix"), std::string("photonMix").size(), "photonMixCorrected");
+	}
+	TH1F* mix_p = (TH1F*)inFile_p->Get(rawName.c_str());
+
+	TH1F* mc_p = nullptr;
+	if(isMC){
+	  rawName = centStr + "/photonGenMatched" + observables1[oI] + "VCentPt_" + centStr + "_GammaPt" + std::to_string(gI) + backStr1[oI] + "_h";
+      
+	  mc_p = (TH1F*)inFile_p->Get(rawName.c_str());	  
+	}
+	
 	if(doGlobalDebug) std::cout << "OBSERVABLE: " << observables1[oI] << std::endl;
-	plotMixClosure(doGlobalDebug, &labelMap, plotConfig_p, strLowerToUpper(observables1[oI]), dateStr, {raw_p, mix_p, sub_p});
+	std::vector<TH1F*> hists_p = {raw_p, mix_p, sub_p};
+	if(isMC && mc_p != nullptr) hists_p.push_back(mc_p);
+
+	plotMixClosure(doGlobalDebug, &labelMap, plotConfig_p, strLowerToUpper(observables1[oI]), dateStr, hists_p);
       }
     }
   }
