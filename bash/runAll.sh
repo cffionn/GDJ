@@ -6,7 +6,7 @@ DATE=`date +%Y%m%d`
 
 mkdir -p logs/$DATE/
 
-rs=(2 4)
+rs=(4 2)
 files=(ntupleToHist_PbPbMC ntupleToHist_PPMC ntupleToHist_PbPbData ntupleToHist_PPData)
 
 for i in ${rs[@]}
