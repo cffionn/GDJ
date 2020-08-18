@@ -387,12 +387,6 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
   std::vector<std::string> paramsToCheck = {"CENTBINS",
 					    "JETR",
 					    "DOMIX",
-					    "ETABINSDOABS",
-					    "ETABINSHIGH",
-					    "ETABINSLOW",
-					    "ETABINSSUBDOABS",
-					    "ETABINSSUBHIGH",
-					    "ETABINSSUBLOW",
 					    "GAMMAJTDPHI",
 					    "GAMMAPTBINSDOLOG",
 					    "GAMMAPTBINSHIGH",
@@ -405,8 +399,7 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
 					    "JTPTBINSHIGH",
 					    "JTPTBINSLOW",
 					    "NDPHIBINS",
-					    "NETABINS",
-					    "NETABINSSUB",
+					    "NGAMMAETABINSSUB",
 					    "NGAMMAPTBINS",
 					    "NGAMMAPTBINSSUB",
 					    "NJTPTBINS",
@@ -444,7 +437,7 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
   const std::string centBinsStr = configData.GetConfigVal("CENTBINS");
   std::vector<int> centBins = strToVectI(configData.GetConfigVal("CENTBINS"));
   const Int_t nCentBins = centBins.size()-1;
-  const Int_t nEtaBinsSub = std::stoi(configData.GetConfigVal("NETABINSSUB"));
+  const Int_t nGammaEtaBinsSub = std::stoi(configData.GetConfigVal("NGAMMAETABINSSUB"));
 
   const Int_t nGammaPtBinsSub = std::stoi(configData.GetConfigVal("NGAMMAPTBINSSUB"))+1;
 
@@ -483,15 +476,15 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
     std::string centStr = "PP";
     if(!isPP) centStr = "Cent" + std::to_string(centBins[cI]) + "to" + std::to_string(centBins[cI+1]);
 
-    std::cout << (centStr + "/photonPtVCentEta_" + centStr + "_AbsEta" + std::to_string(nEtaBinsSub) + "_h") << std::endl;
+    std::cout << (centStr + "/photonPtVCentEta_" + centStr + "_AbsEta" + std::to_string(nGammaEtaBinsSub) + "_h") << std::endl;
 
-    photonPtVCentEta_MC_p[cI][0] = (TH1F*)inMCFile_p->Get((centStr + "/photonPtVCentEta_" + centStr + "_AbsEta" + std::to_string(nEtaBinsSub) + "_h").c_str());
+    photonPtVCentEta_MC_p[cI][0] = (TH1F*)inMCFile_p->Get((centStr + "/photonPtVCentEta_" + centStr + "_AbsEta" + std::to_string(nGammaEtaBinsSub) + "_h").c_str());
 
     photonPtVCentEta_MC_p[cI][0]->Sumw2();
     photonPtVCentEta_MC_p[cI][0]->Scale(1./photonPtVCentEta_MC_p[cI][0]->Integral());
     photonPtVCentEta_MC_p[cI][0]->GetYaxis()->SetTitle("Unity normalization");
     
-    photonPtVCentEta_Data_p[cI][0] = (TH1F*)inDataFile_p->Get((centStr + "/photonPtVCentEta_" + centStr + "_AbsEta" + std::to_string(nEtaBinsSub) + "_h").c_str());
+    photonPtVCentEta_Data_p[cI][0] = (TH1F*)inDataFile_p->Get((centStr + "/photonPtVCentEta_" + centStr + "_AbsEta" + std::to_string(nGammaEtaBinsSub) + "_h").c_str());
 
     photonPtVCentEta_Data_p[cI][0]->Sumw2();
     photonPtVCentEta_Data_p[cI][0]->Scale(1./photonPtVCentEta_Data_p[cI][0]->Integral());
@@ -529,7 +522,7 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
       permaTex.push_back(true);
 
       if(pI == 0){
-	plotDataMC("pdfDir/" + dateStr + "/photonPtVCentEta_" + centStr + "_AbsEta" + std::to_string(nEtaBinsSub) + "_R" + std::to_string(jetR) + "_DataMC_" + dateStr + ".pdf", photonPtVCentEta_Data_p[cI][0], photonPtVCentEta_MC_p[cI][0], {dataLabels[0], mcLabels[0]}, tempGlobalLabels, permaTex, plotConfig_p, "GAMMAPT", doGlobalDebug);
+	plotDataMC("pdfDir/" + dateStr + "/photonPtVCentEta_" + centStr + "_AbsEta" + std::to_string(nGammaEtaBinsSub) + "_R" + std::to_string(jetR) + "_DataMC_" + dateStr + ".pdf", photonPtVCentEta_Data_p[cI][0], photonPtVCentEta_MC_p[cI][0], {dataLabels[0], mcLabels[0]}, tempGlobalLabels, permaTex, plotConfig_p, "GAMMAPT", doGlobalDebug);
       }
    
       tempGlobalLabels.push_back(labelData.GetConfigVal("GammaPt" + std::to_string(pI)));

@@ -5,7 +5,7 @@ mkdir -p logs/$DATE/
 
 rs=(2 4)
 files=(dataMCRaw dataMCRaw_PP)
-inDate=20200730
+inDate=20200817
 
 for i in ${rs[@]}
 do
