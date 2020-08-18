@@ -13,10 +13,10 @@ for i in ${rs[@]}
 do
     for j in ${files[@]}
     do
-	cp input/ntupleToHist/$j.txt  input/ntupleToHist/"$j"_R$i.txt 
-	sed -i -e "s@INRVAL@$i@g" input/ntupleToHist/"$j"_R$i.txt
+	cp input/ntupleToHist/$j.config  input/ntupleToHist/"$j"_R$i.config 
+	sed -i -e "s@INRVAL@$i@g" input/ntupleToHist/"$j"_R$i.config
 
-	echo "./bin/gdjNTupleToHist.exe input/ntupleToHist/"$j"_R$i.txt &> logs/$DATE/"$j"_R"$i"_$DATE.log &"
+	./bin/gdjNTupleToHist.exe input/ntupleToHist/"$j"_R$i.config &> logs/$DATE/"$j"_R"$i"_$DATE.log &
 
 #	./bin/gdjNTupleToHist.exe input/ntupleToHist/ntupleToHist_PPMC.txt &> logs/$DATE/ntupleToHist_PPMC_$DATE.log &
 #    ./bin/gdjNTupleToHist.exe input/ntupleToHist/ntupleToHist_PPData.txt &> logs/$DATE/ntupleToHist_PPData_$DATE.log &
