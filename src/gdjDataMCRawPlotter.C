@@ -23,7 +23,8 @@
 #include "include/plotUtilities.h"
 #include "include/stringUtil.h"
 
-void plotDataMC(std::string saveName, TH1F* histData_p, TH1F* histMC_p, std::vector<std::string> legLabels, std::vector<std::string> texLabels, std::vector<bool> permaTex, TEnv* config_p, std::string envStr, bool doGlobalDebug)
+//Order is data, MC-Reco, MC-Truth
+void plotDataMC(std::string saveName, std::vector<TH1F*> hists_p, std::vector<std::string> legLabels, std::vector<std::string> texLabels, std::vector<bool> permaTex, TEnv* config_p, std::string envStr, bool doGlobalDebug)
 {
   bool doAllLeg = config_p->GetValue("DOALLLEG", 1);
   bool goodLeg = false;
@@ -35,7 +36,16 @@ void plotDataMC(std::string saveName, TH1F* histData_p, TH1F* histMC_p, std::vec
       break;
     }
   } 
-    
+
+  /*
+  const std::string isPPStr = config_p->GetValue("ISPP", "");
+  if(isPPStr.size() != 1){
+    std::cout << "ISPP VALUE \'" << isPPStr << "\' is invalid. return" << std::endl;
+    return;
+  }
+  const bool isPP = std::stoi(isPPStr);
+  */
+  
   const Double_t padSplit = 0.45;
   const Double_t leftMargin = 0.125;
 
@@ -104,21 +114,19 @@ void plotDataMC(std::string saveName, TH1F* histData_p, TH1F* histMC_p, std::vec
   Double_t labelSizeX = 0.035;//histData_p->GetXaxis()->GetLabelSize();
   Double_t labelSizeY = 0.035;//histData_p->GetYaxis()->GetLabelSize();  
 
-  Int_t titleFont = histData_p->GetXaxis()->GetTitleFont();
+  Int_t titleFont = hists_p[0]->GetXaxis()->GetTitleFont();
   
-  histData_p->GetXaxis()->SetLabelSize(0.0001);
-  histData_p->GetYaxis()->SetLabelSize(labelSizeY/(1.0 - padSplit));
-  histData_p->GetXaxis()->SetTitleSize(0.0001);
-  histData_p->GetYaxis()->SetTitleSize(titleSizeY/(1.0 - padSplit));
+  hists_p[0]->GetXaxis()->SetLabelSize(0.0001);
+  hists_p[0]->GetYaxis()->SetLabelSize(labelSizeY/(1.0 - padSplit));
+  hists_p[0]->GetXaxis()->SetTitleSize(0.0001);
+  hists_p[0]->GetYaxis()->SetTitleSize(titleSizeY/(1.0 - padSplit));
   
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
   gStyle->SetOptStat(0);
 
   TLine* line_p = new TLine();
   line_p->SetLineStyle(2);
 
-  TLegend* leg_p = new TLegend(xLegPos, yLegPos - 0.07*2, xLegPos + 0.25, yLegPos);
+  TLegend* leg_p = new TLegend(xLegPos, yLegPos - 0.07*(double)hists_p.size(), xLegPos + 0.25, yLegPos);
   leg_p->SetTextFont(titleFont);
   leg_p->SetTextSize(titleSizeX/(1.0 - padSplit));
   leg_p->SetBorderSize(0);
@@ -132,26 +140,26 @@ void plotDataMC(std::string saveName, TH1F* histData_p, TH1F* histMC_p, std::vec
   label_p->SetTextSize(titleSizeX/(1.0 - padSplit));
   label_p->SetNDC();
 
-  HIJet::Style::EquipHistogram(histData_p, 0);
-  HIJet::Style::EquipHistogram(histMC_p, 1);
+  for(unsigned int hI = 0; hI < hists_p.size(); ++hI){
+    HIJet::Style::EquipHistogram(hists_p[hI], hI);
   
-  histData_p->GetYaxis()->SetNdivisions(505);
-  histData_p->GetXaxis()->SetNdivisions(505);
+    hists_p[hI]->GetYaxis()->SetNdivisions(505);
+    hists_p[hI]->GetXaxis()->SetNdivisions(505);
+    
+    hists_p[hI]->SetMaximum(max);
+    hists_p[hI]->SetMinimum(min);
+    
+    hists_p[hI]->GetYaxis()->SetTitleOffset(0.7);
+    
+    if(hI == 0) hists_p[hI]->DrawCopy("HIST E1 P");
+    else hists_p[hI]->DrawCopy("HIST E1 P SAME");
 
-  histData_p->SetMaximum(max);
-  histData_p->SetMinimum(min);
-
-  histData_p->GetYaxis()->SetTitleOffset(0.7);
+    leg_p->AddEntry(hists_p[hI], legLabels[hI].c_str(), "P L");
+  }
   
-  histData_p->DrawCopy("HIST E1 P");
-  histMC_p->DrawCopy("HIST E1 P SAME");
-  histData_p->DrawCopy("HIST E1 P SAME");
-
   if(doLogX) gPad->SetLogx();
   if(doLogY) gPad->SetLogy();
-  
-  leg_p->AddEntry(histData_p, legLabels[0].c_str(), "P L");
-  leg_p->AddEntry(histMC_p, legLabels[1].c_str(), "P L");
+    
   
   if(doAllLeg || goodLeg) leg_p->Draw("SAME");
 
@@ -200,15 +208,15 @@ void plotDataMC(std::string saveName, TH1F* histData_p, TH1F* histMC_p, std::vec
   label_p->DrawLatex(xPos, yPos, labelName.c_str());
   */
   
-  if(min < 0.0) line_p->DrawLine(histData_p->GetXaxis()->GetBinLowEdge(1), 0.0, histData_p->GetXaxis()->GetBinLowEdge(histData_p->GetXaxis()->GetNbins()+1), 0.0);
+  if(min < 0.0) line_p->DrawLine(hists_p[0]->GetXaxis()->GetBinLowEdge(1), 0.0, hists_p[0]->GetXaxis()->GetBinLowEdge(hists_p[0]->GetXaxis()->GetNbins()+1), 0.0);
 
   canv_p->cd();
   pads_p[1]->cd();
 
-  TH1D* histDataClone_p = (TH1D*)histData_p->Clone("histDataClone_h");
+  TH1D* histDataClone_p = (TH1D*)hists_p[0]->Clone("histDataClone_h");
   
   histDataClone_p->Sumw2();
-  histDataClone_p->Divide(histMC_p);
+  histDataClone_p->Divide(hists_p[1]);
 
   histDataClone_p->SetMaximum(ratMax);
   histDataClone_p->SetMinimum(ratMin);
@@ -334,44 +342,6 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
   std::vector<std::string> dataLabels = strToVect(plotConfig_p->GetValue("DATALABEL", ""));
   std::vector<std::string> mcLabels = strToVect(plotConfig_p->GetValue("MCLABEL", ""));
 
-  /*
-  const double gammaPtMin = std::stod(config.GetConfigVal("GAMMAPTMIN"));
-  const double gammaPtMax = std::stod(config.GetConfigVal("GAMMAPTMAX"));
-  const double gammaPtRatMin = std::stod(config.GetConfigVal("GAMMAPTRATMIN"));
-  const double gammaPtRatMax = std::stod(config.GetConfigVal("GAMMAPTRATMAX"));
-
-  const double jtDPhiMin = std::stod(config.GetConfigVal("JTDPHIMIN"));
-  const double jtDPhiMax = std::stod(config.GetConfigVal("JTDPHIMAX"));
-  const double jtDPhiRatMin = std::stod(config.GetConfigVal("JTDPHIRATMIN"));
-  const double jtDPhiRatMax = std::stod(config.GetConfigVal("JTDPHIRATMAX"));
-
-  const double jtEtaMin = std::stod(config.GetConfigVal("JTETAMIN"));
-  const double jtEtaMax = std::stod(config.GetConfigVal("JTETAMAX"));
-  const double jtEtaRatMin = std::stod(config.GetConfigVal("JTETARATMIN"));
-  const double jtEtaRatMax = std::stod(config.GetConfigVal("JTETARATMAX"));
-  const double jtPtMin = std::stod(config.GetConfigVal("JTPTMIN"));
-  const double jtPtMax = std::stod(config.GetConfigVal("JTPTMAX"));
-  const double jtPtRatMin = std::stod(config.GetConfigVal("JTPTRATMIN"));
-  const double jtPtRatMax = std::stod(config.GetConfigVal("JTPTRATMAX"));
-  const double jtMultMin = std::stod(config.GetConfigVal("JTMULTMIN"));
-  const double jtMultMax = std::stod(config.GetConfigVal("JTMULTMAX"));
-  const double jtMultRatMin = std::stod(config.GetConfigVal("JTMULTRATMIN"));
-  const double jtMultRatMax = std::stod(config.GetConfigVal("JTMULTRATMAX"));
-  const double jtXJMin = std::stod(config.GetConfigVal("JTXJMIN"));
-  const double jtXJMax = std::stod(config.GetConfigVal("JTXJMAX"));
-  const double jtXJRatMin = std::stod(config.GetConfigVal("JTXJRATMIN"));
-  const double jtXJRatMax = std::stod(config.GetConfigVal("JTXJRATMAX"));
-
-  const double multiJtPtMin = std::stod(config.GetConfigVal("MULTIJTPTMIN"));
-  const double multiJtPtMax = std::stod(config.GetConfigVal("MULTIJTPTMAX"));
-  const double multiJtPtRatMin = std::stod(config.GetConfigVal("MULTIJTPTRATMIN"));
-  const double multiJtPtRatMax = std::stod(config.GetConfigVal("MULTIJTPTRATMAX"));
-  const double multiJtXJMin = std::stod(config.GetConfigVal("MULTIJTXJMIN"));
-  const double multiJtXJMax = std::stod(config.GetConfigVal("MULTIJTXJMAX"));
-  const double multiJtXJRatMin = std::stod(config.GetConfigVal("MULTIJTXJRATMIN"));
-  const double multiJtXJRatMax = std::stod(config.GetConfigVal("MULTIJTXJRATMAX"));
-  */
-
   TFile* inDataFile_p = new TFile(inDataFileName.c_str(), "READ");
   TEnv* dataEnv_p = (TEnv*)inDataFile_p->Get("config");
   TEnv* dataLabels_p = (TEnv*)inDataFile_p->Get("label");
@@ -414,6 +384,8 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
 
   if(!configData.CheckConfigParams(&configMC, paramsToCheck)) return 1;
 
+  plotConfig_p->SetValue(dataEnv_p->GetValue("ISPP", ""));
+  
   const int jetR = std::stoi(configMC.GetConfigVal("JETR"));
   if(jetR != 2 && jetR != 4){
     std::cout << "Given parameter jetR, \'" << jetR << "\' is not \'2\' or \'4\'. return 1" << std::endl;
@@ -450,7 +422,9 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
   TH1F* photonSubJtXJVCentPt_MC_p[nMaxBins][nMaxBins+1];
   TH1F* photonSubMultiJtXJVCentPt_MC_p[nMaxBins][nMaxBins+1];
   TH1F* photonSubJtMultModVCentPt_MC_p[nMaxBins][nMaxBins+1];
-  
+
+  TH1F* photonGenJtXJVCentPt_MC_p[nMaxBins][nMaxBins+1];
+
   TH1F* photonPtVCentEta_Data_p[nMaxBins][nMaxBins+1];
 
   TH1F* photonSubJtDPhiVCentPt_Data_p[nMaxBins][nMaxBins+1];  
@@ -473,6 +447,8 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   for(Int_t cI = 0; cI < nCentBins; ++cI){
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
     std::string centStr = "PP";
     if(!isPP) centStr = "Cent" + std::to_string(centBins[cI]) + "to" + std::to_string(centBins[cI+1]);
 
@@ -491,6 +467,7 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
     photonPtVCentEta_Data_p[cI][0]->GetYaxis()->SetTitle("Unity normalization");
     
     for(Int_t pI = 0; pI < nGammaPtBinsSub; ++pI){
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
       photonSubJtDPhiVCentPt_MC_p[cI][pI] = (TH1F*)inMCFile_p->Get((centStr + "/photonSubJtDPhiVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_GlobalJtPt0_h").c_str());
       photonSubJtDPhiVCentPt_Data_p[cI][pI] = (TH1F*)inDataFile_p->Get((centStr + "/photonSubJtDPhiVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_GlobalJtPt0_h").c_str());
 
@@ -498,6 +475,7 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
       photonSubJtEtaVCentPt_Data_p[cI][pI] = (TH1F*)inDataFile_p->Get((centStr + "/photonSubJtEtaVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_GlobalJtPt0_DPhi0_h").c_str());
 
       photonSubJtXJVCentPt_MC_p[cI][pI] = (TH1F*)inMCFile_p->Get((centStr + "/photonSubJtXJVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_GlobalJtPt0_DPhi0_h").c_str());
+      if(isPP) photonGenJtXJVCentPt_MC_p[cI][pI] = (TH1F*)inMCFile_p->Get((centStr + "/photonGenJtXJVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_GlobalJtPt0_DPhi0_h").c_str());
       photonSubJtXJVCentPt_Data_p[cI][pI] = (TH1F*)inDataFile_p->Get((centStr + "/photonSubJtXJVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_GlobalJtPt0_DPhi0_h").c_str());
 
       photonSubMultiJtXJVCentPt_MC_p[cI][pI] = (TH1F*)inMCFile_p->Get((centStr + "/photonSubMultiJtXJVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_GlobalJtPt0_DPhi0_MultiJt0_h").c_str());
@@ -512,6 +490,9 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
       photonSubMultiJtPtVCentPt_MC_p[cI][pI] = (TH1F*)inMCFile_p->Get((centStr + "/photonSubMultiJtPtVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_DPhi0_MultiJt0_h").c_str());
       photonSubMultiJtPtVCentPt_Data_p[cI][pI] = (TH1F*)inDataFile_p->Get((centStr + "/photonSubMultiJtPtVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_DPhi0_MultiJt0_h").c_str());
 
+      std::vector<std::string> legLabels = {dataLabels[0], mcLabels[0], "Truth"};
+      std::vector<TH1F*> hists_p;
+      
       std::vector<std::string> tempGlobalLabels = globalLabels;
       std::vector<bool> permaTex;
       for(unsigned int gI = 0; gI < tempGlobalLabels.size(); ++gI){
@@ -522,22 +503,25 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
       permaTex.push_back(true);
 
       if(pI == 0){
-	plotDataMC("pdfDir/" + dateStr + "/photonPtVCentEta_" + centStr + "_AbsEta" + std::to_string(nGammaEtaBinsSub) + "_R" + std::to_string(jetR) + "_DataMC_" + dateStr + ".pdf", photonPtVCentEta_Data_p[cI][0], photonPtVCentEta_MC_p[cI][0], {dataLabels[0], mcLabels[0]}, tempGlobalLabels, permaTex, plotConfig_p, "GAMMAPT", doGlobalDebug);
+	hists_p = {photonPtVCentEta_Data_p[cI][0], photonPtVCentEta_MC_p[cI][0]};
+	plotDataMC("pdfDir/" + dateStr + "/photonPtVCentEta_" + centStr + "_AbsEta" + std::to_string(nGammaEtaBinsSub) + "_R" + std::to_string(jetR) + "_DataMC_" + dateStr + ".pdf", hists_p, legLabels, tempGlobalLabels, permaTex, plotConfig_p, "GAMMAPT", doGlobalDebug);
       }
-   
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
       tempGlobalLabels.push_back(labelData.GetConfigVal("GammaPt" + std::to_string(pI)));
       permaTex.push_back(true);
 
       tempGlobalLabels.push_back(labelData.GetConfigVal("GlobalJtPt0"));
       permaTex.push_back(false);
 
-
-      plotDataMC("pdfDir/" + dateStr + "/photonSubJtDPhiVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_R" + std::to_string(jetR) + "_DataMC_" + dateStr + ".pdf", photonSubJtDPhiVCentPt_Data_p[cI][pI], photonSubJtDPhiVCentPt_MC_p[cI][pI], {dataLabels[0], mcLabels[0]}, tempGlobalLabels, permaTex, plotConfig_p, "JTDPHI", doGlobalDebug);
+      hists_p = {photonSubJtDPhiVCentPt_Data_p[cI][pI], photonSubJtDPhiVCentPt_MC_p[cI][pI]}; 
+      plotDataMC("pdfDir/" + dateStr + "/photonSubJtDPhiVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_R" + std::to_string(jetR) + "_DataMC_" + dateStr + ".pdf", hists_p, legLabels, tempGlobalLabels, permaTex, plotConfig_p, "JTDPHI", doGlobalDebug);
 
       tempGlobalLabels.push_back(labelData.GetConfigVal("DPhi0"));
       permaTex.push_back(false);
 
-      plotDataMC("pdfDir/" + dateStr + "/photonSubJtEtaVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_R" + std::to_string(jetR) + "_DataMC_" + dateStr + ".pdf", photonSubJtEtaVCentPt_Data_p[cI][pI], photonSubJtEtaVCentPt_MC_p[cI][pI], {dataLabels[0], mcLabels[0]}, tempGlobalLabels, permaTex, plotConfig_p, "JTETA", doGlobalDebug);
+      hists_p = {photonSubJtEtaVCentPt_Data_p[cI][pI], photonSubJtEtaVCentPt_MC_p[cI][pI]};
+      plotDataMC("pdfDir/" + dateStr + "/photonSubJtEtaVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_R" + std::to_string(jetR) + "_DataMC_" + dateStr + ".pdf", hists_p, legLabels, tempGlobalLabels, permaTex, plotConfig_p, "JTETA", doGlobalDebug);
 
       photonSubJtMultModVCentPt_Data_p[cI][pI]->Sumw2();
       photonSubJtMultModVCentPt_MC_p[cI][pI]->Sumw2();
@@ -548,14 +532,18 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
       photonSubJtMultModVCentPt_Data_p[cI][pI]->GetYaxis()->SetTitle("Unity Normalization");
       photonSubJtMultModVCentPt_MC_p[cI][pI]->GetYaxis()->SetTitle("Unity Normalization");
       
-      plotDataMC("pdfDir/" + dateStr + "/photonSubJtMultModVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_R" + std::to_string(jetR) + "_DataMC_" + dateStr + ".pdf", photonSubJtMultModVCentPt_Data_p[cI][pI], photonSubJtMultModVCentPt_MC_p[cI][pI], {dataLabels[0], mcLabels[0]}, tempGlobalLabels, permaTex, plotConfig_p, "JTMULT", doGlobalDebug);
+      hists_p = {photonSubJtMultModVCentPt_Data_p[cI][pI], photonSubJtMultModVCentPt_MC_p[cI][pI]};
+      plotDataMC("pdfDir/" + dateStr + "/photonSubJtMultModVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_R" + std::to_string(jetR) + "_DataMC_" + dateStr + ".pdf", hists_p, legLabels, tempGlobalLabels, permaTex, plotConfig_p, "JTMULT", doGlobalDebug);
 
-      plotDataMC("pdfDir/" + dateStr + "/photonSubJtXJVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_R" + std::to_string(jetR) + "_DataMC_" + dateStr + ".pdf", photonSubJtXJVCentPt_Data_p[cI][pI], photonSubJtXJVCentPt_MC_p[cI][pI], {dataLabels[0], mcLabels[0]}, tempGlobalLabels, permaTex, plotConfig_p, "JTXJ", doGlobalDebug);
+      if(isPP) hists_p = {photonSubJtXJVCentPt_Data_p[cI][pI], photonSubJtXJVCentPt_MC_p[cI][pI], photonGenJtXJVCentPt_MC_p[cI][pI]};
+      else hists_p = {photonSubJtXJVCentPt_Data_p[cI][pI], photonSubJtXJVCentPt_MC_p[cI][pI]};
+      plotDataMC("pdfDir/" + dateStr + "/photonSubJtXJVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_R" + std::to_string(jetR) + "_DataMC_" + dateStr + ".pdf", hists_p, legLabels, tempGlobalLabels, permaTex, plotConfig_p, "JTXJ", doGlobalDebug);
 
       tempGlobalLabels.push_back(labelData.GetConfigVal("MultiJt0"));
       permaTex.push_back(false);
 
-      plotDataMC("pdfDir/" + dateStr + "/photonSubMultiJtXJVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_R" + std::to_string(jetR) + "_DataMC_" + dateStr + ".pdf", photonSubMultiJtXJVCentPt_Data_p[cI][pI], photonSubMultiJtXJVCentPt_MC_p[cI][pI], {dataLabels[0], mcLabels[0]}, tempGlobalLabels, permaTex, plotConfig_p, "MULTIJTXJ", doGlobalDebug);
+      hists_p = {photonSubMultiJtXJVCentPt_Data_p[cI][pI], photonSubMultiJtXJVCentPt_MC_p[cI][pI]};
+      plotDataMC("pdfDir/" + dateStr + "/photonSubMultiJtXJVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_R" + std::to_string(jetR) + "_DataMC_" + dateStr + ".pdf", hists_p, legLabels, tempGlobalLabels, permaTex, plotConfig_p, "MULTIJTXJ", doGlobalDebug);
       
       tempGlobalLabels = globalLabels;
       for(unsigned int gI = 0; gI < tempGlobalLabels.size(); ++gI){
@@ -567,19 +555,19 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
       permaTex.push_back(true);
       tempGlobalLabels.push_back(labelData.GetConfigVal("DPhi0"));
       permaTex.push_back(false);
-      
-      plotDataMC("pdfDir/" + dateStr + "/photonSubJtPtVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_R" + std::to_string(jetR) + "_DataMC_" + dateStr + ".pdf", photonSubJtPtVCentPt_Data_p[cI][pI], photonSubJtPtVCentPt_MC_p[cI][pI], {dataLabels[0], mcLabels[0]}, tempGlobalLabels, permaTex, plotConfig_p, "JTPT", doGlobalDebug);
+
+      hists_p = {photonSubJtPtVCentPt_Data_p[cI][pI], photonSubJtPtVCentPt_MC_p[cI][pI]};
+      plotDataMC("pdfDir/" + dateStr + "/photonSubJtPtVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_R" + std::to_string(jetR) + "_DataMC_" + dateStr + ".pdf", hists_p, legLabels, tempGlobalLabels, permaTex, plotConfig_p, "JTPT", doGlobalDebug);
 
       tempGlobalLabels.push_back(labelData.GetConfigVal("MultiJt0"));
       permaTex.push_back(false);
 
-      plotDataMC("pdfDir/" + dateStr + "/photonSubMultiJtPtVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_R" + std::to_string(jetR) + "_DataMC_" + dateStr + ".pdf", photonSubMultiJtPtVCentPt_Data_p[cI][pI], photonSubMultiJtPtVCentPt_MC_p[cI][pI], {dataLabels[0], mcLabels[0]}, tempGlobalLabels, permaTex, plotConfig_p, "MULTIJTPT", doGlobalDebug);
-
+      hists_p = {photonSubMultiJtPtVCentPt_Data_p[cI][pI], photonSubMultiJtPtVCentPt_MC_p[cI][pI]};
+      plotDataMC("pdfDir/" + dateStr + "/photonSubMultiJtPtVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_R" + std::to_string(jetR) + "_DataMC_" + dateStr + ".pdf", hists_p, legLabels, tempGlobalLabels, permaTex, plotConfig_p, "MULTIJTPT", doGlobalDebug);
     }
   }
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-  
   
   inMCFile_p->Close();
   delete inMCFile_p;
