@@ -1367,7 +1367,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    TLorentzVector tempJet;
 	    tempJet.SetPtEtaPhiM(aktR_truth_jet_pt_p->at(tI), aktR_truth_jet_eta_p->at(tI), aktR_truth_jet_phi_p->at(tI), 0.0);
 	    goodTruthJets.push_back(tempJet);
-	    
+	 	    
 	    if(dPhi >= gammaJtDPhiCut){
 	      fillTH1(photonGenJtPtVCentPt_p[centPos][ptPos], aktR_truth_jet_pt_p->at(tI), fullWeight);
 	      fillTH1(photonGenJtPtVCentPt_p[centPos][nGammaPtBinsSub], aktR_truth_jet_pt_p->at(tI), fullWeight);
@@ -1727,6 +1727,18 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
       photonMultiJtXJJVCentPt_p[cI][pI]->Scale(1./gammaCountsPerPtCent[pI][cI]);
       photonMultiJtDPhiJJVCentPt_p[cI][pI]->Scale(1./gammaCountsPerPtCent[pI][cI]);
+
+      if(isMC){
+	photonGenJtDPhiVCentPt_p[cI][pI]->Scale(1./gammaCountsPerPtCent[pI][cI]);
+	photonGenJtPtVCentPt_p[cI][pI]->Scale(1./gammaCountsPerPtCent[pI][cI]);
+	photonMultiJtPtVCentPt_p[cI][pI]->Scale(1./gammaCountsPerPtCent[pI][cI]);
+	photonGenJtEtaVCentPt_p[cI][pI]->Scale(1./gammaCountsPerPtCent[pI][cI]);
+	photonGenJtXJVCentPt_p[cI][pI]->Scale(1./gammaCountsPerPtCent[pI][cI]);
+	photonMultiJtXJVCentPt_p[cI][pI]->Scale(1./gammaCountsPerPtCent[pI][cI]);
+	
+	photonGenMultiJtXJJVCentPt_p[cI][pI]->Scale(1./gammaCountsPerPtCent[pI][cI]);
+	photonGenMultiJtDPhiJJVCentPt_p[cI][pI]->Scale(1./gammaCountsPerPtCent[pI][cI]);
+      }
 
       if(doMix){
 	photonMixJtDPhiVCentPt_p[cI][pI]->Scale(1./gammaCountsPerPtCent[pI][cI]);
