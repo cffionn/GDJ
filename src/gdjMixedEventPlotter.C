@@ -223,28 +223,54 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
 
     hists_p[cI]->SetMaximum(zoomMax);
     hists_p[cI]->SetMinimum(zoomMin);
+    if(!isMC || hists_p.size() == 3){
+      std::string yTitle = hists_p[cI]->GetYaxis()->GetTitle();
+      yTitle = yTitle + " (ZOOM)";
+      hists_p[cI]->GetYaxis()->SetTitle(yTitle.c_str());
+      hists_p[cI]->GetXaxis()->SetTitleOffset(1.2);
+      hists_p[cI]->GetYaxis()->SetTitleOffset(yOffset*padSplit/(1.0-padSplit));
+      
+      hists_p[cI]->GetXaxis()->SetTitleFont(titleFont);
+      hists_p[cI]->GetYaxis()->SetTitleFont(titleFont);
+      hists_p[cI]->GetXaxis()->SetTitleSize(titleSize/(padSplit));
+      hists_p[cI]->GetYaxis()->SetTitleSize(titleSize/(padSplit));
+      
+      hists_p[cI]->GetXaxis()->SetLabelFont(titleFont);
+      hists_p[cI]->GetYaxis()->SetLabelFont(titleFont);
+      hists_p[cI]->GetXaxis()->SetLabelSize(labelSize/(padSplit));
+      hists_p[cI]->GetYaxis()->SetLabelSize(labelSize/(padSplit));
+      
+      hists_p[cI]->GetYaxis()->SetNdivisions(505);
+      
+      if(cI == 0) hists_p[cI]->DrawCopy("HIST E1 P");
+      else hists_p[cI]->DrawCopy("HIST E1 P SAME");  
+    }
+    else if(hists_p.size() == 4){
+      if(cI < 2) continue;
+      if(cI == 3) continue;
 
-    std::string yTitle = hists_p[cI]->GetYaxis()->GetTitle();
-    yTitle = yTitle + " (ZOOM)";
-    hists_p[cI]->GetYaxis()->SetTitle(yTitle.c_str());
-    hists_p[cI]->GetXaxis()->SetTitleOffset(1.2);
-    hists_p[cI]->GetYaxis()->SetTitleOffset(yOffset*padSplit/(1.0-padSplit));
+      hists_p[cI]->Divide(hists_p[3]);
+      
+      hists_p[cI]->GetYaxis()->SetTitle("(Raw - Mixed)/Gen.");
+      hists_p[cI]->GetXaxis()->SetTitleOffset(1.2);
+      hists_p[cI]->GetYaxis()->SetTitleOffset(yOffset*padSplit/(1.0-padSplit));
+      
+      hists_p[cI]->GetXaxis()->SetTitleFont(titleFont);
+      hists_p[cI]->GetYaxis()->SetTitleFont(titleFont);
+      hists_p[cI]->GetXaxis()->SetTitleSize(titleSize/(padSplit));
+      hists_p[cI]->GetYaxis()->SetTitleSize(titleSize/(padSplit));
+      
+      hists_p[cI]->GetXaxis()->SetLabelFont(titleFont);
+      hists_p[cI]->GetYaxis()->SetLabelFont(titleFont);
+      hists_p[cI]->GetXaxis()->SetLabelSize(labelSize/(padSplit));
+      hists_p[cI]->GetYaxis()->SetLabelSize(labelSize/(padSplit));
+      
+      hists_p[cI]->GetYaxis()->SetNdivisions(505);
+      
+      hists_p[cI]->DrawCopy("HIST E1 P");
+    }
 
-    hists_p[cI]->GetXaxis()->SetTitleFont(titleFont);
-    hists_p[cI]->GetYaxis()->SetTitleFont(titleFont);
-    hists_p[cI]->GetXaxis()->SetTitleSize(titleSize/(padSplit));
-    hists_p[cI]->GetYaxis()->SetTitleSize(titleSize/(padSplit));
-
-    hists_p[cI]->GetXaxis()->SetLabelFont(titleFont);
-    hists_p[cI]->GetYaxis()->SetLabelFont(titleFont);
-    hists_p[cI]->GetXaxis()->SetLabelSize(labelSize/(padSplit));
-    hists_p[cI]->GetYaxis()->SetLabelSize(labelSize/(padSplit));
-    
-    hists_p[cI]->GetYaxis()->SetNdivisions(505);
-
-    if(cI == 0) hists_p[cI]->DrawCopy("HIST E1 P");
-    else hists_p[cI]->DrawCopy("HIST E1 P SAME");  
-
+      
     if(doLogX) gPad->SetLogx();
     if(doLogY) gPad->SetLogy();  
   }
@@ -316,12 +342,17 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
   canv_p->cd();
   pads_p[0]->cd();
 
-  if(!doLogX) line_p->DrawLine(hists_p[0]->GetBinLowEdge(1), 0.0, hists_p[0]->GetBinLowEdge(hists_p[0]->GetXaxis()->GetNbins()+1), 0.0);
+  if(!doLogX){
+     line_p->DrawLine(hists_p[0]->GetBinLowEdge(1), 0.0, hists_p[0]->GetBinLowEdge(hists_p[0]->GetXaxis()->GetNbins()+1), 0.0);
+  }
 
   canv_p->cd();
   pads_p[1]->cd();
 
-  if(!doLogX) line_p->DrawLine(hists_p[0]->GetBinLowEdge(1), 0.0, hists_p[0]->GetBinLowEdge(hists_p[0]->GetXaxis()->GetNbins()+1), 0.0);
+  if(!doLogX){
+    if(!isMC || hists_p.size() == 3) line_p->DrawLine(hists_p[0]->GetBinLowEdge(1), 0.0, hists_p[0]->GetBinLowEdge(hists_p[0]->GetXaxis()->GetNbins()+1), 0.0);
+    else if(hists_p.size() == 4) line_p->DrawLine(hists_p[0]->GetBinLowEdge(1), 1.0, hists_p[0]->GetBinLowEdge(hists_p[0]->GetXaxis()->GetNbins()+1), 1.0);
+  }
 
   canv_p->cd();
 
@@ -349,7 +380,6 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 {
   checkMakeDir check;
   if(!check.checkFileExt(inConfigFileName, "config")) return 1;
-
 
   globalDebugHandler gBug;
   const bool doGlobalDebug = gBug.GetDoGlobalDebug();
@@ -418,7 +448,7 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
    for(Int_t gI = 0; gI < nGammaPtBinsSub+1; ++gI){
       for(unsigned int oI = 0; oI < observables1.size(); ++oI){     
 	std::string rawName = centStr + "/photon" + observables1[oI] + "VCentPt_" + centStr + "_GammaPt" + std::to_string(gI) + backStr1[oI] + "_h";
-	
+
 	TH1F* raw_p = (TH1F*)inFile_p->Get(rawName.c_str());
 	rawName.replace(rawName.find("photon"), std::string("photon").size(), "photonSub");
 	TH1F* sub_p = (TH1F*)inFile_p->Get(rawName.c_str());
@@ -433,7 +463,6 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	TH1F* mc_p = nullptr;
 	if(isMC){
 	  rawName = centStr + "/photonGenMatched" + observables1[oI] + "VCentPt_" + centStr + "_GammaPt" + std::to_string(gI) + backStr1[oI] + "_h";
-      
 	  mc_p = (TH1F*)inFile_p->Get(rawName.c_str());	  
 	}
 	
