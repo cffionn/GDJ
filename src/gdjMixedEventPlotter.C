@@ -312,6 +312,14 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
     }
   }
 
+  if(isMC){
+    if(hists_p.size() >= 4){
+      std::string assocGenMinPtStr = plotConfig_p->GetValue("ASSOCGENMINPT", "");
+      
+      if(assocGenMinPtStr.size() != 0) preLabels.push_back("p_{T}^{Gen. Match} > " + assocGenMinPtStr);
+    }
+  }
+  
   for(unsigned int pI = 0; pI < preLabels.size(); ++pI){
 
     if(alignRight){
@@ -323,7 +331,7 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
     }
 
     label_p->DrawLatex(xPos, yPos, preLabels[pI].c_str());
-    yPos -= 0.073;
+    yPos -= 0.083;
     /*
     if(labelStr.size() + preLabels[pI].size() > 0){
       if(labelStr.find(";") != std::string::npos) labelStr.replace(labelStr.rfind(";"), labelStr.size(), "");
@@ -397,6 +405,7 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
   const std::string dateStr = getDateStr();
   check.doCheckMakeDir("pdfDir");
   check.doCheckMakeDir("pdfDir/" + dateStr);
+
   
   TFile* inFile_p = new TFile(inFileName.c_str(), "READ");
   TEnv* config_p = (TEnv*)inFile_p->Get("config");
@@ -412,10 +421,19 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 					      "JETR"};
 
   std::vector<std::string> pbpbParams = {"CENTBINS"};
+
+  std::vector<std::string> mcParams = {"ASSOCGENMINPT"};
   
   if(!configs.ContainsParamSet(necessaryParams)) return 1;
 
-  plotConfig_p->SetValue("ISMC", config_p->GetValue("ISMC", ""));
+  const bool isMC = config_p->GetValue("ISMC", 0);
+
+  if(isMC){
+    if(!configs.ContainsParamSet(mcParams)) return 1;
+
+    plotConfig_p->SetValue("ASSOCGENMINPT", config_p->GetValue("ASSOCGENMINPT", ""));
+  }
+  plotConfig_p->SetValue("ISMC", isMC);
 
   const int nGammaPtBinsSub = std::stoi(configs.GetConfigVal("NGAMMAPTBINSSUB"));
   const bool isPP = std::stoi(configs.GetConfigVal("ISPP"));
@@ -439,7 +457,6 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
     return 1;
   }
 
-  const bool isMC = plotConfig_p->GetValue("ISMC", 0);
   
   for(Int_t cI = 0; cI < nCentBins; ++cI){
     std::string centStr = "PP";
