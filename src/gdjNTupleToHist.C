@@ -94,6 +94,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
 					      "JTETABINSLOW",
 					      "JTETABINSHIGH",
 					      "JTETABINSDOABS",
+					      "NJTETABINSSUB",
+					      "JTETABINSSUBLOW",
+					      "JTETABINSSUBHIGH",
+					      "JTETABINSSUBDOABS",
 					      "NPHIBINS",
 					      "NGAMMAPTBINSSUB",
 					      "GAMMAPTBINSSUBLOW",
@@ -408,11 +412,55 @@ int gdjNTupleToHist(std::string inConfigFileName)
     std::cout << "ERROR - config \'" << inConfigFileName << "\' contains jtEtaBinsLow \'" << jtEtaBinsLow << "\' less than 0 despite requested jtEtaBinsDoAbs \'" << jtEtaBinsDoAbs << "\'. return 1" << std::endl;
     return 1;
   }
-
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
   Double_t jtEtaBins[nMaxEtaPhiBins+1];
   getLinBins(jtEtaBinsLow, jtEtaBinsHigh, nJtEtaBins, jtEtaBins);
+
+  const Int_t nJtEtaBinsSub = config_p->GetValue("NJTETABINSSUB", 14);
+  if(!goodBinning(inConfigFileName, nMaxSubBins, nJtEtaBinsSub, "NJTETABINSSUB")) return 1;
+  const Float_t jtEtaBinsSubLow = config_p->GetValue("JTETABINSSUBLOW", 0.0);
+  const Float_t jtEtaBinsSubHigh = config_p->GetValue("JTETABINSSUBHIGH", 2.8);
+  const Bool_t jtEtaBinsSubDoAbs = config_p->GetValue("JTETABINSSUBDOABS", 1);
+  if(jtEtaBinsSubDoAbs && jtEtaBinsSubLow < 0){
+    std::cout << "ERROR - config \'" << inConfigFileName << "\' contains jtEtaBinsSubLow \'" << jtEtaBinsSubLow << "\' less than 0 despite requested jtEtaBinsSubDoAbs \'" << jtEtaBinsSubDoAbs << "\'. return 1" << std::endl;
+    return 1;
+  }
+  Double_t jtEtaBinsSub[nMaxSubBins+1];
+  const Bool_t jtEtaBinsSubDoLin = config_p->GetValue("JTETABINSSUBDOLIN", 0);
+  const Bool_t jtEtaBinsSubDoLog = config_p->GetValue("JTETABINSSUBDOLOG", 0);
+  const Bool_t jtEtaBinsSubDoCustom = config_p->GetValue("JTETABINSSUBDOCUSTOM", 0);
+  if(jtEtaBinsSubDoLin) getLinBins(jtEtaBinsSubLow, jtEtaBinsSubHigh, nJtEtaBinsSub, jtEtaBinsSub);
+  else if(jtEtaBinsSubDoLog){
+    if(jtEtaBinsSubLow <= 0){
+      std::cout << "JTETABINSSUBDOLOG called despite JTETABINSSUBLOW \'" << jtEtaBinsSubLow << "\' less than or equal  to 0. return 1" << std::endl;
+      return 1;
+    }
+    getLogBins(jtEtaBinsSubLow, jtEtaBinsSubHigh, nJtEtaBinsSub, jtEtaBinsSub);
+  }
+  else if(jtEtaBinsSubDoCustom){
+    if(!checkEnvForParams(config_p, {"JTETABINSSUBCUSTOM"})) return 1;
+    std::vector<float> jtEtaBinsSubCustom = strToVectF(config_p->GetValue("JTETABINSSUBCUSTOM", ""));
+    if(nJtEtaBinsSub != ((int)jtEtaBinsSubCustom.size()) - 1){
+      return 1;
+    }
+
+    for(unsigned int jI = 0; jI < jtEtaBinsSubCustom.size(); ++jI){
+      jtEtaBinsSub[jI] = jtEtaBinsSubCustom[jI];
+    }
+  }
+  else{
+    std::cout << "None of 'JTETABINSSUBDOLIN', 'JTETABINSSUBDOLOG', or 'JTETABINSSUBDOCUSTOM' are specified as true. return 1" << std::endl;
+    return 1;
+  }
+
+  std::vector<std::string> jtEtaBinsSubStr;
+  for(Int_t pI = 0; pI < nJtEtaBinsSub; ++pI){
+    if(pI < 10) jtEtaBinsSubStr.push_back("JtEta0" + std::to_string(pI));
+    else jtEtaBinsSubStr.push_back("JtEta" + std::to_string(pI));
+
+    binsToLabelStr[jtEtaBinsSubStr[pI]] = prettyString(jtEtaBinsSub[pI], 1, false) + " < #eta_{Jet} < " + prettyString(jtEtaBinsSub[pI+1], 1, false);
+  }
+  jtEtaBinsSubStr.push_back("JtEta" + std::to_string(nJtEtaBinsSub));
+  binsToLabelStr[jtEtaBinsSubStr[jtEtaBinsSubStr.size()-1]] = prettyString(jtEtaBinsSub[0], 1, false) + " < #eta_{Jet} < " + prettyString(jtEtaBinsSub[nJtEtaBinsSub], 1, false);
 
   const Int_t nPhiBins = config_p->GetValue("NPHIBINS", 32);
   if(!goodBinning(inConfigFileName, nMaxEtaPhiBins, nPhiBins, "NPHIBINS")) return 1;
@@ -473,6 +521,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
   gammaEtaBinsSubStr.push_back(preStr + "Eta" + std::to_string(nGammaEtaBinsSub));
   if(gammaEtaBinsSubDoAbs) binsToLabelStr[gammaEtaBinsSubStr[gammaEtaBinsSubStr.size()-1]] = prettyString(gammaEtaBinsSub[0], 2, false) + "<|#eta_{#gamma}|<" + prettyString(gammaEtaBinsSub[nGammaEtaBinsSub], 2, false);
   else binsToLabelStr[gammaEtaBinsSubStr[gammaEtaBinsSubStr.size()-1]] = prettyString(gammaEtaBinsSub[0], 2, false) + " < #eta_{#gamma} < " + prettyString(gammaEtaBinsSub[nGammaEtaBinsSub], 2, false);
+
+
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
@@ -554,6 +604,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   TH1F* photonJtMultVCentPt_p[nMaxCentBins][nMaxSubBins+1];
 
   TH1F* photonJtRecoOverGenVCentJtPt_p[nMaxCentBins][nMaxPtBins];
+  TH2F* photonJtEMScaleOverConstituentVCentJtEta_p[nMaxCentBins][nMaxSubBins];
   TH2F* photonJtGenResVCentGenPtRecoPt_p[nMaxCentBins][nMaxPtBins][nMaxPtBins];
   
   TH1F* photonMixJtDPhiVCentPt_p[nMaxCentBins][nMaxSubBins+1];
@@ -723,6 +774,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	photonGenMatchedMultiJtDPhiJJVCentPt_p[cI][pI] = new TH1F(("photonGenMatchedMultiJtDPhiJJVCentPt_" + centBinsStr[cI] + "_" + gammaPtBinsSubStr[pI] + "_" + jtPtBinsGlobalStr + "_" + gammaJtDPhiStr + "_" + multiJtCutGlobalStr + "_h").c_str(), ";Gen.-matched #Delta#phi_{JJ};N_{#gamma,jet}/N_{#gamma}", nDPhiBins, dPhiBinsLow, dPhiBinsHigh);
 
 	photonGenMatchedJtMultVCentPt_p[cI][pI] = new TH1F(("photonGenMatchedJtMultVCentPt_" + centBinsStr[cI] + "_" + gammaPtBinsSubStr[pI] + "_" + jtPtBinsGlobalStr + "_" + gammaJtDPhiStr + "_h").c_str(), (";Gen.-matched Jet multiplicity (" + prettyString(jtPtBins[0], 1, false) + " < p_{T} < " + prettyString(jtPtBins[nJtPtBins], 1, false) + ");Counts").c_str(), 7, -0.5, 6.5);
+      
+	
+
 
 	photonJtFakeVCentPt_p[cI][pI] = new TH1F(("photonJtFakeVCentPt_" + centBinsStr[cI] + "_" + gammaPtBinsSubStr[pI] + "_" + jtPtBinsGlobalStr + "_" + gammaJtDPhiStr + "_h").c_str(), ";#gamma-tagged Jet p_{T} ;#frac{N_{Fake jets}}{N_{All jets}}", nJtPtBins, jtPtBins);
 	
@@ -730,6 +784,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       }
     }
 
+	  
     if(isMC){
       for(Int_t ptI = 0; ptI < nGammaPtBins+1; ++ptI){
 	for(Int_t ptI2 = 0; ptI2 < nGammaPtBins+1; ++ptI2){
@@ -743,6 +798,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	setSumW2(photonJtRecoOverGenVCentJtPt_p[cI][gI]);
       }
     }
+
+    for(Int_t gI = 0; gI < nJtEtaBinsSub+1; ++gI){
+      photonJtEMScaleOverConstituentVCentJtEta_p[cI][gI] = new TH2F(("photonJtEMScaleOverConstituentVCentJtEta_" + centBinsStr[cI] + "_" + jtEtaBinsSubStr[gI] + "_" + gammaPtBinsSubStr[nGammaPtBinsSub] + "_" + gammaJtDPhiStr + "_h").c_str(), ";Uncorrected Jet p_{T} [GeV];Reco./Gen.", nJtPtBins, jtPtBins, 51, 0, 2.0);
+      setSumW2(photonJtEMScaleOverConstituentVCentJtEta_p[cI][gI]);
+    }      
     
     photonEtaPt_p[cI] = new TH2F(("photonEtaPt_" + centBinsStr[cI] + "_h").c_str(), ";#gamma #eta;#gamma p_{T} [GeV]", nGammaEtaBins, gammaEtaBins, nGammaPtBins, gammaPtBins);
 
@@ -868,6 +928,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   std::vector<float>* photon_etcone30_p=nullptr;
   
   std::vector<float>* aktRhi_em_xcalib_jet_pt_p=nullptr;
+  std::vector<float>* aktRhi_constit_xcalib_jet_pt_p=nullptr;
   std::vector<float>* aktRhi_em_xcalib_jet_eta_p=nullptr;
   std::vector<float>* aktRhi_em_xcalib_jet_phi_p=nullptr;
   std::vector<int>* aktRhi_truthpos_p=nullptr;
@@ -1025,6 +1086,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_pt").c_str(), 1);
+  inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_constit_xcalib_jet_pt").c_str(), 1);
   inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_eta").c_str(), 1);
   inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_phi").c_str(), 1);
   
@@ -1076,6 +1138,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   inTree_p->SetBranchAddress("photon_etcone30", &photon_etcone30_p);
 
   inTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_pt").c_str(), &aktRhi_em_xcalib_jet_pt_p);
+  inTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "hi_constit_xcalib_jet_pt").c_str(), &aktRhi_constit_xcalib_jet_pt_p);
   inTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_eta").c_str(), &aktRhi_em_xcalib_jet_eta_p);
   inTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_phi").c_str(), &aktRhi_em_xcalib_jet_phi_p);
 
@@ -1273,6 +1336,27 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
 
 	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+      
+	//First loop for the corrections plots
+        for(unsigned int jI = 0; jI < aktRhi_em_xcalib_jet_pt_p->size(); ++jI){
+	  double jtEtaForBin = aktRhi_em_xcalib_jet_eta_p->at(jI);
+	  if(jtEtaBinsSubDoAbs) jtEtaForBin = TMath::Abs(jtEtaForBin);
+
+	  if(jtEtaForBin < jtEtaBinsSubLow) continue;
+	  if(jtEtaForBin >= jtEtaBinsSubHigh) continue;
+
+	  if(aktRhi_constit_xcalib_jet_pt_p->at(jI) <= jtPtBinsLow) continue;
+	  if(aktRhi_constit_xcalib_jet_pt_p->at(jI) > jtPtBinsHigh) continue;
+
+	  Float_t dPhi = TMath::Abs(getDPHI(aktRhi_em_xcalib_jet_phi_p->at(jI), photon_phi_p->at(pI)));
+
+	  if(dPhi <= gammaJtDPhiCut) continue;
+
+	  int etaPos = ghostPos(nJtEtaBinsSub, jtEtaBinsSub, jtEtaForBin);
+
+	  fillTH2(photonJtEMScaleOverConstituentVCentJtEta_p[centPos][etaPos], aktRhi_constit_xcalib_jet_pt_p->at(jI), aktRhi_em_xcalib_jet_pt_p->at(jI)/aktRhi_constit_xcalib_jet_pt_p->at(jI), fullWeight);	  
+	  fillTH2(photonJtEMScaleOverConstituentVCentJtEta_p[centPos][nJtEtaBinsSub], aktRhi_constit_xcalib_jet_pt_p->at(jI), aktRhi_em_xcalib_jet_pt_p->at(jI)/aktRhi_constit_xcalib_jet_pt_p->at(jI), fullWeight);	  
+	}
 
 	for(unsigned int jI = 0; jI < aktRhi_em_xcalib_jet_pt_p->size(); ++jI){
 	  if(aktRhi_em_xcalib_jet_eta_p->at(jI) <= jtEtaBinsLow) continue;
@@ -1973,6 +2057,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
       }
     }
     
+
+    for(Int_t gI = 0; gI < nJtEtaBinsSub+1; ++gI){
+      photonJtEMScaleOverConstituentVCentJtEta_p[cI][gI]->Write("", TObject::kOverwrite);
+    }
     photonEtaPt_p[cI]->Write("", TObject::kOverwrite);
 
     for(Int_t pI = 0; pI < nGammaPtBinsSub+1; ++pI){
@@ -2186,6 +2274,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       }
     }
 
+
     if(isMC){
       for(Int_t ptI = 0; ptI < nGammaPtBins+1; ++ptI){
 	for(Int_t ptI2 = 0; ptI2 < nGammaPtBins+1; ++ptI2){
@@ -2198,6 +2287,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
       }
     }
     
+    for(Int_t gI = 0; gI < nJtEtaBinsSub+1; ++gI){
+      delete photonJtEMScaleOverConstituentVCentJtEta_p[cI][gI];
+    }
+
     delete photonEtaPt_p[cI];
 
     for(Int_t pI = 0; pI < nGammaPtBinsSub+1; ++pI){
