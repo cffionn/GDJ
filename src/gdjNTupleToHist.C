@@ -459,7 +459,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
     binsToLabelStr[jtEtaBinsSubStr[pI]] = prettyString(jtEtaBinsSub[pI], 1, false) + " < #eta_{Jet} < " + prettyString(jtEtaBinsSub[pI+1], 1, false);
   }
-  jtEtaBinsSubStr.push_back("JtEta" + std::to_string(nJtEtaBinsSub));
+  if(nJtEtaBinsSub < 10) jtEtaBinsSubStr.push_back("JtEta0" + std::to_string(nJtEtaBinsSub));
+  else jtEtaBinsSubStr.push_back("JtEta" + std::to_string(nJtEtaBinsSub));
+
   binsToLabelStr[jtEtaBinsSubStr[jtEtaBinsSubStr.size()-1]] = prettyString(jtEtaBinsSub[0], 1, false) + " < #eta_{Jet} < " + prettyString(jtEtaBinsSub[nJtEtaBinsSub], 1, false);
 
   const Int_t nPhiBins = config_p->GetValue("NPHIBINS", 32);

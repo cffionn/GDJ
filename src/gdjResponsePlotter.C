@@ -40,6 +40,13 @@ const Double_t labelSizeX = 0.035;
 const Double_t labelSizeY = 0.035;
 const Int_t titleFont = 42;
 
+const Double_t padSplit = 0.35;
+const Double_t leftMargin = 0.15;
+const Double_t rightMargin = 0.12;
+const Double_t bottomMargin = leftMargin;
+const Double_t tinyMargin = 0.0001;
+const Double_t otherMargin = 0.02;
+
 void plotMeanAndSigma(const bool doGlobalDebug, TEnv* plotConfig_p, std::map<std::string, std::string>* labelMap, std::string dateStr, std::vector<std::string> centBins, TH1F* histMean_p[], TH1F* histWidth_p[])
 {
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
@@ -97,12 +104,6 @@ void plotMeanAndSigma(const bool doGlobalDebug, TEnv* plotConfig_p, std::map<std
 
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
     
-  const Double_t padSplit = 0.35;
-  const Double_t leftMargin = 0.15;
-  const Double_t bottomMargin = leftMargin;
-  const Double_t tinyMargin = 0.0001;
-  const Double_t otherMargin = 0.02;
-
   const Double_t yOffset = 1.0;
   const Double_t xOffset = 1.0;
   
@@ -481,6 +482,9 @@ int gdjResponsePlotter(const std::string inConfigFileName)
 					    "JTPTBINSDOLOG",
 					    "JTPTBINSLOW",
 					    "JTPTBINSHIGH",
+					    "NJTETABINSSUB",
+					    "JTETABINSSUBLOW",
+					    "JTETABINSSUBHIGH",
 					    "NGAMMAPTBINSSUB",
 					    "ISPP",
 					    "JETR",
@@ -532,6 +536,30 @@ int gdjResponsePlotter(const std::string inConfigFileName)
   if(jtPtBinsDoLog) getLogBins(jtPtBinsLow, jtPtBinsHigh, nJtPtBins, jtPtBins);
   else getLinBins(jtPtBinsLow, jtPtBinsHigh, nJtPtBins, jtPtBins);
   
+  const int nJtEtaBinsSub = fileConfig_p->GetValue("NJTETABINSSUB", 0);
+  if(nJtEtaBinsSub > nMaxJtPtBins){
+    std::cout << "Given nJtEtaBinsSub \'" << nJtEtaBinsSub << "\' is greater than max value \'" << nMaxJtPtBins << "\'. return 1" << std::endl;
+    return 1;
+  }
+  const Float_t jtEtaBinsSubLow = fileConfig_p->GetValue("JTETABINSSUBLOW", 10.0);
+  const Float_t jtEtaBinsSubHigh = fileConfig_p->GetValue("JTETABINSSUBHIGH", 100.0);
+  
+  const Bool_t jtEtaBinsSubDoAbs = fileConfig_p->GetValue("JTETABINSSUBDOABS", 0);
+  const Bool_t jtEtaBinsSubDoLog = fileConfig_p->GetValue("JTETABINSSUBDOLOG", 0);
+  const Bool_t jtEtaBinsSubDoLin = fileConfig_p->GetValue("JTETABINSSUBDOLIN", 0);
+  const Bool_t jtEtaBinsSubDoCustom = fileConfig_p->GetValue("JTETABINSSUBDOCUSTOM", 0);
+  Double_t jtEtaBinsSub[nMaxJtPtBins+1];
+  if(jtEtaBinsSubDoLin) getLinBins(jtEtaBinsSubLow, jtEtaBinsSubHigh, nJtEtaBinsSub, jtEtaBinsSub);
+  else if(jtEtaBinsSubDoLog) getLogBins(jtEtaBinsSubLow, jtEtaBinsSubHigh, nJtEtaBinsSub, jtEtaBinsSub);
+  else if(jtEtaBinsSubDoCustom){
+    std::vector<float> jtEtaBinsCustom = strToVectF(fileConfig_p->GetValue("JTETABINSSUBCUSTOM", ""));
+
+    for(unsigned int jI = 0; jI < jtEtaBinsCustom.size(); ++jI){
+      jtEtaBinsSub[jI] = jtEtaBinsCustom[jI];
+    }   
+  }
+  
+
   const int nGammaPtBinsSub = fileConfig_p->GetValue("NGAMMAPTBINSSUB", 0);
   const bool isPP = fileConfig_p->GetValue("ISPP", 0);
   const Float_t recoJtPtMin = fileConfig_p->GetValue("RECOJTPTMIN", -100);
@@ -595,7 +623,7 @@ int gdjResponsePlotter(const std::string inConfigFileName)
   getNXNYPanels(nJtPtBins, &nXVal, &nYVal);
   for(Int_t cI = 0; cI < nCentBins; ++cI){
     if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << cI << "/" << nCentBins << std::endl;
-
+  
     TCanvas* canv_p = new TCanvas("canv_p", "", nXVal*450, nYVal*450);
     canv_p->SetTopMargin(tinyCanvMargin);
     canv_p->SetLeftMargin(tinyCanvMargin);
@@ -726,8 +754,74 @@ int gdjResponsePlotter(const std::string inConfigFileName)
 
   delete fit_p;
   
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   plotMeanAndSigma(doGlobalDebug, inConfig_p, &labelMap, dateStr, centBins, recoOverGenVCent_FitMean_p, recoOverGenVCent_FitWidth_p);
   plotMeanAndSigma(doGlobalDebug, inConfig_p, &labelMap, dateStr, centBins, recoOverGenVCent_FitMean_p, recoOverGenVCent_FitWidthOverMean_p);
+
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
+  //Lets look at the corrections
+
+  int nPanelY = 450;
+  int nPanelX = nPanelY*(1 - otherMargin - bottomMargin)/(1 - leftMargin - rightMargin);
+
+  for(Int_t cI = 0; cI < nCentBins; ++cI){
+    std::string centStr = "PP";
+    std::string centLabel = "p+p";
+    if(!isPP){
+      if(addPP && cI == nCentBins-1){
+	centStr = "PP";
+	centLabel = "p+p";
+      }
+      else{
+	centStr = "Cent" + centBins[cI] + "to" + centBins[cI+1];
+	centLabel = "Pb+Pb, " + centBins[cI] + "-" + centBins[cI+1] + "%";
+      }
+    }
+
+    for(int jI = 0; jI < nJtEtaBinsSub; ++jI){
+      std::string jtEtaStr = std::to_string(jI);
+      if(jI < 10) jtEtaStr = "0" + jtEtaStr;
+
+      std::string jtLabelStr = "#eta_{Jet}";
+      if(jtEtaBinsSubDoAbs) jtLabelStr = "|" + jtLabelStr + "|";
+      jtLabelStr = jtLabelStr + " < " + prettyString(jtEtaBinsSub[jI+1],1, false);
+      if(!jtEtaBinsSubDoAbs || TMath::Abs(jtEtaBinsSub[jI]) > 0.00001) jtLabelStr = prettyString(jtEtaBinsSub[jI],1, false) + " < " + jtLabelStr;			    
+			      
+      TCanvas* canv_p = new TCanvas("canv_p", "", nPanelX, nPanelY);
+      canv_p->SetTopMargin(otherMargin);
+      canv_p->SetRightMargin(rightMargin);
+      canv_p->SetBottomMargin(bottomMargin);
+      canv_p->SetLeftMargin(leftMargin);
+
+      const std::string histName = centStr + "/photonJtEMScaleOverConstituentVCentJtEta_" + centStr + "_JtEta" + jtEtaStr + "_GammaPt" + std::to_string(nGammaPtBinsSub) + "_DPhi0_h";
+      
+      TH1F* tempHist_p = (TH1F*)inFile_p->Get(histName.c_str());
+
+      tempHist_p->GetXaxis()->SetTitleFont(titleFont);
+      tempHist_p->GetYaxis()->SetTitleFont(titleFont);
+      tempHist_p->GetXaxis()->SetLabelFont(titleFont);
+      tempHist_p->GetYaxis()->SetLabelFont(titleFont);
+
+      tempHist_p->GetXaxis()->SetTitleSize(titleSizeX);
+      tempHist_p->GetYaxis()->SetTitleSize(titleSizeY);
+      tempHist_p->GetXaxis()->SetLabelSize(labelSizeX);
+      tempHist_p->GetYaxis()->SetLabelSize(labelSizeY);
+      
+      tempHist_p->DrawCopy("COLZ");      
+
+      for(unsigned int gI = 0; gI < globalLabels.size(); ++gI){
+	label_p->DrawLatex(0.25, 0.56 - gI*0.07, globalLabels[gI].c_str());
+      }
+      label_p->DrawLatex(0.25, 0.56 - ((double)(globalLabels.size()))*0.07, centLabel.c_str());
+          
+      label_p->DrawLatex(0.25, 0.56 - ((double)(globalLabels.size()+1))*0.07, jtLabelStr.c_str());
+      
+      std::string saveName = "pdfDir/" + dateStr + "/emScalOverConstituentScale_JtEta" + jtEtaStr + "_" +  centStr + "_" + dateStr + ".pdf";
+      quietSaveAs(canv_p, saveName);
+      delete canv_p;
+    }
+  }
   
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
