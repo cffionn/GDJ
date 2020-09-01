@@ -293,7 +293,7 @@ void plotMeanAndSigma(const bool doGlobalDebug, TEnv* plotConfig_p, std::map<std
 	
 	  csnFit_p->SetParLimits(0, 0.0, 100.0);
 	
-	  histWidth_p[cI]->Fit("csnFit_p", "M N E I", "", histWidth_p[0]->GetBinLowEdge(1), histWidth_p[0]->GetBinLowEdge(histWidth_p[0]->GetXaxis()->GetNbins()+1));
+	  histWidth_p[cI]->Fit("csnFit_p", "Q M N E I", "", histWidth_p[0]->GetBinLowEdge(1), histWidth_p[0]->GetBinLowEdge(histWidth_p[0]->GetXaxis()->GetNbins()+1));
 	  HIJet::Style::EquipTF1(csnFit_p, cI);
 	  csnFit_p->SetLineStyle(2);    
 	  
@@ -703,15 +703,14 @@ int gdjResponsePlotter(const std::string inConfigFileName)
       }
 
       label_p->DrawLatex(0.25, 0.92 - ((double)(globalLabels.size()+1))*0.07, jtPtLabel.c_str());
-      
-      
-      Double_t minVal = TMath::Max((Double_t)hist_p->GetBinLowEdge(1), (Double_t)(recoJtPtMin/jtPtBinsLow));
+          
+      Double_t minVal = TMath::Max((Double_t)hist_p->GetBinLowEdge(1), (Double_t)(recoJtPtMin/jtPtBins[jI]));
       hist_p->Fit("fit_p", "M E Q N", "", minVal, hist_p->GetBinLowEdge(hist_p->GetXaxis()->GetNbins()+1));
 
       Double_t mean1 = fit_p->GetParameter(1);
       Double_t sigma1 = fit_p->GetParameter(2);
-      
-      minVal = TMath::Max(mean1 - sigma1*1.5, (Double_t)(recoJtPtMin/jtPtBinsLow));
+
+      minVal = TMath::Max(mean1 - sigma1*1.5, (Double_t)(recoJtPtMin/jtPtBins[jI]));
       Double_t maxVal = TMath::Min(mean1 + sigma1*1.5, (Double_t)hist_p->GetBinLowEdge(hist_p->GetXaxis()->GetNbins()+1));
       
       hist_p->Fit("fit_p", "M E Q N", "", minVal, maxVal);      
@@ -766,6 +765,8 @@ int gdjResponsePlotter(const std::string inConfigFileName)
   int nPanelX = nPanelY*(1 - otherMargin - bottomMargin)/(1 - leftMargin - rightMargin);
 
   for(Int_t cI = 0; cI < nCentBins; ++cI){
+    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << cI << "/" << nCentBins << std::endl;
+
     std::string centStr = "PP";
     std::string centLabel = "p+p";
     if(!isPP){
@@ -778,6 +779,8 @@ int gdjResponsePlotter(const std::string inConfigFileName)
 	centLabel = "Pb+Pb, " + centBins[cI] + "-" + centBins[cI+1] + "%";
       }
     }
+
+    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << cI << "/" << nCentBins << std::endl;
 
     for(int jI = 0; jI < nJtEtaBinsSub; ++jI){
       std::string jtEtaStr = std::to_string(jI);
@@ -796,7 +799,9 @@ int gdjResponsePlotter(const std::string inConfigFileName)
 
       const std::string histName = centStr + "/photonJtEMScaleOverConstituentVCentJtEta_" + centStr + "_JtEta" + jtEtaStr + "_GammaPt" + std::to_string(nGammaPtBinsSub) + "_DPhi0_h";
       
-      TH1F* tempHist_p = (TH1F*)inFile_p->Get(histName.c_str());
+      TH1F* tempHist_p = nullptr;
+      if(!addPP || cI < nCentBins-1) tempHist_p = (TH1F*)inFile_p->Get(histName.c_str());
+      else tempHist_p = (TH1F*)inFilePP_p->Get(histName.c_str());
 
       tempHist_p->GetXaxis()->SetTitleFont(titleFont);
       tempHist_p->GetYaxis()->SetTitleFont(titleFont);
@@ -817,7 +822,7 @@ int gdjResponsePlotter(const std::string inConfigFileName)
           
       label_p->DrawLatex(0.25, 0.56 - ((double)(globalLabels.size()+1))*0.07, jtLabelStr.c_str());
       
-      std::string saveName = "pdfDir/" + dateStr + "/emScalOverConstituentScale_JtEta" + jtEtaStr + "_" +  centStr + "_" + dateStr + ".pdf";
+      std::string saveName = "pdfDir/" + dateStr + "/emScalOverConstituentScale_JtEta" + jtEtaStr + "_" +  centStr + "_R" + std::to_string(jetR) + "_" + dateStr + ".pdf";
       quietSaveAs(canv_p, saveName);
       delete canv_p;
     }
