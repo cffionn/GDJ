@@ -3,6 +3,7 @@
 
 //cpp
 #include <iostream>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -82,5 +83,20 @@ inline bool compEnvParams(TEnv* inEnv1_p, TEnv* inEnv2_p, std::vector<std::strin
 
   return retVal;
 }
+
+
+inline std::map<std::string, std::string> GetMapFromEnv(TEnv* inEnv_p)
+{
+  std::map<std::string, std::string> retMap;
+  THashList* hash_p = (THashList*)inEnv_p->GetTable();
+  for(Int_t entry = 0; entry < hash_p->GetEntries(); ++entry){
+    std::string name = hash_p->At(entry)->GetName();
+
+    retMap[name] = inEnv_p->GetValue(name, "");
+  }
+
+  return retMap;
+}
+
 
 #endif
