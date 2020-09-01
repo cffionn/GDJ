@@ -92,7 +92,7 @@ inline std::map<std::string, std::string> GetMapFromEnv(TEnv* inEnv_p)
   for(Int_t entry = 0; entry < hash_p->GetEntries(); ++entry){
     std::string name = hash_p->At(entry)->GetName();
 
-    retMap[name] = inEnv_p->GetValue(name, "");
+    retMap[name] = inEnv_p->GetValue(name.c_str(), "");
   }
 
   return retMap;
