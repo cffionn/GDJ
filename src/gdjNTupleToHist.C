@@ -338,7 +338,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   const bool isPP = config_p->GetValue("ISPP", 1);
-  const Int_t nMaxSubBins = 10;
+  const Int_t nMaxSubBins = 60;
   const Int_t nMaxCentBins = 10;
   Int_t nCentBins = 1;
 
@@ -800,9 +800,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	setSumW2(photonJtRecoOverGenVCentJtPt_p[cI][gI]);
       }
     }
-
+  
     for(Int_t gI = 0; gI < nJtEtaBinsSub+1; ++gI){
-      photonJtEMScaleOverConstituentVCentJtEta_p[cI][gI] = new TH2F(("photonJtEMScaleOverConstituentVCentJtEta_" + centBinsStr[cI] + "_" + jtEtaBinsSubStr[gI] + "_" + gammaPtBinsSubStr[nGammaPtBinsSub] + "_" + gammaJtDPhiStr + "_h").c_str(), ";Uncorrected Jet p_{T} [GeV];Reco./Gen.", nJtPtBins, jtPtBins, 51, 0, 2.0);
+      photonJtEMScaleOverConstituentVCentJtEta_p[cI][gI] = new TH2F(("photonJtEMScaleOverConstituentVCentJtEta_" + centBinsStr[cI] + "_" + jtEtaBinsSubStr[gI] + "_" + gammaPtBinsSubStr[nGammaPtBinsSub] + "_" + gammaJtDPhiStr + "_h").c_str(), ";Uncorrected Jet p_{T} [GeV];Corrected/Uncorrected", nJtPtBins, jtPtBins, 150, 0.5, 2.0);
       setSumW2(photonJtEMScaleOverConstituentVCentJtEta_p[cI][gI]);
     }      
     
@@ -932,6 +932,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   std::vector<float>* aktRhi_em_xcalib_jet_pt_p=nullptr;
   std::vector<float>* aktRhi_constit_xcalib_jet_pt_p=nullptr;
   std::vector<float>* aktRhi_em_xcalib_jet_eta_p=nullptr;
+  std::vector<float>* aktRhi_constit_xcalib_jet_eta_p=nullptr;
   std::vector<float>* aktRhi_em_xcalib_jet_phi_p=nullptr;
   std::vector<int>* aktRhi_truthpos_p=nullptr;
 
@@ -1090,6 +1091,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_pt").c_str(), 1);
   inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_constit_xcalib_jet_pt").c_str(), 1);
   inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_eta").c_str(), 1);
+  inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_constit_xcalib_jet_eta").c_str(), 1);
   inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_phi").c_str(), 1);
   
   if(isMC){
@@ -1142,6 +1144,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   inTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_pt").c_str(), &aktRhi_em_xcalib_jet_pt_p);
   inTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "hi_constit_xcalib_jet_pt").c_str(), &aktRhi_constit_xcalib_jet_pt_p);
   inTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_eta").c_str(), &aktRhi_em_xcalib_jet_eta_p);
+  inTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "hi_constit_xcalib_jet_eta").c_str(), &aktRhi_constit_xcalib_jet_eta_p);
   inTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_phi").c_str(), &aktRhi_em_xcalib_jet_phi_p);
 
   if(isMC){
@@ -1341,7 +1344,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       
 	//First loop for the corrections plots
         for(unsigned int jI = 0; jI < aktRhi_em_xcalib_jet_pt_p->size(); ++jI){
-	  double jtEtaForBin = aktRhi_em_xcalib_jet_eta_p->at(jI);
+	  double jtEtaForBin = aktRhi_constit_xcalib_jet_eta_p->at(jI);
 	  if(jtEtaBinsSubDoAbs) jtEtaForBin = TMath::Abs(jtEtaForBin);
 
 	  if(jtEtaForBin < jtEtaBinsSubLow) continue;

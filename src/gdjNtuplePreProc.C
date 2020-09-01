@@ -14,7 +14,8 @@
 //Local                                                                                   
 #include "include/centralityFromInput.h"
 #include "include/checkMakeDir.h"
-#include "include/configParser.h"
+//#include "include/configParser.h"
+#include "include/envUtil.h"
 #include "include/getLinBins.h"
 #include "include/ghostUtil.h"
 #include "include/globalDebugHandler.h"
@@ -28,31 +29,28 @@
 int gdjNtuplePreProc(std::string inConfigFileName)
 {
   checkMakeDir check;
-  if(!check.checkFileExt(inConfigFileName, ".txt")) return 1;
+  if(!check.checkFileExt(inConfigFileName, ".config")) return 1;
   
   globalDebugHandler gDebug;
   const bool doGlobalDebug = gDebug.GetDoGlobalDebug();
-  configParser config(inConfigFileName);
-
+  TEnv* inConfig_p = new TEnv(inConfigFileName.c_str());
+  //  configParser config(inConfig_p);
   std::vector<std::string> necessaryParams = {"MCPREPROCDIRNAME",
 					      "OUTFILENAME",
 					      "CENTFILENAME",
 					      "ISPP",
-					      "ISMC"};
-
-  
-  if(!config.ContainsParamSet(necessaryParams)) return 1;
-  
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
-  const bool isPP = std::stoi(config.GetConfigVal("ISPP"));
-  const bool isMC = std::stoi(config.GetConfigVal("ISMC"));
+					      "ISMC"};  
+  if(!checkEnvForParams(inConfig_p, necessaryParams)) return 1;
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
+  const bool isPP = inConfig_p->GetValue("ISPP", 0);
+  const bool isMC = inConfig_p->GetValue("ISMC", 0);
+
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
-  const std::string inDirStr = config.GetConfigVal("MCPREPROCDIRNAME");
-  const std::string inCentFileName = config.GetConfigVal("CENTFILENAME");
+  const std::string inDirStr = inConfig_p->GetValue("MCPREPROCDIRNAME", "");
+  const std::string inCentFileName = inConfig_p->GetValue("CENTFILENAME", "");
   if(!check.checkDir(inDirStr)){
     std::cout << "GDJMCNTUPLEPREPROC ERROR - Given MCPREPROCDIRNAME \'" << inDirStr << "\' in config \'" << inConfigFileName << "\' is not valid. return 1" << std::endl;
     return 1;
@@ -80,9 +78,10 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   }
   TFile* inFile_p = new TFile(fileList[0].c_str(), "READ");
   TTree* inTree_p = (TTree*)inFile_p->Get("gammaJetTree_p");
-  TEnv* inConfigGlobal_p = (TEnv*)inFile_p->Get("config");
+  TEnv* fileConfig_p = (TEnv*)inFile_p->Get("config");
   
-  configParser inConfigGlobal(inConfigGlobal_p);
+
+  //  configParser inConfigGlobal(fileConfig_p);
 
   inFile_p->Close();
   delete inFile_p;
@@ -91,11 +90,11 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 
   
   bool getTracks = false;
-  if(inConfigGlobal.GetConfigVal("GETTRACKS").size() != 0) getTracks = std::stoi(inConfigGlobal.GetConfigVal("GETTRACKS"));
+  if(checkEnvForParams(fileConfig_p, {"GETTRACKS"})) getTracks = fileConfig_p->GetValue("GETTRACKS", 0);
 
   std::string topOutDir = "output";
-  if(config.ContainsParam("OUTDIRNAME")){
-    topOutDir = config.GetConfigVal("OUTDIRNAME");  
+  if(checkEnvForParams(inConfig_p, {"OUTDIRNAME"})){
+    topOutDir = inConfig_p->GetValue("OUTDIRNAME", "");  
     if(!check.checkDir(topOutDir)){
       std::cout << "Given output directory \'" << topOutDir << "\' does not exist. Please create it or remove param to use local default \'output\' directory. return 1" << std::endl;
       return 1;
@@ -106,7 +105,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   check.doCheckMakeDir(topOutDir);
   check.doCheckMakeDir(topOutDir + "/" + dateStr);
 
-  std::string outFileName = config.GetConfigVal("OUTFILENAME");
+  std::string outFileName = inConfig_p->GetValue("OUTFILENAME", "");
   if(outFileName.find(".") != std::string::npos) outFileName = outFileName.substr(0, outFileName.rfind("."));
   outFileName = topOutDir + "/" + dateStr + "/" + outFileName + "_" + dateStr + ".root";
 
@@ -435,13 +434,12 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       }
     }
     
-    configParser tempConfig(inConfig_p);
-    std::map<std::string, std::string> tempConfigMap = tempConfig.GetConfigMap();
+    std::map<std::string, std::string> tempConfigMap = GetMapFromEnv(inConfig_p);
 
     if(isMC){
       sampleHandler sHandler;
       
-      std::string inDataSetName = tempConfig.GetConfigVal("INDATASET");
+      std::string inDataSetName = inConfig_p->GetValue("INDATASET", "");
       if(inDataSetName.size() == 0 || !sHandler.Init(inDataSetName)){
 	std::cout << "GDJMCNTUPLEPREPROC ERROR - Given input \'" << file << "\' contains INDATASET \'" << inDataSetName << "\' that is not valid. return 1" << std::endl;
 	
@@ -592,8 +590,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
     TFile* inFile_p = new TFile(file.c_str(), "READ");
     TTree* inTree_p = (TTree*)inFile_p->Get("gammaJetTree_p");
     TEnv* inConfig_p = (TEnv*)inFile_p->Get("config");
-    configParser tempConfig(inConfig_p);
-    std::string inDataSetName = tempConfig.GetConfigVal("INDATASET");
+    std::string inDataSetName = inConfig_p->GetValue("INDATASET", "");
 
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
@@ -840,6 +837,8 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   
   outFile_p->Close();
   delete outFile_p;
+
+  delete inConfig_p;
   
   std::cout << "GDJMCNTUPLEPREPROC COMPLETE. return 0." << std::endl;
   return 0;
