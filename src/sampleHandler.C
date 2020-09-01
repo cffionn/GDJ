@@ -131,6 +131,20 @@ bool sampleHandler::Init(std::string sampleString)
 {
   //Pre-Initialize the maps
   PreInit();
+
+  if(sampleString.size() > 0){
+    while(sampleString.substr(0,1).find(" ") != std::string::npos){
+      sampleString.replace(0,1,"");
+      if(sampleString.size() == 0) break;
+    }
+  }
+
+  if(sampleString.size() > 0){
+    while(sampleString.substr(sampleString.size()-1,1).find(" ") != std::string::npos){
+      sampleString.replace(sampleString.size()-1,1,"");
+      if(sampleString.size() == 0) break;
+    }
+  }
      
   m_isInit = false;
 

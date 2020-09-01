@@ -173,6 +173,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   std::vector<float>* truth_pdg_p=nullptr;
   std::vector<int>* truth_type_p=nullptr;
   std::vector<int>* truth_origin_p=nullptr;
+  std::vector<int>* truth_status_p=nullptr;
 
   Float_t truthPhotonPt_;
   Float_t truthPhotonEta_;
@@ -180,24 +181,32 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   
   Int_t akt2hi_jet_n_;
   std::vector<float>* akt2hi_em_xcalib_jet_pt_p=nullptr;
+  std::vector<float>* akt2hi_em_xcalib_jet_uncorrpt_p=nullptr;
   std::vector<float>* akt2hi_em_xcalib_jet_eta_p=nullptr;
+  std::vector<float>* akt2hi_em_xcalib_jet_uncorreta_p=nullptr;
   std::vector<float>* akt2hi_em_xcalib_jet_phi_p=nullptr;
   std::vector<float>* akt2hi_em_xcalib_jet_e_p=nullptr;
+  std::vector<float>* akt2hi_em_xcalib_jet_uncorre_p=nullptr;
   std::vector<float>* akt2hi_constit_xcalib_jet_pt_p=nullptr;
   std::vector<float>* akt2hi_constit_xcalib_jet_eta_p=nullptr;
   std::vector<float>* akt2hi_constit_xcalib_jet_phi_p=nullptr;
   std::vector<float>* akt2hi_constit_xcalib_jet_e_p=nullptr;
+  std::vector<float>* akt2hi_double_calib_jet_pt_p=nullptr;
   std::vector<int>* akt2hi_truthpos_p=nullptr;
   
   Int_t akt4hi_jet_n_;
   std::vector<float>* akt4hi_em_xcalib_jet_pt_p=nullptr;
+  std::vector<float>* akt4hi_em_xcalib_jet_uncorrpt_p=nullptr;
   std::vector<float>* akt4hi_em_xcalib_jet_eta_p=nullptr;
+  std::vector<float>* akt4hi_em_xcalib_jet_uncorreta_p=nullptr;
   std::vector<float>* akt4hi_em_xcalib_jet_phi_p=nullptr;
   std::vector<float>* akt4hi_em_xcalib_jet_e_p=nullptr;
+  std::vector<float>* akt4hi_em_xcalib_jet_uncorre_p=nullptr;
   std::vector<float>* akt4hi_constit_xcalib_jet_pt_p=nullptr;
   std::vector<float>* akt4hi_constit_xcalib_jet_eta_p=nullptr;
   std::vector<float>* akt4hi_constit_xcalib_jet_phi_p=nullptr;
   std::vector<float>* akt4hi_constit_xcalib_jet_e_p=nullptr;
+  std::vector<float>* akt4hi_double_calib_jet_pt_p=nullptr;
   std::vector<int>* akt4hi_truthpos_p=nullptr;
 
   Int_t photon_n_;
@@ -234,12 +243,16 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   std::vector<float>* akt2_truth_jet_eta_p=nullptr;
   std::vector<float>* akt2_truth_jet_phi_p=nullptr;
   std::vector<float>* akt2_truth_jet_e_p=nullptr;
+  std::vector<float>* akt2_truth_jet_m_p=nullptr;
+  std::vector<int>* akt2_truth_jet_partonid_p=nullptr;
   std::vector<int>* akt2_truth_jet_recopos_p=nullptr;
   Int_t akt4_truth_jet_n_;
   std::vector<float>* akt4_truth_jet_pt_p=nullptr;
   std::vector<float>* akt4_truth_jet_eta_p=nullptr;
   std::vector<float>* akt4_truth_jet_phi_p=nullptr;
   std::vector<float>* akt4_truth_jet_e_p=nullptr;
+  std::vector<float>* akt4_truth_jet_m_p=nullptr;
+  std::vector<int>* akt4_truth_jet_partonid_p=nullptr;
   std::vector<int>* akt4_truth_jet_recopos_p=nullptr;
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
@@ -321,6 +334,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
     outTree_p->Branch("truth_pdg", &truth_pdg_p);
     outTree_p->Branch("truth_type", &truth_type_p);
     outTree_p->Branch("truth_origin", &truth_origin_p);
+    outTree_p->Branch("truth_status", &truth_status_p);
     
     outTree_p->Branch("truthPhotonPt", &truthPhotonPt_, "truthPhotonPt/F");
     outTree_p->Branch("truthPhotonPhi", &truthPhotonPhi_, "truthPhotonPhi/F");
@@ -329,24 +343,32 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   
   outTree_p->Branch("akt2hi_jet_n", &akt2hi_jet_n_, "akt2hi_jet_n/I");
   outTree_p->Branch("akt2hi_em_xcalib_jet_pt", &akt2hi_em_xcalib_jet_pt_p);
+  outTree_p->Branch("akt2hi_em_xcalib_jet_uncorrpt", &akt2hi_em_xcalib_jet_uncorrpt_p);
   outTree_p->Branch("akt2hi_em_xcalib_jet_eta", &akt2hi_em_xcalib_jet_eta_p);
+  outTree_p->Branch("akt2hi_em_xcalib_jet_uncorreta", &akt2hi_em_xcalib_jet_uncorreta_p);
   outTree_p->Branch("akt2hi_em_xcalib_jet_phi", &akt2hi_em_xcalib_jet_phi_p);
   outTree_p->Branch("akt2hi_em_xcalib_jet_e", &akt2hi_em_xcalib_jet_e_p);
+  outTree_p->Branch("akt2hi_em_xcalib_jet_uncorre", &akt2hi_em_xcalib_jet_uncorre_p);
   outTree_p->Branch("akt2hi_constit_xcalib_jet_pt", &akt2hi_constit_xcalib_jet_pt_p);
   outTree_p->Branch("akt2hi_constit_xcalib_jet_eta", &akt2hi_constit_xcalib_jet_eta_p);
   outTree_p->Branch("akt2hi_constit_xcalib_jet_phi", &akt2hi_constit_xcalib_jet_phi_p);
   outTree_p->Branch("akt2hi_constit_xcalib_jet_e", &akt2hi_constit_xcalib_jet_e_p);
+  outTree_p->Branch("akt2hi_double_calib_jet_pt", &akt2hi_double_calib_jet_pt_p);
   if(isMC) outTree_p->Branch("akt2hi_truthpos", &akt2hi_truthpos_p);
   
   outTree_p->Branch("akt4hi_jet_n", &akt4hi_jet_n_, "akt4hi_jet_n/I");
   outTree_p->Branch("akt4hi_em_xcalib_jet_pt", &akt4hi_em_xcalib_jet_pt_p);
+  outTree_p->Branch("akt4hi_em_xcalib_jet_uncorrpt", &akt4hi_em_xcalib_jet_uncorrpt_p);
   outTree_p->Branch("akt4hi_em_xcalib_jet_eta", &akt4hi_em_xcalib_jet_eta_p);
+  outTree_p->Branch("akt4hi_em_xcalib_jet_uncorreta", &akt4hi_em_xcalib_jet_uncorreta_p);
   outTree_p->Branch("akt4hi_em_xcalib_jet_phi", &akt4hi_em_xcalib_jet_phi_p);
   outTree_p->Branch("akt4hi_em_xcalib_jet_e", &akt4hi_em_xcalib_jet_e_p);
+  outTree_p->Branch("akt4hi_em_xcalib_jet_uncorre", &akt4hi_em_xcalib_jet_uncorre_p);
   outTree_p->Branch("akt4hi_constit_xcalib_jet_pt", &akt4hi_constit_xcalib_jet_pt_p);
   outTree_p->Branch("akt4hi_constit_xcalib_jet_eta", &akt4hi_constit_xcalib_jet_eta_p);
   outTree_p->Branch("akt4hi_constit_xcalib_jet_phi", &akt4hi_constit_xcalib_jet_phi_p);
   outTree_p->Branch("akt4hi_constit_xcalib_jet_e", &akt4hi_constit_xcalib_jet_e_p);
+  outTree_p->Branch("akt4hi_double_calib_jet_pt", &akt4hi_double_calib_jet_pt_p);
   if(isMC) outTree_p->Branch("akt4hi_truthpos", &akt4hi_truthpos_p);
   
   outTree_p->Branch("photon_n", &photon_n_, "photon_n/I");
@@ -385,6 +407,8 @@ int gdjNtuplePreProc(std::string inConfigFileName)
     outTree_p->Branch("akt2_truth_jet_eta", &akt2_truth_jet_eta_p);
     outTree_p->Branch("akt2_truth_jet_phi", &akt2_truth_jet_phi_p);
     outTree_p->Branch("akt2_truth_jet_e", &akt2_truth_jet_e_p);
+    outTree_p->Branch("akt2_truth_jet_m", &akt2_truth_jet_m_p);
+    outTree_p->Branch("akt2_truth_jet_partonid", &akt2_truth_jet_partonid_p);
     outTree_p->Branch("akt2_truth_jet_recopos", &akt2_truth_jet_recopos_p);
     
     outTree_p->Branch("akt4_truth_jet_n", &akt4_truth_jet_n_, "akt4_truth_jet_n/I");
@@ -392,6 +416,8 @@ int gdjNtuplePreProc(std::string inConfigFileName)
     outTree_p->Branch("akt4_truth_jet_eta", &akt4_truth_jet_eta_p);
     outTree_p->Branch("akt4_truth_jet_phi", &akt4_truth_jet_phi_p);
     outTree_p->Branch("akt4_truth_jet_e", &akt4_truth_jet_e_p);
+    outTree_p->Branch("akt4_truth_jet_m", &akt4_truth_jet_m_p);
+    outTree_p->Branch("akt4_truth_jet_partonid", &akt4_truth_jet_partonid_p);
     outTree_p->Branch("akt4_truth_jet_recopos", &akt4_truth_jet_recopos_p);
   }
 
@@ -695,30 +721,39 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       inTree_p->SetBranchAddress("truth_pdg", &truth_pdg_p);
       inTree_p->SetBranchAddress("truth_type", &truth_type_p);
       inTree_p->SetBranchAddress("truth_origin", &truth_origin_p);
+      inTree_p->SetBranchAddress("truth_status", &truth_status_p);
     }
 
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
     inTree_p->SetBranchAddress("akt2hi_jet_n", &akt2hi_jet_n_);
     inTree_p->SetBranchAddress("akt2hi_em_xcalib_jet_pt", &akt2hi_em_xcalib_jet_pt_p);
+    inTree_p->SetBranchAddress("akt2hi_em_xcalib_jet_uncorrpt", &akt2hi_em_xcalib_jet_uncorrpt_p);
     inTree_p->SetBranchAddress("akt2hi_em_xcalib_jet_eta", &akt2hi_em_xcalib_jet_eta_p);
+    inTree_p->SetBranchAddress("akt2hi_em_xcalib_jet_uncorreta", &akt2hi_em_xcalib_jet_uncorreta_p);
     inTree_p->SetBranchAddress("akt2hi_em_xcalib_jet_phi", &akt2hi_em_xcalib_jet_phi_p);
     inTree_p->SetBranchAddress("akt2hi_em_xcalib_jet_e", &akt2hi_em_xcalib_jet_e_p);
+    inTree_p->SetBranchAddress("akt2hi_em_xcalib_jet_uncorre", &akt2hi_em_xcalib_jet_uncorre_p);
     inTree_p->SetBranchAddress("akt2hi_constit_xcalib_jet_pt", &akt2hi_constit_xcalib_jet_pt_p);
     inTree_p->SetBranchAddress("akt2hi_constit_xcalib_jet_eta", &akt2hi_constit_xcalib_jet_eta_p);
     inTree_p->SetBranchAddress("akt2hi_constit_xcalib_jet_phi", &akt2hi_constit_xcalib_jet_phi_p);
     inTree_p->SetBranchAddress("akt2hi_constit_xcalib_jet_e", &akt2hi_constit_xcalib_jet_e_p);
+    inTree_p->SetBranchAddress("akt2hi_double_calib_jet_pt", &akt2hi_double_calib_jet_pt_p);
     if(isMC) inTree_p->SetBranchAddress("akt2hi_truthpos", &akt2hi_truthpos_p);
 
     inTree_p->SetBranchAddress("akt4hi_jet_n", &akt4hi_jet_n_);
     inTree_p->SetBranchAddress("akt4hi_em_xcalib_jet_pt", &akt4hi_em_xcalib_jet_pt_p);
+    inTree_p->SetBranchAddress("akt4hi_em_xcalib_jet_uncorrpt", &akt4hi_em_xcalib_jet_uncorrpt_p);
     inTree_p->SetBranchAddress("akt4hi_em_xcalib_jet_eta", &akt4hi_em_xcalib_jet_eta_p);
+    inTree_p->SetBranchAddress("akt4hi_em_xcalib_jet_uncorreta", &akt4hi_em_xcalib_jet_uncorreta_p);
     inTree_p->SetBranchAddress("akt4hi_em_xcalib_jet_phi", &akt4hi_em_xcalib_jet_phi_p);
     inTree_p->SetBranchAddress("akt4hi_em_xcalib_jet_e", &akt4hi_em_xcalib_jet_e_p);
+    inTree_p->SetBranchAddress("akt4hi_em_xcalib_jet_uncorre", &akt4hi_em_xcalib_jet_uncorre_p);
     inTree_p->SetBranchAddress("akt4hi_constit_xcalib_jet_pt", &akt4hi_constit_xcalib_jet_pt_p);
     inTree_p->SetBranchAddress("akt4hi_constit_xcalib_jet_eta", &akt4hi_constit_xcalib_jet_eta_p);
     inTree_p->SetBranchAddress("akt4hi_constit_xcalib_jet_phi", &akt4hi_constit_xcalib_jet_phi_p);
     inTree_p->SetBranchAddress("akt4hi_constit_xcalib_jet_e", &akt4hi_constit_xcalib_jet_e_p);
+    inTree_p->SetBranchAddress("akt4hi_double_calib_jet_pt", &akt4hi_double_calib_jet_pt_p);
     if(isMC) inTree_p->SetBranchAddress("akt4hi_truthpos", &akt4hi_truthpos_p);
 
     inTree_p->SetBranchAddress("photon_n", &photon_n_);
@@ -758,6 +793,8 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       inTree_p->SetBranchAddress("akt2_truth_jet_eta", &akt2_truth_jet_eta_p);
       inTree_p->SetBranchAddress("akt2_truth_jet_phi", &akt2_truth_jet_phi_p);
       inTree_p->SetBranchAddress("akt2_truth_jet_e", &akt2_truth_jet_e_p);
+      inTree_p->SetBranchAddress("akt2_truth_jet_m", &akt2_truth_jet_m_p);
+      inTree_p->SetBranchAddress("akt2_truth_jet_partonid", &akt2_truth_jet_partonid_p);
       inTree_p->SetBranchAddress("akt2_truth_jet_recopos", &akt2_truth_jet_recopos_p);
 
       inTree_p->SetBranchAddress("akt4_truth_jet_n", &akt4_truth_jet_n_);
@@ -765,6 +802,8 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       inTree_p->SetBranchAddress("akt4_truth_jet_eta", &akt4_truth_jet_eta_p);
       inTree_p->SetBranchAddress("akt4_truth_jet_phi", &akt4_truth_jet_phi_p);
       inTree_p->SetBranchAddress("akt4_truth_jet_e", &akt4_truth_jet_e_p);
+      inTree_p->SetBranchAddress("akt4_truth_jet_m", &akt4_truth_jet_m_p);
+      inTree_p->SetBranchAddress("akt4_truth_jet_partonid", &akt4_truth_jet_partonid_p);
       inTree_p->SetBranchAddress("akt4_truth_jet_recopos", &akt4_truth_jet_recopos_p);
     }
 
@@ -792,6 +831,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	  if(truth_type_p->at(tI) != 14) continue;
 	  if(truth_origin_p->at(tI) != 37) continue;
 	  if(truth_pdg_p->at(tI) != 22) continue;
+	  if(truth_status_p->at(tI) != 1) continue;
 	  
 	  if(truthPhotonPt_ > 0){
 	    if(doGlobalDebug) std::cout << "WARNING: MORE THAN ONE GEN LEVEL PHOTON FOUND IN FILE, ENTRY: " << file << ", " << entry << std::endl;
