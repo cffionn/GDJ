@@ -315,6 +315,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
     for(unsigned int vI = 0; vI < keyVect.size(); ++vI){
       unsigned long long key = keyBoy.GetKey(keyVect[vI]);
       mixingMap[key] = {};
+      mixingMap[key].reserve(40);
     }
   }  
   
@@ -977,8 +978,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
     if(nMaxEvtStr.size() != 0) nEntriesTemp = TMath::Min(nEntriesTemp, (ULong64_t)nMaxEvt*10);
     const ULong64_t nMixEntries = nEntriesTemp;
 
-    //    const ULong64_t nMixEntries = mixTree_p->GetEntries();
-
     for(ULong64_t entry = 0; entry < nMixEntries; ++entry){
       mixTree_p->GetEntry(entry);
 
@@ -1091,8 +1090,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
   
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_pt").c_str(), 1);
+  inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_uncorrpt").c_str(), 1);
   inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_constit_xcalib_jet_pt").c_str(), 1);
   inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_eta").c_str(), 1);
+  inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_uncorreta").c_str(), 1);
   inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_constit_xcalib_jet_eta").c_str(), 1);
   inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_phi").c_str(), 1);
   
@@ -1257,6 +1258,23 @@ int gdjNTupleToHist(std::string inConfigFileName)
     }
 
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+  
+    //First loop for the corrections plots
+    for(unsigned int jI = 0; jI < aktRhi_em_xcalib_jet_uncorrpt_p->size(); ++jI){
+      double jtEtaForBin = aktRhi_em_xcalib_jet_uncorreta_p->at(jI);
+      if(jtEtaBinsSubDoAbs) jtEtaForBin = TMath::Abs(jtEtaForBin);
+      
+      if(jtEtaForBin < jtEtaBinsSubLow) continue;
+      if(jtEtaForBin >= jtEtaBinsSubHigh) continue;
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+      
+      if(aktRhi_em_xcalib_jet_uncorrpt_p->at(jI) <= jtPtBinsLow) continue;
+      if(aktRhi_em_xcalib_jet_uncorrpt_p->at(jI) > jtPtBinsHigh) continue;
+      
+      int etaPos = ghostPos(nJtEtaBinsSub, jtEtaBinsSub, jtEtaForBin);
+      fillTH2(photonJtCorrOverUncorrVCentJtEta_p[centPos][etaPos], aktRhi_em_xcalib_jet_uncorrpt_p->at(jI), aktRhi_em_xcalib_jet_pt_p->at(jI)/aktRhi_em_xcalib_jet_uncorrpt_p->at(jI), fullWeight);	  
+      fillTH2(photonJtCorrOverUncorrVCentJtEta_p[centPos][nJtEtaBinsSub], aktRhi_em_xcalib_jet_uncorrpt_p->at(jI), aktRhi_em_xcalib_jet_pt_p->at(jI)/aktRhi_em_xcalib_jet_uncorrpt_p->at(jI), fullWeight);	  
+    }
 
     for(unsigned int pI = 0; pI < photon_pt_p->size(); ++pI){
       if(!isGoodPhoton(isPP, photon_tight_p->at(pI), photon_etcone30_p->at(pI), photon_eta_p->at(pI))) continue;
@@ -1289,7 +1307,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       
       Int_t ptPos = ghostPos(nGammaPtBinsSub, gammaPtBinsSub, photon_pt_p->at(pI), true, doGlobalDebug);
       Int_t etaPos = ghostPos(nGammaEtaBinsSub, gammaEtaBinsSub, etaValSub, true, doGlobalDebug);
-    
+
       if(etaPos >= 0){
 	fillTH1(photonPtVCentEta_p[centPos][etaPos], photon_pt_p->at(pI), fullWeight);
 	fillTH1(photonPtVCentEta_p[centPos][nGammaEtaBinsSub], photon_pt_p->at(pI), fullWeight);
@@ -1307,7 +1325,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
       }
       
-
       if(ptPos >= 0){
 
 	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
@@ -1343,30 +1360,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	goodJetsDPhiMix.push_back({});
 	goodJetsDPhiMix.push_back({});
 
-
 	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
       
-	//First loop for the corrections plots
-        for(unsigned int jI = 0; jI < aktRhi_em_xcalib_jet_uncorrpt_p->size(); ++jI){
-	  double jtEtaForBin = aktRhi_em_xcalib_jet_uncorreta_p->at(jI);
-	  if(jtEtaBinsSubDoAbs) jtEtaForBin = TMath::Abs(jtEtaForBin);
-
-	  if(jtEtaForBin < jtEtaBinsSubLow) continue;
-	  if(jtEtaForBin >= jtEtaBinsSubHigh) continue;
-
-	  if(aktRhi_em_xcalib_jet_pt_p->at(jI) <= jtPtBinsLow) continue;
-	  if(aktRhi_em_xcalib_jet_pt_p->at(jI) > jtPtBinsHigh) continue;
-
-	  Float_t dPhi = TMath::Abs(getDPHI(aktRhi_em_xcalib_jet_phi_p->at(jI), photon_phi_p->at(pI)));
-
-	  if(dPhi <= gammaJtDPhiCut) continue;
-
-	  int etaPos = ghostPos(nJtEtaBinsSub, jtEtaBinsSub, jtEtaForBin);
-
-	  fillTH2(photonJtCorrOverUncorrVCentJtEta_p[centPos][etaPos], aktRhi_em_xcalib_jet_uncorrpt_p->at(jI), aktRhi_em_xcalib_jet_pt_p->at(jI)/aktRhi_em_xcalib_jet_uncorrpt_p->at(jI), fullWeight);	  
-	  fillTH2(photonJtCorrOverUncorrVCentJtEta_p[centPos][nJtEtaBinsSub], aktRhi_em_xcalib_jet_uncorrpt_p->at(jI), aktRhi_em_xcalib_jet_pt_p->at(jI)/aktRhi_em_xcalib_jet_uncorrpt_p->at(jI), fullWeight);	  
-	}
-
+     
 	for(unsigned int jI = 0; jI < aktRhi_em_xcalib_jet_pt_p->size(); ++jI){
 	  if(aktRhi_em_xcalib_jet_eta_p->at(jI) <= jtEtaBinsLow) continue;
 	  if(aktRhi_em_xcalib_jet_eta_p->at(jI) >= jtEtaBinsHigh) continue;
@@ -1640,19 +1636,12 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 
 	  int multCounterMix = 0;
-	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 	  goodJetsMix[0].clear();
-	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 	  goodJetsDPhiMix[0].clear();
-	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 	  goodJetsMix[1].clear();
-	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 	  goodJetsDPhiMix[1].clear();
-	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
      
 	  for(unsigned int jI = 0; jI < jets.size(); ++jI){
-	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << jI << std::endl; 
-
 	    if(jets[jI].Pt()< jtPtBinsLow) continue;
 
 	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
