@@ -208,7 +208,7 @@ void plotMeanAndSigma(const bool doGlobalDebug, TEnv* plotConfig_p, std::map<std
 
   TF1* csnPP_p = nullptr;
   TF1* csnFit_p = nullptr;
-  
+
   if(addPP){
     csnPP_p = new TF1("csnPP_p", "TMath::Sqrt([0]*[0] + [1]*[1]/x)", histWidth_p[0]->GetBinLowEdge(1), histWidth_p[0]->GetBinLowEdge(histWidth_p[0]->GetXaxis()->GetNbins()+1));
 
@@ -217,15 +217,12 @@ void plotMeanAndSigma(const bool doGlobalDebug, TEnv* plotConfig_p, std::map<std
     
     histWidth_p[nCentBins-1]->Fit("csnPP_p", "Q M N E I", "", histWidth_p[0]->GetBinLowEdge(1), histWidth_p[0]->GetBinLowEdge(histWidth_p[0]->GetXaxis()->GetNbins()+1));    
   }
- 
-  
+   
   if(isPP) csnFit_p = new TF1("csnFit_p", "TMath::Sqrt([0]*[0] + [1]*[1]/x)", histWidth_p[0]->GetBinLowEdge(1), histWidth_p[0]->GetBinLowEdge(histWidth_p[0]->GetXaxis()->GetNbins()+1));
   else{
     if(addPP) csnFit_p = new TF1("csnFit_p", ("TMath::Sqrt(" + std::to_string(csnPP_p->GetParameter(0)*csnPP_p->GetParameter(0)) + " + " + std::to_string(csnPP_p->GetParameter(1)*csnPP_p->GetParameter(1)) + "/x + [0]*[0]/(x*x))").c_str(), histWidth_p[0]->GetBinLowEdge(1), histWidth_p[0]->GetBinLowEdge(histWidth_p[0]->GetXaxis()->GetNbins()+1));
     else csnFit_p = new TF1("csnFit_p", "TMath::Sqrt([0]*[0] + [1]*[1]/x + [2]*[2]/(x*x))", histWidth_p[0]->GetBinLowEdge(1), histWidth_p[0]->GetBinLowEdge(histWidth_p[0]->GetXaxis()->GetNbins()+1));
   }
-  
-  
 
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
@@ -518,11 +515,14 @@ int gdjResponsePlotter(const std::string inConfigFileName)
   inConfig_p->SetValue("JETR", fileConfig_p->GetValue("JETR", ""));
   
   const bool isMC = fileConfig_p->GetValue("ISMC", 0);
+
+  /*
   if(!isMC){   
     std::cout << "gdjResponsePlotter ERROR - This macro only takes MC input, but config gives \'isMC\'=" << isMC << ". return 1" << std::endl;
     return 1;
   }
-
+  */
+  
   const int nMaxJtPtBins = 200;
   const int nJtPtBins = fileConfig_p->GetValue("NJTPTBINS", 0);
   if(nJtPtBins > nMaxJtPtBins){
@@ -588,179 +588,177 @@ int gdjResponsePlotter(const std::string inConfigFileName)
     }
   }
 
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-  
-  for(Int_t cI = 0; cI < nCentBins; ++cI){
-    std::string centStr = "PP";
-    if(!isPP){
-      if(addPP && cI == nCentBins-1) centStr = "PP";
-      else centStr = "Cent" + centBins[cI] + "to" + centBins[cI+1];
-    }
-
-    recoOverGenVCent_FitMean_p[cI] = new TH1F(("recoOverGenFitMeanVCent_" + centStr + "_GammaPt" + std::to_string(nGammaPtBinsSub) + "_DPhi0_h").c_str(), ";Gen. Jet p_{T} [GeV];#LT Reco./Gen #GT;", nJtPtBins, jtPtBins);
-    recoOverGenVCent_FitWidth_p[cI] = new TH1F(("recoOverGenFitWidthVCent_" + centStr + "_GammaPt" + std::to_string(nGammaPtBinsSub) + "_DPhi0_h").c_str(), ";Gen. Jet p_{T} [GeV];#sigma(Reco./Gen);", nJtPtBins, jtPtBins);
-    recoOverGenVCent_FitWidthOverMean_p[cI] = new TH1F(("recoOverGenFitWidthOverMeanVCent_" + centStr + "_GammaPt" + std::to_string(nGammaPtBinsSub) + "_DPhi0_h").c_str(), ";Gen. Jet p_{T} [GeV];#sigma(Reco./Gen/)/#LT Reco./Gen #GT;", nJtPtBins, jtPtBins);
-  }
-
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-  
-  TF1* fit_p = new TF1("fit_p", "gaus", 0, 3.0);
-
   const double tinyCanvMargin = 0.0001;
   const double tinyPadMargin = 0.01;
   const double bottomMargin = 0.14;
-  const double leftMargin = 0.2;
+  const double leftMargin = 0.2;  
 
   const int jetR = fileConfig_p->GetValue("JETR", 10);
   if(jetR != 2 && jetR != 4){
     std::cout << "Given parameter jetR, \'" << jetR << "\' is not \'2\' or \'4\'. return 1" << std::endl;
     return 1;
   }
-  globalLabels.push_back("anti-k_{T} R=0." + std::to_string(jetR) + " jets");
+  globalLabels.push_back("anti-k_{T} R=0." + std::to_string(jetR) + " jets"); 
   
-  int nXVal = 0;
-  int nYVal = 0;
-  getNXNYPanels(nJtPtBins, &nXVal, &nYVal);
-  for(Int_t cI = 0; cI < nCentBins; ++cI){
-    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << cI << "/" << nCentBins << std::endl;
-  
-    TCanvas* canv_p = new TCanvas("canv_p", "", nXVal*450, nYVal*450);
-    canv_p->SetTopMargin(tinyCanvMargin);
-    canv_p->SetLeftMargin(tinyCanvMargin);
-    canv_p->SetRightMargin(tinyCanvMargin);
-    canv_p->SetBottomMargin(tinyCanvMargin);
-
-    canv_p->Divide(nXVal, nYVal, 0.0, 0.0);
-    
-    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << cI << "/" << nCentBins << std::endl;
-    
-    std::string centStr = "PP";
-    std::string centLabel = "p+p";
-    if(!isPP){
-      if(addPP && cI == nCentBins-1){
-	centStr = "PP";
-	centLabel = "p+p";
+  if(isMC){  
+    for(Int_t cI = 0; cI < nCentBins; ++cI){
+      std::string centStr = "PP";
+      if(!isPP){
+	if(addPP && cI == nCentBins-1) centStr = "PP";
+	else centStr = "Cent" + centBins[cI] + "to" + centBins[cI+1];
       }
-      else{
-	centStr = "Cent" + centBins[cI] + "to" + centBins[cI+1];
-	centLabel = "Pb+Pb, " + centBins[cI] + "-" + centBins[cI+1] + "%";
-      }
+      
+      recoOverGenVCent_FitMean_p[cI] = new TH1F(("recoOverGenFitMeanVCent_" + centStr + "_GammaPt" + std::to_string(nGammaPtBinsSub) + "_DPhi0_h").c_str(), ";Gen. Jet p_{T} [GeV];#LT Reco./Gen #GT;", nJtPtBins, jtPtBins);
+      recoOverGenVCent_FitWidth_p[cI] = new TH1F(("recoOverGenFitWidthVCent_" + centStr + "_GammaPt" + std::to_string(nGammaPtBinsSub) + "_DPhi0_h").c_str(), ";Gen. Jet p_{T} [GeV];#sigma(Reco./Gen);", nJtPtBins, jtPtBins);
+      recoOverGenVCent_FitWidthOverMean_p[cI] = new TH1F(("recoOverGenFitWidthOverMeanVCent_" + centStr + "_GammaPt" + std::to_string(nGammaPtBinsSub) + "_DPhi0_h").c_str(), ";Gen. Jet p_{T} [GeV];#sigma(Reco./Gen/)/#LT Reco./Gen #GT;", nJtPtBins, jtPtBins);
     }
-
-    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << cI << "/" << nCentBins << std::endl;
     
-    for(Int_t jI = 0; jI < nJtPtBins; ++jI){
-      canv_p->cd();
-      canv_p->cd(jI+1);
-
-      gPad->SetTopMargin(tinyPadMargin);
-      gPad->SetRightMargin(tinyPadMargin);
-      gPad->SetBottomMargin(bottomMargin);
-      gPad->SetLeftMargin(leftMargin);
-      
-      std::string jtPtStr = "JtPt";
-      if(jI < 10) jtPtStr = jtPtStr + "0";
-      jtPtStr = jtPtStr + std::to_string(jI);
-
-      std::string jtPtLabel = prettyString(jtPtBins[jI], 1, false) + " < p_{T}^{Gen.} < " + prettyString(jtPtBins[jI+1], 1, false);
-      
-      std::string histStr = centStr + "/photonJtRecoOverGenVCentJtPt_" + centStr + "_" + jtPtStr + "_GammaPt" + std::to_string(nGammaPtBinsSub) + "_DPhi0_h";
-      TH1F* hist_p = nullptr;
-      if(addPP && cI == nCentBins-1) hist_p = (TH1F*)inFilePP_p->Get(histStr.c_str());
-      else hist_p = (TH1F*)inFile_p->Get(histStr.c_str());
-   
-      hist_p->Scale(1.0/hist_p->Integral());
-      hist_p->GetYaxis()->SetTitle("Unity Norm.");
-      hist_p->GetXaxis()->SetTitleFont(titleFont);
-      hist_p->GetYaxis()->SetTitleFont(titleFont);
-      hist_p->GetXaxis()->SetTitleSize(titleSizeX*(double)TMath::Min(((double)nXVal)/2., ((double)nYVal)/2.));
-      hist_p->GetYaxis()->SetTitleSize(titleSizeY*(double)TMath::Min(((double)nXVal)/2., ((double)nYVal)/2.));
-
-      hist_p->GetXaxis()->SetLabelFont(titleFont);
-      hist_p->GetYaxis()->SetLabelFont(titleFont);
-      hist_p->GetXaxis()->SetLabelSize(labelSizeX*(double)TMath::Min(((double)nXVal)*2./5., ((double)nYVal)*2./5.));
-      hist_p->GetYaxis()->SetLabelSize(labelSizeY*(double)TMath::Min(((double)nXVal)*2./5., ((double)nYVal)*2./5.)); 
-     
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", cI=" << cI << "/" << nCentBins << ", jI=" << jI << "/" << nJtPtBins << std::endl;
-      
-      HIJet::Style::EquipHistogram(hist_p, 0);
-
-      hist_p->GetXaxis()->SetNdivisions(505);
-      hist_p->GetYaxis()->SetNdivisions(505);      
-      hist_p->GetXaxis()->SetTitleOffset(0.7);
-      hist_p->GetYaxis()->SetTitleOffset(1.1);
-      hist_p->SetMinimum(0.0);
-      hist_p->DrawCopy("HIST E1 P");
-      gStyle->SetOptStat(0);
-
-      label_p->SetTextSize(labelSizeX*(double)TMath::Min(((double)nXVal)*2./5., ((double)nYVal)*2./5.));
-
-      if(jI == 0){
-	for(unsigned int gI = 0; gI < globalLabels.size(); ++gI){
-	  label_p->DrawLatex(0.25, 0.92 - gI*0.07, globalLabels[gI].c_str());
-	}
-	label_p->DrawLatex(0.25, 0.92 - ((double)(globalLabels.size()))*0.07, centLabel.c_str());
-      }
-
-      label_p->DrawLatex(0.25, 0.92 - ((double)(globalLabels.size()+1))*0.07, jtPtLabel.c_str());
-          
-      Double_t minVal = TMath::Max((Double_t)hist_p->GetBinLowEdge(1), (Double_t)(recoJtPtMin/jtPtBins[jI]));
-      hist_p->Fit("fit_p", "M E Q N", "", minVal, hist_p->GetBinLowEdge(hist_p->GetXaxis()->GetNbins()+1));
-
-      Double_t mean1 = fit_p->GetParameter(1);
-      Double_t sigma1 = fit_p->GetParameter(2);
-
-      minVal = TMath::Max(mean1 - sigma1*1.5, (Double_t)(recoJtPtMin/jtPtBins[jI]));
-      Double_t maxVal = TMath::Min(mean1 + sigma1*1.5, (Double_t)hist_p->GetBinLowEdge(hist_p->GetXaxis()->GetNbins()+1));
-      
-      hist_p->Fit("fit_p", "M E Q N", "", minVal, maxVal);      
-
+    TF1* fit_p = new TF1("fit_p", "gaus", 0, 3.0);
+    
+    int nXVal = 0;
+    int nYVal = 0;
+    getNXNYPanels(nJtPtBins, &nXVal, &nYVal);
+    for(Int_t cI = 0; cI < nCentBins; ++cI){
       if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << cI << "/" << nCentBins << std::endl;
       
-      //      fit_p->SetMarkerSize(0.5);
-      //      fit_p->SetLineWidth(0.5);
-      TF1* fitTemp_p = new TF1("fitTemp_p", "gaus", minVal, maxVal);
-      fitTemp_p->SetLineStyle(2);
-      fitTemp_p->SetParameter(0, fit_p->GetParameter(0));
-      fitTemp_p->SetParameter(1, fit_p->GetParameter(1));
-      fitTemp_p->SetParameter(2, fit_p->GetParameter(2));
-      fitTemp_p->DrawCopy("SAME");
-      delete fitTemp_p;
+      TCanvas* canv_p = new TCanvas("canv_p", "", nXVal*450, nYVal*450);
+      canv_p->SetTopMargin(tinyCanvMargin);
+      canv_p->SetLeftMargin(tinyCanvMargin);
+      canv_p->SetRightMargin(tinyCanvMargin);
+      canv_p->SetBottomMargin(tinyCanvMargin);
       
-    Double_t mean2 = fit_p->GetParameter(1);
-      Double_t sigma2 = fit_p->GetParameter(2);
-      Double_t meanErr2 = fit_p->GetParError(1);
-      Double_t sigmaErr2 = fit_p->GetParError(2);
+      canv_p->Divide(nXVal, nYVal, 0.0, 0.0);
       
-      recoOverGenVCent_FitMean_p[cI]->SetBinContent(jI+1, mean2);
-      recoOverGenVCent_FitMean_p[cI]->SetBinError(jI+1, meanErr2);
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << cI << "/" << nCentBins << std::endl;
+      
+      std::string centStr = "PP";
+      std::string centLabel = "p+p";
+      if(!isPP){
+	if(addPP && cI == nCentBins-1){
+	  centStr = "PP";
+	  centLabel = "p+p";
+	}
+	else{
+	  centStr = "Cent" + centBins[cI] + "to" + centBins[cI+1];
+	  centLabel = "Pb+Pb, " + centBins[cI] + "-" + centBins[cI+1] + "%";
+	}
+      }
+      
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << cI << "/" << nCentBins << std::endl;
+      
+      for(Int_t jI = 0; jI < nJtPtBins; ++jI){
+	canv_p->cd();
+	canv_p->cd(jI+1);
+	
+	gPad->SetTopMargin(tinyPadMargin);
+	gPad->SetRightMargin(tinyPadMargin);
+	gPad->SetBottomMargin(bottomMargin);
+	gPad->SetLeftMargin(leftMargin);
+	
+	std::string jtPtStr = "JtPt";
+	if(jI < 10) jtPtStr = jtPtStr + "0";
+	jtPtStr = jtPtStr + std::to_string(jI);
+	
+	std::string jtPtLabel = prettyString(jtPtBins[jI], 1, false) + " < p_{T}^{Gen.} < " + prettyString(jtPtBins[jI+1], 1, false);
+	
+	std::string histStr = centStr + "/photonJtRecoOverGenVCentJtPt_" + centStr + "_" + jtPtStr + "_GammaPt" + std::to_string(nGammaPtBinsSub) + "_DPhi0_h";
+	TH1F* hist_p = nullptr;
+	if(addPP && cI == nCentBins-1) hist_p = (TH1F*)inFilePP_p->Get(histStr.c_str());
+	else hist_p = (TH1F*)inFile_p->Get(histStr.c_str());
+	
+	hist_p->Scale(1.0/hist_p->Integral());
+	hist_p->GetYaxis()->SetTitle("Unity Norm.");
+	hist_p->GetXaxis()->SetTitleFont(titleFont);
+	hist_p->GetYaxis()->SetTitleFont(titleFont);
+	hist_p->GetXaxis()->SetTitleSize(titleSizeX*(double)TMath::Min(((double)nXVal)/2., ((double)nYVal)/2.));
+	hist_p->GetYaxis()->SetTitleSize(titleSizeY*(double)TMath::Min(((double)nXVal)/2., ((double)nYVal)/2.));
+	
+	hist_p->GetXaxis()->SetLabelFont(titleFont);
+	hist_p->GetYaxis()->SetLabelFont(titleFont);
+	hist_p->GetXaxis()->SetLabelSize(labelSizeX*(double)TMath::Min(((double)nXVal)*2./5., ((double)nYVal)*2./5.));
+	hist_p->GetYaxis()->SetLabelSize(labelSizeY*(double)TMath::Min(((double)nXVal)*2./5., ((double)nYVal)*2./5.)); 
+	
+	if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", cI=" << cI << "/" << nCentBins << ", jI=" << jI << "/" << nJtPtBins << std::endl;
+	
+	HIJet::Style::EquipHistogram(hist_p, 0);
+	
+	hist_p->GetXaxis()->SetNdivisions(505);
+	hist_p->GetYaxis()->SetNdivisions(505);      
+	hist_p->GetXaxis()->SetTitleOffset(0.7);
+	hist_p->GetYaxis()->SetTitleOffset(1.1);
+	hist_p->SetMinimum(0.0);
+	hist_p->DrawCopy("HIST E1 P");
+	gStyle->SetOptStat(0);
+	
+	label_p->SetTextSize(labelSizeX*(double)TMath::Min(((double)nXVal)*2./5., ((double)nYVal)*2./5.));
 
-      recoOverGenVCent_FitWidth_p[cI]->SetBinContent(jI+1, sigma2);
-      recoOverGenVCent_FitWidth_p[cI]->SetBinError(jI+1, sigmaErr2);
+	if(jI == 0){
+	  for(unsigned int gI = 0; gI < globalLabels.size(); ++gI){
+	    label_p->DrawLatex(0.25, 0.92 - gI*0.07, globalLabels[gI].c_str());
+	  }
+	  label_p->DrawLatex(0.25, 0.92 - ((double)(globalLabels.size()))*0.07, centLabel.c_str());
+	}
+	
+	label_p->DrawLatex(0.25, 0.92 - ((double)(globalLabels.size()+1))*0.07, jtPtLabel.c_str());
+          
+	Double_t minVal = TMath::Max((Double_t)hist_p->GetBinLowEdge(1), (Double_t)(recoJtPtMin/jtPtBins[jI]));
 
-      Double_t val = sigma2/mean2;
-      Double_t err = TMath::Sqrt(meanErr2*meanErr2/(mean2*mean2) + sigmaErr2*sigmaErr2/(sigma2*sigma2));
+	std::cout << "FIT 1: " << __LINE__ << std::endl;       
+	hist_p->Fit("fit_p", "M E Q N", "", minVal, hist_p->GetBinLowEdge(hist_p->GetXaxis()->GetNbins()+1));
+	
+	Double_t mean1 = fit_p->GetParameter(1);
+	Double_t sigma1 = fit_p->GetParameter(2);
+	
+	minVal = TMath::Max(mean1 - sigma1*1.5, (Double_t)(recoJtPtMin/jtPtBins[jI]));
+	Double_t maxVal = TMath::Min(mean1 + sigma1*1.5, (Double_t)hist_p->GetBinLowEdge(hist_p->GetXaxis()->GetNbins()+1));
+	
+	std::cout << "FIT 2: " << __LINE__ << std::endl;
+	hist_p->Fit("fit_p", "M E Q N", "", minVal, maxVal);      
+	
+	if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << cI << "/" << nCentBins << std::endl;
+      
+	//      fit_p->SetMarkerSize(0.5);
+	//      fit_p->SetLineWidth(0.5);
+	TF1* fitTemp_p = new TF1("fitTemp_p", "gaus", minVal, maxVal);
+	fitTemp_p->SetLineStyle(2);
+	fitTemp_p->SetParameter(0, fit_p->GetParameter(0));
+	fitTemp_p->SetParameter(1, fit_p->GetParameter(1));
+	fitTemp_p->SetParameter(2, fit_p->GetParameter(2));
+	fitTemp_p->DrawCopy("SAME");
+	delete fitTemp_p;
+	
+	Double_t mean2 = fit_p->GetParameter(1);
+	Double_t sigma2 = fit_p->GetParameter(2);
+	Double_t meanErr2 = fit_p->GetParError(1);
+	Double_t sigmaErr2 = fit_p->GetParError(2);
+	
+	recoOverGenVCent_FitMean_p[cI]->SetBinContent(jI+1, mean2);
+	recoOverGenVCent_FitMean_p[cI]->SetBinError(jI+1, meanErr2);
+	
+	recoOverGenVCent_FitWidth_p[cI]->SetBinContent(jI+1, sigma2);
+	recoOverGenVCent_FitWidth_p[cI]->SetBinError(jI+1, sigmaErr2);
 
-      recoOverGenVCent_FitWidthOverMean_p[cI]->SetBinContent(jI+1, val);
-      recoOverGenVCent_FitWidthOverMean_p[cI]->SetBinError(jI+1, val*err);
-    }    
+	Double_t val = sigma2/mean2;
+	Double_t err = TMath::Sqrt(meanErr2*meanErr2/(mean2*mean2) + sigmaErr2*sigmaErr2/(sigma2*sigma2));
+	
+	recoOverGenVCent_FitWidthOverMean_p[cI]->SetBinContent(jI+1, val);
+	recoOverGenVCent_FitWidthOverMean_p[cI]->SetBinError(jI+1, val*err);
+      }    
+      
+      std::string saveName = "pdfDir/" + dateStr + "/photonJtRecoOverGen_Cent" + std::to_string(cI) + "_R" + std::to_string(jetR) + "_" + dateStr + ".pdf";
+      quietSaveAs(canv_p, saveName);
+      delete canv_p;
+    }
+    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
     
-    std::string saveName = "pdfDir/" + dateStr + "/photonJtRecoOverGen_Cent" + std::to_string(cI) + "_R" + std::to_string(jetR) + "_" + dateStr + ".pdf";
-    quietSaveAs(canv_p, saveName);
-    delete canv_p;
-  }
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
-  delete fit_p;
+    delete fit_p;
   
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-  plotMeanAndSigma(doGlobalDebug, inConfig_p, &labelMap, dateStr, centBins, recoOverGenVCent_FitMean_p, recoOverGenVCent_FitWidth_p);
-  plotMeanAndSigma(doGlobalDebug, inConfig_p, &labelMap, dateStr, centBins, recoOverGenVCent_FitMean_p, recoOverGenVCent_FitWidthOverMean_p);
-
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
+    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+    plotMeanAndSigma(doGlobalDebug, inConfig_p, &labelMap, dateStr, centBins, recoOverGenVCent_FitMean_p, recoOverGenVCent_FitWidth_p);
+    plotMeanAndSigma(doGlobalDebug, inConfig_p, &labelMap, dateStr, centBins, recoOverGenVCent_FitMean_p, recoOverGenVCent_FitWidthOverMean_p);
+  }
+  
   //Lets look at the corrections
-
   int nPanelY = 450;
   int nPanelX = nPanelY*(1 - otherMargin - bottomMargin)/(1 - leftMargin - rightMargin);
 
@@ -797,8 +795,8 @@ int gdjResponsePlotter(const std::string inConfigFileName)
       canv_p->SetBottomMargin(bottomMargin);
       canv_p->SetLeftMargin(leftMargin);
 
-      const std::string histName = centStr + "/photonJtEMScaleOverConstituentVCentJtEta_" + centStr + "_JtEta" + jtEtaStr + "_GammaPt" + std::to_string(nGammaPtBinsSub) + "_DPhi0_h";
-      
+      const std::string histName = centStr + "/photonJtCorrOverUncorrVCentJtEta_" + centStr + "_JtEta" + jtEtaStr + "_GammaPt" + std::to_string(nGammaPtBinsSub) + "_DPhi0_h";
+      std::cout << "HISTNAME : " << histName << std::endl;
       TH1F* tempHist_p = nullptr;
       if(!addPP || cI < nCentBins-1) tempHist_p = (TH1F*)inFile_p->Get(histName.c_str());
       else tempHist_p = (TH1F*)inFilePP_p->Get(histName.c_str());
@@ -822,7 +820,7 @@ int gdjResponsePlotter(const std::string inConfigFileName)
           
       label_p->DrawLatex(0.25, 0.56 - ((double)(globalLabels.size()+1))*0.07, jtLabelStr.c_str());
       
-      std::string saveName = "pdfDir/" + dateStr + "/emScalOverConstituentScale_JtEta" + jtEtaStr + "_" +  centStr + "_R" + std::to_string(jetR) + "_" + dateStr + ".pdf";
+      std::string saveName = "pdfDir/" + dateStr + "/corrOverUncorrScale_JtEta" + jtEtaStr + "_" +  centStr + "_R" + std::to_string(jetR) + "_" + dateStr + ".pdf";
       quietSaveAs(canv_p, saveName);
       delete canv_p;
     }
@@ -830,12 +828,14 @@ int gdjResponsePlotter(const std::string inConfigFileName)
   
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
-  for(Int_t cI = 0; cI < nCentBins; ++cI){
-    delete recoOverGenVCent_FitWidth_p[cI];
-    delete recoOverGenVCent_FitMean_p[cI];
-    delete recoOverGenVCent_FitWidthOverMean_p[cI];
+  if(isMC){
+    for(Int_t cI = 0; cI < nCentBins; ++cI){
+      delete recoOverGenVCent_FitWidth_p[cI];
+      delete recoOverGenVCent_FitMean_p[cI];
+      delete recoOverGenVCent_FitWidthOverMean_p[cI];
+    }
   }
-  
+    
   inFile_p->Close();
   delete inFile_p;
 
