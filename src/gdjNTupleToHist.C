@@ -807,7 +807,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
     }
   
     for(Int_t gI = 0; gI < nJtEtaBinsSub+1; ++gI){
-      photonJtCorrOverUncorrVCentJtEta_p[cI][gI] = new TH2F(("photonJtCorrOverUncorrVCentJtEta_" + centBinsStr[cI] + "_" + jtEtaBinsSubStr[gI] + "_" + gammaPtBinsSubStr[nGammaPtBinsSub] + "_" + gammaJtDPhiStr + "_h").c_str(), ";Uncorrected Jet p_{T} [GeV];Corrected/Uncorrected", nJtPtBins, jtPtBins, 150, 0.0, 3.0);
+      photonJtCorrOverUncorrVCentJtEta_p[cI][gI] = new TH2F(("photonJtCorrOverUncorrVCentJtEta_" + centBinsStr[cI] + "_" + jtEtaBinsSubStr[gI] + "_" + gammaPtBinsSubStr[nGammaPtBinsSub] + "_" + gammaJtDPhiStr + "_h").c_str(), ";Uncorrected Jet p_{T} [GeV];Corrected/Uncorrected", nJtPtBins, jtPtBins, 150, 0.5, 2.0);
       setSumW2(photonJtCorrOverUncorrVCentJtEta_p[cI][gI]);
     }      
     
