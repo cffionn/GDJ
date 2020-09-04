@@ -70,7 +70,7 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
   while(preStr.find("/") != std::string::npos){preStr.replace(0, preStr.find("/")+1, "");}
   preStr.replace(preStr.find("_"), preStr.size(), "");
 
-  int titleFont = hists_p[0]->GetXaxis()->GetTitleFont();
+  int titleFont = 42;
   double titleSize = 0.035;
   double labelSize = titleSize*0.9;
 
@@ -283,9 +283,13 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
 
   labelStr = "";
 
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+  
   const double xPos = plotConfig_p->GetValue(("MIXEDEVTPLOT." + envStr + "LABELX").c_str(), 0.18);
   double yPos = plotConfig_p->GetValue(("MIXEDEVTPLOT." + envStr + "LABELY").c_str(), 0.9);
 
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+  
   std::string preLabelSaveStr = "";
   for(unsigned int pI = nGlobalLabels; pI < preLabels.size(); ++pI){
     if(preLabels[pI].find("anti-k") != std::string::npos) continue;
@@ -296,9 +300,14 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
   if(isMC) preLabelSaveStr = preLabelSaveStr + "MC_";
   else preLabelSaveStr = preLabelSaveStr + "DATA_";
   preLabelSaveStr = preLabelSaveStr + "R" + std::to_string(jetR) + "_";
+
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
   double maxX = 0.0;
   for(unsigned int pI = 0; pI < preLabels.size(); ++pI){
+    canv_p->cd();
+    pads_p[0]->cd();
+
     std::string preStr = "";
     if(preLabels[pI].find("Cent") != std::string::npos) preStr = "";//"Pb+Pb";
     if(labelMap->count(preLabels[pI]) != 0){
@@ -307,11 +316,16 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
     }
 
     if(alignRight){
-      label_p->SetText(xPos, yPos, preLabels[pI].c_str());
+      canv_p->cd();
+      pads_p[0]->cd();
+
+      label_p->SetText(0.1, 0.1, preLabels[pI].c_str());
       if(label_p->GetXsize() > maxX) maxX = label_p->GetXsize();
     }
   }
 
+  std::cout << "FINAL MAXX: " << maxX << std::endl;
+  
   if(isMC){
     if(hists_p.size() >= 4){
       std::string assocGenMinPtStr = plotConfig_p->GetValue("ASSOCGENMINPT", "");
@@ -319,7 +333,11 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
       if(assocGenMinPtStr.size() != 0) preLabels.push_back("p_{T}^{Gen. Match} > " + assocGenMinPtStr);
     }
   }
+
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << maxX << ", " << preLabels.size() << std::endl;
+
   for(unsigned int pI = 0; pI < preLabels.size(); ++pI){
 
     if(alignRight){
@@ -346,6 +364,7 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
   
   //  label_p->DrawLatex(xPos, yPos, labelStr.c_str());
   
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
   canv_p->cd();
   pads_p[0]->cd();
@@ -357,6 +376,8 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
   canv_p->cd();
   pads_p[1]->cd();
 
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+  
   if(!doLogX){
     if(!isMC || hists_p.size() == 3) line_p->DrawLine(hists_p[0]->GetBinLowEdge(1), 0.0, hists_p[0]->GetBinLowEdge(hists_p[0]->GetXaxis()->GetNbins()+1), 0.0);
     else if(hists_p.size() == 4) line_p->DrawLine(hists_p[0]->GetBinLowEdge(1), 1.0, hists_p[0]->GetBinLowEdge(hists_p[0]->GetXaxis()->GetNbins()+1), 1.0);
@@ -381,6 +402,8 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
   delete line_p;
   delete label_p;
   
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
   return;
 }
 
