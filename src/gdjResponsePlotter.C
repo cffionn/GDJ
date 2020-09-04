@@ -72,7 +72,7 @@ void plotMeanAndSigma(const bool doGlobalDebug, TEnv* plotConfig_p, std::map<std
     std::cout << "Given parameter jetR, \'" << jetR << "\' is not \'2\' or \'4\'. return" << std::endl;
     return;
   }
-  preLabels.push_back("anti-k_{T} R=0." + std::to_string(jetR) + " jets");
+  preLabels.push_back("anti-k_{t} R=0." + std::to_string(jetR) + " jets");
 
   const Double_t widthMax = plotConfig_p->GetValue("ERESWIDTHMAX", 1.0);
   const Double_t widthMin = plotConfig_p->GetValue("ERESWIDTHMIN", 0.0);
@@ -260,7 +260,6 @@ void plotMeanAndSigma(const bool doGlobalDebug, TEnv* plotConfig_p, std::map<std
 
     if(cI == 0) histWidth_p[cI]->DrawCopy("HIST E1 P");
     else histWidth_p[cI]->DrawCopy("HIST E1 P SAME");
-
 
     //Fit sequence
     if(isPP){		
@@ -515,7 +514,8 @@ int gdjResponsePlotter(const std::string inConfigFileName)
   inConfig_p->SetValue("JETR", fileConfig_p->GetValue("JETR", ""));
   
   const bool isMC = fileConfig_p->GetValue("ISMC", 0);
-
+  std::string mcDataStr = "MC";
+  if(!isMC) mcDataStr = "DATA";
   /*
   if(!isMC){   
     std::cout << "gdjResponsePlotter ERROR - This macro only takes MC input, but config gives \'isMC\'=" << isMC << ". return 1" << std::endl;
@@ -598,7 +598,7 @@ int gdjResponsePlotter(const std::string inConfigFileName)
     std::cout << "Given parameter jetR, \'" << jetR << "\' is not \'2\' or \'4\'. return 1" << std::endl;
     return 1;
   }
-  globalLabels.push_back("anti-k_{T} R=0." + std::to_string(jetR) + " jets"); 
+  globalLabels.push_back("anti-k_{t} R=0." + std::to_string(jetR) + " jets"); 
   
   if(isMC){  
     for(Int_t cI = 0; cI < nCentBins; ++cI){
@@ -703,7 +703,6 @@ int gdjResponsePlotter(const std::string inConfigFileName)
           
 	Double_t minVal = TMath::Max((Double_t)hist_p->GetBinLowEdge(1), (Double_t)(recoJtPtMin/jtPtBins[jI]));
 
-	std::cout << "FIT 1: " << __LINE__ << std::endl;       
 	hist_p->Fit("fit_p", "M E Q N", "", minVal, hist_p->GetBinLowEdge(hist_p->GetXaxis()->GetNbins()+1));
 	
 	Double_t mean1 = fit_p->GetParameter(1);
@@ -712,7 +711,6 @@ int gdjResponsePlotter(const std::string inConfigFileName)
 	minVal = TMath::Max(mean1 - sigma1*1.5, (Double_t)(recoJtPtMin/jtPtBins[jI]));
 	Double_t maxVal = TMath::Min(mean1 + sigma1*1.5, (Double_t)hist_p->GetBinLowEdge(hist_p->GetXaxis()->GetNbins()+1));
 	
-	std::cout << "FIT 2: " << __LINE__ << std::endl;
 	hist_p->Fit("fit_p", "M E Q N", "", minVal, maxVal);      
 	
 	if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << cI << "/" << nCentBins << std::endl;
@@ -760,8 +758,14 @@ int gdjResponsePlotter(const std::string inConfigFileName)
   
   //Lets look at the corrections
   int nPanelY = 450;
-  int nPanelX = nPanelY*(1 - otherMargin - bottomMargin)/(1 - leftMargin - rightMargin);
+  //Note bottomMargin takes the place of leftmargin here
+  int nPanelX = nPanelY*(1 - otherMargin - bottomMargin)/(1 - bottomMargin - rightMargin);
 
+  double corrLabelX = inConfig_p->GetValue("CORRLABELX", 0.25);
+  double corrLabelY = inConfig_p->GetValue("CORRLABELY", 0.56);
+  
+  
+  label_p->SetTextSize(titleSizeX);
   for(Int_t cI = 0; cI < nCentBins; ++cI){
     if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << cI << "/" << nCentBins << std::endl;
 
@@ -793,10 +797,9 @@ int gdjResponsePlotter(const std::string inConfigFileName)
       canv_p->SetTopMargin(otherMargin);
       canv_p->SetRightMargin(rightMargin);
       canv_p->SetBottomMargin(bottomMargin);
-      canv_p->SetLeftMargin(leftMargin);
+      canv_p->SetLeftMargin(bottomMargin); // Because we dont need as big a margin and the righthandside needs room
 
       const std::string histName = centStr + "/photonJtCorrOverUncorrVCentJtEta_" + centStr + "_JtEta" + jtEtaStr + "_GammaPt" + std::to_string(nGammaPtBinsSub) + "_DPhi0_h";
-      std::cout << "HISTNAME : " << histName << std::endl;
       TH1F* tempHist_p = nullptr;
       if(!addPP || cI < nCentBins-1) tempHist_p = (TH1F*)inFile_p->Get(histName.c_str());
       else tempHist_p = (TH1F*)inFilePP_p->Get(histName.c_str());
@@ -812,15 +815,16 @@ int gdjResponsePlotter(const std::string inConfigFileName)
       tempHist_p->GetYaxis()->SetLabelSize(labelSizeY);
       
       tempHist_p->DrawCopy("COLZ");      
-
-      for(unsigned int gI = 0; gI < globalLabels.size(); ++gI){
-	label_p->DrawLatex(0.25, 0.56 - gI*0.07, globalLabels[gI].c_str());
-      }
-      label_p->DrawLatex(0.25, 0.56 - ((double)(globalLabels.size()))*0.07, centLabel.c_str());
-          
-      label_p->DrawLatex(0.25, 0.56 - ((double)(globalLabels.size()+1))*0.07, jtLabelStr.c_str());
+      gStyle->SetOptStat(0);
       
-      std::string saveName = "pdfDir/" + dateStr + "/corrOverUncorrScale_JtEta" + jtEtaStr + "_" +  centStr + "_R" + std::to_string(jetR) + "_" + dateStr + ".pdf";
+      for(unsigned int gI = 0; gI < globalLabels.size(); ++gI){
+	label_p->DrawLatex(corrLabelX, corrLabelY - gI*0.05, globalLabels[gI].c_str());
+      }
+      label_p->DrawLatex(corrLabelX, corrLabelY - ((double)(globalLabels.size()))*0.05, centLabel.c_str());
+          
+      label_p->DrawLatex(corrLabelX, corrLabelY - ((double)(globalLabels.size()+1))*0.05, jtLabelStr.c_str());
+      
+      std::string saveName = "pdfDir/" + dateStr + "/corrOverUncorrScale_JtEta" + jtEtaStr + "_" +  centStr + "_R" + std::to_string(jetR) + "_" + mcDataStr + "_" + dateStr + ".pdf";
       quietSaveAs(canv_p, saveName);
       delete canv_p;
     }

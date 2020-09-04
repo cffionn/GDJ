@@ -126,6 +126,7 @@ clean:
 	rm -f input/*~
 	rm -f input/#*#
 	rm -f input/ntupleToHist/*~
+	rm -f input/plotRes/*~
 	rm -f lib/*.so
 	rm -rf lib
 	rm -f obj/*.o
