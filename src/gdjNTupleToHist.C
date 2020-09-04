@@ -302,6 +302,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   
   keyHandler keyBoy("mixingHandler");//For Mixing
   std::map<unsigned long long, std::vector<std::vector<TLorentzVector> > > mixingMap;
+  std::map<unsigned long long, unsigned long long> mixingMapCounter, signalMapCounter;
   if(doMix){
     std::vector<unsigned long long> sizes;
     for(unsigned int vI = 0; vI < mixVect.size(); ++vI){
@@ -316,6 +317,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
       unsigned long long key = keyBoy.GetKey(keyVect[vI]);
       mixingMap[key] = {};
       mixingMap[key].reserve(40);
+
+      mixingMapCounter[key] = 0;
+      signalMapCounter[key] = 0;
     }
   }  
   
@@ -803,7 +807,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
     }
   
     for(Int_t gI = 0; gI < nJtEtaBinsSub+1; ++gI){
-      photonJtCorrOverUncorrVCentJtEta_p[cI][gI] = new TH2F(("photonJtCorrOverUncorrVCentJtEta_" + centBinsStr[cI] + "_" + jtEtaBinsSubStr[gI] + "_" + gammaPtBinsSubStr[nGammaPtBinsSub] + "_" + gammaJtDPhiStr + "_h").c_str(), ";Uncorrected Jet p_{T} [GeV];Corrected/Uncorrected", nJtPtBins, jtPtBins, 150, 0.5, 2.0);
+      photonJtCorrOverUncorrVCentJtEta_p[cI][gI] = new TH2F(("photonJtCorrOverUncorrVCentJtEta_" + centBinsStr[cI] + "_" + jtEtaBinsSubStr[gI] + "_" + gammaPtBinsSubStr[nGammaPtBinsSub] + "_" + gammaJtDPhiStr + "_h").c_str(), ";Uncorrected Jet p_{T} [GeV];Corrected/Uncorrected", nJtPtBins, jtPtBins, 150, 0.0, 3.0);
       setSumW2(photonJtCorrOverUncorrVCentJtEta_p[cI][gI]);
     }      
     
@@ -1026,6 +1030,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
       }
 
       mixingMap[key].push_back(jets);
+      ++(mixingMapCounter[key]);
+      ++(signalMapCounter[key]);   
     }
     
     mixFile_p->Close();
@@ -1033,11 +1039,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
     inFile_p->cd();
 
     unsigned long long minKey = 0;
-    unsigned int minimumVal = 9999999;
-    for(auto const & mixes : mixingMap){
-      if(mixes.second.size() < (unsigned int)minimumVal){
-	minimumVal = mixes.second.size();
+    unsigned long long minimumVal = 9999999;
+    for(auto const & mixes : mixingMapCounter){
+      if(mixes.second < minimumVal){
 	minKey = mixes.first;
+	minimumVal = mixes.second;
       }
     }
 
