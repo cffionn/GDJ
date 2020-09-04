@@ -303,7 +303,7 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
 
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
-  double maxX = 0.0;
+  //  double maxX = 0.0;
   for(unsigned int pI = 0; pI < preLabels.size(); ++pI){
     canv_p->cd();
     pads_p[0]->cd();
@@ -315,6 +315,7 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
       else preLabels[pI] = (*labelMap)[preLabels[pI]];	
     }
 
+    /*
     if(alignRight){
       canv_p->cd();
       pads_p[0]->cd();
@@ -322,9 +323,10 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
       label_p->SetText(0.1, 0.1, preLabels[pI].c_str());
       if(label_p->GetXsize() > maxX) maxX = label_p->GetXsize();
     }
+    */
   }
 
-  std::cout << "FINAL MAXX: " << maxX << std::endl;
+  //  std::cout << "FINAL MAXX: " << maxX << std::endl;
   
   if(isMC){
     if(hists_p.size() >= 4){
@@ -336,18 +338,23 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
 
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << maxX << ", " << preLabels.size() << std::endl;
+  //  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << maxX << ", " << preLabels.size() << std::endl;
 
+  if(alignRight) label_p->SetTextAlign(31);
   for(unsigned int pI = 0; pI < preLabels.size(); ++pI){
 
+    /*
     if(alignRight){
+      
       label_p->SetText(xPos, yPos, preLabels[pI].c_str());
       while(label_p->GetXsize() < maxX){
 	preLabels[pI] = " " + preLabels[pI];
 	label_p->SetText(xPos, yPos, preLabels[pI].c_str());
       }
+      
     }
-
+    */
+    
     label_p->DrawLatex(xPos, yPos, preLabels[pI].c_str());
     yPos -= 0.083;
     /*

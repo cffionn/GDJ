@@ -163,8 +163,9 @@ void plotMeanAndSigma(const bool doGlobalDebug, TEnv* plotConfig_p, std::map<std
   for(unsigned int pI = 0; pI < preLabels.size(); ++pI){
     if(labelMap->count(preLabels[pI]) != 0) preLabels[pI] = (*labelMap)[preLabels[pI]];
   }    
-  double maxLabelXSize = -0.1;
+  //  double maxLabelXSize = -0.1;
   if(labelAlignRight){
+    /*
     for(unsigned int pI = 0; pI < preLabels.size(); ++pI){
       label_p->SetText(0.1, 0.1, preLabels[pI].c_str());
 
@@ -179,6 +180,8 @@ void plotMeanAndSigma(const bool doGlobalDebug, TEnv* plotConfig_p, std::map<std
 	label_p->SetText(0.1, 0.1, preLabels[pI].c_str());
       }    
     }
+    */
+    label_p->SetTextAlign(31);
   }
   
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;

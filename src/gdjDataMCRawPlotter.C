@@ -171,6 +171,7 @@ void plotDataMC(std::string saveName, std::vector<TH1F*> hists_p, std::vector<st
   if(doAllLeg || goodLeg) leg_p->Draw("SAME");
 
   if(alignRight){
+    /*
     double maxSize = 0.0;
     for(unsigned int pI = 0; pI < texLabels.size(); ++pI){    
       label_p->SetText(xPos, yPos, texLabels[pI].c_str());
@@ -184,6 +185,8 @@ void plotDataMC(std::string saveName, std::vector<TH1F*> hists_p, std::vector<st
 	label_p->SetText(xPos, yPos, texLabels[pI].c_str());
       }
     }
+    */
+    label_p->SetTextAlign(31);
   }
 
   if(!doAllLeg && !goodLeg){
