@@ -8,6 +8,8 @@
 //ROOT
 #include "TMath.h"
 
+//NOTE THAT THIS IS RE-OPTIMIZED BY YEONJU
+//ISOLATION CUT SHOULD BE 3 GeV for Pb+Pb and p+p after correction, R=0.3
 inline bool isGoodPhoton(bool isPP, bool phoTight, float phoIso, float phoEta)
 {
   phoEta = TMath::Abs(phoEta);

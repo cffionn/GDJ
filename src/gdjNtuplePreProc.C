@@ -771,7 +771,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   ULong64_t currTotalEntries = 0;
   UInt_t nFile = 0;
 
-  const Int_t nTerm = 100000;
+  const Int_t nTerm = inConfig_p->GetValue("NTERM", -1);
   cppWatch timer;
   cppWatch subTimer1;
   cppWatch subTimer2;
@@ -1072,26 +1072,38 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	  std::cout << " 2: " << subTime2/currTotalCPU << std::endl;
 	  std::cout << " 3: " << subTime3/currTotalCPU << std::endl;
 	  std::cout << " 4: " << subTime4/currTotalCPU << std::endl;
-	  
-	  prevTimeCPU = currTotalCPU;
-	  prevTimeWall = currTotalWall;
-	}	
-	timer.start();
 
-	if(currTotalEntries > nTerm && false){
-	  std::cout << "TERMINATING" << std::endl;
-	  timer.stop();
-
-	  double totalTimeGuess = timer.totalWall()*totalNEntries/nTerm;
-
-	  std::cout << " TOOK " << timer.totalWall() << " TO PROCESS " << nTerm << " events..." << std::endl;
+	  double totalTimeGuess = timer.totalWall()*totalNEntries/currTotalEntries;
+	    
+	  std::cout << " TOOK " << timer.totalWall() << " TO PROCESS " << currTotalEntries << " events..." << std::endl;
 	  std::cout << " ESTIMATE TOTAL TIME TO BE " << totalTimeGuess << " SECONDS..." << std::endl;
 	  totalTimeGuess /= 60;
 	  std::cout << " ESTIMATE TOTAL TIME TO BE " << totalTimeGuess << " MINUTES..." << std::endl;
 	  totalTimeGuess /= 60;
 	  std::cout << " ESTIMATE TOTAL TIME TO BE " << totalTimeGuess << " HOURS..." << std::endl;
+	  std::cout << std::endl;
 
-	  return 1;
+	  prevTimeCPU = currTotalCPU;
+	  prevTimeWall = currTotalWall;
+	}	
+	timer.start();
+
+	if(nTerm > 0){
+	  if(currTotalEntries > (ULong64_t)nTerm){
+	    std::cout << "TERMINATING" << std::endl;
+	    timer.stop();
+	    
+	    double totalTimeGuess = timer.totalWall()*totalNEntries/currTotalEntries;
+	    
+	    std::cout << " TOOK " << timer.totalWall() << " TO PROCESS " << currTotalEntries << " events..." << std::endl;
+	    std::cout << " ESTIMATE TOTAL TIME TO BE " << totalTimeGuess << " SECONDS..." << std::endl;
+	    totalTimeGuess /= 60;
+	    std::cout << " ESTIMATE TOTAL TIME TO BE " << totalTimeGuess << " MINUTES..." << std::endl;
+	    totalTimeGuess /= 60;
+	    std::cout << " ESTIMATE TOTAL TIME TO BE " << totalTimeGuess << " HOURS..." << std::endl;
+	    
+	    break;
+	  }
 	}
       }
       inTree_p->GetEntry(entry);
@@ -1195,9 +1207,13 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 
       subTimer4.stop();
     }
-    
+
     inFile_p->Close();
     delete inFile_p;
+
+    if(nTerm > 0){
+      if(currTotalEntries > (ULong64_t)nTerm) break;
+    }
 
     ++nFile;
   }
