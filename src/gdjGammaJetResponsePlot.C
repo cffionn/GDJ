@@ -121,14 +121,17 @@ int gdjGammaJetResponsePlot(std::string inFileName)
   std::vector<std::string> centBinsStr, recoGammaPtStr, genGammaPtStr;
   
   for(auto const & label : labelMap){
+    std::cout << label.first << std::endl;
+
     if(label.first.find("RecoGammaPt") != std::string::npos || label.first.find("GenGammaPt") != std::string::npos){
       std::string testVal = label.first.substr(label.first.find("Pt")+2, label.first.size());
 
       if(label.first.find("RecoGammaPt") != std::string::npos) recoGammaPtVals.push_back(std::stoi(testVal));
       if(label.first.find("GenGammaPt") != std::string::npos) genGammaPtVals.push_back(std::stoi(testVal));
     }
-    else if(label.first.find("Cent") != std::string::npos) centBinsStr.push_back(label.first);
-  }
+    else if(label.first.find("Cent") != std::string::npos) centBinsStr.push_back(label.first); 
+    else if(label.first.find("PP") != std::string::npos) centBinsStr.push_back(label.first);
+ }
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
@@ -195,6 +198,8 @@ int gdjGammaJetResponsePlot(std::string inFileName)
   double subMarginRight = 0.01;
   double subMarginTop = 0.045;
   double margin = 0.12;
+
+
   for(unsigned int cI = 0; cI < centBinsStr.size(); ++cI){
     TCanvas* canv_p = new TCanvas("canv_p", "", 450*nRecoGammaPtBins, 450*nGenGammaPtBins);
     canv_p->SetTopMargin(subMarginTop);
@@ -275,9 +280,10 @@ int gdjGammaJetResponsePlot(std::string inFileName)
 	pad_p[rI][gI]->Draw("SAME");
 	pad_p[rI][gI]->cd();
 	
-	TH2F* tempHist_p = (TH2F*)inFile_p->Get((centBinsStr[cI] + "/photonJtGenResVCentGenPtRecoPt_" + centBinsStr[cI] + "_" + genGammaPtStr[gI] + "_" + recoGammaPtStr[rI] + "_h").c_str());
+	const std::string tempHistName = centBinsStr[cI] + "/photonJtGenResVCentGenPtRecoPt_" + centBinsStr[cI] + "_" + genGammaPtStr[gI] + "_" + recoGammaPtStr[rI] + "_DPhi0_h";
+	TH2F* tempHist_p = (TH2F*)inFile_p->Get(tempHistName.c_str());
 
-	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGenGammaPtBins << std::endl;
+	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGenGammaPtBins << ", " << tempHistName << std::endl;
 	if(gI == 4 && rI == 0) std::cout << tempHist_p->GetName() << std::endl;
 	tempHist_p->DrawCopy("COLZ");
 	gPad->SetLogx();
@@ -298,9 +304,14 @@ int gdjGammaJetResponsePlot(std::string inFileName)
     gPad->SetTicks();
     gPad->RedrawAxis();
 
-    std::string centStr = centBinsStr[cI].substr(4, centBinsStr[cI].size());
-    centStr.replace(centStr.find("to"), 2, "-");
-    centStr = centStr + "%";
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
+    std::string centStr = "PP";
+    if(centBinsStr[cI].find("PP") == std::string::npos){
+      centBinsStr[cI].substr(4, centBinsStr[cI].size());
+      centStr.replace(centStr.find("to"), 2, "-");
+      centStr = centStr + "%";
+    }
     
     label_p->DrawLatex(margin+0.05, 1.0 - subMarginTop*4./5., ("ATLAS PYTHIA+Overlay, 5.02 TeV Pb+Pb, " + centStr).c_str());
     
