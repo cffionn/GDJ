@@ -20,6 +20,19 @@ keyHandler::keyHandler(std::string in_handlerName, std::vector<unsigned long lon
   return;
 }
 
+keyHandler::keyHandler(std::vector<std::string> in_valNames, std::vector<unsigned long long> in_valMaxes)
+{
+
+  Init(in_valNames, in_valMaxes);
+  return;
+}
+
+keyHandler::keyHandler(std::string in_handlerName, std::vector<std::string> in_valNames, std::vector<unsigned long long> in_valMaxes)
+{
+  Init(in_handlerName, in_valNames, in_valMaxes);
+  return;
+}
+
 keyHandler::~keyHandler()
 {
   Clean();
@@ -29,6 +42,19 @@ keyHandler::~keyHandler()
 bool keyHandler::Init(std::string in_handlerName, std::vector<unsigned long long> in_valMaxes)
 {
   m_handlerName = in_handlerName;
+  return Init(in_valMaxes);
+}
+
+bool keyHandler::Init(std::vector<std::string> in_valNames, std::vector<unsigned long long> in_valMaxes)
+{
+  m_valNames = in_valNames;
+  return Init(in_valMaxes);
+}
+
+bool keyHandler::Init(std::string in_handlerName, std::vector<std::string> in_valNames, std::vector<unsigned long long> in_valMaxes)
+{
+  m_handlerName = in_handlerName;
+  m_valNames = in_valNames;
   return Init(in_valMaxes);
 }
 
@@ -97,6 +123,21 @@ unsigned long long keyHandler::GetKey(std::vector<unsigned long long> in_vals)
 
   return retVal;
 }
+
+
+std::string keyHandler::GetKeyStr(unsigned long long inVal)
+{
+  std::string retStr = "";
+  std::vector<unsigned long long> vals = InvertKey(inVal);
+
+  for(unsigned int val = 0; val < vals.size(); ++val){
+    retStr = retStr + "Bin \'" + m_valNames[val] + "\' value=" + std::to_string(vals[val]) + ",";
+  }
+  if(retStr.size() != 0) retStr.replace(retStr.size()-1, 1, ".");
+
+  return retStr;
+}
+
 
 std::vector<unsigned long long> keyHandler::InvertKey(unsigned long long inVal)
 {

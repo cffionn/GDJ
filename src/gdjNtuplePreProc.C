@@ -781,10 +781,39 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   double prevTimeCPU = 0.0;
   double prevTimeWall = 0.0;
 
-  std::cout << std::endl;
-  outTree_p->Print("ALL");
-  std::cout << std::endl;
+  int minNVert = 99999999;
+  int maxNVert = 0;
   
+  int minNTruth = 99999999;
+  int maxNTruth = 0;
+  
+  int minNPhoton = 99999999;
+  int maxNPhoton = 0;
+  
+  int minNRecoR2 = 99999999;
+  int maxNRecoR2 = 0;
+  
+  int minNRecoR4 = 99999999;
+  int maxNRecoR4 = 0;
+  
+  int minNRecoR10 = 99999999;
+  int maxNRecoR10 = 0;
+  
+  int minNRecoR2to10 = 99999999;
+  int maxNRecoR2to10 = 0;
+  
+  int minNTruthR2 = 99999999;
+  int maxNTruthR2 = 0;
+  
+  int minNTruthR4 = 99999999;
+  int maxNTruthR4 = 0;
+  
+  int minNTruthR10 = 99999999;
+  int maxNTruthR10 = 0;
+  
+  int minNTruthR2to10 = 99999999;
+  int maxNTruthR2to10 = 0;
+
   for(auto const & file : fileList){
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
     TFile* inFile_p = new TFile(file.c_str(), "READ");
@@ -1042,6 +1071,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
     }
 
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
   
     const ULong64_t nEntries = inTree_p->GetEntries();
     for(ULong64_t entry = 0; entry < nEntries; ++entry){
@@ -1087,26 +1117,29 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	  prevTimeWall = currTotalWall;
 	}	
 	timer.start();
+      }
 
-	if(nTerm > 0){
-	  if(currTotalEntries > (ULong64_t)nTerm){
-	    std::cout << "TERMINATING" << std::endl;
-	    timer.stop();
-	    
-	    double totalTimeGuess = timer.totalWall()*totalNEntries/currTotalEntries;
-	    
-	    std::cout << " TOOK " << timer.totalWall() << " TO PROCESS " << currTotalEntries << " events..." << std::endl;
-	    std::cout << " ESTIMATE TOTAL TIME TO BE " << totalTimeGuess << " SECONDS..." << std::endl;
-	    totalTimeGuess /= 60;
-	    std::cout << " ESTIMATE TOTAL TIME TO BE " << totalTimeGuess << " MINUTES..." << std::endl;
-	    totalTimeGuess /= 60;
-	    std::cout << " ESTIMATE TOTAL TIME TO BE " << totalTimeGuess << " HOURS..." << std::endl;
-	    
-	    break;
-	  }
+      if(nTerm > 0){
+	if(currTotalEntries > (ULong64_t)nTerm){
+	  std::cout << "TERMINATING" << std::endl;
+	  timer.stop();
+	  
+	  double totalTimeGuess = timer.totalWall()*totalNEntries/currTotalEntries;
+	  
+	  std::cout << " TOOK " << timer.totalWall() << " TO PROCESS " << currTotalEntries << " events..." << std::endl;
+	  std::cout << " ESTIMATE TOTAL TIME TO BE " << totalTimeGuess << " SECONDS..." << std::endl;
+	  totalTimeGuess /= 60;
+	  std::cout << " ESTIMATE TOTAL TIME TO BE " << totalTimeGuess << " MINUTES..." << std::endl;
+	  totalTimeGuess /= 60;
+	  std::cout << " ESTIMATE TOTAL TIME TO BE " << totalTimeGuess << " HOURS..." << std::endl;
+      	  
+	  break;
 	}
       }
+      
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
       inTree_p->GetEntry(entry);
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
       subTimer1.stop();
       subTimer2.start();
@@ -1121,6 +1154,224 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 
       subTimer2.stop();
       subTimer3.start();
+    
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
+      if(minNVert > nvert_) minNVert = nvert_;
+      if(maxNVert < nvert_) maxNVert = nvert_;
+      
+      if(isMC){
+	if(minNTruth > truth_n_) minNTruth = truth_n_;
+	if(maxNTruth < truth_n_) maxNTruth = truth_n_;
+      }
+
+      if(minNPhoton > photon_n_) minNPhoton = photon_n_;
+      if(maxNPhoton < photon_n_) maxNPhoton = photon_n_;
+
+      if(minNRecoR2 > akt2hi_jet_n_) minNRecoR2 = akt2hi_jet_n_;
+      if(maxNRecoR2 < akt2hi_jet_n_) maxNRecoR2 = akt2hi_jet_n_;
+
+      if(minNRecoR4 > akt4hi_jet_n_) minNRecoR4 = akt4hi_jet_n_;
+      if(maxNRecoR4 < akt4hi_jet_n_) maxNRecoR4 = akt4hi_jet_n_;
+
+      if(!isPP){
+	if(minNRecoR10 > akt10hi_jet_n_) minNRecoR10 = akt10hi_jet_n_;
+	if(maxNRecoR10 < akt10hi_jet_n_) maxNRecoR10 = akt10hi_jet_n_;
+      }
+
+      if(minNRecoR2to10 > akt2to10hi_jet_n_) minNRecoR2to10 = akt2to10hi_jet_n_;
+      if(maxNRecoR2to10 < akt2to10hi_jet_n_) maxNRecoR2to10 = akt2to10hi_jet_n_;
+
+      if(isMC){
+	if(minNTruthR2 > akt2_truth_jet_n_) minNTruthR2 = akt2_truth_jet_n_;
+	if(maxNTruthR2 < akt2_truth_jet_n_) maxNTruthR2 = akt2_truth_jet_n_;
+	
+	if(minNTruthR4 > akt4_truth_jet_n_) minNTruthR4 = akt4_truth_jet_n_;
+	if(maxNTruthR4 < akt4_truth_jet_n_) maxNTruthR4 = akt4_truth_jet_n_;
+
+	if(!isPP){
+	  if(minNTruthR10 > akt10_truth_jet_n_) minNTruthR10 = akt10_truth_jet_n_;
+	  if(maxNTruthR10 < akt10_truth_jet_n_) maxNTruthR10 = akt10_truth_jet_n_;
+	}
+	
+	if(minNTruthR2to10 > akt2to10_truth_jet_n_) minNTruthR2to10 = akt2to10_truth_jet_n_;
+	if(maxNTruthR2to10 < akt2to10_truth_jet_n_) maxNTruthR2to10 = akt2to10_truth_jet_n_;
+      }
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
+      //Vertex size checks
+      if(vert_x_p->size() != (unsigned int)nvert_) std::cout << "VERT VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(vert_y_p->size() != (unsigned int)nvert_) std::cout << "VERT VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(vert_z_p->size() != (unsigned int)nvert_) std::cout << "VERT VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(vert_type_p->size() != (unsigned int)nvert_) std::cout << "VERT VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(vert_ntrk_p->size() != (unsigned int)nvert_) std::cout << "VERT VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
+      //truth size checks
+      if(isMC){
+	if(truth_charge_p->size() != (unsigned int)truth_n_) std::cout << "TRUTH VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(truth_pt_p->size() != (unsigned int)truth_n_) std::cout << "TRUTH VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(truth_e_p->size() != (unsigned int)truth_n_) std::cout << "TRUTH VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(truth_eta_p->size() != (unsigned int)truth_n_) std::cout << "TRUTH VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(truth_phi_p->size() != (unsigned int)truth_n_) std::cout << "TRUTH VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(truth_status_p->size() != (unsigned int)truth_n_) std::cout << "TRUTH VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(truth_pdg_p->size() != (unsigned int)truth_n_) std::cout << "TRUTH VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(truth_type_p->size() != (unsigned int)truth_n_) std::cout << "TRUTH VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(truth_origin_p->size() != (unsigned int)truth_n_) std::cout << "TRUTH VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      }
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
+      //akt2 jet collection size checks
+      if(akt2hi_em_xcalib_jet_pt_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_em_xcalib_jet_uncorrpt_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_em_xcalib_jet_eta_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_em_xcalib_jet_uncorreta_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_em_xcalib_jet_phi_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_em_xcalib_jet_e_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_em_xcalib_jet_uncorre_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
+      if(akt2hi_em_xcalib_jet_m_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_em_xcalib_jet_clean_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_em_xcalib_jet_pt_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_constit_xcalib_jet_pt_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_constit_xcalib_jet_eta_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_constit_xcalib_jet_phi_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_constit_xcalib_jet_e_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_double_calib_jet_pt_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(isMC){
+	if(akt2hi_truthpos_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      }
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
+      //akt4 jet collection size checks
+      if(akt4hi_em_xcalib_jet_pt_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt4hi_em_xcalib_jet_uncorrpt_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt4hi_em_xcalib_jet_eta_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt4hi_em_xcalib_jet_uncorreta_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt4hi_em_xcalib_jet_phi_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt4hi_em_xcalib_jet_e_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt4hi_em_xcalib_jet_uncorre_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt4hi_em_xcalib_jet_m_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt4hi_em_xcalib_jet_clean_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt4hi_em_xcalib_jet_pt_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt4hi_constit_xcalib_jet_pt_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt4hi_constit_xcalib_jet_eta_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt4hi_constit_xcalib_jet_phi_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt4hi_constit_xcalib_jet_e_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt4hi_double_calib_jet_pt_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(isMC){
+	if(akt4hi_truthpos_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      }
+
+      //akt10 jet collection size checks
+      if(!isPP){
+	if(akt10hi_em_xcalib_jet_pt_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt10hi_em_xcalib_jet_uncorrpt_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt10hi_em_xcalib_jet_eta_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt10hi_em_xcalib_jet_uncorreta_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt10hi_em_xcalib_jet_phi_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt10hi_em_xcalib_jet_e_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt10hi_em_xcalib_jet_uncorre_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt10hi_em_xcalib_jet_m_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt10hi_em_xcalib_jet_clean_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt10hi_em_xcalib_jet_pt_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt10hi_constit_xcalib_jet_pt_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt10hi_constit_xcalib_jet_eta_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt10hi_constit_xcalib_jet_phi_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt10hi_constit_xcalib_jet_e_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt10hi_double_calib_jet_pt_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+
+	if(isMC){
+	  if(akt10hi_truthpos_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	}
+      }
+
+      //akt2to10 jet collection size checks
+      if(akt2to10hi_em_xcalib_jet_pt_p->size() != (unsigned int)akt2to10hi_jet_n_) std::cout << "AKT2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2to10hi_em_xcalib_jet_eta_p->size() != (unsigned int)akt2to10hi_jet_n_) std::cout << "AKT2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2to10hi_em_xcalib_jet_phi_p->size() != (unsigned int)akt2to10hi_jet_n_) std::cout << "AKT2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2to10hi_em_xcalib_jet_e_p->size() != (unsigned int)akt2to10hi_jet_n_) std::cout << "AKT2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2to10hi_em_xcalib_jet_m_p->size() != (unsigned int)akt2to10hi_jet_n_) std::cout << "AKT2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(isMC){
+	if(akt2to10hi_truthpos_p->size() != (unsigned int)akt2to10hi_jet_n_) std::cout << "AKT2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      }
+
+      //Burned a few times on photon vector mismatches so adding a check here
+      if(photon_pt_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_eta_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_phi_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_tight_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_loose_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_isem_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_convFlag_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_Rconv_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_etcone20_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_etcone30_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_etcone40_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_etcone20ptCorrection_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_etcone30ptCorrection_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_etcone40ptCorrection_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_topoetcone20_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_topoetcone30_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_topoetcone40_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_Rhad1_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_Rhad_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_e277_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_Reta_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_Rphi_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_weta1_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_weta2_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_wtots1_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_f1_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_f3_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_fracs1_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_DeltaE_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_Eratio_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+
+      if(isMC){
+	if(akt2_truth_jet_pt_p->size() != (unsigned int)akt2_truth_jet_n_) std::cout << "TRUTH JET R2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt2_truth_jet_eta_p->size() != (unsigned int)akt2_truth_jet_n_) std::cout << "TRUTH JET R2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt2_truth_jet_phi_p->size() != (unsigned int)akt2_truth_jet_n_) std::cout << "TRUTH JET R2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt2_truth_jet_e_p->size() != (unsigned int)akt2_truth_jet_n_) std::cout << "TRUTH JET R2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt2_truth_jet_m_p->size() != (unsigned int)akt2_truth_jet_n_) std::cout << "TRUTH JET R2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt2_truth_jet_recopos_p->size() != (unsigned int)akt2_truth_jet_n_) std::cout << "TRUTH JET R2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt2_truth_jet_partonid_p->size() != (unsigned int)akt2_truth_jet_n_) std::cout << "TRUTH JET R2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      
+
+	if(akt4_truth_jet_pt_p->size() != (unsigned int)akt4_truth_jet_n_) std::cout << "TRUTH JET R4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt4_truth_jet_eta_p->size() != (unsigned int)akt4_truth_jet_n_) std::cout << "TRUTH JET R4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt4_truth_jet_phi_p->size() != (unsigned int)akt4_truth_jet_n_) std::cout << "TRUTH JET R4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt4_truth_jet_e_p->size() != (unsigned int)akt4_truth_jet_n_) std::cout << "TRUTH JET R4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt4_truth_jet_m_p->size() != (unsigned int)akt4_truth_jet_n_) std::cout << "TRUTH JET R4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt4_truth_jet_recopos_p->size() != (unsigned int)akt4_truth_jet_n_) std::cout << "TRUTH JET R4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt4_truth_jet_partonid_p->size() != (unsigned int)akt4_truth_jet_n_) std::cout << "TRUTH JET R4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+
+	if(!isPP){
+	  if(akt10_truth_jet_pt_p->size() != (unsigned int)akt10_truth_jet_n_) std::cout << "TRUTH JET R10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	  if(akt10_truth_jet_eta_p->size() != (unsigned int)akt10_truth_jet_n_) std::cout << "TRUTH JET R10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	  if(akt10_truth_jet_phi_p->size() != (unsigned int)akt10_truth_jet_n_) std::cout << "TRUTH JET R10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	  if(akt10_truth_jet_e_p->size() != (unsigned int)akt10_truth_jet_n_) std::cout << "TRUTH JET R10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	  if(akt10_truth_jet_m_p->size() != (unsigned int)akt10_truth_jet_n_) std::cout << "TRUTH JET R10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	  if(akt10_truth_jet_recopos_p->size() != (unsigned int)akt10_truth_jet_n_) std::cout << "TRUTH JET R10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	  if(akt10_truth_jet_partonid_p->size() != (unsigned int)akt10_truth_jet_n_) std::cout << "TRUTH JET R10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	}
+      
+
+	if(akt2to10_truth_jet_pt_p->size() != (unsigned int)akt2to10_truth_jet_n_) std::cout << "TRUTH JET R2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt2to10_truth_jet_eta_p->size() != (unsigned int)akt2to10_truth_jet_n_) std::cout << "TRUTH JET R2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt2to10_truth_jet_phi_p->size() != (unsigned int)akt2to10_truth_jet_n_) std::cout << "TRUTH JET R2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt2to10_truth_jet_e_p->size() != (unsigned int)akt2to10_truth_jet_n_) std::cout << "TRUTH JET R2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt2to10_truth_jet_m_p->size() != (unsigned int)akt2to10_truth_jet_n_) std::cout << "TRUTH JET R2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt2to10_truth_jet_recopos_p->size() != (unsigned int)akt2to10_truth_jet_n_) std::cout << "TRUTH JET R2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt2to10_truth_jet_partonid_p->size() != (unsigned int)akt2to10_truth_jet_n_) std::cout << "TRUTH JET R2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      }
 
       if(isMC){
 	truthPhotonPt_ = -999.;     
@@ -1217,6 +1468,19 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 
     ++nFile;
   }
+
+  std::cout << "RANGES: " << std::endl;
+  std::cout << " RANGE NVERT: " << minNVert << "-" << maxNVert << std::endl;
+  std::cout << " RANGE NTRUTH: " << minNTruth << "-" << maxNTruth << std::endl;
+  std::cout << " RANGE NPHOTON: " << minNPhoton << "-" << maxNPhoton << std::endl;
+  std::cout << " RANGE NRECOR2: " << minNRecoR2 << "-" << maxNRecoR2 << std::endl;
+  std::cout << " RANGE NRECOR4: " << minNRecoR4 << "-" << maxNRecoR4 << std::endl;
+  std::cout << " RANGE NRECOR10: " << minNRecoR10 << "-" << maxNRecoR10 << std::endl;
+  std::cout << " RANGE NRECOR2TO10: " << minNRecoR2to10 << "-" << maxNRecoR2to10 << std::endl;
+  std::cout << " RANGE NTRUTHR2: " << minNTruthR2 << "-" << maxNTruthR2 << std::endl;
+  std::cout << " RANGE NTRUTHR4: " << minNTruthR4 << "-" << maxNTruthR4 << std::endl;
+  std::cout << " RANGE NTRUTHR10: " << minNTruthR10 << "-" << maxNTruthR10 << std::endl;
+  std::cout << " RANGE NTRUTHR2TO10: " << minNTruthR2to10 << "-" << maxNTruthR2to10 << std::endl;
   
   outFile_p->cd();
 

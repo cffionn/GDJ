@@ -28,7 +28,7 @@ MKDIR_OBJ=mkdir -p $(GDJDIR)/obj
 MKDIR_OUTPUT=mkdir -p $(GDJDIR)/output
 MKDIR_PDF=mkdir -p $(GDJDIR)/pdfDir
 
-all: mkdirBin mkdirLib mkdirObj mkdirOutput mkdirPdf obj/centralityFromInput.o obj/checkMakeDir.o obj/configParser.o obj/globalDebugHandler.o obj/keyHandler.o obj/sampleHandler.o lib/libATLASGDJ.so bin/gdjNtuplePreProc.exe bin/gdjNtuplePreProc_PREV.exe bin/gdjNTupleToHist.exe bin/gdjNTupleToMBHist.exe bin/gdjHistDumper.exe bin/gdjGammaJetResponsePlot.exe bin/gdjMixedEventPlotter.exe bin/gdjResponsePlotter.exe bin/gdjDataMCRawPlotter.exe bin/grlToTex.exe bin/testKeyHandler.exe bin/testSampleHandler.exe bin/gdjPlotMBHist.exe  bin/gdjNTupleToSignalHist.exe bin/gdjPlotSignalHist.exe bin/gdjToyMultiMix.exe bin/gdjPlotToy.exe
+all: mkdirBin mkdirLib mkdirObj mkdirOutput mkdirPdf obj/centralityFromInput.o obj/checkMakeDir.o obj/configParser.o obj/globalDebugHandler.o obj/keyHandler.o obj/sampleHandler.o lib/libATLASGDJ.so bin/gdjNtuplePreProc.exe bin/gdjNTupleToHist.exe bin/gdjNTupleToMBHist.exe bin/gdjHistDumper.exe bin/gdjGammaJetResponsePlot.exe bin/gdjMixedEventPlotter.exe bin/gdjResponsePlotter.exe bin/gdjDataMCRawPlotter.exe bin/grlToTex.exe bin/testKeyHandler.exe bin/testSampleHandler.exe bin/gdjPlotMBHist.exe bin/quickEventIso.exe bin/getEntryInAOD.exe bin/gdjNTupleToSignalHist.exe bin/gdjPlotSignalHist.exe bin/gdjToyMultiMix.exe bin/gdjPlotToy.exe
 
 mkdirBin:
 	$(MKDIR_BIN)
@@ -69,9 +69,6 @@ lib/libATLASGDJ.so:
 bin/gdjNtuplePreProc.exe: src/gdjNtuplePreProc.C
 	$(CXX) $(CXXFLAGS) src/gdjNtuplePreProc.C -o bin/gdjNtuplePreProc.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
 
-bin/gdjNtuplePreProc_PREV.exe: src/gdjNtuplePreProc_PREV.C
-	$(CXX) $(CXXFLAGS) src/gdjNtuplePreProc_PREV.C -o bin/gdjNtuplePreProc_PREV.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
-
 bin/gdjNTupleToHist.exe: src/gdjNTupleToHist.C
 	$(CXX) $(CXXFLAGS) src/gdjNTupleToHist.C -o bin/gdjNTupleToHist.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
 
@@ -80,6 +77,12 @@ bin/gdjNTupleToSignalHist.exe: src/gdjNTupleToSignalHist.C
 
 bin/gdjNTupleToMBHist.exe: src/gdjNTupleToMBHist.C
 	$(CXX) $(CXXFLAGS) src/gdjNTupleToMBHist.C -o bin/gdjNTupleToMBHist.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
+
+bin/quickEventIso.exe: src/quickEventIso.C
+	$(CXX) $(CXXFLAGS) src/quickEventIso.C -o bin/quickEventIso.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
+
+bin/getEntryInAOD.exe: src/getEntryInAOD.C
+	$(CXX) $(CXXFLAGS) src/getEntryInAOD.C -o bin/getEntryInAOD.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
 
 bin/gdjPlotMBHist.exe: src/gdjPlotMBHist.C
 	$(CXX) $(CXXFLAGS) src/gdjPlotMBHist.C -o bin/gdjPlotMBHist.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ

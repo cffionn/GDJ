@@ -13,13 +13,18 @@ class keyHandler{
   keyHandler(){};
   keyHandler(std::string in_handlerName);
   keyHandler(std::string in_handlerName, std::vector<unsigned long long> in_valMaxes);
+  keyHandler(std::vector<std::string> in_valNames, std::vector<unsigned long long> in_valMaxes);
+  keyHandler(std::string in_handlerName, std::vector<std::string> in_valNames, std::vector<unsigned long long> in_valMaxes);
   ~keyHandler();
 
+  bool Init(std::string in_handlerName, std::vector<std::string> in_valNames, std::vector<unsigned long long> in_valMaxes);
   bool Init(std::string in_handlerName, std::vector<unsigned long long> in_valMaxes);
+  bool Init(std::vector<std::string> in_valNames, std::vector<unsigned long long> in_valMaxes);
   bool Init(std::vector<unsigned long long> in_valMaxes);
 
   unsigned long long GetKey(std::vector<unsigned long long> in_vals);
-  std::vector<unsigned long long> InvertKey(unsigned long long);
+  std::string GetKeyStr(unsigned long long inVal);
+  std::vector<unsigned long long> InvertKey(unsigned long long inVal);
   void Clean();
   
  private:
@@ -27,6 +32,7 @@ class keyHandler{
   bool m_doDebug;
   std::vector<unsigned long long> m_valMaxes;
   std::vector<unsigned long long> m_multipliers;
+  std::vector<std::string> m_valNames;
 
   unsigned long long GetNearestTen(unsigned long long inVal);
 };

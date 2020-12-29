@@ -24,6 +24,7 @@
 #include "include/binUtils.h"
 #include "include/centralityFromInput.h"
 #include "include/checkMakeDir.h"
+#include "include/cppWatch.h"
 //#include "include/configParser.h"
 #include "include/envUtil.h"
 #include "include/etaPhiFunc.h"
@@ -60,8 +61,12 @@ void fillTH2(TH2F* inHist_p, Float_t fillVal1, Float_t fillVal2, Float_t weight 
 
 int gdjNTupleToHist(std::string inConfigFileName)
 {
+  cppWatch globalTimer;
+  globalTimer.start();
+
   const Int_t randSeed = 5573; // from coin flips -> binary number 1010111000101
   TRandom3* randGen_p = new TRandom3(randSeed);
+
 
   checkMakeDir check;
   if(!check.checkFileExt(inConfigFileName, ".config")) return 1;
@@ -188,6 +193,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   Double_t mixVzBins[nMaxMixBins+1];
 
   std::vector<std::vector<unsigned long long> > mixVect;
+  std::vector<std::string> nameVect;
   std::vector<std::vector<unsigned long long> > keyVect;
   
   if(doMix){
@@ -206,6 +212,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       getLinBins(mixCentBinsLow, mixCentBinsHigh, nMixCentBins, mixCentBins);
 
       mixVect.push_back({});
+      nameVect.push_back("Centrality");
       for(Int_t mI = 0; mI < nMixCentBins; ++mI){
 	mixVect[mixVect.size()-1].push_back(mI);
 	keyVect.push_back({(unsigned long long)mI});
@@ -226,6 +233,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
       std::vector<std::vector<unsigned long long> > tempKeyVect;
       mixVect.push_back({});
+      nameVect.push_back("Psi2");
       for(Int_t mI = 0; mI < nMixPsi2Bins; ++mI){
 	mixVect[mixVect.size()-1].push_back(mI);
 
@@ -256,6 +264,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
       std::vector<std::vector<unsigned long long> > tempKeyVect;
       mixVect.push_back({});
+      nameVect.push_back("vZ");
       for(Int_t mI = 0; mI < nMixVzBins; ++mI){
 	mixVect[mixVect.size()-1].push_back(mI);
 
@@ -311,7 +320,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
     //    return 0;
     
-    keyBoy.Init(sizes);    
+    keyBoy.Init(nameVect, sizes);    
 
     for(unsigned int vI = 0; vI < keyVect.size(); ++vI){
       unsigned long long key = keyBoy.GetKey(keyVect[vI]);
@@ -585,8 +594,42 @@ int gdjNTupleToHist(std::string inConfigFileName)
   getLinBins(xjBinsLow, xjBinsHigh, nXJBins, xjBins);
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
+  const unsigned long long mixCap = config_p->GetValue("MIXCAP", 100000000);
   
   TFile* outFile_p = new TFile(outFileName.c_str(), "RECREATE");
+
+  TH1F* mixingCentrality_p = nullptr;
+  TH1F* mixingPsi2_p = nullptr;
+  TH1F* mixingVz_p = nullptr;
+  TH2F* mixingCentralityPsi2_p = nullptr;
+  TH2F* mixingCentralityVz_p = nullptr;
+  TH2F* mixingPsi2Vz_p = nullptr;
+  TH2F* mixingCentralityPsi2_VzBinned_p[nMaxMixBins];
+
+
+  if(doMix){
+    if(doMixCent){
+      mixingCentrality_p = new TH1F("mixingCentrality_h", ";Centrality;Counts", nMixCentBins, mixCentBins);
+      if(doMixPsi2){
+	mixingCentralityPsi2_p = new TH2F("mixingCentralityPsi2_h", ";Centrality;#Psi_{2}", nMixCentBins, mixCentBins, nMixPsi2Bins, mixPsi2Bins);
+
+	if(doMixVz){
+	  for(Int_t vI = 0; vI < nMixVzBins; ++vI){
+	    mixingCentralityPsi2_VzBinned_p[vI] = new TH2F(("mixingCentralityPsi2_Vz" + std::to_string(vI) + "_h").c_str(), ";;", nMixCentBins, mixCentBins, nMixPsi2Bins, mixPsi2Bins);
+	  }
+	}
+      }
+
+      if(doMixVz) mixingCentralityVz_p = new TH2F("mixingCentralityVz_h", ";Centrality;v_{z}", nMixCentBins, mixCentBins, nMixVzBins, mixVzBins);
+    }
+    if(doMixPsi2){
+      mixingPsi2_p = new TH1F("mixingPsi2_h", ";#Psi_{2};Counts", nMixPsi2Bins, mixPsi2Bins);
+      if(doMixVz) mixingPsi2Vz_p = new TH2F("mixingPsi2Vz_h", ";#Psi_{2};v_{z}", nMixPsi2Bins, mixPsi2Bins, nMixVzBins, mixVzBins);
+    }
+    if(doMixVz) mixingVz_p = new TH1F("mixingVz_h", ";v_{z};Counts", nMixVzBins, mixVzBins);
+  }
+
   TH1F* runNumber_p = nullptr;
   TH1F* lumiFractionPerRun_p = nullptr;
   TH1F* pthat_p = nullptr;
@@ -920,6 +963,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
   Float_t fcalA_et, fcalC_et;
   Float_t evtPlane2Phi;
   std::vector<float>* vert_z_p=nullptr;
+  const Double_t mmToCMDivFactor = 10.;
+
   
   std::vector<float>* truth_pt_p=nullptr;
   std::vector<float>* truth_phi_p=nullptr;
@@ -986,7 +1031,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       mixTree_p->GetEntry(entry);
 
       double vert_z = vert_z_p->at(0);
-      vert_z /= 1000.;
+      vert_z /= mmToCMDivFactor;
       if(vert_z <= -15. || vert_z >= 15.) continue;      
       //      if(vert_z <= vzMixBinsLow || vert_z >= vzMixBinsHigh) continue;
       
@@ -1016,6 +1061,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
       
       unsigned long long key = keyBoy.GetKey(eventKeyVect);//, vzPos, evtPlanePos});
       
+      if(mixingMapCounter[key] >= mixCap) continue;
+
+      
       std::vector<TLorentzVector> jets;
       for(unsigned int jI = 0; jI < aktRhi_em_xcalib_jet_pt_p->size(); ++jI){
 	if(aktRhi_em_xcalib_jet_pt_p->at(jI) < jtPtBinsLow) continue;
@@ -1028,28 +1076,66 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
 	jets.push_back(temp);
       }
+    
+      if(doMixCent){
+	mixingCentrality_p->Fill(cent);
+	if(doMixPsi2){
+	  mixingCentralityPsi2_p->Fill(cent, evtPlane2Phi);
 
+	  if(doMixVz) mixingCentralityPsi2_VzBinned_p[vzPos]->Fill(cent, evtPlane2Phi);
+	}
+	if(doMixVz) mixingCentralityVz_p->Fill(cent, vert_z);
+      }
+      if(doMixPsi2){
+	mixingPsi2_p->Fill(evtPlane2Phi);
+	if(doMixVz) mixingPsi2Vz_p->Fill(evtPlane2Phi, vert_z);
+      }
+      if(doMixVz) mixingVz_p->Fill(vert_z);
+    
       mixingMap[key].push_back(jets);
       ++(mixingMapCounter[key]);
-      ++(signalMapCounter[key]);   
+      //      ++(signalMapCounter[key]);   
     }
     
     mixFile_p->Close();
     delete mixFile_p;
     inFile_p->cd();
 
+    //Gonna dump out some statements on the statistics of the mixed events 
+    unsigned long long maxKey = 0;
+    unsigned long long maximumVal = 0;
+
     unsigned long long minKey = 0;
-    unsigned long long minimumVal = 9999999;
+    unsigned long long minimumVal = 2147483647; //hardcoded max value of a signed integer
+
+    double aveVal = 0;
+    double tempCounter = 0;
+
+    std::vector<unsigned long long> tempCounts;
+
     for(auto const & mixes : mixingMapCounter){
       if(mixes.second < minimumVal){
 	minKey = mixes.first;
 	minimumVal = mixes.second;
       }
+      else if(mixes.second > maximumVal){
+	maxKey = mixes.first;
+	maximumVal = mixes.second;
+      }
+      
+      aveVal += mixes.second;
+      tempCounts.push_back(mixes.second);
+      ++tempCounter;
     }
 
-    std::cout << "MINIMUM NUMBER TO MIX, CORRESPONDING KEY: " << minimumVal << ", " << minKey << std::endl;
-  }
+    std::sort(std::begin(tempCounts), std::end(tempCounts));
   
+    std::cout << "MINIMUM NUMBER TO MIX, CORRESPONDING KEY: " << minimumVal << " (" << keyBoy.GetKeyStr(minKey) << "), key=" << minKey << std::endl;
+    std::cout << "MAXIMUM NUMBER TO MIX, CORRESPONDING KEY: " << maximumVal << " (" << keyBoy.GetKeyStr(maxKey) << "), key=" << maxKey << std::endl;
+    std::cout << "AVERAGE NUMBER TO MIX: " << aveVal/tempCounter << std::endl;
+    std::cout << "MEDIAN NUMBER TO MIX: " << tempCounts[tempCounts.size()/2] << std::endl;
+  }
+
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   inTree_p->SetBranchStatus("*", 0);
 
@@ -1194,7 +1280,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
     inTree_p->GetEntry(entry);
 
     double vert_z = vert_z_p->at(0);
-    vert_z /= 1000.;
+    vert_z /= mmToCMDivFactor;
     if(vert_z <= -15. || vert_z >= 15.) continue;      
     //    if(vert_z <= vzMixBinsLow || vert_z >= vzMixBinsHigh) continue;
 
@@ -1614,7 +1700,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  if(doGlobalDebug) std::cout << "CENT: " << mixCentPos << ", " << cent << std::endl;
 	  if(doGlobalDebug) std::cout << "PSI2: " << mixPsi2Pos << ", " << evtPlane2Phi << std::endl;
 	  if(doGlobalDebug) std::cout << "VZ: " << mixVzPos << ", " << vert_z << std::endl;
-
+      
 	  unsigned long long key = keyBoy.GetKey(eventKeyVect);
 	  unsigned long long maxPos = mixingMap[key].size();
 	  if(maxPos == 0){
@@ -1627,6 +1713,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
 	  unsigned long long jetPos = maxPos;
 	  while(jetPos == maxPos){jetPos = randGen_p->Uniform(0, maxPos-1);}
+	  ++(signalMapCounter[key]);
 	  std::vector<TLorentzVector> jets = mixingMap[key][jetPos];
 
 	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE, JETS SIZE, MAX, CHOSEN: " << __FILE__ << ", " << __LINE__ << ", " << jets.size() << ", " << maxPos << ", " << jetPos << std::endl; 
@@ -1799,6 +1886,46 @@ int gdjNTupleToHist(std::string inConfigFileName)
       fillTH2(photonEtaPt_p[centPos], etaValMain, photon_pt_p->at(pI), fullWeight);
     }
   }  
+
+  //Dump info on the mixing
+  unsigned long long maxRatioKey = 0;
+  double maximumRatioVal = 0;
+  unsigned long long maximumNumVal = 0;
+  unsigned long long maximumDenomVal = 0;
+
+  unsigned long long minRatioKey = 0;
+  double minimumRatioVal = 2147483647; //hardcoded max value of a signed integer
+  unsigned long long minimumNumVal = 0;
+  unsigned long long minimumDenomVal = 0;
+
+  std::vector<double> tempRatioVals;
+
+  for(auto const & mixes : mixingMapCounter){
+    if(signalMapCounter[mixes.first] == 0) continue;
+    
+    double ratio = ((double)mixes.second)/(double)signalMapCounter[mixes.first];
+
+    if(ratio < minimumRatioVal){
+      minRatioKey = mixes.first;
+      minimumRatioVal = ratio;
+      minimumDenomVal = signalMapCounter[mixes.first];
+      minimumNumVal = mixes.second;
+    }
+    else if(ratio > maximumRatioVal){
+      maxRatioKey = mixes.first;
+      maximumRatioVal = ratio;
+      maximumDenomVal = signalMapCounter[mixes.first];
+      maximumNumVal = mixes.second;
+    }
+    
+    tempRatioVals.push_back(ratio);
+  }
+  
+  std::sort(std::begin(tempRatioVals), std::end(tempRatioVals));
+  
+  std::cout << "LOWEST RATIO MIX-PER-SIGNAL, CORRESPONDING KEY: " << minimumNumVal << "/" << minimumDenomVal << "=" << minimumRatioVal << " (" << keyBoy.GetKeyStr(minRatioKey) << "), key=" << minRatioKey << std::endl;
+  std::cout << "HIGHEST RATIO MIX-PER-SIGNAL, CORRESPONDING KEY: " << maximumNumVal << "/" << maximumDenomVal << "=" << maximumRatioVal << " (" << keyBoy.GetKeyStr(maxRatioKey) << "), key=" << maxRatioKey << std::endl;
+  std::cout << "MEDIAN RATIO MIX-PER-SIGNAL: " << tempRatioVals[tempRatioVals.size()/2] << std::endl;
   
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   inFile_p->Close();
@@ -1908,6 +2035,49 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	photonSubMultiJtDPhiJJVCentPt_p[cI][pI]->Scale(1./gammaCountsPerPtCent[pI][cI]);
       }
     }
+  }
+
+
+  if(doMix){
+    TDirectoryFile* mixDir_p = (TDirectoryFile*)outFile_p->mkdir("mixDir");
+    mixDir_p->cd();
+
+    if(doMixCent){
+      mixingCentrality_p->Write("", TObject::kOverwrite);
+      delete mixingCentrality_p;
+
+      if(doMixPsi2){
+	mixingCentralityPsi2_p->Write("", TObject::kOverwrite);
+	delete mixingCentralityPsi2_p;
+
+	if(doMixVz){
+	  for(Int_t vI = 0; vI < nMixVzBins; ++vI){
+	    mixingCentralityPsi2_VzBinned_p[vI]->Write("", TObject::kOverwrite);
+	    delete mixingCentralityPsi2_VzBinned_p[vI];
+	  }
+	}
+      }
+      if(doMixVz){
+	mixingCentralityVz_p->Write("", TObject::kOverwrite);
+	delete mixingCentralityVz_p;
+      }
+    }
+    if(doMixPsi2){
+      mixingPsi2_p->Write("", TObject::kOverwrite);
+      delete mixingPsi2_p;
+
+      if(doMixVz){
+	mixingPsi2Vz_p->Write("", TObject::kOverwrite);
+	delete mixingPsi2Vz_p;
+      }      
+    }
+    if(doMixVz){
+      mixingVz_p->Write("", TObject::kOverwrite);
+      delete mixingVz_p;
+    }
+
+    mixDir_p->Close();
+    delete mixDir_p;
   }
 
   runNumber_p->Write("", TObject::kOverwrite);
@@ -2328,6 +2498,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
   delete outFile_p;
 
   delete randGen_p;
+
+  globalTimer.stop();
+  double globalTimeCPU = globalTimer.totalCPU();
+  double globalTimeWall = globalTimer.totalWall();
+
+  std::cout << "FINAL TIME: " << std::endl;
+  std::cout << " WALL: " << globalTimeWall << std::endl;
+  std::cout << " CPU:  " << globalTimeCPU << std::endl;
   
   std::cout << "GDJNTUPLETOHIST COMPLETE. return 0." << std::endl;
   return 0;
