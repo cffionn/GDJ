@@ -165,7 +165,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   const std::string jetRStr = prettyString(((double)jetR)/10., 1, false);
   const double assocGenMinPt = config_p->GetValue("ASSOCGENMINPT", 15.0);
   const double gammaExclusionDR = config_p->GetValue("GAMMAEXCLUSIONDR", 0.5);
-  const double mixJetExclusionDR = config->GetValue("MIXJETEXCLUSIONDR", 0.5);
+  const double mixJetExclusionDR = config_p->GetValue("MIXJETEXCLUSIONDR", 0.5);
 
   const bool doMix = config_p->GetValue("DOMIX", 0);
 
