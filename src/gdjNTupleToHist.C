@@ -83,7 +83,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
 					      "JETR",
 					      "ASSOCGENMINPT",
 					      "GAMMAEXCLUSIONDR",
+					      "MIXJETEXCLUSIONDR",
 					      "DOMIX",
+					      "MIXCAP",
+					      "NMIXEVENTS",
+					      "DOSTRICTMIX",
                                               "ISPP",
 					      "ISMC",
 					      "CENTBINS",
@@ -161,6 +165,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   const std::string jetRStr = prettyString(((double)jetR)/10., 1, false);
   const double assocGenMinPt = config_p->GetValue("ASSOCGENMINPT", 15.0);
   const double gammaExclusionDR = config_p->GetValue("GAMMAEXCLUSIONDR", 0.5);
+  const double mixJetExclusionDR = config->GetValue("MIXJETEXCLUSIONDR", 0.5);
 
   const bool doMix = config_p->GetValue("DOMIX", 0);
 
@@ -311,7 +316,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
   
   keyHandler keyBoy("mixingHandler");//For Mixing
   std::map<unsigned long long, std::vector<std::vector<TLorentzVector> > > mixingMap;
-  std::map<unsigned long long, unsigned long long> mixingMapCounter, signalMapCounter;
+  std::map<unsigned long long, std::vector<unsigned long long> > mixingMapEvtUseCounter;
+  std::map<unsigned long long, unsigned long long> mixingMapCounter, signalMapCounterPre, signalMapCounterPost;
+
   if(doMix){
     std::vector<unsigned long long> sizes;
     for(unsigned int vI = 0; vI < mixVect.size(); ++vI){
@@ -324,11 +331,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
     for(unsigned int vI = 0; vI < keyVect.size(); ++vI){
       unsigned long long key = keyBoy.GetKey(keyVect[vI]);
-      mixingMap[key] = {};
+      mixingMap[key] = {};     
       mixingMap[key].reserve(40);
 
+      mixingMapEvtUseCounter[key] = {};
+
       mixingMapCounter[key] = 0;
-      signalMapCounter[key] = 0;
+      signalMapCounterPre[key] = 0;
+      signalMapCounterPost[key] = 0;
     }
   }  
   
@@ -596,6 +606,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   const unsigned long long mixCap = config_p->GetValue("MIXCAP", 100000000);
+  const unsigned long long nMixEvents = config_p->GetValue("NMIXEVENTS", 1);
+  const bool doStrictMix = config_p->GetValue("DOSTRICTMIX", true);
   
   TFile* outFile_p = new TFile(outFileName.c_str(), "RECREATE");
 
@@ -995,6 +1007,68 @@ int gdjNTupleToHist(std::string inConfigFileName)
   TFile* mixFile_p = nullptr;
   TTree* mixTree_p = nullptr;
   if(doMix){
+    inFile_p->cd();
+    inTree_p->SetBranchStatus("*", 0);
+
+    if(doMixVz){
+      inTree_p->SetBranchStatus("vert_z", 1);
+      inTree_p->SetBranchAddress("vert_z", &vert_z_p);
+    }
+
+    if(doMixCent){
+      inTree_p->SetBranchStatus("fcalA_et", 1);
+      inTree_p->SetBranchStatus("fcalC_et", 1);
+      
+      inTree_p->SetBranchAddress("fcalA_et", &fcalA_et);
+      inTree_p->SetBranchAddress("fcalC_et", &fcalC_et);
+    }
+    
+    if(doMixPsi2){
+      inTree_p->SetBranchStatus("evtPlane2Phi", 1);
+      inTree_p->SetBranchAddress("evtPlane2Phi", &evtPlane2Phi);
+    }
+
+    ULong64_t nEntriesTemp = inTree_p->GetEntries();
+    if(nMaxEvtStr.size() != 0) nEntriesTemp = TMath::Min(nEntriesTemp, (ULong64_t)nMaxEvt);
+    const ULong64_t nSigEntries = nEntriesTemp;
+
+    for(ULong64_t entry = 0; entry < nSigEntries; ++entry){
+      inTree_p->GetEntry(entry);
+    
+      double vert_z = vert_z_p->at(0);
+      vert_z /= mmToCMDivFactor;
+      if(vert_z <= -15. || vert_z >= 15.) continue;      
+      //      if(vert_z <= vzMixBinsLow || vert_z >= vzMixBinsHigh) continue;
+      
+      Double_t cent = -1;
+      unsigned long long centPos = 0;
+      unsigned long long psi2Pos = 0;
+      if(!isPP){
+	cent = centTable.GetCent(fcalA_et + fcalC_et);
+	if(cent < mixCentBinsLow || cent >= mixCentBinsHigh) continue;
+	if(doMixCent) centPos = ghostPos(nMixCentBins, mixCentBins, cent);
+
+	if(doMixPsi2){
+	  if(evtPlane2Phi > TMath::Pi()/2) evtPlane2Phi -= TMath::Pi();
+	  else if(evtPlane2Phi < -TMath::Pi()/2) evtPlane2Phi += TMath::Pi();
+
+	  psi2Pos = ghostPos(nMixPsi2Bins, mixPsi2Bins, evtPlane2Phi);
+	}	
+      }      
+
+      unsigned long long vzPos = 0;
+      if(doMixVz) vzPos = ghostPos(nMixVzBins, mixVzBins, vert_z);
+      
+      std::vector<unsigned long long> eventKeyVect;
+      if(doMixCent) eventKeyVect.push_back(centPos);
+      if(doMixPsi2) eventKeyVect.push_back(psi2Pos);
+      if(doMixVz) eventKeyVect.push_back(vzPos);
+      
+      unsigned long long key = keyBoy.GetKey(eventKeyVect);//, vzPos, evtPlanePos});
+         
+      ++(signalMapCounterPre[key]);
+    }    
+
     mixFile_p = new TFile(inMixFileName.c_str(), "READ");
     mixTree_p = (TTree*)mixFile_p->Get("gammaJetTree_p");
 
@@ -1023,7 +1097,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       }
     }
 
-    ULong64_t nEntriesTemp = mixTree_p->GetEntries();
+    nEntriesTemp = mixTree_p->GetEntries();
     if(nMaxEvtStr.size() != 0) nEntriesTemp = TMath::Min(nEntriesTemp, (ULong64_t)nMaxEvt*10);
     const ULong64_t nMixEntries = nEntriesTemp;
 
@@ -1114,6 +1188,20 @@ int gdjNTupleToHist(std::string inConfigFileName)
     std::vector<unsigned long long> tempCounts;
 
     for(auto const & mixes : mixingMapCounter){
+      
+      if(doStrictMix){
+	if(mixes.second < signalMapCounterPre[mixes.first]*nMixEvents){	
+	  std::cout << "Mixing has less events than signal (" << signalMapCounterPre[mixes.first] << ") times nMixEvens (" << nMixEvents << "): " << mixes.second << "<" << signalMapCounterPre[mixes.first] << " * " << nMixEvents << "." << std::endl;
+	  std::cout << "Key is: " << mixes.first << std::endl;
+	  std::cout << "Key bin is: " << keyBoy.GetKeyStr(mixes.first) << std::endl;
+	  std::cout << "return 1" << std::endl;
+	  
+	  inFile_p->Close();
+	  delete inFile_p;
+	  return 1;
+	}
+      }
+
       if(mixes.second < minimumVal){
 	minKey = mixes.first;
 	minimumVal = mixes.second;
@@ -1309,8 +1397,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       }
     }
 
-      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 
     Int_t centPos = -1;
     Double_t cent = -1;
@@ -1331,7 +1418,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
       continue;
     }
 
-    if(!isMC) fullWeight = -1.0;
+    if(!isMC) fullWeight = 1.0;
+
+    Float_t mixWeight = fullWeight/(double)nMixEvents;
 
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 
@@ -1676,7 +1765,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	}
 	
 	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-
+      
 	if(doMix){
 	  unsigned long long mixCentPos = 0;
 	  unsigned long long mixPsi2Pos = 0;
@@ -1708,174 +1797,182 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    std::cout << key << ", " << mixCentPos << ", " << cent << std::endl;
 	    return 1;
 	  }
-
-	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-
-	  unsigned long long jetPos = maxPos;
-	  while(jetPos == maxPos){jetPos = randGen_p->Uniform(0, maxPos-1);}
-	  ++(signalMapCounter[key]);
-	  std::vector<TLorentzVector> jets = mixingMap[key][jetPos];
-
-	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE, JETS SIZE, MAX, CHOSEN: " << __FILE__ << ", " << __LINE__ << ", " << jets.size() << ", " << maxPos << ", " << jetPos << std::endl; 
-
-	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << key << ", " << jetPos << ", " << std::endl; 
-
-	  unsigned long long jetPos2 = maxPos;
-	  while(jetPos2 == jetPos || jetPos2 == maxPos){jetPos2 = randGen_p->Uniform(0, maxPos-1);}
-	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-
-	  std::vector<TLorentzVector> jets2 = mixingMap[key][jetPos2];
-		       
-	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-
-	  int multCounterMix = 0;
-	  goodJetsMix[0].clear();
-	  goodJetsDPhiMix[0].clear();
-	  goodJetsMix[1].clear();
-	  goodJetsDPhiMix[1].clear();
-     
-	  for(unsigned int jI = 0; jI < jets.size(); ++jI){
-	    if(jets[jI].Pt()< jtPtBinsLow) continue;
-
-	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-	    if(jets[jI].Eta() <= jtEtaBinsLow) continue;
-	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-	    if(jets[jI].Eta() >= jtEtaBinsHigh) continue;
-	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-
-	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-	  
-	    Float_t dR = getDR(jets[jI].Eta(), jets[jI].Phi(), photon_eta_p->at(pI), photon_phi_p->at(pI));
-	    if(dR < gammaExclusionDR) continue;
-
-	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-
-	    goodJetsMix[0].push_back(jets[jI]);
-	    
-	    Float_t dPhi = TMath::Abs(getDPHI(jets[jI].Phi(), photon_phi_p->at(pI)));
-
-	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-	  
-	    fillTH1(photonMixJtDPhiVCentPt_p[centPos][ptPos], dPhi, fullWeight);
-	    fillTH1(photonMixJtDPhiVCentPt_p[centPos][nGammaPtBinsSub], dPhi, fullWeight);
-	    
-
-	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-
-	    if(dPhi >= gammaJtDPhiCut){
-	      goodJetsDPhiMix[0].push_back(jets[jI]);
-	      fillTH1(photonMixJtPtVCentPt_p[centPos][ptPos], jets[jI].Pt(), fullWeight);
-	      fillTH1(photonMixJtPtVCentPt_p[centPos][nGammaPtBinsSub], jets[jI].Pt(), fullWeight);
-	      fillTH1(photonMixJtEtaVCentPt_p[centPos][ptPos], jets[jI].Eta(), fullWeight);
-	      fillTH1(photonMixJtEtaVCentPt_p[centPos][nGammaPtBinsSub], jets[jI].Eta(), fullWeight);
-	      fillTH1(photonMixJtXJVCentPt_p[centPos][ptPos], jets[jI].Pt()/photon_pt_p->at(pI), fullWeight);
-	      fillTH1(photonMixJtXJVCentPt_p[centPos][nGammaPtBinsSub], jets[jI].Pt()/photon_pt_p->at(pI), fullWeight);
-
-	      ++multCounterMix;
-	    }	    
-	  }
-
-	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-	  
-	  for(unsigned int jI = 0; jI < jets2.size(); ++jI){
-	    if(jets2[jI].Pt()< jtPtBinsLow) continue;
-	    if(jets2[jI].Eta() <= jtEtaBinsLow) continue;
-	    if(jets2[jI].Eta() >= jtEtaBinsHigh) continue;
-	  
-	    Float_t dR = getDR(jets2[jI].Eta(), jets2[jI].Phi(), photon_eta_p->at(pI), photon_phi_p->at(pI));
-	    if(dR < gammaExclusionDR) continue;
-
-	    goodJetsMix[1].push_back(jets2[jI]);
-	    
-	    Float_t dPhi = TMath::Abs(getDPHI(jets2[jI].Phi(), photon_phi_p->at(pI)));
-	    if(dPhi >= gammaJtDPhiCut){
-	      goodJetsDPhiMix[1].push_back(jets2[jI]);
-	    }	    
-	  }
-	  
-	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-
+	  unsigned long long nCurrentMixEvents = 0;
 	
-	  if(goodJetsDPhiMix[0].size() >= 2){
-	    for(auto const & jet : goodJetsDPhiMix[0]){
-	      fillTH1(photonMixMultiJtPtVCentPt_p[centPos][ptPos], jet.Pt(), fullWeight);
-	      fillTH1(photonMixMultiJtPtVCentPt_p[centPos][nGammaPtBinsSub], jet.Pt(), fullWeight);
-	      fillTH1(photonMixMultiJtXJVCentPt_p[centPos][ptPos], jet.Pt()/photon_pt_p->at(pI), fullWeight);
-	      fillTH1(photonMixMultiJtXJVCentPt_p[centPos][nGammaPtBinsSub], jet.Pt()/photon_pt_p->at(pI), fullWeight);
+	  while(nCurrentMixEvents < nMixEvents){
+	    unsigned long long jetPos = maxPos;
+	    while(jetPos == maxPos){jetPos = randGen_p->Uniform(0, maxPos-1);}
+	    ++(signalMapCounterPost[key]);
+	    std::vector<TLorentzVector> jets = mixingMap[key][jetPos];
+	    
+	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE, JETS SIZE, MAX, CHOSEN: " << __FILE__ << ", " << __LINE__ << ", " << jets.size() << ", " << maxPos << ", " << jetPos << std::endl; 
+	    
+	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << key << ", " << jetPos << ", " << std::endl; 
+
+	    unsigned long long jetPos2 = maxPos;
+	    while(jetPos2 == jetPos || jetPos2 == maxPos){jetPos2 = randGen_p->Uniform(0, maxPos-1);}
+	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+	    
+	    std::vector<TLorentzVector> jets2 = mixingMap[key][jetPos2];
+	    
+	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+	    
+	    int multCounterMix = 0;
+	    goodJetsMix[0].clear();
+	    goodJetsDPhiMix[0].clear();
+	    goodJetsMix[1].clear();
+	    goodJetsDPhiMix[1].clear();
+	    
+	    for(unsigned int jI = 0; jI < jets.size(); ++jI){
+	      if(jets[jI].Pt()< jtPtBinsLow) continue;
+	      
+	      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+	      if(jets[jI].Eta() <= jtEtaBinsLow) continue;
+	      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+	      if(jets[jI].Eta() >= jtEtaBinsHigh) continue;
+	      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+	      
+	      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+	  
+	      Float_t dR = getDR(jets[jI].Eta(), jets[jI].Phi(), photon_eta_p->at(pI), photon_phi_p->at(pI));
+	      if(dR < gammaExclusionDR) continue;
+	      
+	      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+	      
+	      goodJetsMix[0].push_back(jets[jI]);
+	    
+	      Float_t dPhi = TMath::Abs(getDPHI(jets[jI].Phi(), photon_phi_p->at(pI)));
+	      
+	      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+	      
+	      fillTH1(photonMixJtDPhiVCentPt_p[centPos][ptPos], dPhi, mixWeight);
+	      fillTH1(photonMixJtDPhiVCentPt_p[centPos][nGammaPtBinsSub], dPhi, mixWeight);
+	      
+	      
+	      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+	      
+	      if(dPhi >= gammaJtDPhiCut){
+		goodJetsDPhiMix[0].push_back(jets[jI]);
+		fillTH1(photonMixJtPtVCentPt_p[centPos][ptPos], jets[jI].Pt(), mixWeight);
+		fillTH1(photonMixJtPtVCentPt_p[centPos][nGammaPtBinsSub], jets[jI].Pt(), mixWeight);
+		fillTH1(photonMixJtEtaVCentPt_p[centPos][ptPos], jets[jI].Eta(), mixWeight);
+		fillTH1(photonMixJtEtaVCentPt_p[centPos][nGammaPtBinsSub], jets[jI].Eta(), mixWeight);
+		fillTH1(photonMixJtXJVCentPt_p[centPos][ptPos], jets[jI].Pt()/photon_pt_p->at(pI), mixWeight);
+		fillTH1(photonMixJtXJVCentPt_p[centPos][nGammaPtBinsSub], jets[jI].Pt()/photon_pt_p->at(pI), mixWeight);
+		
+		++multCounterMix;
+	      }	    
 	    }
 	    
-	    //First do pure background
-	    for(unsigned int bI = 0; bI < goodJetsDPhiMix[0].size(); ++bI){
-	      TLorentzVector jet1 = goodJetsDPhiMix[0][bI];
-
-	      for(unsigned int bI2 = bI+1; bI2 < goodJetsDPhiMix[0].size(); ++bI2){
-		TLorentzVector jet2 = goodJetsDPhiMix[0][bI2];
-		
-		double dPhiJJ = TMath::Abs(getDPHI(jet1.Phi(), jet2.Phi()));
-		jet2 += jet1;
-
-		fillTH1(photonMixMultiJtXJJVCentPt_p[centPos][ptPos], jet2.Pt()/photon_pt_p->at(pI), fullWeight);
-		fillTH1(photonMixMultiJtXJJVCentPt_p[centPos][nGammaPtBinsSub], jet2.Pt()/photon_pt_p->at(pI), fullWeight);
-
-		fillTH1(photonMixMultiJtDPhiJJVCentPt_p[centPos][ptPos], dPhiJJ, fullWeight);
-		fillTH1(photonMixMultiJtDPhiJJVCentPt_p[centPos][nGammaPtBinsSub], dPhiJJ, fullWeight);
-
-	      }
+	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+	    
+	    for(unsigned int jI = 0; jI < jets2.size(); ++jI){
+	      if(jets2[jI].Pt()< jtPtBinsLow) continue;
+	      if(jets2[jI].Eta() <= jtEtaBinsLow) continue;
+	      if(jets2[jI].Eta() >= jtEtaBinsHigh) continue;
+	      
+	      Float_t dR = getDR(jets2[jI].Eta(), jets2[jI].Phi(), photon_eta_p->at(pI), photon_phi_p->at(pI));
+	      if(dR < gammaExclusionDR) continue;
+	    	      
+	      goodJetsMix[1].push_back(jets2[jI]);
+	      
+	      Float_t dPhi = TMath::Abs(getDPHI(jets2[jI].Phi(), photon_phi_p->at(pI)));
+	      if(dPhi >= gammaJtDPhiCut){
+		goodJetsDPhiMix[1].push_back(jets2[jI]);
+	      }	    
 	    }
-
-	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-
-	  
-	    //Now do mixed background (signal jet + associated w/ fake jets)
-	    for(unsigned int sI = 0; sI < goodJetsDPhi.size(); ++sI){
-	      TLorentzVector jet1 = goodJetsDPhi[sI];
-
+	    
+	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+	
+	    if(goodJetsDPhiMix[0].size() >= 2){
+	      for(auto const & jet : goodJetsDPhiMix[0]){
+		fillTH1(photonMixMultiJtPtVCentPt_p[centPos][ptPos], jet.Pt(), mixWeight);
+		fillTH1(photonMixMultiJtPtVCentPt_p[centPos][nGammaPtBinsSub], jet.Pt(), mixWeight);
+		fillTH1(photonMixMultiJtXJVCentPt_p[centPos][ptPos], jet.Pt()/photon_pt_p->at(pI), mixWeight);
+		fillTH1(photonMixMultiJtXJVCentPt_p[centPos][nGammaPtBinsSub], jet.Pt()/photon_pt_p->at(pI), mixWeight);
+	      }
+	      
+	      //First do pure background
 	      for(unsigned int bI = 0; bI < goodJetsDPhiMix[0].size(); ++bI){
-		TLorentzVector jet2 = goodJetsDPhiMix[0][bI];
-
+		TLorentzVector jet1 = goodJetsDPhiMix[0][bI];
 		
-		double dPhiJJ = TMath::Abs(getDPHI(jet1.Phi(), jet2.Phi()));
-		jet2 += jet1;
-
-		fillTH1(photonMixMultiJtXJJVCentPt_p[centPos][ptPos], jet2.Pt()/photon_pt_p->at(pI), fullWeight);
-                fillTH1(photonMixMultiJtXJJVCentPt_p[centPos][nGammaPtBinsSub],jet2.Pt()/photon_pt_p->at(pI), fullWeight);
-
-		fillTH1(photonMixMultiJtDPhiJJVCentPt_p[centPos][ptPos], dPhiJJ, fullWeight);
-                fillTH1(photonMixMultiJtDPhiJJVCentPt_p[centPos][nGammaPtBinsSub], dPhiJJ, fullWeight);
+		for(unsigned int bI2 = bI+1; bI2 < goodJetsDPhiMix[0].size(); ++bI2){
+		  TLorentzVector jet2 = goodJetsDPhiMix[0][bI2];
+		  
+		  double dPhiJJ = TMath::Abs(getDPHI(jet1.Phi(), jet2.Phi()));
+		  jet2 += jet1;
+		  
+		  fillTH1(photonMixMultiJtXJJVCentPt_p[centPos][ptPos], jet2.Pt()/photon_pt_p->at(pI), mixWeight);
+		  fillTH1(photonMixMultiJtXJJVCentPt_p[centPos][nGammaPtBinsSub], jet2.Pt()/photon_pt_p->at(pI), mixWeight);
+		  
+		  fillTH1(photonMixMultiJtDPhiJJVCentPt_p[centPos][ptPos], dPhiJJ, mixWeight);
+		  fillTH1(photonMixMultiJtDPhiJJVCentPt_p[centPos][nGammaPtBinsSub], dPhiJJ, mixWeight);
+		  
+		}
 	      }
-	    }
+	      
+	      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 
-	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-
-
-	    //Now calculate the mixed event correction, for cases where your gamma + single jet embed accidentally picked a fake jet
-	    for(unsigned int bI = 0; bI < goodJetsDPhiMix[0].size(); ++bI){
-	      TLorentzVector jet1 = goodJetsDPhiMix[0][bI];
-
-	      for(unsigned int bI2 = 0; bI2 < goodJetsDPhiMix[1].size(); ++bI2){
-		TLorentzVector jet2 = goodJetsDPhiMix[1][bI2];
-
-		double dPhiJJ = TMath::Abs(getDPHI(jet1.Phi(), jet2.Phi()));
-		jet2 += jet1;
-
-		fillTH1(photonMixCorrectionMultiJtXJJVCentPt_p[centPos][ptPos], jet2.Pt()/photon_pt_p->at(pI), fullWeight);
-                fillTH1(photonMixCorrectionMultiJtXJJVCentPt_p[centPos][nGammaPtBinsSub], jet2.Pt()/photon_pt_p->at(pI), fullWeight);
-
-		fillTH1(photonMixCorrectionMultiJtDPhiJJVCentPt_p[centPos][ptPos], dPhiJJ, fullWeight);
-                fillTH1(photonMixCorrectionMultiJtDPhiJJVCentPt_p[centPos][nGammaPtBinsSub], dPhiJJ, fullWeight);
-	      }
-	    }
-	    
-	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-
-	    
-	  }
 	  
-	  fillTH1(photonMixJtMultVCentPt_p[centPos][ptPos], multCounterMix, fullWeight);
-	  fillTH1(photonMixJtMultVCentPt_p[centPos][nGammaPtBinsSub], multCounterMix, fullWeight);	  
+	      //Now do mixed background (signal jet + associated w/ fake jets)
+	      for(unsigned int sI = 0; sI < goodJetsDPhi.size(); ++sI){
+		TLorentzVector jet1 = goodJetsDPhi[sI];
+		
+		for(unsigned int bI = 0; bI < goodJetsDPhiMix[0].size(); ++bI){
+		  TLorentzVector jet2 = goodJetsDPhiMix[0][bI];
 	
-	  fillTH1(photonSubJtMultModVCentPt_p[centPos][ptPos], TMath::Max(0, multCounter - multCounterMix), fullWeight);
-	  fillTH1(photonSubJtMultModVCentPt_p[centPos][nGammaPtBinsSub], TMath::Max(0, multCounter - multCounterMix), fullWeight);
+		  Float_t dR = getDR(jet1.Eta(), jet1.Phi(), jet2.Eta(), jet2.Phi());
+		  if(dR < mixJetExclusionDR) continue;
+
+		  
+		  double dPhiJJ = TMath::Abs(getDPHI(jet1.Phi(), jet2.Phi()));
+		  jet2 += jet1;
+		  
+		  fillTH1(photonMixMultiJtXJJVCentPt_p[centPos][ptPos], jet2.Pt()/photon_pt_p->at(pI), mixWeight);
+		  fillTH1(photonMixMultiJtXJJVCentPt_p[centPos][nGammaPtBinsSub],jet2.Pt()/photon_pt_p->at(pI), mixWeight);
+		  
+		  fillTH1(photonMixMultiJtDPhiJJVCentPt_p[centPos][ptPos], dPhiJJ, mixWeight);
+		  fillTH1(photonMixMultiJtDPhiJJVCentPt_p[centPos][nGammaPtBinsSub], dPhiJJ, mixWeight);
+		}
+	      }
+	      
+	      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+	      
+	      
+	      //Now calculate the mixed event correction, for cases where your gamma + single jet embed accidentally picked a fake jet
+	      for(unsigned int bI = 0; bI < goodJetsDPhiMix[0].size(); ++bI){
+		TLorentzVector jet1 = goodJetsDPhiMix[0][bI];
+		
+		for(unsigned int bI2 = 0; bI2 < goodJetsDPhiMix[1].size(); ++bI2){
+		  TLorentzVector jet2 = goodJetsDPhiMix[1][bI2];
+
+		  Float_t dR = getDR(jet1.Eta(), jet1.Phi(), jet2.Eta(), jet2.Phi());
+		  if(dR < mixJetExclusionDR) continue;
+		  
+		  double dPhiJJ = TMath::Abs(getDPHI(jet1.Phi(), jet2.Phi()));
+		  jet2 += jet1;
+		  
+		  fillTH1(photonMixCorrectionMultiJtXJJVCentPt_p[centPos][ptPos], jet2.Pt()/photon_pt_p->at(pI), mixWeight);
+		  fillTH1(photonMixCorrectionMultiJtXJJVCentPt_p[centPos][nGammaPtBinsSub], jet2.Pt()/photon_pt_p->at(pI), mixWeight);
+
+		  fillTH1(photonMixCorrectionMultiJtDPhiJJVCentPt_p[centPos][ptPos], dPhiJJ, mixWeight);
+		  fillTH1(photonMixCorrectionMultiJtDPhiJJVCentPt_p[centPos][nGammaPtBinsSub], dPhiJJ, mixWeight);
+		}
+	      }
+	      
+	      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+	      
+	      
+	    }
+	    
+	    fillTH1(photonMixJtMultVCentPt_p[centPos][ptPos], multCounterMix, mixWeight);
+	    fillTH1(photonMixJtMultVCentPt_p[centPos][nGammaPtBinsSub], multCounterMix, mixWeight);	  
+	    
+	    fillTH1(photonSubJtMultModVCentPt_p[centPos][ptPos], TMath::Max(0, multCounter - multCounterMix), mixWeight);
+	    fillTH1(photonSubJtMultModVCentPt_p[centPos][nGammaPtBinsSub], TMath::Max(0, multCounter - multCounterMix), mixWeight);
+
+	    ++nCurrentMixEvents;
+	  }
 	}
 	else if(isPP){
 	  fillTH1(photonSubJtMultModVCentPt_p[centPos][ptPos], TMath::Max(0, multCounter), fullWeight);
@@ -1901,20 +1998,20 @@ int gdjNTupleToHist(std::string inConfigFileName)
   std::vector<double> tempRatioVals;
 
   for(auto const & mixes : mixingMapCounter){
-    if(signalMapCounter[mixes.first] == 0) continue;
+    if(signalMapCounterPost[mixes.first] == 0) continue;
     
-    double ratio = ((double)mixes.second)/(double)signalMapCounter[mixes.first];
+    double ratio = ((double)mixes.second)/(double)signalMapCounterPost[mixes.first];
 
     if(ratio < minimumRatioVal){
       minRatioKey = mixes.first;
       minimumRatioVal = ratio;
-      minimumDenomVal = signalMapCounter[mixes.first];
+      minimumDenomVal = signalMapCounterPost[mixes.first];
       minimumNumVal = mixes.second;
     }
     else if(ratio > maximumRatioVal){
       maxRatioKey = mixes.first;
       maximumRatioVal = ratio;
-      maximumDenomVal = signalMapCounter[mixes.first];
+      maximumDenomVal = signalMapCounterPost[mixes.first];
       maximumNumVal = mixes.second;
     }
     
