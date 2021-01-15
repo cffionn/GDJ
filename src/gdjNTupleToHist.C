@@ -111,7 +111,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 					      "NGAMMAPTBINSSUB",
 					      "GAMMAPTBINSSUBLOW",
 					      "GAMMAPTBINSSUBHIGH",
-					      "GAMMAPTBINSDOLOG",
+					      "GAMMAPTBINSSUBDOLOG",
 					      "NGAMMAETABINSSUB",
 					      "GAMMAETABINSSUBLOW",
 					      "GAMMAETABINSSUBHIGH",
@@ -123,7 +123,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
 					      "NDPHIBINS",
 					      "DPHIBINSLOW",
 					      "DPHIBINSHIGH",
-					      "GAMMAJTDPHI",  
 					      "GAMMAJTDPHI",  
 					      "NXJBINS",
 					      "XJBINSLOW",
@@ -503,7 +502,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   if(gammaPtBinsSubLow < gammaPtBinsLow) std::cout << "ERROR - config \'" << inConfigFileName << "\' contains gammaPtBinsSubLow \'" << gammaPtBinsSubLow << "\' less than gammaPtBinsLow \'" << gammaPtBinsLow << "\'. return 1" << std::endl;
   if(gammaPtBinsSubHigh > gammaPtBinsHigh) std::cout << "ERROR - config \'" << inConfigFileName << "\' contains gammaPtBinsSubHigh \'" << gammaPtBinsSubHigh << "\' greater than gammaPtBinsHigh \'" << gammaPtBinsHigh << "\'. return 1" << std::endl;
   if(gammaPtBinsSubLow < gammaPtBinsLow || gammaPtBinsSubHigh > gammaPtBinsHigh) return 1;
-  const Bool_t gammaPtBinsSubDoLog = config_p->GetValue("GAMMAPTBINSDOLOG", 1);
+  const Bool_t gammaPtBinsSubDoLog = config_p->GetValue("GAMMAPTBINSSUBDOLOG", 1);
   Double_t gammaPtBinsSub[nMaxSubBins+1];
   if(gammaPtBinsSubDoLog) getLogBins(gammaPtBinsSubLow, gammaPtBinsSubHigh, nGammaPtBinsSub, gammaPtBinsSub);
   else getLinBins(gammaPtBinsSubLow, gammaPtBinsSubHigh, nGammaPtBinsSub, gammaPtBinsSub);
