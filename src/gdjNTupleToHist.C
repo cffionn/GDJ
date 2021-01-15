@@ -611,6 +611,20 @@ int gdjNTupleToHist(std::string inConfigFileName)
   
   TFile* outFile_p = new TFile(outFileName.c_str(), "RECREATE");
 
+  Float_t recoGammaPt_, truthGammaPt_;
+  Float_t recoXJ_, truthXJ_;
+  Float_t unfoldWeight_;
+
+  TTree* unfoldXJTree_p = nullptr;
+  if(isMC){
+    unfoldXJTree_p = new TTree("unfoldXJTree_p", "");
+    unfoldXJTree_p->Branch("recoGammaPt", &recoGammaPt_, "recoGammaPt/F"); 
+    unfoldXJTree_p->Branch("truthGammaPt", &truthGammaPt_, "truthGammaPt/F"); 
+    unfoldXJTree_p->Branch("recoXJ", &recoXJ_, "recoXJ/F"); 
+    unfoldXJTree_p->Branch("truthXJ", &truthXJ_, "truthXJ/F"); 
+    unfoldXJTree_p->Branch("unfoldWeight", &unfoldWeight_, "unfoldWeight/F"); 
+  }
+
   TH1F* mixingCentrality_p = nullptr;
   TH1F* mixingPsi2_p = nullptr;
   TH1F* mixingVz_p = nullptr;
@@ -618,7 +632,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
   TH2F* mixingCentralityVz_p = nullptr;
   TH2F* mixingPsi2Vz_p = nullptr;
   TH2F* mixingCentralityPsi2_VzBinned_p[nMaxMixBins];
-
 
   if(doMix){
     if(doMixCent){
@@ -709,6 +722,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   TH1F* photonGenMatchedMultiJtXJJVCentPt_p[nMaxCentBins][nMaxSubBins+1];
   TH1F* photonGenMatchedMultiJtDPhiJJVCentPt_p[nMaxCentBins][nMaxSubBins+1];
   TH1F* photonGenMatchedJtMultVCentPt_p[nMaxCentBins][nMaxSubBins+1];
+
 
   
   TH1F* photonJtFakeVCentPt_p[nMaxCentBins][nMaxSubBins+1];
@@ -845,7 +859,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
       	setSumW2({photonGenJtDPhiVCentPt_p[cI][pI], photonGenJtPtVCentPt_p[cI][pI], photonGenJtEtaVCentPt_p[cI][pI], photonGenJtXJVCentPt_p[cI][pI], photonGenMultiJtXJJVCentPt_p[cI][pI], photonGenMultiJtDPhiJJVCentPt_p[cI][pI], photonGenJtMultVCentPt_p[cI][pI], photonGenMatchedJtDPhiVCentPt_p[cI][pI], photonGenMatchedJtPtVCentPt_p[cI][pI], photonGenMatchedJtEtaVCentPt_p[cI][pI], photonGenMatchedJtXJVCentPt_p[cI][pI], photonGenMatchedMultiJtXJJVCentPt_p[cI][pI], photonGenMatchedMultiJtDPhiJJVCentPt_p[cI][pI], photonGenMatchedJtMultVCentPt_p[cI][pI], photonJtFakeVCentPt_p[cI][pI]});
       }
     }
-
 	  
     if(isMC){
       for(Int_t ptI = 0; ptI < nGammaPtBins+1; ++ptI){
@@ -886,6 +899,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   Float_t runMaxF = ((Float_t)runMax) + 0.5;
 
   outFile_p->cd();
+
   runNumber_p = new TH1F(("runNumber_" + systStr + "_h").c_str(), ";Run;Counts", nRunBins+1, runMinF, runMaxF);
   if(!isMC) lumiFractionPerRun_p = new TH1F(("lumiFractionPerRun_" + systStr + "_h").c_str(), ";Run;Fraction of Lumiblocks", nRunBins+1, runMinF, runMaxF);
 
@@ -1487,6 +1501,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       if(etaValMain >= gammaEtaBins[nGammaEtaBins]) continue;
       
       Int_t ptPos = ghostPos(nGammaPtBinsSub, gammaPtBinsSub, photon_pt_p->at(pI), true, doGlobalDebug);
+
       Int_t etaPos = ghostPos(nGammaEtaBinsSub, gammaEtaBinsSub, etaValSub, true, doGlobalDebug);
 
       if(etaPos >= 0){
@@ -1624,6 +1639,35 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    fillTH1(photonJtEtaVCentPt_p[centPos][nGammaPtBinsSub], aktRhi_em_xcalib_jet_eta_p->at(jI), fullWeight);
 	    fillTH1(photonJtXJVCentPt_p[centPos][ptPos], aktRhi_em_xcalib_jet_pt_p->at(jI)/photon_pt_p->at(pI), fullWeight);
 	    fillTH1(photonJtXJVCentPt_p[centPos][nGammaPtBinsSub], aktRhi_em_xcalib_jet_pt_p->at(jI)/photon_pt_p->at(pI), fullWeight);
+
+	    if(isMC && truthPhotonPt > 0){
+	      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+	      recoGammaPt_ = photon_pt_p->at(pI);
+	      recoXJ_ = aktRhi_em_xcalib_jet_pt_p->at(jI)/recoGammaPt_;
+
+	      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+	      
+	      if(getDR(photon_eta_p->at(pI), photon_phi_p->at(pI), truthPhotonEta, truthPhotonPhi) < 0.2){
+		if(truthPhotonPt >= gammaPtBins[0] && truthPhotonPt < gammaPtBins[nGammaPtBins]){
+		  if(aktRhi_truthpos_p->at(jI) >= 0){
+
+		    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+		    Float_t tempTruthJtPt = aktR_truth_jet_pt_p->at(aktRhi_truthpos_p->at(jI));
+		    
+		    if(tempTruthJtPt >= jtPtBins[0] && tempTruthJtPt < jtPtBins[nJtPtBins]){
+		      truthGammaPt_ = truthPhotonPt;
+		      truthXJ_ = tempTruthJtPt/truthGammaPt_;
+		      unfoldWeight_ = fullWeight;
+		      
+		      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+		      unfoldXJTree_p->Fill();
+		      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+		    }		
+		  }
+		}
+	      }
+	    }	      
+	  
 
 	    ++multCounter;
 	  
@@ -1859,7 +1903,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		fillTH1(photonMixJtEtaVCentPt_p[centPos][nGammaPtBinsSub], jets[jI].Eta(), mixWeight);
 		fillTH1(photonMixJtXJVCentPt_p[centPos][ptPos], jets[jI].Pt()/photon_pt_p->at(pI), mixWeight);
 		fillTH1(photonMixJtXJVCentPt_p[centPos][nGammaPtBinsSub], jets[jI].Pt()/photon_pt_p->at(pI), mixWeight);
-		
+
 		++multCounterMix;
 	      }	    
 	    }
@@ -1984,51 +2028,59 @@ int gdjNTupleToHist(std::string inConfigFileName)
     }
   }  
 
-  //Dump info on the mixing
-  unsigned long long maxRatioKey = 0;
-  double maximumRatioVal = 0;
-  unsigned long long maximumNumVal = 0;
-  unsigned long long maximumDenomVal = 0;
-
-  unsigned long long minRatioKey = 0;
-  double minimumRatioVal = 2147483647; //hardcoded max value of a signed integer
-  unsigned long long minimumNumVal = 0;
-  unsigned long long minimumDenomVal = 0;
-
-  std::vector<double> tempRatioVals;
-
-  for(auto const & mixes : mixingMapCounter){
-    if(signalMapCounterPost[mixes.first] == 0) continue;
+  if(doMix){
+    //Dump info on the mixing
+    unsigned long long maxRatioKey = 0;
+    double maximumRatioVal = 0;
+    unsigned long long maximumNumVal = 0;
+    unsigned long long maximumDenomVal = 0;
     
-    double ratio = ((double)mixes.second)/(double)signalMapCounterPost[mixes.first];
-
-    if(ratio < minimumRatioVal){
-      minRatioKey = mixes.first;
-      minimumRatioVal = ratio;
-      minimumDenomVal = signalMapCounterPost[mixes.first];
-      minimumNumVal = mixes.second;
-    }
-    else if(ratio > maximumRatioVal){
-      maxRatioKey = mixes.first;
-      maximumRatioVal = ratio;
-      maximumDenomVal = signalMapCounterPost[mixes.first];
-      maximumNumVal = mixes.second;
+    unsigned long long minRatioKey = 0;
+    double minimumRatioVal = 2147483647; //hardcoded max value of a signed integer
+    unsigned long long minimumNumVal = 0;
+    unsigned long long minimumDenomVal = 0;
+    
+    std::vector<double> tempRatioVals;
+    
+    for(auto const & mixes : mixingMapCounter){
+      if(signalMapCounterPost[mixes.first] == 0) continue;
+      
+      double ratio = ((double)mixes.second)/(double)signalMapCounterPost[mixes.first];
+      
+      if(ratio < minimumRatioVal){
+	minRatioKey = mixes.first;
+	minimumRatioVal = ratio;
+	minimumDenomVal = signalMapCounterPost[mixes.first];
+	minimumNumVal = mixes.second;
+      }
+      else if(ratio > maximumRatioVal){
+	maxRatioKey = mixes.first;
+	maximumRatioVal = ratio;
+	maximumDenomVal = signalMapCounterPost[mixes.first];
+	maximumNumVal = mixes.second;
+      }
+      
+      tempRatioVals.push_back(ratio);
     }
     
-    tempRatioVals.push_back(ratio);
+    std::sort(std::begin(tempRatioVals), std::end(tempRatioVals));
+    
+    std::cout << "LOWEST RATIO MIX-PER-SIGNAL, CORRESPONDING KEY: " << minimumNumVal << "/" << minimumDenomVal << "=" << minimumRatioVal << " (" << keyBoy.GetKeyStr(minRatioKey) << "), key=" << minRatioKey << std::endl;
+    std::cout << "HIGHEST RATIO MIX-PER-SIGNAL, CORRESPONDING KEY: " << maximumNumVal << "/" << maximumDenomVal << "=" << maximumRatioVal << " (" << keyBoy.GetKeyStr(maxRatioKey) << "), key=" << maxRatioKey << std::endl;
+    std::cout << "MEDIAN RATIO MIX-PER-SIGNAL: " << tempRatioVals[tempRatioVals.size()/2] << std::endl;
   }
-  
-  std::sort(std::begin(tempRatioVals), std::end(tempRatioVals));
-  
-  std::cout << "LOWEST RATIO MIX-PER-SIGNAL, CORRESPONDING KEY: " << minimumNumVal << "/" << minimumDenomVal << "=" << minimumRatioVal << " (" << keyBoy.GetKeyStr(minRatioKey) << "), key=" << minRatioKey << std::endl;
-  std::cout << "HIGHEST RATIO MIX-PER-SIGNAL, CORRESPONDING KEY: " << maximumNumVal << "/" << maximumDenomVal << "=" << maximumRatioVal << " (" << keyBoy.GetKeyStr(maxRatioKey) << "), key=" << maxRatioKey << std::endl;
-  std::cout << "MEDIAN RATIO MIX-PER-SIGNAL: " << tempRatioVals[tempRatioVals.size()/2] << std::endl;
-  
+
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   inFile_p->Close();
   delete inFile_p;
 
   outFile_p->cd();
+
+  if(isMC){
+    unfoldXJTree_p->Write("", TObject::kOverwrite);
+    delete unfoldXJTree_p;
+  }
+
 
   //Pre-write and delete some of these require some mods
   for(Int_t cI = 0; cI < nCentBins; ++cI){
@@ -2049,7 +2101,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	photonSubJtXJVCentPt_p[cI][pI]->Add(photonJtXJVCentPt_p[cI][pI], photonMixJtXJVCentPt_p[cI][pI], 1.0, -1.0);
 	photonSubMultiJtXJVCentPt_p[cI][pI]->Add(photonMultiJtXJVCentPt_p[cI][pI], photonMixMultiJtXJVCentPt_p[cI][pI], 1.0, -1.0);
 	photonSubJtMultVCentPt_p[cI][pI]->Add(photonJtMultVCentPt_p[cI][pI], photonMixJtMultVCentPt_p[cI][pI], 1.0, -1.0);
-
 
 	//Correct the mixed event
 	photonMixCorrectedMultiJtXJJVCentPt_p[cI][pI]->Add(photonMixMultiJtXJJVCentPt_p[cI][pI], photonMixCorrectionMultiJtXJJVCentPt_p[cI][pI], 1.0, -1.0);
@@ -2080,7 +2131,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       photonJtEtaVCentPt_p[cI][pI]->Scale(1./gammaCountsPerPtCent[pI][cI]);
       photonJtXJVCentPt_p[cI][pI]->Scale(1./gammaCountsPerPtCent[pI][cI]);
       photonMultiJtXJVCentPt_p[cI][pI]->Scale(1./gammaCountsPerPtCent[pI][cI]);
-
+    
       photonMultiJtXJJVCentPt_p[cI][pI]->Scale(1./gammaCountsPerPtCent[pI][cI]);
       photonMultiJtDPhiJJVCentPt_p[cI][pI]->Scale(1./gammaCountsPerPtCent[pI][cI]);
 
@@ -2229,6 +2280,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
     }    
 
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
  
     for(Int_t pI = 0; pI < nGammaPtBinsSub+1; ++pI){
       photonEtaVCentPt_p[cI][pI]->Write("", TObject::kOverwrite);
@@ -2256,7 +2308,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	photonMixMultiJtDPhiJJVCentPt_p[cI][pI]->Write("", TObject::kOverwrite);
 	photonMixCorrectionMultiJtDPhiJJVCentPt_p[cI][pI]->Write("", TObject::kOverwrite);
 	photonMixCorrectedMultiJtDPhiJJVCentPt_p[cI][pI]->Write("", TObject::kOverwrite);
-
 
 	photonMixJtMultVCentPt_p[cI][pI]->Write("", TObject::kOverwrite);
 
