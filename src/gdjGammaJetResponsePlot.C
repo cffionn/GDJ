@@ -35,6 +35,8 @@ void getLogNDC(TCanvas* canv_p, TH2F* hist_p, bool isX)
     lowVal = hist_p->GetYaxis()->GetBinLowEdge(1);
     highVal = hist_p->GetYaxis()->GetBinLowEdge(hist_p->GetYaxis()->GetNbins()+1);
   }
+
+  std::cout << "INIT LOW, HIGH, ISX: " << lowVal << ", " << highVal << ", " << isX << std::endl;
   
   double lowTen = 100000000000;
   double highTen = .0000000000001;
@@ -63,11 +65,12 @@ void getLogNDC(TCanvas* canv_p, TH2F* hist_p, bool isX)
   }
 
   int deltaPos1 = (nearestHighPos - nearestLowPos)*0.03;
-  int deltaPos2 = (nearestHighPos - nearestLowPos)*0.03;
+  int deltaPos2 = (nearestHighPos - nearestLowPos)*0.07;
+  
   if(isX){
     deltaPos1 = (nearestHighPos - nearestLowPos)*0.025;
     deltaPos2 = (nearestHighPos - nearestLowPos)*0.04;
-  }
+  }  
   
   double arrowVal = bins[nearestLowPos - deltaPos1];
   double low = bins[nearestLowPos + deltaPos2];
@@ -77,6 +80,8 @@ void getLogNDC(TCanvas* canv_p, TH2F* hist_p, bool isX)
   TArrow* arrow_p = new TArrow();
   arrow_p->SetLineWidth(2);
   arrow_p->SetFillColor(1);  
+
+  std::cout << "LOW VAL, HIGH VAL, ISX: " << low << ", " << high << ", " << isX << std::endl;
   
   if(isX) arrow_p->DrawArrow(arrowVal, low, arrowVal, high, 0.02, ">");
   else arrow_p->DrawArrow(low, arrowVal, high, arrowVal, 0.02, ">");
@@ -240,7 +245,7 @@ int gdjGammaJetResponsePlot(std::string inFileName)
     arrow_p->SetX2(margin/2.);
     arrow_p->SetY1(margin + 0.02);
     arrow_p->SetY2(1.0 - subMarginTop - 0.02);
-    arrow_p->Draw("SAME");
+    //    arrow_p->Draw("SAME");
     //    arrow_p->DrawArrow(45, 50, 45, 250);
 
     std::cout << "ARROW COORD: " << margin/2. << ", " << margin + 0.02 << ", " << margin/2. << ", " << 1.0 - subMarginTop - 0.02 << std::endl;

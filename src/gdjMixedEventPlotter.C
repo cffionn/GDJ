@@ -3,6 +3,7 @@
 
 //c+cpp
 #include <iostream>
+#include <map>
 #include <string>
 
 //ROOT
@@ -55,7 +56,6 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
     if(tempStr.size() == 0) break;
     generalBoxes.push_back(strToVectF(tempStr));
   }
-
 
   std::vector<std::string> legStrs = {"Raw", "Mixed", "Raw - Mixed", "Gen. Matched"};
   if(legStrs.size() < hists_p.size()) return;
@@ -162,7 +162,6 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
 
   
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
 
   const double legX = plotConfig_p->GetValue(("MIXEDEVTPLOT." + envStr + "LEGX").c_str(), 0.7);
   const double legY = plotConfig_p->GetValue(("MIXEDEVTPLOT." + envStr + "LEGY").c_str(), 0.9);
@@ -445,6 +444,7 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
   std::map<std::string, std::string> labelMap = labels.GetConfigMap();
   std::map<std::string, std::string> configMap = configs.GetConfigMap();
   
+
   std::vector<std::string> necessaryParams = {"ISMC",
 					      "NGAMMAPTBINSSUB",
 					      "ISPP",

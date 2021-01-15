@@ -14,12 +14,23 @@ if you have made appropriate changes.
 For more, see README for full setup recommendations
 endef
 
+define ROOUNFOLDDIRERR
+ ROOUNFOLDDIR is not set at all. Please set this environment variable to point to your RooUnfold - source setEnv.sh if you have made appropriate changes. For more, see README for full setup recommendations
+endef
+
 ifndef GDJDIR
 $(error "$(GDJDIRERR)")	
 endif
 
-INCLUDE=-I$(GDJDIR)
+ifndef ROOUNFOLDDIR
+$(error "$(ROOUNFOLDDIRERR)")	
+endif
+
+ROOUNFOLDDIR=/home/cfmcginn/Packages/RooUnfold/RooUnfold-build/
+INCLUDE=-I$(GDJDIR) -I$(ROOUNFOLDDIR)
 LIB=-L$(GDJDIR)/lib
+ROOUNFOLDLIB=-L$(ROOUNFOLDDIR) -lRooUnfold
+
 ROOT=`root-config --cflags --glibs`
 
 MKDIR_BIN=mkdir -p $(GDJDIR)/bin
@@ -28,7 +39,10 @@ MKDIR_OBJ=mkdir -p $(GDJDIR)/obj
 MKDIR_OUTPUT=mkdir -p $(GDJDIR)/output
 MKDIR_PDF=mkdir -p $(GDJDIR)/pdfDir
 
-all: mkdirBin mkdirLib mkdirObj mkdirOutput mkdirPdf obj/centralityFromInput.o obj/checkMakeDir.o obj/configParser.o obj/globalDebugHandler.o obj/keyHandler.o obj/sampleHandler.o lib/libATLASGDJ.so bin/gdjNtuplePreProc.exe bin/gdjNTupleToHist.exe bin/gdjNTupleToMBHist.exe bin/gdjHistDumper.exe bin/gdjGammaJetResponsePlot.exe bin/gdjMixedEventPlotter.exe bin/gdjResponsePlotter.exe bin/gdjDataMCRawPlotter.exe bin/grlToTex.exe bin/testKeyHandler.exe bin/testSampleHandler.exe bin/gdjPlotMBHist.exe bin/quickEventIso.exe bin/getEntryInAOD.exe bin/gdjNTupleToSignalHist.exe bin/gdjPlotSignalHist.exe bin/gdjToyMultiMix.exe bin/gdjPlotToy.exe
+all: mkdirBin mkdirLib mkdirObj mkdirOutput mkdirPdf obj/centralityFromInput.o obj/checkMakeDir.o obj/configParser.o obj/globalDebugHandler.o obj/keyHandler.o obj/sampleHandler.o lib/libATLASGDJ.so bin/gdjNtuplePreProc.exe bin/gdjNTupleToHist.exe bin/gdjNTupleToMBHist.exe bin/gdjHistDumper.exe bin/gdjGammaJetResponsePlot.exe bin/gdjMixedEventPlotter.exe bin/gdjResponsePlotter.exe bin/gdjDataMCRawPlotter.exe bin/grlToTex.exe bin/testKeyHandler.exe bin/testSampleHandler.exe bin/gdjPlotMBHist.exe bin/gdjNTupleToSignalHist.exe bin/gdjPlotSignalHist.exe bin/gdjToyMultiMix.exe bin/gdjPlotToy.exe bin/gdjHistToUnfold.exe bin/gdjPlotUnfoldDiagnostics.exe
+
+#bin/quickEventIso.exe
+#bin/getEntryInAOD.exe 
 
 mkdirBin:
 	$(MKDIR_BIN)
@@ -78,11 +92,11 @@ bin/gdjNTupleToSignalHist.exe: src/gdjNTupleToSignalHist.C
 bin/gdjNTupleToMBHist.exe: src/gdjNTupleToMBHist.C
 	$(CXX) $(CXXFLAGS) src/gdjNTupleToMBHist.C -o bin/gdjNTupleToMBHist.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
 
-bin/quickEventIso.exe: src/quickEventIso.C
-	$(CXX) $(CXXFLAGS) src/quickEventIso.C -o bin/quickEventIso.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
+#bin/quickEventIso.exe: src/quickEventIso.C
+#	$(CXX) $(CXXFLAGS) src/quickEventIso.C -o bin/quickEventIso.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
 
-bin/getEntryInAOD.exe: src/getEntryInAOD.C
-	$(CXX) $(CXXFLAGS) src/getEntryInAOD.C -o bin/getEntryInAOD.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
+#bin/getEntryInAOD.exe: src/getEntryInAOD.C
+#	$(CXX) $(CXXFLAGS) src/getEntryInAOD.C -o bin/getEntryInAOD.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
 
 bin/gdjPlotMBHist.exe: src/gdjPlotMBHist.C
 	$(CXX) $(CXXFLAGS) src/gdjPlotMBHist.C -o bin/gdjPlotMBHist.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
@@ -119,6 +133,12 @@ bin/gdjToyMultiMix.exe: src/gdjToyMultiMix.C
 
 bin/gdjPlotToy.exe: src/gdjPlotToy.C
 	$(CXX) $(CXXFLAGS) src/gdjPlotToy.C -o bin/gdjPlotToy.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
+
+bin/gdjHistToUnfold.exe: src/gdjHistToUnfold.C
+	$(CXX) $(CXXFLAGS) src/gdjHistToUnfold.C -o bin/gdjHistToUnfold.exe $(ROOT) $(INCLUDE) $(LIB) $(ROOUNFOLDLIB) -lATLASGDJ
+
+bin/gdjPlotUnfoldDiagnostics.exe: src/gdjPlotUnfoldDiagnostics.C
+	$(CXX) $(CXXFLAGS) src/gdjPlotUnfoldDiagnostics.C -o bin/gdjPlotUnfoldDiagnostics.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
 
 clean:
 	rm -f ./*~
