@@ -126,7 +126,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
 					      "GAMMAJTDPHI",  
 					      "NXJBINS",
 					      "XJBINSLOW",
-					      "XJBINSHIGH"};
+					      "XJBINSHIGH",
+					      "XJBINSDOCUSTOM",
+					      "XJBINSCUSTOM"};
 
   std::vector<std::string> mixParams = {"DOMIXCENT",
 					"NMIXCENTBINS",
@@ -599,8 +601,44 @@ int gdjNTupleToHist(std::string inConfigFileName)
   const Int_t nXJBins = config_p->GetValue("NXJBINS", 20);
   const Float_t xjBinsLow = config_p->GetValue("XJBINSLOW", 0.0);
   const Float_t xjBinsHigh = config_p->GetValue("XJBINSHIGH", 2.0);
+  const Bool_t xjBinsDoCustom = config_p->GetValue("XJBINSDOCUSTOM", 0);
+  std::string xjBinsCustomStr = config_p->GetValue("XJBINSCUSTOM", "");
   Double_t xjBins[nMaxPtBins+1];
-  getLinBins(xjBinsLow, xjBinsHigh, nXJBins, xjBins);
+  if(!xjBinsDoCustom) getLinBins(xjBinsLow, xjBinsHigh, nXJBins, xjBins);
+  else{
+    if(xjBinsCustomStr.size() == 0){
+      std::cout << "No custom bins supplied despite XJBINSDOCUSOM \'" << xjBinsDoCustom <<  "'\". Reverting to uniform binning." << std::endl;
+      getLinBins(xjBinsLow, xjBinsHigh, nXJBins, xjBins);
+    }
+    else{
+      std::vector<float> xjBinsCustomVect = strToVectF(xjBinsCustomStr);
+      //Check that the bins are ordered and the number matches nXJBins
+      Int_t nXJBinsCustomVect = xjBinsCustomVect.size();
+      if(nXJBinsCustomVect-1 != nXJBins){
+	std::cout << "Number of supplied NXJBINS, \'" << nXJBins << "\', does not match number from custom bin string \'" << nXJBinsCustomVect-1 << "\'. Reverting to uniform bins" << std::endl;
+        getLinBins(xjBinsLow, xjBinsHigh, nXJBins, xjBins);
+      }
+      else{
+        bool areBinsOrdered = true;
+        for(unsigned int i = 1; i < xjBinsCustomVect.size(); ++i){
+          if(xjBinsCustomVect[i] < xjBinsCustomVect[i-1]){
+            areBinsOrdered = false;
+            break;
+          }
+        }
+
+        if(areBinsOrdered){
+          for(unsigned int i = 0; i < xjBinsCustomVect.size(); ++i){
+            xjBins[i] = xjBinsCustomVect[i];
+          }
+        }
+        else{
+	  std::cout << "XJBINSCUSTOM provided \'" << xjBinsCustomStr << "\'is not ordered. Reverting to uniform bins"  << std::endl;
+          getLinBins(xjBinsLow, xjBinsHigh, nXJBins, xjBins);
+        }
+      }
+    }
+  }
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
