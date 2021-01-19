@@ -62,6 +62,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
   std::vector<std::string> necessaryParams = {"INRESPONSEFILENAME",
 					      "INUNFOLDFILENAME",
+					      "VARNAME",
                                               "OUTFILENAME"};
 
   if(!checkEnvForParams(config_p, necessaryParams)) return 1;
@@ -69,6 +70,21 @@ int gdjHistToUnfold(std::string inConfigFileName)
   std::string inResponseFileName = config_p->GetValue("INRESPONSEFILENAME", "");
   std::string inUnfoldFileName = config_p->GetValue("INUNFOLDFILENAME", "");
   std::string outFileName = config_p->GetValue("OUTFILENAME", "");
+  std::string varName = config_p->GetValue("VARNAME", "");
+  std::string varNameLower = returnAllLowercaseString(varName);
+
+  std::vector<std::string> validUnfoldVar = {"XJ", "XJJ"};
+  std::vector<std::string> validUnfoldVarStyle = {"x_{J}", "#vec{x}_{JJ#gamma}"};
+  const int vectPos = vectContainsStrPos(varName, &validUnfoldVar);
+  if(vectPos < 0){
+    std::cout << "GIVEN VARNAME \'" << varName << "\' is invalid. Please pick from:" << std::endl;
+    for(unsigned int i = 0; i < validUnfoldVar.size(); ++i){
+      std::cout << " \'" << validUnfoldVar[i] << "\'" << std::endl;
+    }
+    std::cout << "return 1" << std::endl;
+    return 1;
+  }
+  std::string varNameStyle = validUnfoldVarStyle[vectPos];
   
   //check that our given input files exist
   if(!check.checkFileExt(inResponseFileName, ".root")) return 1;
@@ -189,13 +205,13 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
   //Construct matrices
   outFile_p->cd();
-  gammaPtJetXJReco_HalfResponse_p = new TH2F("gammaPtJetXJReco_HalfResponse_h", ";Reco. x_{J};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
-  gammaPtJetXJTruth_HalfResponse_p = new TH2F("gammaPtJetXJTruth_HalfResponse_h", ";Truth x_{J};Truth Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
-  gammaPtJetXJReco_HalfToUnfold_p = new TH2F("gammaPtJetXJReco_HalfToUnfold_h", ";Reco. x_{J};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
-  gammaPtJetXJTruth_HalfToUnfold_p = new TH2F("gammaPtJetXJTruth_HalfToUnfold_h", ";Truth x_{J};Truth Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+  gammaPtJetXJReco_HalfResponse_p = new TH2F(("gammaPtJet" + varName + "Reco_HalfResponse_h").c_str(), (";Reco. " + varNameStyle + ";Reco. Photon p_{T}").c_str(), nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+  gammaPtJetXJTruth_HalfResponse_p = new TH2F(("gammaPtJet" + varName + "Truth_HalfResponse_h").c_str(), (";Truth " + varNameStyle + ";Truth Photon p_{T}").c_str(), nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+  gammaPtJetXJReco_HalfToUnfold_p = new TH2F(("gammaPtJet" + varName + "Reco_HalfToUnfold_h").c_str(), (";Reco. " + varNameStyle + ";Reco. Photon p_{T}").c_str(), nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+  gammaPtJetXJTruth_HalfToUnfold_p = new TH2F(("gammaPtJet" + varName + "Truth_HalfToUnfold_h").c_str(), (";Truth " + varNameStyle + ";Truth Photon p_{T}").c_str(), nXJBins, xjBins, nGammaPtBins, gammaPtBins);
 
-  gammaPtJetXJReco_p = new TH2F("gammaPtJetXJReco_h", ";Reco. x_{J};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
-  gammaPtJetXJTruth_p = new TH2F("gammaPtJetXJTruth_h", ";Truth x_{J};Truth Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+  gammaPtJetXJReco_p = new TH2F(("gammaPtJet" + varName + "Reco_h").c_str(), (";Reco. " + varNameStyle + ";Reco. Photon p_{T}").c_str(), nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+  gammaPtJetXJTruth_p = new TH2F(("gammaPtJet" + varName + "Truth_h").c_str(), (";Truth " + varNameStyle + ";Truth Photon p_{T}").c_str(), nXJBins, xjBins, nGammaPtBins, gammaPtBins);
 
   RooUnfoldResponse* rooRes_Half_p = nullptr;
   RooUnfoldResponse* rooRes_p = nullptr;
@@ -206,13 +222,15 @@ int gdjHistToUnfold(std::string inConfigFileName)
   Float_t recoGammaPt_, truthGammaPt_;
   Float_t recoXJ_, truthXJ_;
   Float_t unfoldWeight_;
-
-  TTree* unfoldXJTree_p = (TTree*)inResponseFile_p->Get("unfoldXJTree_p");
+  Float_t unfoldCent_;
+  
+  TTree* unfoldXJTree_p = (TTree*)inResponseFile_p->Get(("unfold" + varName + "Tree_p").c_str());
   unfoldXJTree_p->SetBranchAddress("recoGammaPt", &recoGammaPt_);
   unfoldXJTree_p->SetBranchAddress("truthGammaPt", &truthGammaPt_);
-  unfoldXJTree_p->SetBranchAddress("recoXJ", &recoXJ_);
-  unfoldXJTree_p->SetBranchAddress("truthXJ", &truthXJ_);
+  unfoldXJTree_p->SetBranchAddress(("reco" + varName).c_str(), &recoXJ_);
+  unfoldXJTree_p->SetBranchAddress(("truth" + varName).c_str(), &truthXJ_);
   unfoldXJTree_p->SetBranchAddress("unfoldWeight", &unfoldWeight_);
+  unfoldXJTree_p->SetBranchAddress("unfoldCent", &unfoldCent_);
   
   //Construct our MC hists
   const ULong64_t nEntries = unfoldXJTree_p->GetEntries();
@@ -263,8 +281,9 @@ int gdjHistToUnfold(std::string inConfigFileName)
   const int nIter = 21;
 
   for(int gI = 0; gI < nGammaPtBins; ++gI){
-    TH1D* xjTruthProjection_p = new TH1D(("xjTruth_HalfToUnfold_GammaPt" + std::to_string(gI) + "_h").c_str(), ";x_{J};Arbitrary", nXJBins, xjBins);
-    TH1D* xjRecoProjection_p = new TH1D(("xjReco_HalfToUnfold_GammaPt" + std::to_string(gI) + "_h").c_str(), ";x_{J};Arbitrary", nXJBins, xjBins);
+    
+    TH1D* xjTruthProjection_p = new TH1D((varNameLower + "Truth_HalfToUnfold_GammaPt" + std::to_string(gI) + "_h").c_str(), (";" + varNameStyle + ";Arbitrary").c_str(), nXJBins, xjBins);
+    TH1D* xjRecoProjection_p = new TH1D((varNameLower + "Reco_HalfToUnfold_GammaPt" + std::to_string(gI) + "_h").c_str(), (";" + varNameStyle + ";Arbitrary").c_str(), nXJBins, xjBins);
 
     for(int xI = 0; xI < nXJBins; ++xI){
       xjTruthProjection_p->SetBinContent(xI+1, gammaPtJetXJTruth_HalfToUnfold_p->GetBinContent(xI+1, gI+1));
@@ -290,7 +309,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
     unfolded_p->Write(("gammaPtJetXJReco_HalfToUnfold_Iter" + std::to_string(i) + "_h").c_str(), TObject::kOverwrite);
 
     for(int gI = 0; gI < nGammaPtBins; ++gI){
-      TH1D* xjUnfoldedProjection_p = new TH1D(("xjReco_HalfToUnfold_Iter" + std::to_string(i) + "_GammaPt" + std::to_string(gI) + "_h").c_str(), ";x_{J};Arbitrary", nXJBins, xjBins);
+      TH1D* xjUnfoldedProjection_p = new TH1D((varNameLower + "Reco_HalfToUnfold_Iter" + std::to_string(i) + "_GammaPt" + std::to_string(gI) + "_h").c_str(), (";" + varNameStyle + ";Arbitrary").c_str(), nXJBins, xjBins);
 
       for(int xI = 0; xI < nXJBins; ++xI){
 	xjUnfoldedProjection_p->SetBinContent(xI+1, unfolded_p->GetBinContent(xI+1, gI+1));
@@ -325,7 +344,9 @@ int gdjHistToUnfold(std::string inConfigFileName)
   delete rooRes_Half_p;
   delete rooRes_p;
 
+  inUnfoldFileConfig_p->SetValue("VARNAME", varName.c_str());
   inUnfoldFileConfig_p->SetValue("NITER", nIter);
+
   inUnfoldFileConfig_p->Write("config", TObject::kOverwrite);
   inUnfoldFileLabels_p->Write("label", TObject::kOverwrite);
   

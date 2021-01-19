@@ -59,6 +59,11 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   checkMakeDir check;
   if(!check.checkFileExt(inConfigFileName, ".config")) return 1;
 
+  const std::string dateStr = getDateStr();
+  check.doCheckMakeDir("pdfDir");
+  check.doCheckMakeDir("pdfDir/" + dateStr);
+
+  
   globalDebugHandler gDebug;
   const bool doGlobalDebug = gDebug.GetDoGlobalDebug();
   
@@ -156,8 +161,9 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 							"ISPP",
 							"NITER",
 							"JETR",
+							"VARNAME",
 							"ASSOCGENMINPT"};
-
+  
   const std::string gammaJtDPhiStr = "DPhi0";
   //  const std::string multiJtCutGlobalStr = "MultiJt0";
   const std::string jtPtBinsGlobalStr = "GlobalJtPt0";
@@ -166,6 +172,9 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 
   std::vector<std::string> pbpbParams = {"CENTBINS"};
   if(!checkEnvForParams(inUnfoldFileConfig_p, necessaryUnfoldFileParams)) return 1;
+
+  std::string varName = inUnfoldFileConfig_p->GetValue("VARNAME", "");
+  std::string varNameLower = returnAllLowercaseString(varName);
 
   //Add to global labels
   int jetR = inUnfoldFileConfig_p->GetValue("JETR", 100);
@@ -233,8 +242,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 
   gStyle->SetOptStat(0);
 
-  TH2F* recoMatrix_p = (TH2F*)inUnfoldFile_p->Get("gammaPtJetXJReco_HalfResponse_h");
-  TH2F* truthMatrix_p = (TH2F*)inUnfoldFile_p->Get("gammaPtJetXJTruth_HalfResponse_h");
+  TH2F* recoMatrix_p = (TH2F*)inUnfoldFile_p->Get(("gammaPtJet" + varName + "Reco_HalfResponse_h").c_str());
+  TH2F* truthMatrix_p = (TH2F*)inUnfoldFile_p->Get(("gammaPtJet" + varName + "Truth_HalfResponse_h").c_str());
 
   std::vector<TH2F*> matrices_p = {recoMatrix_p, truthMatrix_p};
   for(unsigned int mI = 0; mI < matrices_p.size(); ++mI){
@@ -251,7 +260,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
     
     std::string saveName = matrices_p[mI]->GetName();
     saveName.replace(saveName.rfind("_h"), 2, "");
-    saveName = "pdfDir/" + saveName + ".pdf";
+    saveName = "pdfDir/" + dateStr + "/" + saveName + "_" + dateStr + ".pdf";
     quietSaveAs(canv_p, saveName);    
     delete canv_p;
   }
@@ -259,8 +268,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;    
   
   for(Int_t gI = 0; gI < nGammaPtBins; ++gI){    
-    TH1F* truth_p = (TH1F*)inUnfoldFile_p->Get(("xjTruth_HalfToUnfold_GammaPt" + std::to_string(gI) + "_h").c_str());
-    TH1F* reco_p = (TH1F*)inUnfoldFile_p->Get(("xjReco_HalfToUnfold_GammaPt" + std::to_string(gI) + "_h").c_str());
+    TH1F* truth_p = (TH1F*)inUnfoldFile_p->Get((varNameLower + "Truth_HalfToUnfold_GammaPt" + std::to_string(gI) + "_h").c_str());
+    TH1F* reco_p = (TH1F*)inUnfoldFile_p->Get((varNameLower + "Reco_HalfToUnfold_GammaPt" + std::to_string(gI) + "_h").c_str());
     TH1F* unfold_p[nIterMax];
 
     TH1F* statsDelta_p = new TH1F(("statsDelta_GammaPt" + std::to_string(gI) + "_h").c_str(), ";Number of Iterations;#sqrt{#Sigma #delta^{2}}", nIter-1, 1.5, nIter+0.5);
@@ -268,7 +277,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
     TH1F* totalDelta_p = new TH1F(("totalelta_GammaPt" + std::to_string(gI) + "_h").c_str(), ";Number of Iterations;#sqrt{#Sigma #delta^{2}}", nIter-1, 1.5, ((double)nIter)+0.5);
     
     for(Int_t i = 1; i < nIter; ++i){
-      unfold_p[i] = (TH1F*)inUnfoldFile_p->Get(("xjReco_HalfToUnfold_Iter" + std::to_string(i) + "_GammaPt" + std::to_string(gI) + "_h").c_str());
+      unfold_p[i] = (TH1F*)inUnfoldFile_p->Get((varNameLower + "Reco_HalfToUnfold_Iter" + std::to_string(i) + "_GammaPt" + std::to_string(gI) + "_h").c_str());
 
       if(i > 1){
 	Float_t deltaIter = 0.0;
@@ -389,7 +398,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       label_p->DrawLatex(diagLabelXGlobal, diagLabelYGlobal - tI*0.06, tempLabels[tI].c_str());
     }    
     
-    quietSaveAs(canv_p, "pdfDir/diag_GammaPt" + std::to_string(gI) + ".png");
+    quietSaveAs(canv_p, "pdfDir/" + dateStr + "/diag" + varName + "_GammaPt" + std::to_string(gI) + "_" + dateStr +  ".png");
     delete canv_p;
 
     for(unsigned int lI = 0; lI < leg_p.size(); ++lI){
@@ -605,7 +614,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
     delete line_p;
     delete label_p;
     
-    quietSaveAs(canv_p, "pdfDir/test_GammaPt" + std::to_string(gI) + ".png");
+    quietSaveAs(canv_p, "pdfDir/" + dateStr + "/unfold" + varName + "_GammaPt" + std::to_string(gI) + "_" + dateStr + ".png");
     
     delete pads_p[0];
     delete canv_p;

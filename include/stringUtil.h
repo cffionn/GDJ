@@ -37,6 +37,20 @@ inline std::string returnAllCapsString(std::string inStr)
   return inStr;
 }
 
+inline std::string returnAllLowercaseString(std::string inStr)
+{
+  const std::string lowStr = "abcdefghijklmnopqrstuvwxyz";
+  const std::string hiStr = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+  for(unsigned int hiIter = 0; hiIter < hiStr.size(); ++hiIter){
+    while(inStr.find(hiStr.substr(hiIter, 1)) != std::string::npos){
+      inStr.replace(inStr.find(hiStr.substr(hiIter, 1)), 1, lowStr.substr(hiIter, 1));
+    }
+  }
+
+  return inStr;
+}
+
 inline bool isStrFromCharSet(const std::string inStr, const std::string charSet)
 {
   for(unsigned int iter = 0; iter < inStr.size(); ++iter){
@@ -157,6 +171,20 @@ inline bool vectContainsStr(std::string inStr, std::vector<std::string>* inVect)
     }
   }
   return isInVect;
+}
+
+inline int vectContainsStrPos(std::string inStr, std::vector<std::string>* inVect)
+{
+  int vectPos = -1;
+  if(inStr.size() != 0){
+    for(unsigned int vI = 0; vI < inVect->size(); ++vI){
+      if(isStrSame(inStr, (*inVect)[vI])){
+	vectPos = vI;
+	break;
+      }
+    }
+  }
+  return vectPos;
 }
 
 inline bool vectContainsInt(int inInt, std::vector<int>* inVect)
