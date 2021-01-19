@@ -612,9 +612,12 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
   Float_t recoGammaPt_, truthGammaPt_;
   Float_t recoXJ_, truthXJ_;
+  Float_t recoXJJ_, truthXJJ_;
   Float_t unfoldWeight_;
-
+  Float_t unfoldCent_;
+  
   TTree* unfoldXJTree_p = nullptr;
+  TTree* unfoldXJJTree_p = nullptr;
   if(isMC){
     unfoldXJTree_p = new TTree("unfoldXJTree_p", "");
     unfoldXJTree_p->Branch("recoGammaPt", &recoGammaPt_, "recoGammaPt/F"); 
@@ -622,6 +625,15 @@ int gdjNTupleToHist(std::string inConfigFileName)
     unfoldXJTree_p->Branch("recoXJ", &recoXJ_, "recoXJ/F"); 
     unfoldXJTree_p->Branch("truthXJ", &truthXJ_, "truthXJ/F"); 
     unfoldXJTree_p->Branch("unfoldWeight", &unfoldWeight_, "unfoldWeight/F"); 
+    unfoldXJTree_p->Branch("unfoldCent", &unfoldCent_, "unfoldCent/F"); 
+
+    unfoldXJJTree_p = new TTree("unfoldXJJTree_p", "");
+    unfoldXJJTree_p->Branch("recoGammaPt", &recoGammaPt_, "recoGammaPt/F"); 
+    unfoldXJJTree_p->Branch("truthGammaPt", &truthGammaPt_, "truthGammaPt/F"); 
+    unfoldXJJTree_p->Branch("recoXJJ", &recoXJJ_, "recoXJJ/F"); 
+    unfoldXJJTree_p->Branch("truthXJJ", &truthXJJ_, "truthXJJ/F"); 
+    unfoldXJJTree_p->Branch("unfoldWeight", &unfoldWeight_, "unfoldWeight/F"); 
+    unfoldXJJTree_p->Branch("unfoldCent", &unfoldCent_, "unfoldCent/F"); 
   }
 
   TH1F* mixingCentrality_p = nullptr;
@@ -1638,7 +1650,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    fillTH1(photonJtEtaVCentPt_p[centPos][nGammaPtBinsSub], aktRhi_em_xcalib_jet_eta_p->at(jI), fullWeight);
 	    fillTH1(photonJtXJVCentPt_p[centPos][ptPos], aktRhi_em_xcalib_jet_pt_p->at(jI)/photon_pt_p->at(pI), fullWeight);
 	    fillTH1(photonJtXJVCentPt_p[centPos][nGammaPtBinsSub], aktRhi_em_xcalib_jet_pt_p->at(jI)/photon_pt_p->at(pI), fullWeight);
-
+	  
 	    if(isMC && truthPhotonPt > 0){
 	      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 	      recoGammaPt_ = photon_pt_p->at(pI);
@@ -1652,15 +1664,50 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
 		    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 		    Float_t tempTruthJtPt = aktR_truth_jet_pt_p->at(aktRhi_truthpos_p->at(jI));
+		    Float_t tempTruthJtPhi= aktR_truth_jet_phi_p->at(aktRhi_truthpos_p->at(jI));
+		    Float_t tempTruthJtEta = aktR_truth_jet_eta_p->at(aktRhi_truthpos_p->at(jI));
+
+		    TLorentzVector tempRecoJet1, tempRecoJet2;
+		    TLorentzVector tempTruthJet1, tempTruthJet2;
+		    tempTruthJet1.SetPtEtaPhiM(tempTruthJtPt, tempTruthJtEta, tempTruthJtPhi, 0.0);
+		    tempRecoJet1.SetPtEtaPhiM(aktRhi_em_xcalib_jet_pt_p->at(jI), aktRhi_em_xcalib_jet_eta_p->at(jI), aktRhi_em_xcalib_jet_phi_p->at(jI), 0.0);
 		    
 		    if(tempTruthJtPt >= jtPtBins[0] && tempTruthJtPt < jtPtBins[nJtPtBins]){
 		      truthGammaPt_ = truthPhotonPt;
 		      truthXJ_ = tempTruthJtPt/truthGammaPt_;
 		      unfoldWeight_ = fullWeight;
+		      if(isPP) unfoldCent_ = 0;
+		      else unfoldCent_ = cent;
 		      
 		      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 		      unfoldXJTree_p->Fill();
-		      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+		      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+		      //Now do double XJJ
+		      for(unsigned int jI2 = jI+1; jI2 < aktRhi_em_xcalib_jet_pt_p->size(); ++jI2){
+			if(aktRhi_truthpos_p->at(jI2) < 0) continue;
+
+			Float_t dPhi = TMath::Abs(getDPHI(aktRhi_em_xcalib_jet_phi_p->at(jI2), photon_phi_p->at(pI)));
+
+			if(dPhi < gammaJtDPhiCut) continue;
+			
+			if(aktRhi_em_xcalib_jet_pt_p->at(jI2) < jtPtBins[0] && aktRhi_em_xcalib_jet_pt_p->at(jI2) >= jtPtBins[nJtPtBins]) continue;
+						
+			Float_t tempTruthJtPt2 = aktR_truth_jet_pt_p->at(aktRhi_truthpos_p->at(jI2));
+			Float_t tempTruthJtPhi2 = aktR_truth_jet_phi_p->at(aktRhi_truthpos_p->at(jI2));
+			Float_t tempTruthJtEta2 = aktR_truth_jet_eta_p->at(aktRhi_truthpos_p->at(jI2));
+			
+			if(tempTruthJtPt < jtPtBins[0] && tempTruthJtPt >= jtPtBins[nJtPtBins]) continue;
+
+			tempTruthJet2.SetPtEtaPhiM(tempTruthJtPt2, tempTruthJtEta2, tempTruthJtPhi2, 0.0);
+			tempRecoJet2.SetPtEtaPhiM(aktRhi_em_xcalib_jet_pt_p->at(jI2), aktRhi_em_xcalib_jet_eta_p->at(jI2), aktRhi_em_xcalib_jet_phi_p->at(jI2), 0.0);
+
+			tempTruthJet2 += tempTruthJet1;
+			tempRecoJet2 += tempRecoJet1;
+			truthXJJ_ = tempTruthJet2.Pt()/truthGammaPt_;
+			recoXJJ_ = tempRecoJet2.Pt()/recoGammaPt_;
+
+			unfoldXJJTree_p->Fill();
+		      }				      
 		    }		
 		  }
 		}
@@ -2078,6 +2125,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
   if(isMC){
     unfoldXJTree_p->Write("", TObject::kOverwrite);
     delete unfoldXJTree_p;
+
+    unfoldXJJTree_p->Write("", TObject::kOverwrite);
+    delete unfoldXJJTree_p;
   }
 
 

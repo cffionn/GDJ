@@ -129,7 +129,9 @@ int gdjHistToUnfold(std::string inConfigFileName)
 					      "GAMMAJTDPHI",
 					      "NXJBINS",
 					      "XJBINSLOW",
-					      "XJBINSHIGH"};
+					      "XJBINSHIGH",
+					      "XJBINSDOCUSTOM",
+					      "XJBINSCUSTOM"};
     
   const std::string gammaJtDPhiStr = "DPhi0";
   const std::string multiJtCutGlobalStr = "MultiJt0";
@@ -151,12 +153,20 @@ int gdjHistToUnfold(std::string inConfigFileName)
   if(gammaPtBinsDoLog) getLogBins(gammaPtBinsLow, gammaPtBinsHigh, nGammaPtBins, gammaPtBins);
   else getLinBins(gammaPtBinsLow, gammaPtBinsHigh, nGammaPtBins, gammaPtBins);
 
-  const Int_t nXJBins = config_p->GetValue("NXJBINS", 20);
-  const Float_t xjBinsLow = config_p->GetValue("XJBINSLOW", 0.0);
-  const Float_t xjBinsHigh = config_p->GetValue("XJBINSHIGH", 2.0);
+  const Int_t nXJBins = inResponseFileConfig_p->GetValue("NXJBINS", 20);
+  const Float_t xjBinsLow = inResponseFileConfig_p->GetValue("XJBINSLOW", 0.0);
+  const Float_t xjBinsHigh = inResponseFileConfig_p->GetValue("XJBINSHIGH", 2.0);
+  const Bool_t xjBinsDoCustom = inResponseFileConfig_p->GetValue("XJBINSDOCUSTOM", 0);
   Double_t xjBins[nMaxPtBins+1];
-  getLinBins(xjBinsLow, xjBinsHigh, nXJBins, xjBins);
-
+  if(!xjBinsDoCustom) getLinBins(xjBinsLow, xjBinsHigh, nXJBins, xjBins);
+  else{
+    std::string xjBinsCustomStr = inResponseFileConfig_p->GetValue("XJBINSCUSTOM", "");
+    std::vector<float> xjBinsCustomVect = strToVectF(xjBinsCustomStr);
+    for(unsigned int i = 0; i < xjBinsCustomVect.size(); ++i){
+      xjBins[i] = xjBinsCustomVect[i];
+    }
+  }
+  
   //Enforce additional requirements on config depending on first set
   if(isMC){
     if(!checkEnvForParams(inResponseFileConfig_p, mcParams)) return 1;
