@@ -447,6 +447,8 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;  
   for(Int_t cI = 0; cI < nCentBins; ++cI){
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << cI << "/" << nCentBins << std::endl;  
+
     delete photonPtJetXJReco_HalfResponse_p[cI];
     delete photonPtJetXJTruth_HalfResponse_p[cI];
     delete photonPtJetXJReco_HalfToUnfold_p[cI];
@@ -469,6 +471,8 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
   inResponseFile_p->Close();
   delete inResponseFile_p;  
+
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;  
   
   if(!isSameInFile){
     inUnfoldFile_p->Close();
@@ -477,6 +481,8 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
   outFile_p->Close();
   delete outFile_p;
+
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;  
   
   std::cout << "GDJHISTTOUNFOLD COMPLETE. return 0." << std::endl;
   return 0;
