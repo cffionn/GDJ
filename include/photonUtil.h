@@ -8,21 +8,62 @@
 //ROOT
 #include "TMath.h"
 
-//NOTE THAT THIS IS RE-OPTIMIZED BY YEONJU
-//ISOLATION CUT SHOULD BE 3 GeV for Pb+Pb and p+p after correction, R=0.3
-inline bool isGoodPhoton(bool isPP, bool phoTight, float phoIso, float phoEta)
+inline bool isIsolatedPhoton(bool isPP, bool isCorrected, float phoIso)
 {
-  phoEta = TMath::Abs(phoEta);
-  if(phoEta >= 1.37 && phoEta < 1.52) return false;
-  if(!phoTight) return false;
-  if(isPP){
-    if(phoIso > 3.0) return false;
-  }
-  else{
-    if(phoIso > 8.0) return false;
+  const Float_t isoCutPPAndPbPbCorr = 3.0;
+  const Float_t isoCutPbPbUncorr = 8.0;
+
+  Float_t isoCut = isoCutPPAndPbPbCorr;
+  if(!isPP && !isCorrected) isoCut = isoCutPbPbUncorr;
+
+  bool isIsolated = phoIso < isoCut;
+  
+  return isIsolated;
+}
+
+//Adding a 'sideband' function for quick determination
+//SIDEBAND TYPE 1: tight and non-isolated
+//SIDEBAND TYPE 2: non-tight and isolated
+//SIDEBAND TYPE 3: non-tight and non-isolated
+//SIDEBAND TYPE 4: non-isolated
+//SIDEBAND TYPE 5: non-tight
+
+inline bool isSidebandPhoton(bool isIsolated, bool isTight, int sidebandType)
+{
+  if(sidebandType < 1 || sidebandType > 5){
+    std::cout << "ERROR IN ISSIDEBANDPHOTON: sidebandType \'" << sidebandType << "\' is not valid please choose 1-5. return false" << std::endl;
+    return false;
   }
 
-  return true;
+  bool isSB = false;
+  if(sidebandType == 1 && isTight && !isIsolated) isSB = true;
+  else if(sidebandType == 2 && !isTight && isIsolated) isSB = true;
+  else if(sidebandType == 3 && !isTight && !isIsolated) isSB = true;
+  else if(sidebandType == 4 && !isIsolated) isSB = true;
+  else if(sidebandType == 5 && !isTight) isSB = true;
+  
+  return isSB;
+}
+
+inline bool isSidebandPhoton(bool isPP, bool isCorrected, int sidebandType, bool phoTight, float phoIso)
+{
+  bool isIsolated = isIsolatedPhoton(isPP, isCorrected, phoIso);
+  return isSidebandPhoton(isIsolated, phoTight, sidebandType);
+}
+
+//NOTE THAT THIS IS RE-OPTIMIZED BY YEONJU
+//ISOLATION CUT SHOULD BE 3 GeV for Pb+Pb and p+p after correction, R=0.3
+inline bool isGoodPhoton(bool isPP, bool isCorrected, int sidebandType, bool phoTight, float phoIso, float phoEta)
+{
+  phoEta = TMath::Abs(phoEta);
+  //Always
+  if(phoEta >= 1.37 && phoEta < 1.52) return false;
+
+  bool isIsolated = isIsolatedPhoton(isPP, isCorrected, phoIso);
+  bool isSideband = isSidebandPhoton(isIsolated, phoTight, sidebandType);
+  bool retVal = (isIsolated && phoTight) || isSideband;
+
+  return retVal;
 }
 
 double getCorrectedPhotonIsolation(bool isPP, float phoIso, float phoPt, float phoEta, float cent)
