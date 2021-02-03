@@ -25,7 +25,11 @@ namespace HIJet
     const float size_scheme[NSTYLES]={1,1,1.6,1.2,1.6,1,
 				      1,1,1.6,1,1,
 				      1,1,1.6,1.2};
-  
+
+    const float opacity_scheme[NSTYLES]={0.5,0.5,0.5,0.5,0.5,
+					 0.5,0.5,0.5,0.5,0.5,
+					 0.5,0.5,0.5,0.5,0.5};
+    
     const Width_t line_width=1;
     const int Npx=1000;
 
@@ -53,8 +57,10 @@ namespace HIJet
       f1->SetLineColor(color_scheme[index_mod]);
       f1->SetLineStyle( (index_mod+1)%2 + 1);
       f1->SetNpx(Npx);
-    }
-
+    }//Next 2 functions added by CFM for error box opacities tied to marker/color scheme    
+    inline int GetColor(unsigned int index){return color_scheme[index%NSTYLES];}
+    inline float GetOpacity(unsigned int index){return opacity_scheme[index%NSTYLES];}    
+    
     inline void SetAtlasStyle(std::string inStyleFileName)
     {
       std::cout << "INSTYLEFILENAME: " << inStyleFileName << std::endl;
