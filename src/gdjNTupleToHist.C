@@ -1717,21 +1717,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
       if(leadingTruthPhotonPos < 0) continue; //You need at least 1 leading photon
       if(truth_type_p->at(leadingTruthPhotonPos) != 14) continue; // Must be prompt iso
       if(truth_origin_p->at(leadingTruthPhotonPos) != 37) continue; // Must be origin prompt photon
-
-      /*
-      if(truth_type_p->at(leadingTruthPhotonPos) == 16){//type associated w/ background photon
-	if(truth_origin_p->at(leadingTruthPhotonPos) == 38){//origin is undressed photon
-	  continue;//
-	}
-      }
-      */
     }
 
+    ++(eventCounter[2]);
   
     Float_t mixWeight = fullWeight/(double)nMixEvents;
-
-    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-
     unsigned long long tempKey = runLumiKey.GetKey({(unsigned long long)runNumber, (unsigned long long)lumiBlock});    
     runLumiIsFired[tempKey] = true;
       
@@ -1746,8 +1736,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
       pthat_Unweighted_p->Fill(pthat);
     }
 
-    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
   
     //First loop for the corrections plots
     for(unsigned int jI = 0; jI < aktRhi_em_xcalib_jet_uncorrpt_p->size(); ++jI){
@@ -1756,7 +1744,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
       
       if(jtEtaForBin < jtEtaBinsSubLow) continue;
       if(jtEtaForBin >= jtEtaBinsSubHigh) continue;
-      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
       
       if(aktRhi_em_xcalib_jet_uncorrpt_p->at(jI) <= jtPtBinsLow) continue;
       if(aktRhi_em_xcalib_jet_uncorrpt_p->at(jI) > jtPtBinsHigh) continue;
@@ -1766,7 +1753,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
       fillTH2(photonJtCorrOverUncorrVCentJtEta_p[centPos][nJtEtaBinsSub], aktRhi_em_xcalib_jet_uncorrpt_p->at(jI), aktRhi_em_xcalib_jet_pt_p->at(jI)/aktRhi_em_xcalib_jet_uncorrpt_p->at(jI), fullWeight);	  
     }
 
- 
     //Check for good photon
     Float_t leadingPhoPt = -1.0;
     Int_t leadingPhoPos = -1;
@@ -1778,8 +1764,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
       }
     }
 
-    if(leadingPhoPos < 0) continue;
+    if(leadingPhoPos < 0) continue; // is there at least one possible photon
 
+    ++(eventCounter[3]);
+
+    //    Get rid of this - Messing w/ under and overflow handling
     if(photon_pt_p->at(leadingPhoPos) < gammaPtBins[0]) continue;
     if(photon_pt_p->at(leadingPhoPos) >= gammaPtBins[nGammaPtBins]) continue;
 
@@ -1790,17 +1779,13 @@ int gdjNTupleToHist(std::string inConfigFileName)
       else correctedIso = getPtCorrectedPhotonIsolation(correctedIso, photon_pt_p->at(leadingPhoPos), photon_eta_p->at(leadingPhoPos));
     }
     
-    if(!isGoodPhoton(isPP, doPtIsoCorrection, sidebandType, photon_tight_p->at(leadingPhoPos), photon_etcone_p->at(leadingPhoPos), photon_eta_p->at(leadingPhoPos))) continue;
-    bool isSideband = isSidebandPhoton(isPP, doPtIsoCorrection, sidebandType, photon_tight_p->at(leadingPhoPos), photon_etcone_p->at(leadingPhoPos));      
-    Int_t phoPos = leadingPhoPos;   
+    if(!isGoodPhoton(isPP, doPtIsoCorrection, sidebandType, photon_tight_p->at(leadingPhoPos), correctedIso, photon_eta_p->at(leadingPhoPos))) continue;
 
+    ++(eventCounter[4]);
 
-    ++(eventCounter[2]);
-
-    if(phoPos != 0) continue; //This will handle the instances where we have 2 photon candidates but only the subleading passes cuts (these are non-prompt)
-
-    ++(eventCounter[3]);
-      
+    bool isSideband = isSidebandPhoton(isPP, doPtIsoCorrection, sidebandType, photon_tight_p->at(leadingPhoPos), correctedIso);
+    const Int_t phoPos = leadingPhoPos;   
+     
     Float_t etaValMain = photon_eta_p->at(phoPos);
     Float_t etaValSub = etaValMain;
     if(gammaEtaBinsDoAbs) etaValMain = TMath::Abs(etaValMain);
@@ -1809,7 +1794,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
     if(etaValMain <= gammaEtaBins[0]) continue;
     if(etaValMain >= gammaEtaBins[nGammaEtaBins]) continue;
 
-    ++(eventCounter[4]); //Probably this additional continue can be removed but we will see
+    ++(eventCounter[5]);  //Reject outside of eta bounds
 
     Int_t barrelAndECPos = 0;
     if(TMath::Abs(etaValMain) > 1.52) barrelAndECPos = 1;
@@ -1828,15 +1813,12 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  if(!isSideband){
 	    fillTH2(photonGenResVCentEta_p[centPos][etaPos], photon_pt_p->at(phoPos), truthPhotonPt, fullWeight);
 	    fillTH2(photonGenResVCentEta_p[centPos][nGammaEtaBinsSub], photon_pt_p->at(phoPos), truthPhotonPt, fullWeight);
-	    }
+	  }
 	}
       }
-      
-      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
     }
-    
-    if(ptPos >= 0){      
-      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+   
+    if(ptPos >= 0){//this reco photon exists w/in the fiducial range
       if(!isMC){
 	++(gammaCountsPerPtCent[ptPos][centPos]);
 	++(gammaCountsPerPtCent[nGammaPtBins][centPos]);
@@ -1870,9 +1852,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
       goodJetsDPhiMix.push_back({});
       goodJetsDPhiMix.push_back({});
       
-      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
       //Start w/ unpartnered truth
-      if(isMC){
+      if(isMC && !isSideband){
 	for(unsigned int jI = 0; jI < aktR_truth_jet_pt_p->size(); ++jI){
 	  if(aktR_truth_jet_recopos_p->at(jI) >= 0) continue;
 	  
@@ -1888,22 +1869,25 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  unfoldWeight_ = fullWeight;
 	  unfoldCent_ = cent;
 	  
-	  if(!isSideband) unfoldXJTree_p->Fill();
+	  unfoldXJTree_p->Fill();
 	}
       }
       
       for(unsigned int jI = 0; jI < aktRhi_em_xcalib_jet_pt_p->size(); ++jI){
-	if(aktRhi_em_xcalib_jet_eta_p->at(jI) <= jtEtaBinsLow) continue;
-	if(aktRhi_em_xcalib_jet_eta_p->at(jI) >= jtEtaBinsHigh) continue;
+	Float_t jtEtaToCut = aktRhi_em_xcalib_jet_eta_p->at(jI);
+	if(jtEtaBinsDoAbs) jtEtaToCut = TMath::Abs(jtEtaToCut);
+
+	//continue if eta is outside of cut bounds
+	if(jtEtaToCut <= jtEtaBinsLow) continue;
+	if(jtEtaToCut >= jtEtaBinsHigh) continue;
 	
+	//continue if jet is on top of the photon
 	Float_t dR = getDR(aktRhi_em_xcalib_jet_eta_p->at(jI), aktRhi_em_xcalib_jet_phi_p->at(jI), photon_eta_p->at(phoPos), photon_phi_p->at(phoPos));
 	if(dR < gammaExclusionDR) continue;
 	
-	if(recoJtPtMin > aktRhi_em_xcalib_jet_pt_p->at(jI)) recoJtPtMin = aktRhi_em_xcalib_jet_pt_p->at(jI);
+	if(recoJtPtMin > aktRhi_em_xcalib_jet_pt_p->at(jI)) recoJtPtMin = aktRhi_em_xcalib_jet_pt_p->at(jI);//This is just to check what the input minimum recojtpt is
 	
 	if(isMC){
-	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-	  
 	  int pos = aktRhi_truthpos_p->at(jI);
 	  if(pos >= 0){
 	    if(aktR_truth_jet_pt_p->at(pos) >= jtPtBinsLow && aktR_truth_jet_pt_p->at(pos) < jtPtBinsHigh){
@@ -1912,13 +1896,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    }
 	  }
 	}
-	
-	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-	
+
+	//Continue if reco is outside fiducial region
 	if(aktRhi_em_xcalib_jet_pt_p->at(jI) < jtPtBinsLow) continue;
 	if(aktRhi_em_xcalib_jet_pt_p->at(jI) >= jtPtBinsHigh) continue;
-	
-	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 	
 	TLorentzVector tempJet;
 	tempJet.SetPtEtaPhiM(aktRhi_em_xcalib_jet_pt_p->at(jI), aktRhi_em_xcalib_jet_eta_p->at(jI), aktRhi_em_xcalib_jet_phi_p->at(jI), 0.0);
@@ -1934,9 +1915,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  }
 	  else goodJetsTPos[goodJetsTPos.size()-1] = -1;
 	}
-	
-	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-	
+		
 	Float_t dPhi = TMath::Abs(getDPHI(aktRhi_em_xcalib_jet_phi_p->at(jI), photon_phi_p->at(phoPos)));
 	
 	if(!isSideband){
@@ -1956,7 +1935,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	}
 	
 	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-	
+      
+	//Require jets be 'back-to-back' w/ the photon
 	if(dPhi >= gammaJtDPhiCut){
 	  goodJetsDPhi.push_back(tempJet);
 	  goodJetsDPhiTPos.push_back(-1);
@@ -2014,7 +1994,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  }
 	  else vertZ_Nominal_p->Fill(vert_z_p->size());
 
-	
+		
 	  if(!isSideband){
 	    fillTH1(photonPtVCent_RAW_p[centPos][barrelAndECPos], photon_pt_p->at(phoPos), fullWeight);
 	    
@@ -2025,9 +2005,15 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	      if(truthPhotonPt > 0){
 		if(getDR(photon_eta_p->at(phoPos), photon_phi_p->at(phoPos), truthPhotonEta, truthPhotonPhi) < 0.2){
 		  int truthPos = aktRhi_truthpos_p->at(jI);
-		  if(truthPos >= 0){		    
-		    fillTH2(photonPtJtPtVCent_TRUTH_p[centPos][barrelAndECPos], aktR_truth_jet_pt_p->at(truthPos), truthPhotonPt, fullWeight);
-		    fillTH2(photonPtJtXJVCent_TRUTH_p[centPos][barrelAndECPos], aktR_truth_jet_pt_p->at(truthPos)/truthPhotonPt, truthPhotonPt, fullWeight);
+	
+		  if(truthPos >= 0){
+		    Float_t truthPt = aktR_truth_jet_pt_p->at(truthPos);
+
+		    if(truthPt < jtPtBins[0]) truthPt = jtPtBins[0] + 0.01;
+		    else if(truthPt > jtPtBins[nJtPtBins]) truthPt = jtPtBins[nJtPtBins] - 0.01;
+		    
+		    fillTH2(photonPtJtPtVCent_TRUTH_p[centPos][barrelAndECPos], truthPt, truthPhotonPt, fullWeight);
+		    fillTH2(photonPtJtXJVCent_TRUTH_p[centPos][barrelAndECPos], truthPt/truthPhotonPt, truthPhotonPt, fullWeight);
 		  }
 		}
 	      }
@@ -2104,7 +2090,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	      }
 	    }
 	  }
-	  
+       
 	  ++multCounter;
 	  
 	  if(isMC){
@@ -2253,10 +2239,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	      }
 	    }
 	    
+	  
 	  }
 	}
       }
-      
+    
       if(isMC){
 	if(!isSideband){
 	  fillTH1(photonGenJtMultVCentPt_p[centPos][ptPos], multCounterGen, fullWeight);
@@ -2505,7 +2492,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	}
       }
     }
-   
+  
     if(!isSideband) fillTH2(photonEtaPt_p[centPos], etaValMain, photon_pt_p->at(phoPos), fullWeight);
   }
   
@@ -2807,7 +2794,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	photonPtJtXJVCent_SUBSideband_p[cI][eI]->Add(photonPtJtXJVCent_RAWSideband_p[cI][eI]);
 	photonPtJtXJJVCent_SUBSideband_p[cI][eI]->Add(photonPtJtXJJVCent_RAWSideband_p[cI][eI]);
 	
-
 	if(!isMC){
 	  std::string purityFitStr = "fit_purity_" + centBinsStr[cI] + "_" + barrelAndECFitStr[eI];
 	  TF1* purityFit_p = (TF1*)purityFile_p->Get(purityFitStr.c_str());
@@ -2846,11 +2832,13 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    
 	    Float_t meanVal = totalNum/totalDenom;
 	    Float_t purity = purityFit_p->Eval(meanVal);
+
+	    std::cout << "MEAN AND PURITY " << lowVal << "-" << hiVal << ": " << meanVal << ", " << purity << std::endl;
 	    
 	    std::vector<TH2F*> inSignalHists_p = {photonPtJtPtVCent_SUB_p[cI][eI], photonPtJtXJVCent_SUB_p[cI][eI]};
 	    std::vector<TH2F*> inSidebandHists_p = {photonPtJtPtVCent_SUBSideband_p[cI][eI], photonPtJtXJVCent_SUBSideband_p[cI][eI]};
 	    std::vector<TH2F*> outHists_p = {photonPtJtPtVCent_PURCORR_p[cI][eI], photonPtJtXJVCent_PURCORR_p[cI][eI]};
-	    
+	      
 	    //We will correct the values on a loop
 	    for(unsigned int hI = 0; hI < inSignalHists_p.size(); ++hI){
 	      for(Int_t bIX = 0; bIX < inSignalHists_p[hI]->GetXaxis()->GetNbins(); ++bIX){
@@ -2859,10 +2847,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
 		Float_t binSidebandContent = inSidebandHists_p[hI]->GetBinContent(bIX+1, bIY+1);
 		Float_t binSidebandError = inSidebandHists_p[hI]->GetBinError(bIX+1, bIY+1);
+
+		std::cout << " CALC VAL (1.0 - " << purity << ")*" << binSidebandContent << "*" << totalDenom << "/" << totalSideband << std::endl;
+		std::cout << " CALC ERR (1.0 - " << purity << ")*" << binSidebandError << "*" << totalDenom << "/" << totalSideband << std::endl;
 		
 		binSidebandContent = (1.0 - purity)*binSidebandContent*totalDenom/totalSideband;
 		binSidebandError = (1.0 - purity)*binSidebandError*totalDenom/totalSideband;
 		
+
 		binContent -= binSidebandContent;
 		binError = TMath::Sqrt(binError*binError + binSidebandError*binSidebandError);
 		
