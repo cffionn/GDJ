@@ -615,10 +615,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
   if(gammaEtaBinsSubDoAbs) binsToLabelStr[gammaEtaBinsSubStr[gammaEtaBinsSubStr.size()-1]] = prettyString(gammaEtaBinsSub[0], 2, false) + "<|#eta_{#gamma}|<" + prettyString(gammaEtaBinsSub[nGammaEtaBinsSub], 2, false);
   else binsToLabelStr[gammaEtaBinsSubStr[gammaEtaBinsSubStr.size()-1]] = prettyString(gammaEtaBinsSub[0], 2, false) + " < #eta_{#gamma} < " + prettyString(gammaEtaBinsSub[nGammaEtaBinsSub], 2, false);
 
-
-
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-  
   const Int_t nJtPtBins = config_p->GetValue("NJTPTBINS", 20);
   if(!goodBinning(inConfigFileName, nMaxPtBins, nJtPtBins, "NJTPTBINS")) return 1;
   const Float_t jtPtBinsLow = config_p->GetValue("JTPTBINSLOW", 30.0);
@@ -885,6 +881,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
   TH2F* photonPtJtXJVCent_PURCORR_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtXJJVCent_PURCORR_p[nMaxCentBins][nBarrelAndEC];
 
+  TH2F* photonPtJtPtVCent_TRUTH_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtXJVCent_TRUTH_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtXJJVCent_TRUTH_p[nMaxCentBins][nBarrelAndEC];
+
   TH1F* photonGenJtDPhiVCentPt_p[nMaxCentBins][nMaxSubBins+1];
   TH1F* photonGenJtPtVCentPt_p[nMaxCentBins][nMaxSubBins+1];
   TH1F* photonGenJtEtaVCentPt_p[nMaxCentBins][nMaxSubBins+1];
@@ -900,10 +900,19 @@ int gdjNTupleToHist(std::string inConfigFileName)
   TH1F* photonGenMatchedMultiJtXJJVCentPt_p[nMaxCentBins][nMaxSubBins+1];
   TH1F* photonGenMatchedMultiJtDPhiJJVCentPt_p[nMaxCentBins][nMaxSubBins+1];
   TH1F* photonGenMatchedJtMultVCentPt_p[nMaxCentBins][nMaxSubBins+1];
-
   
   TH1F* photonJtFakeVCentPt_p[nMaxCentBins][nMaxSubBins+1];
+
+  TH1F* vertZ_Nominal_p = new TH1F("vertZ_Nominal_h", ";Number of Vertices;Counts", 9, 0.5, 9.5);
+  TH1F* vertZ_Weird_p = new TH1F("vertZ_Weird_h", ";Number of Vertices;Counts", 9, 0.5, 9.5);
+ 
+  TH2F* leadingTruthPhotonEtaPt_Weird_p = new TH2F("leadingTruthPhotonEtaPt_Weird_h", ";Leading #gamma #eta;Leading #gamma p_{T}", 48, -2.4, 2.4, 100, 100, 500);
+  TH2F* leadingTruthPhotonTypeOrigin_Weird_p = new TH2F("leadingTruthPhotonTypeOrigin_Weird_h", ";Leading #gamma Type;Leading #gamma Origin", 39, -0.5, 38.5, 46, -0.5, 45.5);
   
+  //Type and origin defined here
+  //https://gitlab.cern.ch/atlas/athena/-/blob/21.2/PhysicsAnalysis/MCTruthClassifier/MCTruthClassifier/MCTruthClassifierDefs.h
+
+
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   if(isMC){
@@ -935,9 +944,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	photonGenResVCentEta_p[cI][eI] = new TH2F(("photonGenResVCentEta_" + centBinsStr[cI] + "_" + gammaEtaBinsSubStr[eI] + "_h").c_str(), ";Reco. Photon p_{T};Gen. Photon p_{T}", nGammaPtBins, gammaPtBins, nGammaPtBins, gammaPtBins);
       }
     }
-
-    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
 
     for(Int_t pI = 0; pI < nGammaPtBins+1; ++pI){
       if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
@@ -1102,6 +1108,13 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	photonPtJtXJVCent_PURCORR_p[cI][eI] = new TH2F(("photonPtJtXJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_PURCORR_h").c_str(), ";Reco. x_{J};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
 	photonPtJtXJJVCent_PURCORR_p[cI][eI] = new TH2F(("photonPtJtXJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_PURCORR_h").c_str(), ";Reco. #vec{x}_{JJ#gamma};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
 	setSumW2({photonPtJtPtVCent_SUB_p[cI][eI], photonPtJtXJVCent_SUB_p[cI][eI], photonPtJtXJJVCent_SUB_p[cI][eI], photonPtJtPtVCent_SUBSideband_p[cI][eI], photonPtJtXJVCent_SUBSideband_p[cI][eI], photonPtJtXJJVCent_SUBSideband_p[cI][eI], photonPtJtPtVCent_PURCORR_p[cI][eI], photonPtJtXJVCent_PURCORR_p[cI][eI], photonPtJtXJJVCent_PURCORR_p[cI][eI]});
+
+	if(isMC){
+	  photonPtJtPtVCent_TRUTH_p[cI][eI] = new TH2F(("photonPtJtPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_TRUTH_h").c_str(), ";Reco. Jet p_{T};Reco. Photon p_{T}", nJtPtBins, jtPtBins, nGammaPtBins, gammaPtBins);
+	  photonPtJtXJVCent_TRUTH_p[cI][eI] = new TH2F(("photonPtJtXJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_TRUTH_h").c_str(), ";Reco. x_{J};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+	  photonPtJtXJJVCent_TRUTH_p[cI][eI] = new TH2F(("photonPtJtXJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_TRUTH_h").c_str(), ";Reco. #vec{x}_{JJ#gamma};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+	  setSumW2({photonPtJtPtVCent_TRUTH_p[cI][eI], photonPtJtXJVCent_TRUTH_p[cI][eI], photonPtJtXJJVCent_TRUTH_p[cI][eI]});
+	}
       }
     }
 
@@ -1207,6 +1220,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   float hltPrescaleDelta = 0.01;
   std::vector<bool*> hltVect;
   std::vector<float*> hltPrescaleVect;
+
   Int_t runNumber;
   UInt_t lumiBlock;
   Float_t pthat;
@@ -1223,6 +1237,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
   std::vector<float>* truth_phi_p=nullptr;
   std::vector<float>* truth_eta_p=nullptr;
   std::vector<int>* truth_pdg_p=nullptr;
+  std::vector<int>* truth_type_p=nullptr;
+  std::vector<int>* truth_origin_p=nullptr;
 
   Float_t truthPhotonPt, truthPhotonPhi, truthPhotonEta;
   
@@ -1490,6 +1506,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
     inTree_p->SetBranchStatus("truth_eta", 1);
     inTree_p->SetBranchStatus("truth_phi", 1);
     inTree_p->SetBranchStatus("truth_pdg", 1);
+    inTree_p->SetBranchStatus("truth_origin", 1);
+    inTree_p->SetBranchStatus("truth_type", 1);
 
     inTree_p->SetBranchStatus("truthPhotonPt", 1);
     inTree_p->SetBranchStatus("truthPhotonEta", 1);
@@ -1547,6 +1565,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
     inTree_p->SetBranchAddress("truth_eta", &truth_eta_p);
     inTree_p->SetBranchAddress("truth_phi", &truth_phi_p);
     inTree_p->SetBranchAddress("truth_pdg", &truth_pdg_p);
+    inTree_p->SetBranchAddress("truth_origin", &truth_origin_p);
+    inTree_p->SetBranchAddress("truth_type", &truth_type_p);
 
     inTree_p->SetBranchAddress("truthPhotonPt", &truthPhotonPt);
     inTree_p->SetBranchAddress("truthPhotonEta", &truthPhotonEta);
@@ -1590,9 +1610,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
     perEventPhotonCounts[i] = 0;
   }
 
-
-  Double_t recoJtPtMin = 100000.;
-  
+  Double_t recoJtPtMin = 100000.;  
   ULong64_t nEntriesTemp = inTree_p->GetEntries();
   if(nMaxEvtStr.size() != 0) nEntriesTemp = TMath::Min(nEntriesTemp, nMaxEvt);
   const ULong64_t nEntries = nEntriesTemp;
@@ -1617,6 +1635,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
   for(int i = 0; i < 10; ++i){
     eventCounter[i] = 0;
   }
+
+  int nWeird = 0;
+  std::string weirdStr = "";
   
   for(ULong64_t entry = 0; entry < nEntries; ++entry){
     if(entry%nDiv == 0) std::cout << " Entry " << entry << "/" << nEntries << "..." << std::endl;
@@ -1679,6 +1700,33 @@ int gdjNTupleToHist(std::string inConfigFileName)
     ++(eventCounter[1]);
 
     if(!isMC) fullWeight = 1.0;
+
+    //We need to veto on events w/ undressed background photons sneaking thru - we cannot handle them in MC w/ purity correction as in data
+    if(isMC){
+      Int_t leadingTruthPhotonPos = -1;
+      Int_t leadingTruthPhotonPt = -1;
+      for(unsigned int tI = 0; tI < truth_pt_p->size(); ++tI){
+	if(truth_pdg_p->at(tI) != 22) continue;
+	
+	if(truth_pt_p->at(tI) > leadingTruthPhotonPt){
+	  leadingTruthPhotonPos = tI;
+	  leadingTruthPhotonPt = truth_pt_p->at(tI);
+	}
+      }
+      
+      if(leadingTruthPhotonPos < 0) continue; //You need at least 1 leading photon
+      if(truth_type_p->at(leadingTruthPhotonPos) != 14) continue; // Must be prompt iso
+      if(truth_origin_p->at(leadingTruthPhotonPos) != 37) continue; // Must be origin prompt photon
+
+      /*
+      if(truth_type_p->at(leadingTruthPhotonPos) == 16){//type associated w/ background photon
+	if(truth_origin_p->at(leadingTruthPhotonPos) == 38){//origin is undressed photon
+	  continue;//
+	}
+      }
+      */
+    }
+
   
     Float_t mixWeight = fullWeight/(double)nMixEvents;
 
@@ -1717,28 +1765,35 @@ int gdjNTupleToHist(std::string inConfigFileName)
       fillTH2(photonJtCorrOverUncorrVCentJtEta_p[centPos][etaPos], aktRhi_em_xcalib_jet_uncorrpt_p->at(jI), aktRhi_em_xcalib_jet_pt_p->at(jI)/aktRhi_em_xcalib_jet_uncorrpt_p->at(jI), fullWeight);	  
       fillTH2(photonJtCorrOverUncorrVCentJtEta_p[centPos][nJtEtaBinsSub], aktRhi_em_xcalib_jet_uncorrpt_p->at(jI), aktRhi_em_xcalib_jet_pt_p->at(jI)/aktRhi_em_xcalib_jet_uncorrpt_p->at(jI), fullWeight);	  
     }
-  
+
+ 
     //Check for good photon
-    Int_t phoPos = -1;
-    bool isSideband = false;
+    Float_t leadingPhoPt = -1.0;
+    Int_t leadingPhoPos = -1;
+
     for(unsigned int pI = 0; pI < photon_pt_p->size(); ++pI){
-      if(photon_pt_p->at(pI) < gammaPtBins[0]) continue;
-      if(photon_pt_p->at(pI) >= gammaPtBins[nGammaPtBins]) continue;
-
-      //We need to correct the photon isolation according to functions in photonUtil.h
-      Float_t correctedIso = photon_etcone_p->at(pI);
-      if(doPtIsoCorrection){
-	if(doCentIsoCorrection) correctedIso = getCorrectedPhotonIsolation(isPP, correctedIso, photon_pt_p->at(pI), photon_eta_p->at(pI), cent);
-	else correctedIso = getPtCorrectedPhotonIsolation(correctedIso, photon_pt_p->at(pI), photon_eta_p->at(pI));
+      if(leadingPhoPt < photon_pt_p->at(pI)){
+	leadingPhoPt = photon_pt_p->at(pI);
+	leadingPhoPos = pI;
       }
-      
-      if(!isGoodPhoton(isPP, doPtIsoCorrection, sidebandType, photon_tight_p->at(pI), photon_etcone_p->at(pI), photon_eta_p->at(pI))) continue;
-      isSideband = isSidebandPhoton(isPP, doPtIsoCorrection, sidebandType, photon_tight_p->at(pI), photon_etcone_p->at(pI));      
-      phoPos = pI;
-      break;
-   }
+    }
 
-    if(phoPos < 0) continue;
+    if(leadingPhoPos < 0) continue;
+
+    if(photon_pt_p->at(leadingPhoPos) < gammaPtBins[0]) continue;
+    if(photon_pt_p->at(leadingPhoPos) >= gammaPtBins[nGammaPtBins]) continue;
+
+    //We need to correct the photon isolation according to functions in photonUtil.h
+    Float_t correctedIso = photon_etcone_p->at(leadingPhoPos);
+    if(doPtIsoCorrection){
+      if(doCentIsoCorrection) correctedIso = getCorrectedPhotonIsolation(isPP, correctedIso, photon_pt_p->at(leadingPhoPos), photon_eta_p->at(leadingPhoPos), cent);
+      else correctedIso = getPtCorrectedPhotonIsolation(correctedIso, photon_pt_p->at(leadingPhoPos), photon_eta_p->at(leadingPhoPos));
+    }
+    
+    if(!isGoodPhoton(isPP, doPtIsoCorrection, sidebandType, photon_tight_p->at(leadingPhoPos), photon_etcone_p->at(leadingPhoPos), photon_eta_p->at(leadingPhoPos))) continue;
+    bool isSideband = isSidebandPhoton(isPP, doPtIsoCorrection, sidebandType, photon_tight_p->at(leadingPhoPos), photon_etcone_p->at(leadingPhoPos));      
+    Int_t phoPos = leadingPhoPos;   
+
 
     ++(eventCounter[2]);
 
@@ -1767,7 +1822,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	fillTH1(photonPtVCentEta_p[centPos][etaPos], photon_pt_p->at(phoPos), fullWeight);
 	fillTH1(photonPtVCentEta_p[centPos][nGammaEtaBinsSub], photon_pt_p->at(phoPos), fullWeight);
       }
-      
 
       if(isMC && truthPhotonPt > 0){
 	if(getDR(photon_eta_p->at(phoPos), photon_phi_p->at(phoPos), truthPhotonEta, truthPhotonPhi) < 0.2){  
@@ -1781,8 +1835,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
     }
     
-    if(ptPos >= 0){
-      
+    if(ptPos >= 0){      
       if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
       if(!isMC){
 	++(gammaCountsPerPtCent[ptPos][centPos]);
@@ -1925,20 +1978,61 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    fillTH1(photonJtXJVCentPt_p[centPos][ptPos], aktRhi_em_xcalib_jet_pt_p->at(jI)/photon_pt_p->at(phoPos), fullWeight);
 	    fillTH1(photonJtXJVCentPt_p[centPos][nGammaPtBins], aktRhi_em_xcalib_jet_pt_p->at(jI)/photon_pt_p->at(phoPos), fullWeight);
 	  }
+	
+	  if(ptPos == 0 && aktRhi_em_xcalib_jet_pt_p->at(jI) > 200 && !isSideband){
+	    vertZ_Weird_p->Fill(vert_z_p->size());
 
-	  if(ptPos == 0 && aktRhi_em_xcalib_jet_pt_p->at(jI) > 300 && !isSideband && false){
+	    if(isMC){
+	      Float_t leadingTruthPhotonPt = -1.0;
+	      Int_t leadingTruthPhotonPos = -1;
+	      for(unsigned int i = 0; i < truth_pt_p->size(); ++i){
+		if(truth_pdg_p->at(i) != 22) continue;
+		if(truth_pt_p->at(i) < leadingTruthPhotonPt) continue;
+		
+		leadingTruthPhotonPt = truth_pt_p->at(i);
+		leadingTruthPhotonPos = i;
+	      }
+	      
+	      if(leadingTruthPhotonPos >= 0){
+		leadingTruthPhotonEtaPt_Weird_p->Fill(truth_eta_p->at(leadingTruthPhotonPos), leadingTruthPhotonPt);
+		leadingTruthPhotonTypeOrigin_Weird_p->Fill(truth_type_p->at(leadingTruthPhotonPos), truth_origin_p->at(leadingTruthPhotonPos));
+	      }
+	    }
+
 	    std::cout << std::endl;
 	    std::cout << "WEIRD ASS EVENT ALERT (Entry=" << entry << "):" << std::endl;
 	    std::cout << " pthat: " << pthat << std::endl;
 	    std::cout << " gamma pt eta phi: " << photon_pt_p->at(phoPos) << ", " << photon_eta_p->at(phoPos) << ", " << photon_phi_p->at(phoPos) << std::endl;
 	    std::cout << " jet pt eta phi: " << aktRhi_em_xcalib_jet_pt_p->at(jI) << ", " << aktRhi_em_xcalib_jet_eta_p->at(jI) << ", " << aktRhi_em_xcalib_jet_phi_p->at(jI) << std::endl;
+
+	    if(nWeird < 10){
+	      if(weirdStr.size() == 0) weirdStr = "Entry$ == " + std::to_string(entry);
+	      else weirdStr = weirdStr + " || Entry$ == " + std::to_string(entry);
+
+	      ++nWeird;
+	    }
 	  }
-	  
+	  else vertZ_Nominal_p->Fill(vert_z_p->size());
+
+	
 	  if(!isSideband){
 	    fillTH1(photonPtVCent_RAW_p[centPos][barrelAndECPos], photon_pt_p->at(phoPos), fullWeight);
 	    
 	    fillTH2(photonPtJtPtVCent_RAW_p[centPos][barrelAndECPos], aktRhi_em_xcalib_jet_pt_p->at(jI), photon_pt_p->at(phoPos), fullWeight);
 	    fillTH2(photonPtJtXJVCent_RAW_p[centPos][barrelAndECPos], aktRhi_em_xcalib_jet_pt_p->at(jI)/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);
+
+	    if(isMC){
+	      if(truthPhotonPt > 0){
+		if(getDR(photon_eta_p->at(phoPos), photon_phi_p->at(phoPos), truthPhotonEta, truthPhotonPhi) < 0.2){
+		  int truthPos = aktRhi_truthpos_p->at(jI);
+		  if(truthPos >= 0){		    
+		    fillTH2(photonPtJtPtVCent_TRUTH_p[centPos][barrelAndECPos], aktR_truth_jet_pt_p->at(truthPos), truthPhotonPt, fullWeight);
+		    fillTH2(photonPtJtXJVCent_TRUTH_p[centPos][barrelAndECPos], aktR_truth_jet_pt_p->at(truthPos)/truthPhotonPt, truthPhotonPt, fullWeight);
+		  }
+		}
+	      }
+	    }
+	    
 	  }
 	  else{
 	    fillTH1(photonPtVCent_RAWSideband_p[centPos][barrelAndECPos], photon_pt_p->at(phoPos), fullWeight);
@@ -2473,6 +2567,20 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
   outFile_p->cd();
 
+  std::cout << weirdStr << std::endl;
+
+  vertZ_Nominal_p->Write("", TObject::kOverwrite);
+  vertZ_Weird_p->Write("", TObject::kOverwrite);
+
+  leadingTruthPhotonEtaPt_Weird_p->Write("", TObject::kOverwrite);
+  leadingTruthPhotonTypeOrigin_Weird_p->Write("", TObject::kOverwrite);
+
+  delete vertZ_Nominal_p;
+  delete vertZ_Weird_p;
+
+  delete leadingTruthPhotonEtaPt_Weird_p;
+  delete leadingTruthPhotonTypeOrigin_Weird_p;
+  
   if(isMC){
     unfoldXJTree_p->Write("", TObject::kOverwrite);
     delete unfoldXJTree_p;
@@ -3006,6 +3114,12 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	photonPtJtPtVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtJtXJVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtJtXJJVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
+
+	if(isMC){
+	  photonPtJtPtVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtXJVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtXJJVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
+	}
       }
       else if(isPP){
 	photonPtJtPtVCent_SUB_p[cI][eI]->Write("", TObject::kOverwrite);
@@ -3019,6 +3133,12 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	photonPtJtPtVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtJtXJVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtJtXJJVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
+
+	if(isMC){
+	  photonPtJtPtVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtXJVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtXJJVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
+	}
       }
     }    
 
@@ -3288,6 +3408,12 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	delete photonPtJtPtVCent_PURCORR_p[cI][eI];
 	delete photonPtJtXJVCent_PURCORR_p[cI][eI];
 	delete photonPtJtXJJVCent_PURCORR_p[cI][eI];
+
+	if(isMC){
+	  delete photonPtJtPtVCent_TRUTH_p[cI][eI];
+	  delete photonPtJtXJVCent_TRUTH_p[cI][eI];
+	  delete photonPtJtXJJVCent_TRUTH_p[cI][eI];
+	}
       }
       else if(isPP){
 	delete photonPtJtPtVCent_SUB_p[cI][eI];
@@ -3301,6 +3427,12 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	delete photonPtJtPtVCent_PURCORR_p[cI][eI];
 	delete photonPtJtXJVCent_PURCORR_p[cI][eI];
 	delete photonPtJtXJJVCent_PURCORR_p[cI][eI];
+
+	if(isMC){
+	  delete photonPtJtPtVCent_TRUTH_p[cI][eI];
+	  delete photonPtJtXJVCent_TRUTH_p[cI][eI];
+	  delete photonPtJtXJJVCent_TRUTH_p[cI][eI];
+	}
       }
     }      
 
