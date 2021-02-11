@@ -13,7 +13,7 @@
 void getIterativeHists(std::vector<TH1F*> inUnfoldedHists_p, TH1F* statDelta_p, TH1F* iterDelta_p, TH1F* totalDelta_p)
 {
   const Int_t nIter = inUnfoldedHists_p.size();
-  const Int_t nBins = nIter - 1;
+  const Int_t nBins = nIter;
 
   if(nBins == 0){
     std::cout << "getIterativeHists Error: Given unfolding histogram vector has size \'" << nIter << "\', must have at least 2 iterations to eval. return" << std::endl;
@@ -51,14 +51,14 @@ void getIterativeHists(std::vector<TH1F*> inUnfoldedHists_p, TH1F* statDelta_p, 
 
     Float_t deltaTot = deltaIter + deltaStat;
 
-    statDelta_p->SetBinContent(i-1, TMath::Sqrt(deltaStat));
-    statDelta_p->SetBinError(i-1, 0.0);
+    statDelta_p->SetBinContent(i, TMath::Sqrt(deltaStat));
+    statDelta_p->SetBinError(i, 0.0);
     
-    iterDelta_p->SetBinContent(i-1, TMath::Sqrt(deltaIter));
-    iterDelta_p->SetBinError(i-1, 0.0);
+    iterDelta_p->SetBinContent(i, TMath::Sqrt(deltaIter));
+    iterDelta_p->SetBinError(i, 0.0);
     
-    totalDelta_p->SetBinContent(i-1, TMath::Sqrt(deltaTot));
-    totalDelta_p->SetBinError(i-1, 0.0);
+    totalDelta_p->SetBinContent(i, TMath::Sqrt(deltaTot));
+    totalDelta_p->SetBinError(i, 0.0);
   }
     
   return;
@@ -68,7 +68,7 @@ void getIterativeHists(std::vector<TH1F*> inUnfoldedHists_p, TH1F* statDelta_p, 
 void getIterativeHists2D(std::vector<TH2F*> inUnfoldedHists_p, TH1F* statDelta_p, TH1F* iterDelta_p, TH1F* totalDelta_p)
 {
   const Int_t nIter = inUnfoldedHists_p.size();
-  const Int_t nBins = nIter - 1;
+  const Int_t nBins = nIter;
 
   if(nBins == 0){
     std::cout << "getIterativeHists Error: Given unfolding histogram vector has size \'" << nIter << "\', must have at least 2 iterations to eval. return" << std::endl;
@@ -108,14 +108,14 @@ void getIterativeHists2D(std::vector<TH2F*> inUnfoldedHists_p, TH1F* statDelta_p
     
     Float_t deltaTot = deltaIter + deltaStat;
 
-    statDelta_p->SetBinContent(i-1, TMath::Sqrt(deltaStat));
-    statDelta_p->SetBinError(i-1, 0.0);
+    statDelta_p->SetBinContent(i, TMath::Sqrt(deltaStat));
+    statDelta_p->SetBinError(i, 0.0);
     
-    iterDelta_p->SetBinContent(i-1, TMath::Sqrt(deltaIter));
-    iterDelta_p->SetBinError(i-1, 0.0);
+    iterDelta_p->SetBinContent(i, TMath::Sqrt(deltaIter));
+    iterDelta_p->SetBinError(i, 0.0);
     
-    totalDelta_p->SetBinContent(i-1, TMath::Sqrt(deltaTot));
-    totalDelta_p->SetBinError(i-1, 0.0);
+    totalDelta_p->SetBinContent(i, TMath::Sqrt(deltaTot));
+    totalDelta_p->SetBinError(i, 0.0);
   }
     
   return;
