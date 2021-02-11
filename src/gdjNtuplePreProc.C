@@ -64,6 +64,8 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   centralityFromInput centTable(inCentFileName);
   if(doGlobalDebug) centTable.PrintTableTex();
 
+  std::string weirdStr = "";
+
   //NColl weights
   std::vector<double> ncollWeights;
   std::vector<double> centCounts;
@@ -1071,7 +1073,6 @@ int gdjNtuplePreProc(std::string inConfigFileName)
     }
 
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
   
     const ULong64_t nEntries = inTree_p->GetEntries();
     for(ULong64_t entry = 0; entry < nEntries; ++entry){

@@ -909,10 +909,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
   TH2F* leadingTruthPhotonEtaPt_Weird_p = new TH2F("leadingTruthPhotonEtaPt_Weird_h", ";Leading #gamma #eta;Leading #gamma p_{T}", 48, -2.4, 2.4, 100, 100, 500);
   TH2F* leadingTruthPhotonTypeOrigin_Weird_p = new TH2F("leadingTruthPhotonTypeOrigin_Weird_h", ";Leading #gamma Type;Leading #gamma Origin", 39, -0.5, 38.5, 46, -0.5, 45.5);
   
+  TH1F* dPhi_Weird_p = new TH1F("dPhi_Weird_h", ";#Delta#phi_{#gamma,jet};Counts", 31, 0.0, TMath::Pi()+0.001);
+  
   //Type and origin defined here
   //https://gitlab.cern.ch/atlas/athena/-/blob/21.2/PhysicsAnalysis/MCTruthClassifier/MCTruthClassifier/MCTruthClassifierDefs.h
-
-
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   if(isMC){
@@ -1962,6 +1962,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  if(ptPos == 0 && aktRhi_em_xcalib_jet_pt_p->at(jI) > 200 && !isSideband){
 	    vertZ_Weird_p->Fill(vert_z_p->size());
 
+	    dPhi_Weird_p->Fill(dPhi);
+
 	    if(isMC){
 	      Float_t leadingTruthPhotonPt = -1.0;
 	      Int_t leadingTruthPhotonPos = -1;
@@ -1981,7 +1983,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
 	    std::cout << std::endl;
 	    std::cout << "WEIRD ASS EVENT ALERT (Entry=" << entry << "):" << std::endl;
-	    std::cout << " pthat: " << pthat << std::endl;
+	    std::cout << " pthat, dphi: " << pthat << ", " << dPhi << std::endl;
 	    std::cout << " gamma pt eta phi: " << photon_pt_p->at(phoPos) << ", " << photon_eta_p->at(phoPos) << ", " << photon_phi_p->at(phoPos) << std::endl;
 	    std::cout << " jet pt eta phi: " << aktRhi_em_xcalib_jet_pt_p->at(jI) << ", " << aktRhi_em_xcalib_jet_eta_p->at(jI) << ", " << aktRhi_em_xcalib_jet_phi_p->at(jI) << std::endl;
 
@@ -2559,12 +2561,15 @@ int gdjNTupleToHist(std::string inConfigFileName)
   vertZ_Nominal_p->Write("", TObject::kOverwrite);
   vertZ_Weird_p->Write("", TObject::kOverwrite);
 
+  dPhi_Weird_p->Write("", TObject::kOverwrite);
+
   leadingTruthPhotonEtaPt_Weird_p->Write("", TObject::kOverwrite);
   leadingTruthPhotonTypeOrigin_Weird_p->Write("", TObject::kOverwrite);
 
   delete vertZ_Nominal_p;
   delete vertZ_Weird_p;
 
+  delete dPhi_Weird_p;
   delete leadingTruthPhotonEtaPt_Weird_p;
   delete leadingTruthPhotonTypeOrigin_Weird_p;
   
