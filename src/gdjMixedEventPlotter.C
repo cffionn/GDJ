@@ -107,13 +107,14 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
   }
   if(labelStr.size() != 0) preLabels.push_back(labelStr);
     
-  Double_t padSplit = 0.375;
+  Double_t padSplit1 = 0.375;
+  Double_t padSplit2 = 0.215;
   const Double_t leftMargin = 0.16;
-  const Double_t bottomMargin = 0.125/padSplit;
+  const Double_t bottomMargin = 0.125/padSplit2;
   const Double_t topMargin = 0.01;
   const Double_t rightMargin = 0.01;
   Double_t height = 450.0;
-  Double_t width = height*(1.0 - topMargin*(1.0 - padSplit) - bottomMargin*padSplit)/(1.0 - leftMargin - rightMargin);
+  Double_t width = height*(1.0 - topMargin*(1.0 - padSplit1) - bottomMargin*padSplit2)/(1.0 - leftMargin - rightMargin);
 
 
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
@@ -124,19 +125,19 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
   TLatex* label_p = new TLatex();
   label_p->SetNDC();
   label_p->SetTextFont(titleFont);
-  label_p->SetTextSize(titleSize/(1.0 - padSplit));
+  label_p->SetTextSize(titleSize/(1.0 - padSplit1));
 
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
   TCanvas* canv_p = new TCanvas("canv_p", "", width, height);
-  TPad* pads_p[2];
+  TPad* pads_p[3];
   canv_p->SetTopMargin(0.001);
   canv_p->SetRightMargin(0.001);
   canv_p->SetLeftMargin(0.001);
   canv_p->SetBottomMargin(0.001);
   canv_p->cd();
   
-  pads_p[0] = new TPad("pad0", "", 0.0, padSplit, 1.0, 1.0);
+  pads_p[0] = new TPad("pad0", "", 0.0, padSplit1, 1.0, 1.0);
   pads_p[0]->SetTopMargin(topMargin);
   pads_p[0]->SetRightMargin(rightMargin);
   pads_p[0]->SetLeftMargin(leftMargin);
@@ -149,17 +150,28 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
 
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
-  pads_p[1] = new TPad("pad1", "", 0.0, 0.0, 1.0, padSplit);
+  pads_p[1] = new TPad("pad1", "", 0.0, padSplit2, 1.0, padSplit1);
   pads_p[1]->SetTopMargin(0.001);
   pads_p[1]->SetRightMargin(rightMargin);
   pads_p[1]->SetLeftMargin(leftMargin);
-  pads_p[1]->SetBottomMargin(bottomMargin);
+  pads_p[1]->SetBottomMargin(0.001);
 
   canv_p->cd();
   pads_p[1]->Draw("SAME");
   pads_p[1]->cd();
   canv_p->cd();
 
+  pads_p[2] = new TPad("pad1", "", 0.0, 0.0, 1.0, padSplit2);
+  pads_p[2]->SetTopMargin(0.001);
+  pads_p[2]->SetRightMargin(rightMargin);
+  pads_p[2]->SetLeftMargin(leftMargin);
+  pads_p[2]->SetBottomMargin(bottomMargin);
+
+  canv_p->cd();
+  pads_p[2]->Draw("SAME");
+  pads_p[2]->cd();
+  canv_p->cd();
+  
   
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
@@ -172,9 +184,9 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
     if(legStrs[lI].size() > (unsigned int)maxLegX) maxLegX = legStrs[lI].size();
   }
 
-  TLegend* leg_p = new TLegend(legX, legY - nLeg*0.04/(1.0 - padSplit), legX + maxLegX*0.02, legY);
+  TLegend* leg_p = new TLegend(legX, legY - nLeg*0.04/(1.0 - padSplit1), legX + maxLegX*0.02, legY);
   leg_p->SetTextFont(titleFont);
-  leg_p->SetTextSize(titleSize/(1.0-padSplit));
+  leg_p->SetTextSize(titleSize/(1.0-padSplit1));
   leg_p->SetBorderSize(0);
   leg_p->SetFillColor(0);
   leg_p->SetFillStyle(0);
@@ -197,12 +209,12 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
     hists_p[cI]->GetXaxis()->SetTitleFont(titleFont);
     hists_p[cI]->GetYaxis()->SetTitleFont(titleFont);
     hists_p[cI]->GetXaxis()->SetTitleSize(0.00001);
-    hists_p[cI]->GetYaxis()->SetTitleSize(titleSize/(1.0-padSplit));
+    hists_p[cI]->GetYaxis()->SetTitleSize(titleSize/(1.0-padSplit1));
 
     hists_p[cI]->GetXaxis()->SetLabelFont(titleFont);
     hists_p[cI]->GetYaxis()->SetLabelFont(titleFont);
     hists_p[cI]->GetXaxis()->SetLabelSize(0.00001);
-    hists_p[cI]->GetYaxis()->SetLabelSize(labelSize/(1.0-padSplit));
+    hists_p[cI]->GetYaxis()->SetLabelSize(labelSize/(1.0-padSplit1));
     
     hists_p[cI]->GetYaxis()->SetNdivisions(505);
     hists_p[cI]->GetXaxis()->SetNdivisions(505);
@@ -227,17 +239,17 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
       yTitle = yTitle + " (ZOOM)";
       hists_p[cI]->GetYaxis()->SetTitle(yTitle.c_str());
       hists_p[cI]->GetXaxis()->SetTitleOffset(1.2);
-      hists_p[cI]->GetYaxis()->SetTitleOffset(yOffset*padSplit/(1.0-padSplit));
+      hists_p[cI]->GetYaxis()->SetTitleOffset(yOffset*padSplit1/(1.0-padSplit1));
       
       hists_p[cI]->GetXaxis()->SetTitleFont(titleFont);
       hists_p[cI]->GetYaxis()->SetTitleFont(titleFont);
-      hists_p[cI]->GetXaxis()->SetTitleSize(titleSize/(padSplit));
-      hists_p[cI]->GetYaxis()->SetTitleSize(titleSize/(padSplit));
+      hists_p[cI]->GetXaxis()->SetTitleSize(titleSize/(padSplit1));
+      hists_p[cI]->GetYaxis()->SetTitleSize(titleSize/(padSplit1));
       
       hists_p[cI]->GetXaxis()->SetLabelFont(titleFont);
       hists_p[cI]->GetYaxis()->SetLabelFont(titleFont);
-      hists_p[cI]->GetXaxis()->SetLabelSize(labelSize/(padSplit));
-      hists_p[cI]->GetYaxis()->SetLabelSize(labelSize/(padSplit));
+      hists_p[cI]->GetXaxis()->SetLabelSize(labelSize/(padSplit1));
+      hists_p[cI]->GetYaxis()->SetLabelSize(labelSize/(padSplit1));
       
       hists_p[cI]->GetYaxis()->SetNdivisions(505);
       
@@ -252,17 +264,17 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
       
       hists_p[cI]->GetYaxis()->SetTitle("(Raw - Mixed)/Gen.");
       hists_p[cI]->GetXaxis()->SetTitleOffset(1.2);
-      hists_p[cI]->GetYaxis()->SetTitleOffset(yOffset*padSplit/(1.0-padSplit));
+      hists_p[cI]->GetYaxis()->SetTitleOffset(yOffset*padSplit1/(1.0-padSplit1));
       
       hists_p[cI]->GetXaxis()->SetTitleFont(titleFont);
       hists_p[cI]->GetYaxis()->SetTitleFont(titleFont);
-      hists_p[cI]->GetXaxis()->SetTitleSize(titleSize/(padSplit));
-      hists_p[cI]->GetYaxis()->SetTitleSize(titleSize/(padSplit));
+      hists_p[cI]->GetXaxis()->SetTitleSize(titleSize/(padSplit1));
+      hists_p[cI]->GetYaxis()->SetTitleSize(titleSize/(padSplit1));
       
       hists_p[cI]->GetXaxis()->SetLabelFont(titleFont);
       hists_p[cI]->GetYaxis()->SetLabelFont(titleFont);
-      hists_p[cI]->GetXaxis()->SetLabelSize(labelSize/(padSplit));
-      hists_p[cI]->GetYaxis()->SetLabelSize(labelSize/(padSplit));
+      hists_p[cI]->GetXaxis()->SetLabelSize(labelSize/(padSplit1));
+      hists_p[cI]->GetYaxis()->SetLabelSize(labelSize/(padSplit1));
       
       hists_p[cI]->GetYaxis()->SetNdivisions(505);
       
@@ -396,13 +408,16 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
     drawWhiteBoxNDC(canv_p, generalBoxes[gI][0], generalBoxes[gI][1], generalBoxes[gI][2], generalBoxes[gI][3]);
   }
 
-  std::string saveName = "pdfDir/" + dateStr + "/" + preStr + "_" + preLabelSaveStr + dateStr + ".pdf";
+  std::string extStr = plotConfig_p->GetValue("SAVEEXT", "");
+  if(extStr.substr(0,1).find(".") == std::string::npos) extStr = "." + extStr;
+  std::string saveName = "pdfDir/" + dateStr + "/" + preStr + "_" + preLabelSaveStr + dateStr + extStr;
   quietSaveAs(canv_p, saveName);
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
   delete leg_p;
   delete pads_p[0];
   delete pads_p[1];
+  delete pads_p[2];
   delete canv_p;
 
   delete line_p;
@@ -423,12 +438,23 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 
   TEnv* plotConfig_p = new TEnv(inConfigFileName.c_str());
 
-  std::vector<std::string> reqConfigParams = {"MIXEDEVTPLOT.INFILENAME"};
+  std::vector<std::string> reqConfigParams = {"MIXEDEVTPLOT.INFILENAME", "SAVEEXT"};
   if(!checkEnvForParams(plotConfig_p, reqConfigParams)) return 1;
 
   std::string inFileName = plotConfig_p->GetValue("MIXEDEVTPLOT.INFILENAME", "");
   if(!check.checkFileExt(inFileName, "root")) return 1;
 
+  const std::string extStr = plotConfig_p->GetValue("SAVEEXT", "");
+  std::vector<std::string> validExt = {"pdf", "png"};
+  if(!vectContainsStr(extStr, &validExt)){
+    std::cout << "Given extension \'" << extStr << "\' is not valid. Please pick from:" << std::endl;
+    for(unsigned int eI = 0; eI < validExt.size(); ++eI){
+      std::cout << " " << validExt[eI] << std::endl;
+    }
+    std::cout << "return 1. " << std::endl;
+    return 1;
+  }
+  
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
   const std::string dateStr = getDateStr();
