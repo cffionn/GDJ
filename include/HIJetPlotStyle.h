@@ -26,9 +26,9 @@ namespace HIJet
 				      1,1,1.6,1,1,
 				      1,1,1.6,1.2};
 
-    const float opacity_scheme[NSTYLES]={0.5,0.5,0.5,0.5,0.5,
-					 0.5,0.5,0.5,0.5,0.5,
-					 0.5,0.5,0.5,0.5,0.5};
+    const float opacity_scheme[NSTYLES]={0.3,0.3,0.3,0.3,0.3,
+					 0.3,0.3,0.3,0.3,0.3,
+					 0.3,0.3,0.3,0.3,0.3};
     
     const Width_t line_width=1;
     const int Npx=1000;
