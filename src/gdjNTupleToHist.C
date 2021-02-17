@@ -407,7 +407,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   const bool doPtIsoCorrection = config_p->GetValue("DOPTISOCORRECTION", 1);
   const bool doCentIsoCorrection = config_p->GetValue("DOCENTISOCORRECTION", 1);
   const int isolationR = config_p->GetValue("ISOLATIONR", 3);
-  const int sidebandType = config_p->GetValue("SIDEBANDTYPE", 2);
+  const photonType sidebandType = (photonType)config_p->GetValue("SIDEBANDTYPE", 2);
 
   std::vector<int> validIsoR = {2,3,4};
   std::vector<int> validSidebandType = {1,2,3,4,5};
@@ -1783,6 +1783,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
     ++(eventCounter[4]);
 
+
     bool isSideband = isSidebandPhoton(isPP, doPtIsoCorrection, sidebandType, photon_tight_p->at(leadingPhoPos), correctedIso);
     const Int_t phoPos = leadingPhoPos;   
      
@@ -1981,11 +1982,13 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	      }
 	    }
 
-	    std::cout << std::endl;
-	    std::cout << "WEIRD ASS EVENT ALERT (Entry=" << entry << "):" << std::endl;
-	    std::cout << " pthat, dphi: " << pthat << ", " << dPhi << std::endl;
-	    std::cout << " gamma pt eta phi: " << photon_pt_p->at(phoPos) << ", " << photon_eta_p->at(phoPos) << ", " << photon_phi_p->at(phoPos) << std::endl;
-	    std::cout << " jet pt eta phi: " << aktRhi_em_xcalib_jet_pt_p->at(jI) << ", " << aktRhi_em_xcalib_jet_eta_p->at(jI) << ", " << aktRhi_em_xcalib_jet_phi_p->at(jI) << std::endl;
+	    if(false){
+	      std::cout << std::endl;
+	      std::cout << "WEIRD ASS EVENT ALERT (Entry=" << entry << "):" << std::endl;
+	      std::cout << " pthat, dphi: " << pthat << ", " << dPhi << std::endl;
+	      std::cout << " gamma pt eta phi: " << photon_pt_p->at(phoPos) << ", " << photon_eta_p->at(phoPos) << ", " << photon_phi_p->at(phoPos) << std::endl;
+	      std::cout << " jet pt eta phi: " << aktRhi_em_xcalib_jet_pt_p->at(jI) << ", " << aktRhi_em_xcalib_jet_eta_p->at(jI) << ", " << aktRhi_em_xcalib_jet_phi_p->at(jI) << std::endl;
+	    }
 
 	    if(nWeird < 10){
 	      if(weirdStr.size() == 0) weirdStr = "Entry$ == " + std::to_string(entry);
@@ -2853,8 +2856,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		Float_t binSidebandContent = inSidebandHists_p[hI]->GetBinContent(bIX+1, bIY+1);
 		Float_t binSidebandError = inSidebandHists_p[hI]->GetBinError(bIX+1, bIY+1);
 
-		std::cout << " CALC VAL (1.0 - " << purity << ")*" << binSidebandContent << "*" << totalDenom << "/" << totalSideband << std::endl;
-		std::cout << " CALC ERR (1.0 - " << purity << ")*" << binSidebandError << "*" << totalDenom << "/" << totalSideband << std::endl;
+		//		std::cout << " CALC VAL (1.0 - " << purity << ")*" << binSidebandContent << "*" << totalDenom << "/" << totalSideband << std::endl;
+		//		std::cout << " CALC ERR (1.0 - " << purity << ")*" << binSidebandError << "*" << totalDenom << "/" << totalSideband << std::endl;
 		
 		binSidebandContent = (1.0 - purity)*binSidebandContent*totalDenom/totalSideband;
 		binSidebandError = (1.0 - purity)*binSidebandError*totalDenom/totalSideband;
