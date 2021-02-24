@@ -61,4 +61,32 @@ inline std::string mathStringToNameStr(std::string inStr, const bool doGlobalDeb
   return inStr;
 }
 
+inline void binWidthNorm(TH1* inHist_p)
+{
+  for(Int_t i = 0; i < inHist_p->GetNbinsX(); ++i){
+    Double_t binContent = inHist_p->GetBinContent(i+1);
+    Double_t binError = inHist_p->GetBinError(i+1);
+    Double_t binWidth = inHist_p->GetBinWidth(i+1);
+
+    inHist_p->SetBinContent(i+1, binContent/binWidth);
+    inHist_p->SetBinError(i+1, binError/binWidth);
+  }
+  return;
+}
+
+inline void binWidthAndScaleNorm(TH1* inHist_p, double scale)
+{
+  binWidthNorm(inHist_p);
+  inHist_p->Scale(1./scale);
+
+  return;
+}
+
+inline void binWidthAndSelfNorm(TH1* inHist_p)
+{
+  binWidthAndScaleNorm(inHist_p, inHist_p->Integral());
+
+  return;
+}
+
 #endif

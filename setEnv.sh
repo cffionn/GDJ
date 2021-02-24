@@ -1,10 +1,10 @@
 #!/bin/bash
 
-GDJDIR=/usatlas/u/cfmcginn/Projects/GDJ/
+GDJDIR=/home/cfmcginn/Projects/GDJ/
 GDJDIRLIB="$GDJDIR"lib
-#ROOUNFOLDDIR=/home/cfmcginn/Packages/RooUnfold/RooUnfold-build/
+ROOUNFOLDDIR=/home/cfmcginn/Packages/RooUnfold/RooUnfold-build/
 #THIS IS A DUMMY FOR MAKE - UNFOLD HAPPENS OFFLINE
-ROOUNFOLDDIR=$GDJDIR
+#ROOUNFOLDDIR=$GDJDIR
 
 if [[ -d $GDJDIR ]]
 then

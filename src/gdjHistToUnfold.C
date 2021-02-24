@@ -70,7 +70,8 @@ int gdjHistToUnfold(std::string inConfigFileName)
 					      "INUNFOLDFILENAME",
 					      "VARNAME",
                                               "OUTFILENAME",
-					      "NITER"};
+					      "NITER",
+					      "DOREWEIGHT"};
 
   if(!checkEnvForParams(config_p, necessaryParams)) return 1;
  
@@ -81,12 +82,12 @@ int gdjHistToUnfold(std::string inConfigFileName)
   std::string varNameLower = returnAllLowercaseString(varName);
 
   const int nIter = config_p->GetValue("NITER", -1);
+  const bool doReweight = config_p->GetValue("DOREWEIGHT", 0);
   const int nIterMax = 100;
   if(nIter > nIterMax){
     std::cout << "Requested number of iterations \'" << nIter << "\' exceeds maximum allowed \'" << nIterMax << "\'" << std::endl;
   }
   
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   if(outFileName.find(".root") != std::string::npos){
     outFileName.replace(outFileName.rfind(".root"), 5, "");
     outFileName = outFileName + "_" + dateStr + ".root";
@@ -96,8 +97,6 @@ int gdjHistToUnfold(std::string inConfigFileName)
     outFileName = "output/" + dateStr + "/" + outFileName;
   }
   
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
   std::vector<std::string> validUnfoldVar = {"Pt", "XJ", "XJJ"};
   std::vector<std::string> validUnfoldVarTree = {"XJ", "XJ", "XJJ"};
   std::vector<std::string> validUnfoldVarStyle = {"Jet p_{T}", "x_{J}", "#vec{x}_{JJ#gamma}"};
@@ -329,7 +328,6 @@ int gdjHistToUnfold(std::string inConfigFileName)
       varBins[vI] = xjBins[vI];
     }
   }
-
   
   //Construct matrices
   outFile_p->cd();
@@ -344,20 +342,15 @@ int gdjHistToUnfold(std::string inConfigFileName)
     photonPtJetXJReco_HalfToUnfold_p[cI] = new TH2F(("photonPtJet" + varName + "Reco_HalfToUnfold_" + centBinsStr[cI] + "_h").c_str(), (";Reco. " + varNameStyle + ";Reco. Photon p_{T}").c_str(), nVarBins, varBins, nGammaPtBins, gammaPtBins);
     photonPtJetXJTruth_HalfToUnfold_p[cI] = new TH2F(("photonPtJet" + varName + "Truth_HalfToUnfold_" + centBinsStr[cI] + "_h").c_str(), (";Truth " + varNameStyle + ";Truth Photon p_{T}").c_str(), nVarBins, varBins, nGammaPtBins, gammaPtBins);
     
-    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-    if(doGlobalDebug) std::cout << centBinsStr[cI] + "/photonPtJt" + varName + "VCent_" + centBinsStr[cI] + "_" + gammaJtDPhiStr + "_PURCORR_h" << std::endl;
-    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
     for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
       photonPtJetXJReco_PURCORR_p[cI][eI] = (TH2F*)inUnfoldFile_p->Get((centBinsStr[cI] + "/photonPtJt" + varName + "VCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_PURCORR_h").c_str());     
-      if(isMC) photonPtJetXJReco_TRUTH_p[cI][eI] = (TH2F*)inUnfoldFile_p->Get((centBinsStr[cI] + "/photonPtJt" + varName + "VCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_TRUTH_h").c_str());     
-    }   
+      if(isMC) photonPtJetXJReco_TRUTH_p[cI][eI] = (TH2F*)inUnfoldFile_p->Get((centBinsStr[cI] + "/photonPtJt" + varName + "VCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_TRUTH_h").c_str());
+      else photonPtJetXJReco_TRUTH_p[cI][eI] = (TH2F*)inResponseFile_p->Get((centBinsStr[cI] + "/photonPtJt" + varName + "VCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_TRUTH_h").c_str());   
+    }
     
     photonPtJetXJReco_PURCORR_COMBINED_p[cI] = new TH2F(("photonPtJt" + varName + "VCent_" + centBinsStr[cI] + "_" + gammaJtDPhiStr + "_PURCORR_COMBINED_h").c_str(), (";Reco. " + varNameStyle + ";Reco. Photon p_{T}").c_str(), nVarBins, varBins, nGammaPtBins, gammaPtBins);
     
-    if(isMC) photonPtJetXJReco_TRUTH_COMBINED_p[cI] = new TH2F(("photonPtJt" + varName + "VCent_" + centBinsStr[cI] + "_" + gammaJtDPhiStr + "_TRUTH_COMBINED_h").c_str(), (";Reco. " + varNameStyle + ";Reco. Photon p_{T}").c_str(), nVarBins, varBins, nGammaPtBins, gammaPtBins);   
-
-    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+    photonPtJetXJReco_TRUTH_COMBINED_p[cI] = new TH2F(("photonPtJt" + varName + "VCent_" + centBinsStr[cI] + "_" + gammaJtDPhiStr + "_TRUTH_COMBINED_h").c_str(), (";Reco. " + varNameStyle + ";Reco. Photon p_{T}").c_str(), nVarBins, varBins, nGammaPtBins, gammaPtBins);   
 
     for(Int_t bIX = 0; bIX < photonPtJetXJReco_PURCORR_COMBINED_p[cI]->GetXaxis()->GetNbins(); ++bIX){
       for(Int_t bIY = 0; bIY < photonPtJetXJReco_PURCORR_COMBINED_p[cI]->GetYaxis()->GetNbins(); ++bIY){
@@ -379,32 +372,26 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	content = 0.0;
 	error = 0.0;
 
-	if(isMC){
-	  for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
-	    Float_t tempContent = photonPtJetXJReco_TRUTH_p[cI][eI]->GetBinContent(bIX+1, bIY+1);
-	    Float_t tempError = photonPtJetXJReco_TRUTH_p[cI][eI]->GetBinError(bIX+1, bIY+1);
-	    
-	    content += tempContent;
-	    error = TMath::Sqrt(error*error + tempError*tempError);
-	  }
+	for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
+	  Float_t tempContent = photonPtJetXJReco_TRUTH_p[cI][eI]->GetBinContent(bIX+1, bIY+1);
+	  Float_t tempError = photonPtJetXJReco_TRUTH_p[cI][eI]->GetBinError(bIX+1, bIY+1);
 	  
-	  photonPtJetXJReco_TRUTH_COMBINED_p[cI]->SetBinContent(bIX+1, bIY+1, content);
-	  photonPtJetXJReco_TRUTH_COMBINED_p[cI]->SetBinError(bIX+1, bIY+1, error);	
+	  content += tempContent;
+	  error = TMath::Sqrt(error*error + tempError*tempError);
 	}
+	  
+	photonPtJetXJReco_TRUTH_COMBINED_p[cI]->SetBinContent(bIX+1, bIY+1, content);
+	photonPtJetXJReco_TRUTH_COMBINED_p[cI]->SetBinError(bIX+1, bIY+1, error);		
       }
     }
-  
-    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-  
-    //    std::cout << centBinsStr[cI] + "/photonPtJtXJReco_" + centBinsStr[cI] + "_" + gammaJtDPhiStr + "_SUB_h" << std::endl;
-    
+      
     std::vector<TH1*> hists_p = {photonPtJetXJReco_p[cI], photonPtJetXJTruth_p[cI]};
     hists_p.push_back(photonPtJetXJReco_HalfResponse_p[cI]);
     hists_p.push_back(photonPtJetXJTruth_HalfResponse_p[cI]);
     hists_p.push_back(photonPtJetXJReco_HalfToUnfold_p[cI]);
     hists_p.push_back(photonPtJetXJTruth_HalfToUnfold_p[cI]);
     hists_p.push_back(photonPtJetXJReco_PURCORR_COMBINED_p[cI]);
-    if(isMC) hists_p.push_back(photonPtJetXJReco_TRUTH_COMBINED_p[cI]);
+    hists_p.push_back(photonPtJetXJReco_TRUTH_COMBINED_p[cI]);
     
     setSumW2(hists_p);
   }
@@ -437,8 +424,6 @@ int gdjHistToUnfold(std::string inConfigFileName)
     unfoldTree_ResponseFile_p->SetBranchAddress("recoJt2Pt", &recoJt2Pt_);
     unfoldTree_ResponseFile_p->SetBranchAddress("truthJt2Pt", &truthJt2Pt_);
   }
-  
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;  
   
   //Construct our MC hists
   const ULong64_t nEntriesResponse = unfoldTree_ResponseFile_p->GetEntries();
@@ -477,9 +462,56 @@ int gdjHistToUnfold(std::string inConfigFileName)
     photonPtJetXJReco_p[centPos]->Fill(recoXJ_, recoGammaPt_, unfoldWeight_);
     photonPtJetXJTruth_p[centPos]->Fill(truthXJ_, truthGammaPt_, unfoldWeight_);
   }
-  
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;  
 
+  TH2F* reweightingHist_p[nMaxCentBins];
+  if(!isSameInFile && doReweight){
+    for(Int_t cI = 0; cI < nCentBins; ++ cI){
+      reweightingHist_p[cI] = new TH2F(("reweightingHist_" + centBinsStr[cI] + "_h").c_str(), (";Reco. Jet " + varNameStyle + ";Gamma p_{T}").c_str(), nVarBins, varBins, nGammaPtBins, gammaPtBins);
+
+      for(Int_t bIX = 0; bIX < nVarBins; ++bIX){
+	for(Int_t bIY = 0; bIY < nGammaPtBins; ++bIY){
+	
+	  Float_t numeratorData = photonPtJetXJReco_PURCORR_COMBINED_p[cI]->GetBinContent(bIX+1, bIY+1);
+	  Float_t denominatorMC = photonPtJetXJReco_p[cI]->GetBinContent(bIX+1, bIY+1);
+
+	  Float_t ratioVal = 0.0;
+	  if(denominatorMC > TMath::Power(10, -50)) ratioVal = numeratorData/denominatorMC;
+	  
+	  reweightingHist_p[cI]->SetBinContent(bIX+1, bIY+1, ratioVal);
+	}
+      }
+    }
+
+    for(ULong64_t entry = 0; entry < nEntriesResponse; ++entry){
+      unfoldTree_ResponseFile_p->GetEntry(entry);
+    
+      Int_t centPos = 0;
+      if(!isPP) centPos = ghostPos(centBinsF, unfoldCent_, true);
+
+      if(isStrSame(varName, "Pt")){
+	recoXJ_ = recoJt1Pt_;
+	truthXJ_ = truthJt1Pt_;   
+      }
+
+      if(recoXJ_ < 0.0) continue; // Misses are only passed to the RooUnfoldResponse Object
+    
+      if(truthXJ_ < varBins[0]){//underflow
+	truthXJ_ = (varBins[0] + varBins[1])/2.;
+      }
+      else if(truthXJ_ > varBins[nVarBins]){//overflow
+	truthXJ_ = (varBins[nVarBins] + varBins[nVarBins-1])/2.;
+      }
+
+      Int_t gammaPos = ghostPos(nGammaPtBins, gammaPtBins, recoGammaPt_);
+      Int_t jtPos = ghostPos(nVarBins, varBins, recoXJ_);
+
+      Float_t reweightVal = reweightingHist_p[centPos]->GetBinContent(jtPos+1, gammaPos+1);
+      
+      photonPtJetXJReco_p[centPos]->Fill(recoXJ_, recoGammaPt_, unfoldWeight_*reweightVal);
+      photonPtJetXJTruth_p[centPos]->Fill(truthXJ_, truthGammaPt_, unfoldWeight_*reweightVal);
+    }
+  }
+  
   outFile_p->cd();
   for(Int_t cI = 0; cI < nCentBins; ++cI){
     rooRes_Half_p[cI] = new RooUnfoldResponse(photonPtJetXJReco_HalfResponse_p[cI], photonPtJetXJTruth_HalfResponse_p[cI], ("rooRes_Half_" + centBinsStr[cI]).c_str(), "");
@@ -488,8 +520,6 @@ int gdjHistToUnfold(std::string inConfigFileName)
   
   delete randGen_p;
   randGen_p = new TRandom3(randSeed); //Resetting to get the correct response matrix fills
-
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;  
 
   for(ULong64_t entry = 0; entry < nEntriesResponse; ++entry){
     unfoldTree_ResponseFile_p->GetEntry(entry);
@@ -508,29 +538,29 @@ int gdjHistToUnfold(std::string inConfigFileName)
       if(recoXJ_ >= varBins[0] && recoXJ_ < varBins[nVarBins]) rooRes_Half_p[centPos]->Fill(recoXJ_, recoGammaPt_, truthXJ_, truthGammaPt_, unfoldWeight_);
       else rooRes_Half_p[centPos]->Miss(truthXJ_, truthGammaPt_, unfoldWeight_);
     }
+
+    if(!isSameInFile && doReweight){
+      Int_t gammaPos = ghostPos(nGammaPtBins, gammaPtBins, recoGammaPt_);
+      Int_t jtPos = ghostPos(nVarBins, varBins, recoXJ_);
+
+      Float_t reweightVal = reweightingHist_p[centPos]->GetBinContent(jtPos+1, gammaPos+1);
+      unfoldWeight_ *= reweightVal;
+    }
     
     if(recoXJ_ >= varBins[0] && recoXJ_ < varBins[nVarBins]) rooRes_p[centPos]->Fill(recoXJ_, recoGammaPt_, truthXJ_, truthGammaPt_, unfoldWeight_);
     else rooRes_p[centPos]->Miss(truthXJ_, truthGammaPt_, unfoldWeight_);
   }
-
   
   outFile_p->cd();
-
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;  
 
   for(Int_t cI = 0; cI < nCentBins; ++cI){
     for(int gI = 0; gI < nGammaPtBins; ++gI){
       TH1D* xjTruthProjection_p = new TH1D((varNameLower + "Truth_HalfToUnfold_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_h").c_str(), (";" + varNameStyle + ";Arbitrary").c_str(), nVarBins, varBins);
       TH1D* xjRecoProjection_p = new TH1D((varNameLower + "Reco_HalfToUnfold_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_h").c_str(), (";" + varNameStyle + ";Arbitrary").c_str(), nVarBins, varBins);
       TH1D* xjRecoProjection_PURCORR_COMBINED_p = new TH1D((varNameLower + "Reco_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h").c_str(), (";" + varNameStyle + ";Arbitrary").c_str(), nVarBins, varBins);
-      TH1D* xjRecoProjection_TRUTH_COMBINED_p = nullptr;
-      if(isMC) xjRecoProjection_TRUTH_COMBINED_p = new TH1D((varNameLower + "Reco_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_TRUTH_COMBINED_h").c_str(), (";" + varNameStyle + ";Arbitrary").c_str(), nVarBins, varBins);
-
-      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;  
+      TH1D* xjRecoProjection_TRUTH_COMBINED_p = new TH1D((varNameLower + "Reco_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_TRUTH_COMBINED_h").c_str(), (";" + varNameStyle + ";Arbitrary").c_str(), nVarBins, varBins);
 
       for(int xI = 0; xI < nVarBins; ++xI){
-	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;  
-
 	xjTruthProjection_p->SetBinContent(xI+1, photonPtJetXJTruth_HalfToUnfold_p[cI]->GetBinContent(xI+1, gI+1));
 	xjTruthProjection_p->SetBinError(xI+1, photonPtJetXJTruth_HalfToUnfold_p[cI]->GetBinError(xI+1, gI+1));      
 
@@ -544,10 +574,8 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	xjRecoProjection_PURCORR_COMBINED_p->SetBinContent(xI+1, photonPtJetXJReco_PURCORR_COMBINED_p[cI]->GetBinContent(xI+1, gI+1));
 	xjRecoProjection_PURCORR_COMBINED_p->SetBinError(xI+1, photonPtJetXJReco_PURCORR_COMBINED_p[cI]->GetBinError(xI+1, gI+1));
 
-	if(isMC){
-	  xjRecoProjection_TRUTH_COMBINED_p->SetBinContent(xI+1, photonPtJetXJReco_TRUTH_COMBINED_p[cI]->GetBinContent(xI+1, gI+1));
-	  xjRecoProjection_TRUTH_COMBINED_p->SetBinError(xI+1, photonPtJetXJReco_TRUTH_COMBINED_p[cI]->GetBinError(xI+1, gI+1));
-	}
+	xjRecoProjection_TRUTH_COMBINED_p->SetBinContent(xI+1, photonPtJetXJReco_TRUTH_COMBINED_p[cI]->GetBinContent(xI+1, gI+1));
+	xjRecoProjection_TRUTH_COMBINED_p->SetBinError(xI+1, photonPtJetXJReco_TRUTH_COMBINED_p[cI]->GetBinError(xI+1, gI+1));
       }
 
       if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;  
@@ -561,13 +589,10 @@ int gdjHistToUnfold(std::string inConfigFileName)
       xjRecoProjection_PURCORR_COMBINED_p->Write("", TObject::kOverwrite);
       delete xjRecoProjection_PURCORR_COMBINED_p;
 
-      if(isMC){
-	xjRecoProjection_TRUTH_COMBINED_p->Write("", TObject::kOverwrite);
-	delete xjRecoProjection_TRUTH_COMBINED_p;
-      }
+      xjRecoProjection_TRUTH_COMBINED_p->Write("", TObject::kOverwrite);
+      delete xjRecoProjection_TRUTH_COMBINED_p;
     }
 
-    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;  
     //Half unfold test
     for(int i = 1; i < nIter; ++ i){
       RooUnfoldBayes* rooBayes_Half_p = new RooUnfoldBayes(rooRes_Half_p[cI], photonPtJetXJReco_HalfToUnfold_p[cI], i);  
@@ -595,12 +620,11 @@ int gdjHistToUnfold(std::string inConfigFileName)
     //Full unfold, should be instant when the unfold file is also mc    
 
     photonPtJetXJReco_PURCORR_COMBINED_p[cI]->Write(("photonPtJet" + varName + "Reco_PreUnfold_" + centBinsStr[cI] + "_PURCORR_COMBINED_h").c_str(), TObject::kOverwrite);
-    if(isMC) photonPtJetXJReco_TRUTH_COMBINED_p[cI]->Write(("photonPtJet" + varName + "Truth_PreUnfold_" + centBinsStr[cI] + "_TRUTH_COMBINED_h").c_str(), TObject::kOverwrite);
+    photonPtJetXJReco_TRUTH_COMBINED_p[cI]->Write(("photonPtJet" + varName + "Truth_PreUnfold_" + centBinsStr[cI] + "_TRUTH_COMBINED_h").c_str(), TObject::kOverwrite);
 
-    
     for(int i = 1; i < nIter; ++ i){
       RooUnfoldBayes* rooBayes_p = new RooUnfoldBayes(rooRes_p[cI], photonPtJetXJReco_PURCORR_COMBINED_p[cI], i);  
-
+      
       TH2D* unfolded_p = (TH2D*)rooBayes_p->Hreco();//Very annoyingly Hreco is the name of the function that returns unfolded distribution
       
       unfolded_p->Write(("photonPtJet" + varName + "Reco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h").c_str(), TObject::kOverwrite);
@@ -631,9 +655,13 @@ int gdjHistToUnfold(std::string inConfigFileName)
     photonPtJetXJTruth_p[cI]->Write("", TObject::kOverwrite);
 
     photonPtJetXJReco_PURCORR_COMBINED_p[cI]->Write("", TObject::kOverwrite);
-    if(isMC) photonPtJetXJReco_TRUTH_COMBINED_p[cI]->Write("", TObject::kOverwrite);
-  }
+    photonPtJetXJReco_TRUTH_COMBINED_p[cI]->Write("", TObject::kOverwrite);
 
+    if(!isSameInFile && doReweight){
+      reweightingHist_p[cI]->Write("", TObject::kOverwrite);
+    }
+  }
+  
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;  
   for(Int_t cI = 0; cI < nCentBins; ++cI){
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << cI << "/" << nCentBins << std::endl;  
@@ -647,10 +675,14 @@ int gdjHistToUnfold(std::string inConfigFileName)
     delete photonPtJetXJTruth_p[cI];
 
     delete photonPtJetXJReco_PURCORR_COMBINED_p[cI];
-    if(isMC) delete photonPtJetXJReco_TRUTH_COMBINED_p[cI];
+    delete photonPtJetXJReco_TRUTH_COMBINED_p[cI];
     
     delete rooRes_Half_p[cI];
     delete rooRes_p[cI];
+
+    if(!isSameInFile && doReweight){
+      delete reweightingHist_p[cI];
+    }
   }
   
   inUnfoldFileConfig_p->SetValue("VARNAME", varName.c_str());

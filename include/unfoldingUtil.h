@@ -10,7 +10,7 @@
 #include "TH1F.h"
 #include "TH2F.h"
 
-void getIterativeHists(std::vector<TH1F*> inUnfoldedHists_p, TH1F* statDelta_p, TH1F* iterDelta_p, TH1F* totalDelta_p)
+void getIterativeHists(std::vector<TH1F*> inUnfoldedHists_p, TH1F* statDelta_p, TH1F* iterDelta_p, TH1F* totalDelta_p, bool doPrint = false)
 {
   const Int_t nIter = inUnfoldedHists_p.size();
   const Int_t nBins = nIter;
@@ -40,13 +40,18 @@ void getIterativeHists(std::vector<TH1F*> inUnfoldedHists_p, TH1F* statDelta_p, 
 
     for(Int_t bIX = 0; bIX < inUnfoldedHists_p[i]->GetXaxis()->GetNbins(); ++bIX){
       //Throw away the zeroes
-      if(inUnfoldedHists_p[i]->GetBinContent(bIX+1) < TMath::Power(10, -50)) continue;
 
-      Float_t tempDeltaIter = (inUnfoldedHists_p[i]->GetBinContent(bIX+1) - inUnfoldedHists_p[i-1]->GetBinContent(bIX+1))/inUnfoldedHists_p[i]->GetBinContent(bIX+1);
+      //Part of 2021.02.22 temp mod this next line is commented
+      //if(inUnfoldedHists_p[i]->GetBinContent(bIX+1) < TMath::Power(10, -50)) continue;
+
+      //Temporarily modified 2021.02.22 to test hypothesis on termination criteria (currently using relative differences a la Martin R but older analyses used absolute differences
+      Float_t tempDeltaIter = (inUnfoldedHists_p[i]->GetBinContent(bIX+1) - inUnfoldedHists_p[i-1]->GetBinContent(bIX+1));///inUnfoldedHists_p[i]->GetBinContent(bIX+1);
       deltaIter += tempDeltaIter*tempDeltaIter;
 
-      double tempDeltaStat = inUnfoldedHists_p[i]->GetBinError(bIX+1)/inUnfoldedHists_p[i]->GetBinContent(bIX+1);
+      double tempDeltaStat = inUnfoldedHists_p[i]->GetBinError(bIX+1);///inUnfoldedHists_p[i]->GetBinContent(bIX+1);
       deltaStat += tempDeltaStat*tempDeltaStat;    
+
+      if(doPrint) std::cout << "TEMPDELTASTAT: " << bIX << ": " << tempDeltaStat << std::endl;
     }
 
     Float_t deltaTot = deltaIter + deltaStat;
@@ -65,7 +70,7 @@ void getIterativeHists(std::vector<TH1F*> inUnfoldedHists_p, TH1F* statDelta_p, 
 }
 
 
-void getIterativeHists2D(std::vector<TH2F*> inUnfoldedHists_p, TH1F* statDelta_p, TH1F* iterDelta_p, TH1F* totalDelta_p)
+void getIterativeHists2D(std::vector<TH2F*> inUnfoldedHists_p, TH1F* statDelta_p, TH1F* iterDelta_p, TH1F* totalDelta_p, Int_t excludeYPos = -1)
 {
   const Int_t nIter = inUnfoldedHists_p.size();
   const Int_t nBins = nIter;
@@ -95,13 +100,16 @@ void getIterativeHists2D(std::vector<TH2F*> inUnfoldedHists_p, TH1F* statDelta_p
 
     for(Int_t bIX = 0; bIX < inUnfoldedHists_p[i]->GetXaxis()->GetNbins(); ++bIX){
       for(Int_t bIY = 0; bIY < inUnfoldedHists_p[i]->GetYaxis()->GetNbins(); ++bIY){
-	//Throw away the zeroes
-	if(inUnfoldedHists_p[i]->GetBinContent(bIX+1, bIY+1) < TMath::Power(10, -50)) continue;
+	if(bIY == excludeYPos) continue;
 
-	Float_t tempDeltaIter = (inUnfoldedHists_p[i]->GetBinContent(bIX+1, bIY+1) - inUnfoldedHists_p[i-1]->GetBinContent(bIX+1, bIY+1))/inUnfoldedHists_p[i]->GetBinContent(bIX+1, bIY+1);
+	//Throw away the zeroes
+	//	if(inUnfoldedHists_p[i]->GetBinContent(bIX+1, bIY+1) < TMath::Power(10, -50)) continue;
+
+      //Temporarily modified 2021.02.22 to test hypothesis on termination criteria (currently using relative differences a la Martin R but older analyses used absolute differences
+	Float_t tempDeltaIter = (inUnfoldedHists_p[i]->GetBinContent(bIX+1, bIY+1) - inUnfoldedHists_p[i-1]->GetBinContent(bIX+1, bIY+1));//inUnfoldedHists_p[i]->GetBinContent(bIX+1, bIY+1);
 	deltaIter += tempDeltaIter*tempDeltaIter;
 	
-	double tempDeltaStat = inUnfoldedHists_p[i]->GetBinError(bIX+1, bIY+1)/inUnfoldedHists_p[i]->GetBinContent(bIX+1, bIY+1);
+	double tempDeltaStat = inUnfoldedHists_p[i]->GetBinError(bIX+1, bIY+1);///inUnfoldedHists_p[i]->GetBinContent(bIX+1, bIY+1);
 	deltaStat += tempDeltaStat*tempDeltaStat;    
       }
     }
