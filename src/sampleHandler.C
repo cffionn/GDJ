@@ -255,6 +255,17 @@ int sampleHandler::GetMinPthat()
   return minPthat;
 }
 
+int sampleHandler::GetMinPthat(int sampleTag)
+{
+  int minPthat = 0; 
+  if(m_isInit){
+    if(tagToMinPthat.count(sampleTag) == 0) std::cout << "SAMPLEHANDLER ERROR - GetMinPthat(int sampleTag) called but given sampleTag \'" << sampleTag << "\' is not found. returning 0" << std::endl;
+    else minPthat = tagToMinPthat[sampleTag];
+  }
+  else std::cout << "SAMPLEHANDLER ERROR - GetMinPthat() called despite no init. returning 0" << std::endl;
+  return minPthat;
+}
+
 void sampleHandler::Clean()
 {
   m_isInit = false;

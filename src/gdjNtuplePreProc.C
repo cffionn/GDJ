@@ -213,66 +213,59 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   Float_t truthPhotonIso4_;
   
   Int_t akt2hi_jet_n_;
-  std::vector<float>* akt2hi_em_xcalib_jet_pt_p=nullptr;
-  std::vector<float>* akt2hi_em_xcalib_jet_uncorrpt_p=nullptr;
-  std::vector<float>* akt2hi_em_xcalib_jet_eta_p=nullptr;
-  std::vector<float>* akt2hi_em_xcalib_jet_uncorreta_p=nullptr;
-  std::vector<float>* akt2hi_em_xcalib_jet_phi_p=nullptr;
-  std::vector<float>* akt2hi_em_xcalib_jet_e_p=nullptr;
-  std::vector<float>* akt2hi_em_xcalib_jet_uncorre_p=nullptr;
-  std::vector<float>* akt2hi_em_xcalib_jet_m_p=nullptr;
-  std::vector<bool>* akt2hi_em_xcalib_jet_clean_p=nullptr;
-  std::vector<float>* akt2hi_constit_xcalib_jet_pt_p=nullptr;
-  std::vector<float>* akt2hi_constit_xcalib_jet_eta_p=nullptr;
-  std::vector<float>* akt2hi_constit_xcalib_jet_phi_p=nullptr;
-  std::vector<float>* akt2hi_constit_xcalib_jet_e_p=nullptr;
-  std::vector<float>* akt2hi_double_calib_jet_pt_p=nullptr;
+  std::vector<float>* akt2hi_etajes_jet_pt_p=nullptr;
+  std::vector<float>* akt2hi_etajes_jet_eta_p=nullptr;
+  std::vector<float>* akt2hi_etajes_jet_phi_p=nullptr;
+  std::vector<float>* akt2hi_etajes_jet_e_p=nullptr;
+  std::vector<float>* akt2hi_etajes_jet_m_p=nullptr;
+  std::vector<float>* akt2hi_insitu_jet_pt_p=nullptr;
+  std::vector<float>* akt2hi_insitu_jet_eta_p=nullptr;
+  std::vector<float>* akt2hi_insitu_jet_phi_p=nullptr;
+  std::vector<float>* akt2hi_insitu_jet_e_p=nullptr;
+  std::vector<float>* akt2hi_insitu_jet_m_p=nullptr;
+
+  std::vector<bool>* akt2hi_jet_clean_p=nullptr;
   std::vector<int>* akt2hi_truthpos_p=nullptr;
   
   Int_t akt4hi_jet_n_;
-  std::vector<float>* akt4hi_em_xcalib_jet_pt_p=nullptr;
-  std::vector<float>* akt4hi_em_xcalib_jet_uncorrpt_p=nullptr;
-  std::vector<float>* akt4hi_em_xcalib_jet_eta_p=nullptr;
-  std::vector<float>* akt4hi_em_xcalib_jet_uncorreta_p=nullptr;
-  std::vector<float>* akt4hi_em_xcalib_jet_phi_p=nullptr;
-  std::vector<float>* akt4hi_em_xcalib_jet_e_p=nullptr;
-  std::vector<float>* akt4hi_em_xcalib_jet_uncorre_p=nullptr;
-  std::vector<float>* akt4hi_em_xcalib_jet_m_p=nullptr;
-  std::vector<bool>* akt4hi_em_xcalib_jet_clean_p=nullptr;
-  std::vector<float>* akt4hi_constit_xcalib_jet_pt_p=nullptr;
-  std::vector<float>* akt4hi_constit_xcalib_jet_eta_p=nullptr;
-  std::vector<float>* akt4hi_constit_xcalib_jet_phi_p=nullptr;
-  std::vector<float>* akt4hi_constit_xcalib_jet_e_p=nullptr;
-  std::vector<float>* akt4hi_double_calib_jet_pt_p=nullptr;
+  std::vector<float>* akt4hi_etajes_jet_pt_p=nullptr;
+  std::vector<float>* akt4hi_etajes_jet_eta_p=nullptr;
+  std::vector<float>* akt4hi_etajes_jet_phi_p=nullptr;
+  std::vector<float>* akt4hi_etajes_jet_e_p=nullptr;
+  std::vector<float>* akt4hi_etajes_jet_m_p=nullptr;
+  std::vector<float>* akt4hi_insitu_jet_pt_p=nullptr;
+  std::vector<float>* akt4hi_insitu_jet_eta_p=nullptr;
+  std::vector<float>* akt4hi_insitu_jet_phi_p=nullptr;
+  std::vector<float>* akt4hi_insitu_jet_e_p=nullptr;
+  std::vector<float>* akt4hi_insitu_jet_m_p=nullptr;
+
+  std::vector<bool>* akt4hi_jet_clean_p=nullptr;
   std::vector<int>* akt4hi_truthpos_p=nullptr;
 
   
   Int_t akt10hi_jet_n_;
-  std::vector<float>* akt10hi_em_xcalib_jet_pt_p=nullptr;
-  std::vector<float>* akt10hi_em_xcalib_jet_uncorrpt_p=nullptr;
-  std::vector<float>* akt10hi_em_xcalib_jet_eta_p=nullptr;
-  std::vector<float>* akt10hi_em_xcalib_jet_uncorreta_p=nullptr;
-  std::vector<float>* akt10hi_em_xcalib_jet_phi_p=nullptr;
-  std::vector<float>* akt10hi_em_xcalib_jet_e_p=nullptr;
-  std::vector<float>* akt10hi_em_xcalib_jet_uncorre_p=nullptr;
-  std::vector<float>* akt10hi_em_xcalib_jet_m_p=nullptr;
-  std::vector<bool>* akt10hi_em_xcalib_jet_clean_p=nullptr;
-  std::vector<float>* akt10hi_constit_xcalib_jet_pt_p=nullptr;
-  std::vector<float>* akt10hi_constit_xcalib_jet_eta_p=nullptr;
-  std::vector<float>* akt10hi_constit_xcalib_jet_phi_p=nullptr;
-  std::vector<float>* akt10hi_constit_xcalib_jet_e_p=nullptr;
-  std::vector<float>* akt10hi_double_calib_jet_pt_p=nullptr;
+  std::vector<float>* akt10hi_etajes_jet_pt_p=nullptr;
+  std::vector<float>* akt10hi_etajes_jet_eta_p=nullptr;
+  std::vector<float>* akt10hi_etajes_jet_phi_p=nullptr;
+  std::vector<float>* akt10hi_etajes_jet_e_p=nullptr;
+  std::vector<float>* akt10hi_etajes_jet_m_p=nullptr;
+  std::vector<float>* akt10hi_insitu_jet_pt_p=nullptr;
+  std::vector<float>* akt10hi_insitu_jet_eta_p=nullptr;
+  std::vector<float>* akt10hi_insitu_jet_phi_p=nullptr;
+  std::vector<float>* akt10hi_insitu_jet_e_p=nullptr;
+  std::vector<float>* akt10hi_insitu_jet_m_p=nullptr;
+
+  std::vector<bool>* akt10hi_jet_clean_p=nullptr;
   std::vector<int>* akt10hi_truthpos_p=nullptr;
 
   
   Int_t akt2to10hi_jet_n_;
-  std::vector<float>* akt2to10hi_em_xcalib_jet_pt_p=nullptr;
-  std::vector<float>* akt2to10hi_em_xcalib_jet_eta_p=nullptr;
-  std::vector<float>* akt2to10hi_em_xcalib_jet_phi_p=nullptr;
-  std::vector<float>* akt2to10hi_em_xcalib_jet_e_p=nullptr;
-  std::vector<float>* akt2to10hi_em_xcalib_jet_m_p=nullptr;
-  std::vector<int>* akt2to10hi_truthpos_p=nullptr;
-  
+  std::vector<float>* akt2to10hi_etajes_jet_pt_p=nullptr;
+  std::vector<float>* akt2to10hi_etajes_jet_eta_p=nullptr;
+  std::vector<float>* akt2to10hi_etajes_jet_phi_p=nullptr;
+  std::vector<float>* akt2to10hi_etajes_jet_e_p=nullptr;
+  std::vector<float>* akt2to10hi_etajes_jet_m_p=nullptr;
+  std::vector<int>* akt2to10hi_truthpos_p=nullptr;  
 
   Int_t photon_n_;
   std::vector<float>* photon_pt_p=nullptr;
@@ -438,65 +431,59 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   }
   
   outTree_p->Branch("akt2hi_jet_n", &akt2hi_jet_n_, "akt2hi_jet_n/I");
-  outTree_p->Branch("akt2hi_em_xcalib_jet_pt", &akt2hi_em_xcalib_jet_pt_p);
-  outTree_p->Branch("akt2hi_em_xcalib_jet_uncorrpt", &akt2hi_em_xcalib_jet_uncorrpt_p);
-  outTree_p->Branch("akt2hi_em_xcalib_jet_eta", &akt2hi_em_xcalib_jet_eta_p);
-  outTree_p->Branch("akt2hi_em_xcalib_jet_uncorreta", &akt2hi_em_xcalib_jet_uncorreta_p);
-  outTree_p->Branch("akt2hi_em_xcalib_jet_phi", &akt2hi_em_xcalib_jet_phi_p);
-  outTree_p->Branch("akt2hi_em_xcalib_jet_e", &akt2hi_em_xcalib_jet_e_p);
-  outTree_p->Branch("akt2hi_em_xcalib_jet_uncorre", &akt2hi_em_xcalib_jet_uncorre_p);
-  outTree_p->Branch("akt2hi_em_xcalib_jet_m", &akt2hi_em_xcalib_jet_m_p);
-  outTree_p->Branch("akt2hi_em_xcalib_jet_clean", &akt2hi_em_xcalib_jet_clean_p);
-  outTree_p->Branch("akt2hi_constit_xcalib_jet_pt", &akt2hi_constit_xcalib_jet_pt_p);
-  outTree_p->Branch("akt2hi_constit_xcalib_jet_eta", &akt2hi_constit_xcalib_jet_eta_p);
-  outTree_p->Branch("akt2hi_constit_xcalib_jet_phi", &akt2hi_constit_xcalib_jet_phi_p);
-  outTree_p->Branch("akt2hi_constit_xcalib_jet_e", &akt2hi_constit_xcalib_jet_e_p);
-  outTree_p->Branch("akt2hi_double_calib_jet_pt", &akt2hi_double_calib_jet_pt_p);
+  outTree_p->Branch("akt2hi_etajes_jet_pt", &akt2hi_etajes_jet_pt_p);
+  outTree_p->Branch("akt2hi_etajes_jet_eta", &akt2hi_etajes_jet_eta_p);
+  outTree_p->Branch("akt2hi_etajes_jet_phi", &akt2hi_etajes_jet_phi_p);
+  outTree_p->Branch("akt2hi_etajes_jet_e", &akt2hi_etajes_jet_e_p);
+  outTree_p->Branch("akt2hi_etajes_jet_m", &akt2hi_etajes_jet_m_p);
+  outTree_p->Branch("akt2hi_insitu_jet_pt", &akt2hi_insitu_jet_pt_p);
+  outTree_p->Branch("akt2hi_insitu_jet_eta", &akt2hi_insitu_jet_eta_p);
+  outTree_p->Branch("akt2hi_insitu_jet_phi", &akt2hi_insitu_jet_phi_p);
+  outTree_p->Branch("akt2hi_insitu_jet_e", &akt2hi_insitu_jet_e_p);
+  outTree_p->Branch("akt2hi_insitu_jet_m", &akt2hi_insitu_jet_m_p);
+
+  outTree_p->Branch("akt2hi_jet_clean", &akt2hi_jet_clean_p);
   if(isMC) outTree_p->Branch("akt2hi_truthpos", &akt2hi_truthpos_p);
   
   outTree_p->Branch("akt4hi_jet_n", &akt4hi_jet_n_, "akt4hi_jet_n/I");
-  outTree_p->Branch("akt4hi_em_xcalib_jet_pt", &akt4hi_em_xcalib_jet_pt_p);
-  outTree_p->Branch("akt4hi_em_xcalib_jet_uncorrpt", &akt4hi_em_xcalib_jet_uncorrpt_p);
-  outTree_p->Branch("akt4hi_em_xcalib_jet_eta", &akt4hi_em_xcalib_jet_eta_p);
-  outTree_p->Branch("akt4hi_em_xcalib_jet_uncorreta", &akt4hi_em_xcalib_jet_uncorreta_p);
-  outTree_p->Branch("akt4hi_em_xcalib_jet_phi", &akt4hi_em_xcalib_jet_phi_p);
-  outTree_p->Branch("akt4hi_em_xcalib_jet_e", &akt4hi_em_xcalib_jet_e_p);
-  outTree_p->Branch("akt4hi_em_xcalib_jet_uncorre", &akt4hi_em_xcalib_jet_uncorre_p);
-  outTree_p->Branch("akt4hi_em_xcalib_jet_m", &akt4hi_em_xcalib_jet_m_p);
-  outTree_p->Branch("akt4hi_em_xcalib_jet_clean", &akt4hi_em_xcalib_jet_clean_p);
-  outTree_p->Branch("akt4hi_constit_xcalib_jet_pt", &akt4hi_constit_xcalib_jet_pt_p);
-  outTree_p->Branch("akt4hi_constit_xcalib_jet_eta", &akt4hi_constit_xcalib_jet_eta_p);
-  outTree_p->Branch("akt4hi_constit_xcalib_jet_phi", &akt4hi_constit_xcalib_jet_phi_p);
-  outTree_p->Branch("akt4hi_constit_xcalib_jet_e", &akt4hi_constit_xcalib_jet_e_p);
-  outTree_p->Branch("akt4hi_double_calib_jet_pt", &akt4hi_double_calib_jet_pt_p);
+  outTree_p->Branch("akt4hi_etajes_jet_pt", &akt4hi_etajes_jet_pt_p);
+  outTree_p->Branch("akt4hi_etajes_jet_eta", &akt4hi_etajes_jet_eta_p);
+  outTree_p->Branch("akt4hi_etajes_jet_phi", &akt4hi_etajes_jet_phi_p);
+  outTree_p->Branch("akt4hi_etajes_jet_e", &akt4hi_etajes_jet_e_p);
+  outTree_p->Branch("akt4hi_etajes_jet_m", &akt4hi_etajes_jet_m_p);
+  outTree_p->Branch("akt4hi_insitu_jet_pt", &akt4hi_insitu_jet_pt_p);
+  outTree_p->Branch("akt4hi_insitu_jet_eta", &akt4hi_insitu_jet_eta_p);
+  outTree_p->Branch("akt4hi_insitu_jet_phi", &akt4hi_insitu_jet_phi_p);
+  outTree_p->Branch("akt4hi_insitu_jet_e", &akt4hi_insitu_jet_e_p);
+  outTree_p->Branch("akt4hi_insitu_jet_m", &akt4hi_insitu_jet_m_p);
+
+  outTree_p->Branch("akt4hi_jet_clean", &akt4hi_jet_clean_p);
   if(isMC) outTree_p->Branch("akt4hi_truthpos", &akt4hi_truthpos_p);
 
   if(!isPP){   
     outTree_p->Branch("akt10hi_jet_n", &akt10hi_jet_n_, "akt10hi_jet_n/I");
-    outTree_p->Branch("akt10hi_em_xcalib_jet_pt", &akt10hi_em_xcalib_jet_pt_p);
-    outTree_p->Branch("akt10hi_em_xcalib_jet_uncorrpt", &akt10hi_em_xcalib_jet_uncorrpt_p);
-    outTree_p->Branch("akt10hi_em_xcalib_jet_eta", &akt10hi_em_xcalib_jet_eta_p);
-    outTree_p->Branch("akt10hi_em_xcalib_jet_uncorreta", &akt10hi_em_xcalib_jet_uncorreta_p);
-    outTree_p->Branch("akt10hi_em_xcalib_jet_phi", &akt10hi_em_xcalib_jet_phi_p);
-    outTree_p->Branch("akt10hi_em_xcalib_jet_e", &akt10hi_em_xcalib_jet_e_p);
-    outTree_p->Branch("akt10hi_em_xcalib_jet_uncorre", &akt10hi_em_xcalib_jet_uncorre_p);
-    outTree_p->Branch("akt10hi_em_xcalib_jet_m", &akt10hi_em_xcalib_jet_m_p);
-    outTree_p->Branch("akt10hi_em_xcalib_jet_clean", &akt10hi_em_xcalib_jet_clean_p);
-    outTree_p->Branch("akt10hi_constit_xcalib_jet_pt", &akt10hi_constit_xcalib_jet_pt_p);
-    outTree_p->Branch("akt10hi_constit_xcalib_jet_eta", &akt10hi_constit_xcalib_jet_eta_p);
-    outTree_p->Branch("akt10hi_constit_xcalib_jet_phi", &akt10hi_constit_xcalib_jet_phi_p);
-    outTree_p->Branch("akt10hi_constit_xcalib_jet_e", &akt10hi_constit_xcalib_jet_e_p);
-    outTree_p->Branch("akt10hi_double_calib_jet_pt", &akt10hi_double_calib_jet_pt_p);
+    outTree_p->Branch("akt10hi_etajes_jet_pt", &akt10hi_etajes_jet_pt_p);
+    outTree_p->Branch("akt10hi_etajes_jet_eta", &akt10hi_etajes_jet_eta_p);
+    outTree_p->Branch("akt10hi_etajes_jet_phi", &akt10hi_etajes_jet_phi_p);
+    outTree_p->Branch("akt10hi_etajes_jet_e", &akt10hi_etajes_jet_e_p);
+    outTree_p->Branch("akt10hi_etajes_jet_m", &akt10hi_etajes_jet_m_p);
+    outTree_p->Branch("akt10hi_insitu_jet_pt", &akt10hi_insitu_jet_pt_p);
+    outTree_p->Branch("akt10hi_insitu_jet_eta", &akt10hi_insitu_jet_eta_p);
+    outTree_p->Branch("akt10hi_insitu_jet_phi", &akt10hi_insitu_jet_phi_p);
+    outTree_p->Branch("akt10hi_insitu_jet_e", &akt10hi_insitu_jet_e_p);
+    outTree_p->Branch("akt10hi_insitu_jet_m", &akt10hi_insitu_jet_m_p);
+
+    outTree_p->Branch("akt10hi_jet_clean", &akt10hi_jet_clean_p);
     if(isMC) outTree_p->Branch("akt10hi_truthpos", &akt10hi_truthpos_p);    
   }
 
   
   outTree_p->Branch("akt2to10hi_jet_n", &akt2to10hi_jet_n_, "akt2to10hi_jet_n/I");
-  outTree_p->Branch("akt2to10hi_em_xcalib_jet_pt", &akt2to10hi_em_xcalib_jet_pt_p);
-  outTree_p->Branch("akt2to10hi_em_xcalib_jet_eta", &akt2to10hi_em_xcalib_jet_eta_p);
-  outTree_p->Branch("akt2to10hi_em_xcalib_jet_phi", &akt2to10hi_em_xcalib_jet_phi_p);
-  outTree_p->Branch("akt2to10hi_em_xcalib_jet_e", &akt2to10hi_em_xcalib_jet_e_p);
-  outTree_p->Branch("akt2to10hi_em_xcalib_jet_m", &akt2to10hi_em_xcalib_jet_m_p);
+  outTree_p->Branch("akt2to10hi_etajes_jet_pt", &akt2to10hi_etajes_jet_pt_p);
+  outTree_p->Branch("akt2to10hi_etajes_jet_eta", &akt2to10hi_etajes_jet_eta_p);
+  outTree_p->Branch("akt2to10hi_etajes_jet_phi", &akt2to10hi_etajes_jet_phi_p);
+  outTree_p->Branch("akt2to10hi_etajes_jet_e", &akt2to10hi_etajes_jet_e_p);
+  outTree_p->Branch("akt2to10hi_etajes_jet_m", &akt2to10hi_etajes_jet_m_p);
   if(isMC) outTree_p->Branch("akt2to10hi_truthpos", &akt2to10hi_truthpos_p);
   
 
@@ -937,64 +924,61 @@ int gdjNtuplePreProc(std::string inConfigFileName)
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
     inTree_p->SetBranchAddress("akt2hi_jet_n", &akt2hi_jet_n_);
-    inTree_p->SetBranchAddress("akt2hi_em_xcalib_jet_pt", &akt2hi_em_xcalib_jet_pt_p);
-    inTree_p->SetBranchAddress("akt2hi_em_xcalib_jet_uncorrpt", &akt2hi_em_xcalib_jet_uncorrpt_p);
-    inTree_p->SetBranchAddress("akt2hi_em_xcalib_jet_eta", &akt2hi_em_xcalib_jet_eta_p);
-    inTree_p->SetBranchAddress("akt2hi_em_xcalib_jet_uncorreta", &akt2hi_em_xcalib_jet_uncorreta_p);
-    inTree_p->SetBranchAddress("akt2hi_em_xcalib_jet_phi", &akt2hi_em_xcalib_jet_phi_p);
-    inTree_p->SetBranchAddress("akt2hi_em_xcalib_jet_e", &akt2hi_em_xcalib_jet_e_p);
-    inTree_p->SetBranchAddress("akt2hi_em_xcalib_jet_uncorre", &akt2hi_em_xcalib_jet_uncorre_p);
-    inTree_p->SetBranchAddress("akt2hi_em_xcalib_jet_m", &akt2hi_em_xcalib_jet_m_p);
-    inTree_p->SetBranchAddress("akt2hi_em_xcalib_jet_clean", &akt2hi_em_xcalib_jet_clean_p);
-    inTree_p->SetBranchAddress("akt2hi_constit_xcalib_jet_pt", &akt2hi_constit_xcalib_jet_pt_p);
-    inTree_p->SetBranchAddress("akt2hi_constit_xcalib_jet_eta", &akt2hi_constit_xcalib_jet_eta_p);
-    inTree_p->SetBranchAddress("akt2hi_constit_xcalib_jet_phi", &akt2hi_constit_xcalib_jet_phi_p);
-    inTree_p->SetBranchAddress("akt2hi_constit_xcalib_jet_e", &akt2hi_constit_xcalib_jet_e_p);
-    inTree_p->SetBranchAddress("akt2hi_double_calib_jet_pt", &akt2hi_double_calib_jet_pt_p);
+    inTree_p->SetBranchAddress("akt2hi_etajes_jet_pt", &akt2hi_etajes_jet_pt_p);
+    inTree_p->SetBranchAddress("akt2hi_etajes_jet_eta", &akt2hi_etajes_jet_eta_p);
+    inTree_p->SetBranchAddress("akt2hi_etajes_jet_phi", &akt2hi_etajes_jet_phi_p);
+    inTree_p->SetBranchAddress("akt2hi_etajes_jet_e", &akt2hi_etajes_jet_e_p);
+    inTree_p->SetBranchAddress("akt2hi_etajes_jet_m", &akt2hi_etajes_jet_m_p);
+
+    inTree_p->SetBranchAddress("akt2hi_insitu_jet_pt", &akt2hi_insitu_jet_pt_p);
+    inTree_p->SetBranchAddress("akt2hi_insitu_jet_eta", &akt2hi_insitu_jet_eta_p);
+    inTree_p->SetBranchAddress("akt2hi_insitu_jet_phi", &akt2hi_insitu_jet_phi_p);
+    inTree_p->SetBranchAddress("akt2hi_insitu_jet_e", &akt2hi_insitu_jet_e_p);
+    inTree_p->SetBranchAddress("akt2hi_insitu_jet_m", &akt2hi_insitu_jet_m_p);
+
+    inTree_p->SetBranchAddress("akt2hi_jet_clean", &akt2hi_jet_clean_p);
     if(isMC) inTree_p->SetBranchAddress("akt2hi_truthpos", &akt2hi_truthpos_p);
 
     inTree_p->SetBranchAddress("akt4hi_jet_n", &akt4hi_jet_n_);
-    inTree_p->SetBranchAddress("akt4hi_em_xcalib_jet_pt", &akt4hi_em_xcalib_jet_pt_p);
-    inTree_p->SetBranchAddress("akt4hi_em_xcalib_jet_uncorrpt", &akt4hi_em_xcalib_jet_uncorrpt_p);
-    inTree_p->SetBranchAddress("akt4hi_em_xcalib_jet_eta", &akt4hi_em_xcalib_jet_eta_p);
-    inTree_p->SetBranchAddress("akt4hi_em_xcalib_jet_uncorreta", &akt4hi_em_xcalib_jet_uncorreta_p);
-    inTree_p->SetBranchAddress("akt4hi_em_xcalib_jet_phi", &akt4hi_em_xcalib_jet_phi_p);
-    inTree_p->SetBranchAddress("akt4hi_em_xcalib_jet_e", &akt4hi_em_xcalib_jet_e_p);
-    inTree_p->SetBranchAddress("akt4hi_em_xcalib_jet_uncorre", &akt4hi_em_xcalib_jet_uncorre_p);
-    inTree_p->SetBranchAddress("akt4hi_em_xcalib_jet_m", &akt4hi_em_xcalib_jet_m_p);
-    inTree_p->SetBranchAddress("akt4hi_em_xcalib_jet_clean", &akt4hi_em_xcalib_jet_clean_p);
-    inTree_p->SetBranchAddress("akt4hi_constit_xcalib_jet_pt", &akt4hi_constit_xcalib_jet_pt_p);
-    inTree_p->SetBranchAddress("akt4hi_constit_xcalib_jet_eta", &akt4hi_constit_xcalib_jet_eta_p);
-    inTree_p->SetBranchAddress("akt4hi_constit_xcalib_jet_phi", &akt4hi_constit_xcalib_jet_phi_p);
-    inTree_p->SetBranchAddress("akt4hi_constit_xcalib_jet_e", &akt4hi_constit_xcalib_jet_e_p);
-    inTree_p->SetBranchAddress("akt4hi_double_calib_jet_pt", &akt4hi_double_calib_jet_pt_p);
+    inTree_p->SetBranchAddress("akt4hi_etajes_jet_pt", &akt4hi_etajes_jet_pt_p);
+    inTree_p->SetBranchAddress("akt4hi_etajes_jet_eta", &akt4hi_etajes_jet_eta_p);
+    inTree_p->SetBranchAddress("akt4hi_etajes_jet_phi", &akt4hi_etajes_jet_phi_p);
+    inTree_p->SetBranchAddress("akt4hi_etajes_jet_e", &akt4hi_etajes_jet_e_p);
+    inTree_p->SetBranchAddress("akt4hi_etajes_jet_m", &akt4hi_etajes_jet_m_p);
+
+    inTree_p->SetBranchAddress("akt4hi_insitu_jet_pt", &akt4hi_insitu_jet_pt_p);
+    inTree_p->SetBranchAddress("akt4hi_insitu_jet_eta", &akt4hi_insitu_jet_eta_p);
+    inTree_p->SetBranchAddress("akt4hi_insitu_jet_phi", &akt4hi_insitu_jet_phi_p);
+    inTree_p->SetBranchAddress("akt4hi_insitu_jet_e", &akt4hi_insitu_jet_e_p);
+    inTree_p->SetBranchAddress("akt4hi_insitu_jet_m", &akt4hi_insitu_jet_m_p);
+
+    inTree_p->SetBranchAddress("akt4hi_jet_clean", &akt4hi_jet_clean_p);
     if(isMC) inTree_p->SetBranchAddress("akt4hi_truthpos", &akt4hi_truthpos_p);
 
     if(!isPP){      
       inTree_p->SetBranchAddress("akt10hi_jet_n", &akt10hi_jet_n_);
-      inTree_p->SetBranchAddress("akt10hi_em_xcalib_jet_pt", &akt10hi_em_xcalib_jet_pt_p);
-      inTree_p->SetBranchAddress("akt10hi_em_xcalib_jet_uncorrpt", &akt10hi_em_xcalib_jet_uncorrpt_p);
-      inTree_p->SetBranchAddress("akt10hi_em_xcalib_jet_eta", &akt10hi_em_xcalib_jet_eta_p);
-      inTree_p->SetBranchAddress("akt10hi_em_xcalib_jet_uncorreta", &akt10hi_em_xcalib_jet_uncorreta_p);
-      inTree_p->SetBranchAddress("akt10hi_em_xcalib_jet_phi", &akt10hi_em_xcalib_jet_phi_p);
-      inTree_p->SetBranchAddress("akt10hi_em_xcalib_jet_e", &akt10hi_em_xcalib_jet_e_p);
-      inTree_p->SetBranchAddress("akt10hi_em_xcalib_jet_uncorre", &akt10hi_em_xcalib_jet_uncorre_p);
-      inTree_p->SetBranchAddress("akt10hi_em_xcalib_jet_m", &akt10hi_em_xcalib_jet_m_p);
-      inTree_p->SetBranchAddress("akt10hi_em_xcalib_jet_clean", &akt10hi_em_xcalib_jet_clean_p);
-      inTree_p->SetBranchAddress("akt10hi_constit_xcalib_jet_pt", &akt10hi_constit_xcalib_jet_pt_p);
-      inTree_p->SetBranchAddress("akt10hi_constit_xcalib_jet_eta", &akt10hi_constit_xcalib_jet_eta_p);
-      inTree_p->SetBranchAddress("akt10hi_constit_xcalib_jet_phi", &akt10hi_constit_xcalib_jet_phi_p);
-      inTree_p->SetBranchAddress("akt10hi_constit_xcalib_jet_e", &akt10hi_constit_xcalib_jet_e_p);
-      inTree_p->SetBranchAddress("akt10hi_double_calib_jet_pt", &akt10hi_double_calib_jet_pt_p);
+      inTree_p->SetBranchAddress("akt10hi_etajes_jet_pt", &akt10hi_etajes_jet_pt_p);
+      inTree_p->SetBranchAddress("akt10hi_etajes_jet_eta", &akt10hi_etajes_jet_eta_p);
+      inTree_p->SetBranchAddress("akt10hi_etajes_jet_phi", &akt10hi_etajes_jet_phi_p);
+      inTree_p->SetBranchAddress("akt10hi_etajes_jet_e", &akt10hi_etajes_jet_e_p);
+      inTree_p->SetBranchAddress("akt10hi_etajes_jet_m", &akt10hi_etajes_jet_m_p);
+
+      inTree_p->SetBranchAddress("akt10hi_insitu_jet_pt", &akt10hi_insitu_jet_pt_p);
+      inTree_p->SetBranchAddress("akt10hi_insitu_jet_eta", &akt10hi_insitu_jet_eta_p);
+      inTree_p->SetBranchAddress("akt10hi_insitu_jet_phi", &akt10hi_insitu_jet_phi_p);
+      inTree_p->SetBranchAddress("akt10hi_insitu_jet_e", &akt10hi_insitu_jet_e_p);
+      inTree_p->SetBranchAddress("akt10hi_insitu_jet_m", &akt10hi_insitu_jet_m_p);
+
+      inTree_p->SetBranchAddress("akt10hi_jet_clean", &akt10hi_jet_clean_p);
       if(isMC) inTree_p->SetBranchAddress("akt10hi_truthpos", &akt10hi_truthpos_p);      
     }
     
     inTree_p->SetBranchAddress("akt2to10hi_jet_n", &akt2to10hi_jet_n_);
-    inTree_p->SetBranchAddress("akt2to10hi_em_xcalib_jet_pt", &akt2to10hi_em_xcalib_jet_pt_p);
-    inTree_p->SetBranchAddress("akt2to10hi_em_xcalib_jet_eta", &akt2to10hi_em_xcalib_jet_eta_p);
-    inTree_p->SetBranchAddress("akt2to10hi_em_xcalib_jet_phi", &akt2to10hi_em_xcalib_jet_phi_p);
-    inTree_p->SetBranchAddress("akt2to10hi_em_xcalib_jet_e", &akt2to10hi_em_xcalib_jet_e_p);
-    inTree_p->SetBranchAddress("akt2to10hi_em_xcalib_jet_m", &akt2to10hi_em_xcalib_jet_m_p);
+    inTree_p->SetBranchAddress("akt2to10hi_etajes_jet_pt", &akt2to10hi_etajes_jet_pt_p);
+    inTree_p->SetBranchAddress("akt2to10hi_etajes_jet_eta", &akt2to10hi_etajes_jet_eta_p);
+    inTree_p->SetBranchAddress("akt2to10hi_etajes_jet_phi", &akt2to10hi_etajes_jet_phi_p);
+    inTree_p->SetBranchAddress("akt2to10hi_etajes_jet_e", &akt2to10hi_etajes_jet_e_p);
+    inTree_p->SetBranchAddress("akt2to10hi_etajes_jet_m", &akt2to10hi_etajes_jet_m_p);
     if(isMC) inTree_p->SetBranchAddress("akt2to10hi_truthpos", &akt2to10hi_truthpos_p);    
 
     inTree_p->SetBranchAddress("photon_n", &photon_n_);
@@ -1227,24 +1211,19 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
       //akt2 jet collection size checks
-      if(akt2hi_em_xcalib_jet_pt_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt2hi_em_xcalib_jet_uncorrpt_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt2hi_em_xcalib_jet_eta_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt2hi_em_xcalib_jet_uncorreta_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt2hi_em_xcalib_jet_phi_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt2hi_em_xcalib_jet_e_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt2hi_em_xcalib_jet_uncorre_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_etajes_jet_pt_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_etajes_jet_eta_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_etajes_jet_phi_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_etajes_jet_e_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_etajes_jet_m_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
 
-      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+      if(akt2hi_insitu_jet_pt_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_insitu_jet_eta_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_insitu_jet_phi_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_insitu_jet_e_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_insitu_jet_m_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
 
-      if(akt2hi_em_xcalib_jet_m_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt2hi_em_xcalib_jet_clean_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt2hi_em_xcalib_jet_pt_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt2hi_constit_xcalib_jet_pt_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt2hi_constit_xcalib_jet_eta_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt2hi_constit_xcalib_jet_phi_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt2hi_constit_xcalib_jet_e_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt2hi_double_calib_jet_pt_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_jet_clean_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(isMC){
 	if(akt2hi_truthpos_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       }
@@ -1252,54 +1231,49 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
       //akt4 jet collection size checks
-      if(akt4hi_em_xcalib_jet_pt_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt4hi_em_xcalib_jet_uncorrpt_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt4hi_em_xcalib_jet_eta_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt4hi_em_xcalib_jet_uncorreta_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt4hi_em_xcalib_jet_phi_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt4hi_em_xcalib_jet_e_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt4hi_em_xcalib_jet_uncorre_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt4hi_em_xcalib_jet_m_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt4hi_em_xcalib_jet_clean_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt4hi_em_xcalib_jet_pt_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt4hi_constit_xcalib_jet_pt_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt4hi_constit_xcalib_jet_eta_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt4hi_constit_xcalib_jet_phi_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt4hi_constit_xcalib_jet_e_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt4hi_double_calib_jet_pt_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt4hi_etajes_jet_pt_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt4hi_etajes_jet_eta_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt4hi_etajes_jet_phi_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt4hi_etajes_jet_e_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt4hi_etajes_jet_m_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+
+      if(akt4hi_insitu_jet_pt_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt4hi_insitu_jet_eta_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt4hi_insitu_jet_phi_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt4hi_insitu_jet_e_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt4hi_insitu_jet_m_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+
+      if(akt4hi_jet_clean_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(isMC){
 	if(akt4hi_truthpos_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       }
 
       //akt10 jet collection size checks
       if(!isPP){
-	if(akt10hi_em_xcalib_jet_pt_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-	if(akt10hi_em_xcalib_jet_uncorrpt_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-	if(akt10hi_em_xcalib_jet_eta_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-	if(akt10hi_em_xcalib_jet_uncorreta_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-	if(akt10hi_em_xcalib_jet_phi_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-	if(akt10hi_em_xcalib_jet_e_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-	if(akt10hi_em_xcalib_jet_uncorre_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-	if(akt10hi_em_xcalib_jet_m_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-	if(akt10hi_em_xcalib_jet_clean_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-	if(akt10hi_em_xcalib_jet_pt_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-	if(akt10hi_constit_xcalib_jet_pt_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-	if(akt10hi_constit_xcalib_jet_eta_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-	if(akt10hi_constit_xcalib_jet_phi_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-	if(akt10hi_constit_xcalib_jet_e_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-	if(akt10hi_double_calib_jet_pt_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt10hi_etajes_jet_pt_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt10hi_etajes_jet_eta_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt10hi_etajes_jet_phi_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt10hi_etajes_jet_e_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt10hi_etajes_jet_m_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
 
+	if(akt10hi_insitu_jet_pt_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt10hi_insitu_jet_eta_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt10hi_insitu_jet_phi_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt10hi_insitu_jet_e_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt10hi_insitu_jet_m_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+
+	if(akt10hi_jet_clean_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
 	if(isMC){
 	  if(akt10hi_truthpos_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
 	}
       }
 
       //akt2to10 jet collection size checks
-      if(akt2to10hi_em_xcalib_jet_pt_p->size() != (unsigned int)akt2to10hi_jet_n_) std::cout << "AKT2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt2to10hi_em_xcalib_jet_eta_p->size() != (unsigned int)akt2to10hi_jet_n_) std::cout << "AKT2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt2to10hi_em_xcalib_jet_phi_p->size() != (unsigned int)akt2to10hi_jet_n_) std::cout << "AKT2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt2to10hi_em_xcalib_jet_e_p->size() != (unsigned int)akt2to10hi_jet_n_) std::cout << "AKT2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt2to10hi_em_xcalib_jet_m_p->size() != (unsigned int)akt2to10hi_jet_n_) std::cout << "AKT2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2to10hi_etajes_jet_pt_p->size() != (unsigned int)akt2to10hi_jet_n_) std::cout << "AKT2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2to10hi_etajes_jet_eta_p->size() != (unsigned int)akt2to10hi_jet_n_) std::cout << "AKT2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2to10hi_etajes_jet_phi_p->size() != (unsigned int)akt2to10hi_jet_n_) std::cout << "AKT2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2to10hi_etajes_jet_e_p->size() != (unsigned int)akt2to10hi_jet_n_) std::cout << "AKT2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2to10hi_etajes_jet_m_p->size() != (unsigned int)akt2to10hi_jet_n_) std::cout << "AKT2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(isMC){
 	if(akt2to10hi_truthpos_p->size() != (unsigned int)akt2to10hi_jet_n_) std::cout << "AKT2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       }

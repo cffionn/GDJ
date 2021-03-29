@@ -20,6 +20,7 @@ class sampleHandler{
   double GetXSection();
   double GetFilterEff();
   int GetMinPthat();
+  int GetMinPthat(int sampleTag);
   void Clean();
   void PrintTags();  
   
