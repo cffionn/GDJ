@@ -24,9 +24,14 @@ void sampleHandler::PreInit()
 {
   validMinPthatsByYear[2015] = {};
   validMinPthatsByYear[2017] = {35, 50, 70, 140, 280};
-  validMinPthatsByYear[2018] = {50, 70, 140};
+  validMinPthatsByYear[2018] = {35, 50, 70, 140};
 
   //PYTHIA8 + Overlay
+  dataSetNameToIsPP["mc16_5TeV.423101.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP35_50.merge.AOD.e5094_d1516_r11439_r11217"] = 0;
+  dataSetNameToIsMC["mc16_5TeV.423101.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP35_50.merge.AOD.e5094_d1516_r11439_r11217"] = 1;
+  dataSetNameToYear["mc16_5TeV.423101.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP35_50.merge.AOD.e5094_d1516_r11439_r11217"] = 2018;
+  dataSetNameToMinPthat["mc16_5TeV.423101.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP35_50.merge.AOD.e5094_d1516_r11439_r11217"] = 35;
+
   dataSetNameToIsPP["mc16_5TeV.423102.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP50_70.merge.AOD.e5094_d1516_r11439_r11217"] = 0;
   dataSetNameToIsMC["mc16_5TeV.423102.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP50_70.merge.AOD.e5094_d1516_r11439_r11217"] = 1;
   dataSetNameToYear["mc16_5TeV.423102.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP50_70.merge.AOD.e5094_d1516_r11439_r11217"] = 2018;
@@ -102,6 +107,10 @@ void sampleHandler::PreInit()
 	  else if(tag == 280201711){
 	    tagToXSec[tag] = 37.592;//in nanobarn
 	    tagToFilterEff[tag] = 0.000043848;
+	  }
+	  else if(tag == 35201810){
+	    tagToXSec[tag] = 351620;//in nanobar
+	    tagToFilterEff[tag] = 0.000029113;
 	  }
 	  else if(tag == 50201810){
 	    tagToXSec[tag] = 85898;//in nanobar

@@ -213,6 +213,24 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   Float_t truthPhotonIso4_;
   
   Int_t akt2hi_jet_n_;
+  const Int_t nJES = 18;
+  std::vector<std::vector<float>* > akt2hi_etajes_jet_pt_sys_JES_p;
+  if(isMC){
+    akt2hi_etajes_jet_pt_sys_JES_p.reserve(nJES);
+    for(unsigned int eI = 0; eI < nJES; ++eI){
+      akt2hi_etajes_jet_pt_sys_JES_p[eI] = nullptr;
+    }
+  }
+
+  const Int_t nJER = 9;
+  std::vector<std::vector<float>* > akt2hi_etajes_jet_pt_sys_JER_p;
+  if(isMC){
+    akt2hi_etajes_jet_pt_sys_JER_p.reserve(nJER);
+    for(unsigned int eI = 0; eI < nJER; ++eI){
+      akt2hi_etajes_jet_pt_sys_JER_p[eI] = nullptr;
+    }
+  }
+
   std::vector<float>* akt2hi_etajes_jet_pt_p=nullptr;
   std::vector<float>* akt2hi_etajes_jet_eta_p=nullptr;
   std::vector<float>* akt2hi_etajes_jet_phi_p=nullptr;
@@ -229,6 +247,21 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   
   Int_t akt4hi_jet_n_;
   std::vector<float>* akt4hi_etajes_jet_pt_p=nullptr;
+  std::vector<std::vector<float>* > akt4hi_etajes_jet_pt_sys_JES_p;
+  if(isMC){
+    akt4hi_etajes_jet_pt_sys_JES_p.reserve(nJES);
+    for(unsigned int eI = 0; eI < nJES; ++eI){
+      akt4hi_etajes_jet_pt_sys_JES_p[eI] = nullptr;
+    }
+  }
+  std::vector<std::vector<float>* > akt4hi_etajes_jet_pt_sys_JER_p;
+  if(isMC){
+    akt4hi_etajes_jet_pt_sys_JER_p.reserve(nJER);
+    for(unsigned int eI = 0; eI < nJER; ++eI){
+      akt4hi_etajes_jet_pt_sys_JER_p[eI] = nullptr;
+    }
+  }
+
   std::vector<float>* akt4hi_etajes_jet_eta_p=nullptr;
   std::vector<float>* akt4hi_etajes_jet_phi_p=nullptr;
   std::vector<float>* akt4hi_etajes_jet_e_p=nullptr;
@@ -269,9 +302,15 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 
   Int_t photon_n_;
   std::vector<float>* photon_pt_p=nullptr;
+  std::vector<float>* photon_pt_precali_p=nullptr;
+  std::vector<float>* photon_pt_sys1_p=nullptr;
+  std::vector<float>* photon_pt_sys2_p=nullptr;
+  std::vector<float>* photon_pt_sys3_p=nullptr;
+  std::vector<float>* photon_pt_sys4_p=nullptr;  
   std::vector<float>* photon_eta_p=nullptr;
   std::vector<float>* photon_phi_p=nullptr;
   std::vector<bool>* photon_tight_p=nullptr;
+  std::vector<bool>* photon_tight_b4FudgeTool_p=nullptr;  
   std::vector<bool>* photon_loose_p=nullptr;
   std::vector<unsigned int>* photon_isem_p=nullptr;
   std::vector<int>* photon_convFlag_p=nullptr;
@@ -279,9 +318,6 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   std::vector<float>* photon_etcone20_p=nullptr;
   std::vector<float>* photon_etcone30_p=nullptr;
   std::vector<float>* photon_etcone40_p=nullptr;
-  std::vector<float>* photon_etcone20ptCorrection_p=nullptr;
-  std::vector<float>* photon_etcone30ptCorrection_p=nullptr;
-  std::vector<float>* photon_etcone40ptCorrection_p=nullptr;
   std::vector<float>* photon_topoetcone20_p=nullptr;
   std::vector<float>* photon_topoetcone30_p=nullptr;
   std::vector<float>* photon_topoetcone40_p=nullptr;
@@ -431,6 +467,17 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   }
   
   outTree_p->Branch("akt2hi_jet_n", &akt2hi_jet_n_, "akt2hi_jet_n/I");
+
+  if(isMC){
+    for(Int_t eI = 0; eI < nJES; ++eI){
+      outTree_p->Branch(("akt2hi_etajes_jet_pt_sys_JES_" + std::to_string(eI)).c_str(), &(akt2hi_etajes_jet_pt_sys_JES_p[eI]));
+    }
+    
+    for(Int_t eI = 0; eI < nJER; ++eI){
+      outTree_p->Branch(("akt2hi_etajes_jet_pt_sys_JER_" + std::to_string(eI)).c_str(), &(akt2hi_etajes_jet_pt_sys_JER_p[eI]));
+    }
+  }
+
   outTree_p->Branch("akt2hi_etajes_jet_pt", &akt2hi_etajes_jet_pt_p);
   outTree_p->Branch("akt2hi_etajes_jet_eta", &akt2hi_etajes_jet_eta_p);
   outTree_p->Branch("akt2hi_etajes_jet_phi", &akt2hi_etajes_jet_phi_p);
@@ -446,6 +493,17 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   if(isMC) outTree_p->Branch("akt2hi_truthpos", &akt2hi_truthpos_p);
   
   outTree_p->Branch("akt4hi_jet_n", &akt4hi_jet_n_, "akt4hi_jet_n/I");
+
+  if(isMC){
+    for(Int_t eI = 0; eI < nJES; ++eI){
+      outTree_p->Branch(("akt4hi_etajes_jet_pt_sys_JES_" + std::to_string(eI)).c_str(), &(akt4hi_etajes_jet_pt_sys_JES_p[eI]));
+    }
+    
+    for(Int_t eI = 0; eI < nJER; ++eI){
+      outTree_p->Branch(("akt4hi_etajes_jet_pt_sys_JER_" + std::to_string(eI)).c_str(), &(akt4hi_etajes_jet_pt_sys_JER_p[eI]));
+    }
+  }
+
   outTree_p->Branch("akt4hi_etajes_jet_pt", &akt4hi_etajes_jet_pt_p);
   outTree_p->Branch("akt4hi_etajes_jet_eta", &akt4hi_etajes_jet_eta_p);
   outTree_p->Branch("akt4hi_etajes_jet_phi", &akt4hi_etajes_jet_phi_p);
@@ -489,9 +547,15 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 
   outTree_p->Branch("photon_n", &photon_n_, "photon_n/I");
   outTree_p->Branch("photon_pt", &photon_pt_p);
+  outTree_p->Branch("photon_pt_precali", &photon_pt_precali_p);
+  outTree_p->Branch("photon_pt_sys1", &photon_pt_sys1_p);
+  outTree_p->Branch("photon_pt_sys2", &photon_pt_sys2_p);
+  outTree_p->Branch("photon_pt_sys3", &photon_pt_sys3_p);
+  outTree_p->Branch("photon_pt_sys4", &photon_pt_sys4_p);
   outTree_p->Branch("photon_eta", &photon_eta_p);
   outTree_p->Branch("photon_phi", &photon_phi_p);
   outTree_p->Branch("photon_tight", &photon_tight_p);
+  outTree_p->Branch("photon_tight_b4FudgeTool", &photon_tight_b4FudgeTool_p);
   outTree_p->Branch("photon_loose", &photon_loose_p);
   outTree_p->Branch("photon_isem", &photon_isem_p);
   outTree_p->Branch("photon_convFlag", &photon_convFlag_p);
@@ -499,9 +563,6 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   outTree_p->Branch("photon_etcone20", &photon_etcone20_p);
   outTree_p->Branch("photon_etcone30", &photon_etcone30_p);
   outTree_p->Branch("photon_etcone40", &photon_etcone40_p);
-  outTree_p->Branch("photon_etcone20ptCorrection", &photon_etcone20ptCorrection_p);
-  outTree_p->Branch("photon_etcone30ptCorrection", &photon_etcone30ptCorrection_p);
-  outTree_p->Branch("photon_etcone40ptCorrection", &photon_etcone40ptCorrection_p);
   outTree_p->Branch("photon_topoetcone20", &photon_topoetcone20_p);
   outTree_p->Branch("photon_topoetcone30", &photon_topoetcone30_p);
   outTree_p->Branch("photon_topoetcone40", &photon_topoetcone40_p);
@@ -924,7 +985,18 @@ int gdjNtuplePreProc(std::string inConfigFileName)
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
     inTree_p->SetBranchAddress("akt2hi_jet_n", &akt2hi_jet_n_);
+       
     inTree_p->SetBranchAddress("akt2hi_etajes_jet_pt", &akt2hi_etajes_jet_pt_p);
+    if(isMC){
+      for(Int_t eI = 0; eI < nJES; ++eI){
+	inTree_p->SetBranchAddress(("akt2hi_etajes_jet_pt_sys_JES_" + std::to_string(eI)).c_str(), &(akt2hi_etajes_jet_pt_sys_JES_p[eI]));
+      }
+
+      for(Int_t eI = 0; eI < nJER; ++eI){
+	inTree_p->SetBranchAddress(("akt2hi_etajes_jet_pt_sys_JER_" + std::to_string(eI)).c_str(), &(akt2hi_etajes_jet_pt_sys_JER_p[eI]));
+      }
+    }
+
     inTree_p->SetBranchAddress("akt2hi_etajes_jet_eta", &akt2hi_etajes_jet_eta_p);
     inTree_p->SetBranchAddress("akt2hi_etajes_jet_phi", &akt2hi_etajes_jet_phi_p);
     inTree_p->SetBranchAddress("akt2hi_etajes_jet_e", &akt2hi_etajes_jet_e_p);
@@ -941,6 +1013,15 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 
     inTree_p->SetBranchAddress("akt4hi_jet_n", &akt4hi_jet_n_);
     inTree_p->SetBranchAddress("akt4hi_etajes_jet_pt", &akt4hi_etajes_jet_pt_p);
+    if(isMC){
+      for(Int_t eI = 0; eI < nJES; ++eI){
+	inTree_p->SetBranchAddress(("akt4hi_etajes_jet_pt_sys_JES_" + std::to_string(eI)).c_str(), &(akt4hi_etajes_jet_pt_sys_JES_p[eI]));
+      }
+
+      for(Int_t eI = 0; eI < nJER; ++eI){
+	inTree_p->SetBranchAddress(("akt4hi_etajes_jet_pt_sys_JER_" + std::to_string(eI)).c_str(), &(akt4hi_etajes_jet_pt_sys_JER_p[eI]));
+      }
+    }
     inTree_p->SetBranchAddress("akt4hi_etajes_jet_eta", &akt4hi_etajes_jet_eta_p);
     inTree_p->SetBranchAddress("akt4hi_etajes_jet_phi", &akt4hi_etajes_jet_phi_p);
     inTree_p->SetBranchAddress("akt4hi_etajes_jet_e", &akt4hi_etajes_jet_e_p);
@@ -983,9 +1064,15 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 
     inTree_p->SetBranchAddress("photon_n", &photon_n_);
     inTree_p->SetBranchAddress("photon_pt", &photon_pt_p);
+    inTree_p->SetBranchAddress("photon_pt_precali", &photon_pt_precali_p);
+    inTree_p->SetBranchAddress("photon_pt_sys1", &photon_pt_sys1_p);
+    inTree_p->SetBranchAddress("photon_pt_sys2", &photon_pt_sys2_p);
+    inTree_p->SetBranchAddress("photon_pt_sys3", &photon_pt_sys3_p);
+    inTree_p->SetBranchAddress("photon_pt_sys4", &photon_pt_sys4_p);
     inTree_p->SetBranchAddress("photon_eta", &photon_eta_p);
     inTree_p->SetBranchAddress("photon_phi", &photon_phi_p);
     inTree_p->SetBranchAddress("photon_tight", &photon_tight_p);
+    inTree_p->SetBranchAddress("photon_tight_b4FudgeTool", &photon_tight_b4FudgeTool_p);
     inTree_p->SetBranchAddress("photon_loose", &photon_loose_p);
     inTree_p->SetBranchAddress("photon_isem", &photon_isem_p);
     inTree_p->SetBranchAddress("photon_convFlag", &photon_convFlag_p);
@@ -993,9 +1080,6 @@ int gdjNtuplePreProc(std::string inConfigFileName)
     inTree_p->SetBranchAddress("photon_etcone20", &photon_etcone20_p);
     inTree_p->SetBranchAddress("photon_etcone30", &photon_etcone30_p);
     inTree_p->SetBranchAddress("photon_etcone40", &photon_etcone40_p);
-    inTree_p->SetBranchAddress("photon_etcone20ptCorrection", &photon_etcone20ptCorrection_p);
-    inTree_p->SetBranchAddress("photon_etcone30ptCorrection", &photon_etcone30ptCorrection_p);
-    inTree_p->SetBranchAddress("photon_etcone40ptCorrection", &photon_etcone40ptCorrection_p);
     inTree_p->SetBranchAddress("photon_topoetcone20", &photon_topoetcone20_p);
     inTree_p->SetBranchAddress("photon_topoetcone30", &photon_topoetcone30_p);
     inTree_p->SetBranchAddress("photon_topoetcone40", &photon_topoetcone40_p);
@@ -1212,6 +1296,17 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 
       //akt2 jet collection size checks
       if(akt2hi_etajes_jet_pt_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+
+      if(isMC){
+	for(Int_t eI = 0; eI < nJES; ++eI){
+	  if(akt2hi_etajes_jet_pt_sys_JES_p[eI]->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	}
+
+	for(Int_t eI = 0; eI < nJER; ++eI){
+	  if(akt2hi_etajes_jet_pt_sys_JER_p[eI]->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	}
+      }
+
       if(akt2hi_etajes_jet_eta_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(akt2hi_etajes_jet_phi_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(akt2hi_etajes_jet_e_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
@@ -1232,6 +1327,17 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 
       //akt4 jet collection size checks
       if(akt4hi_etajes_jet_pt_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+
+      if(isMC){
+	for(Int_t eI = 0; eI < nJES; ++eI){
+	  if(akt4hi_etajes_jet_pt_sys_JES_p[eI]->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	}
+
+	for(Int_t eI = 0; eI < nJER; ++eI){
+	  if(akt4hi_etajes_jet_pt_sys_JER_p[eI]->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	}
+      }
+
       if(akt4hi_etajes_jet_eta_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(akt4hi_etajes_jet_phi_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(akt4hi_etajes_jet_e_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
@@ -1280,9 +1386,15 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 
       //Burned a few times on photon vector mismatches so adding a check here
       if(photon_pt_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_pt_precali_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_pt_sys1_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_pt_sys2_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_pt_sys3_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_pt_sys4_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(photon_eta_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(photon_phi_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(photon_tight_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(photon_tight_b4FudgeTool_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(photon_loose_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(photon_isem_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(photon_convFlag_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
@@ -1290,9 +1402,6 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       if(photon_etcone20_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(photon_etcone30_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(photon_etcone40_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(photon_etcone20ptCorrection_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(photon_etcone30ptCorrection_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(photon_etcone40ptCorrection_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(photon_topoetcone20_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(photon_topoetcone30_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(photon_topoetcone40_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
