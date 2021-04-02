@@ -1704,11 +1704,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
     double vert_z = vert_z_p->at(0);
     vert_z /= mmToCMDivFactor;
+
+    //Cut 1: z vertex
     if(vert_z <= -15. || vert_z >= 15.) continue;      
 
     ++(eventCounter[0]);
-
-    //    if(vert_z <= vzMixBinsLow || vert_z >= vzMixBinsHigh) continue;
 
     if(!didOneFireMiss && !isMC){//only check this once per input
       //check at least one of the purported selection triggers fired
@@ -1741,7 +1741,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
     }
     Float_t maxPthat = uniqueMinPthats[minPtHatPos+1];
     
-    //Check prescale is 1 in case i made a mistake on first unprescaled
+    //Check prescale is 1 in case I made a mistake on first unprescaled
 
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
     for(unsigned int hI = 0; hI < hltPrescaleVect.size(); ++hI){
@@ -1760,6 +1760,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
     }
     else centPos = 0;
 
+    //Cut 2: Centrality within selected range
     if(centPos < 0){
       bool vectContainsCent = vectContainsInt((Int_t)cent, &skippedCent);
 
@@ -1775,7 +1776,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
     if(!isMC) fullWeight = 1.0;
 
-    //We need to veto on events w/ undressed background photons sneaking thru - we cannot handle them in MC w/ purity correction as in data
+    //Cut 3: MC only cut on is there a good truth photon
+    // CFM NOTE YOU NEED TO FIX THIS W/ YEONJU'S CODE:
+    // https://github.com/YeonjuGo/GDJ/blob/master/src/gdjNtuplePreProc_phoTaggedJetRaa.C#L1362-L1375
+    // We need to veto on events w/ undressed background photons sneaking thru - we cannot handle them in MC w/ purity correction as in data
     if(isMC){
       Int_t leadingTruthPhotonPos = -1;
       Int_t leadingTruthPhotonPt = -1;
@@ -1792,6 +1796,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       if(truth_type_p->at(leadingTruthPhotonPos) != 14) continue; // Must be prompt iso
       if(truth_origin_p->at(leadingTruthPhotonPos) != 37) continue; // Must be origin prompt photon
 
+      //Make sure the photon is w/in the DP range
       if(leadingTruthPhotonPt < minPthat) continue;
       if(leadingTruthPhotonPt >= maxPthat) continue;
     }
@@ -1812,7 +1817,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
       fillTH1(pthat_p, pthat, fullWeight);
       pthat_Unweighted_p->Fill(pthat);
     }
-
   
     //Check for good photon
     Float_t leadingPhoPt = -1.0;
@@ -1825,11 +1829,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
       }
     }
 
+    //Cut 4: Is there at least one photon candidate within acceptance 
     if(leadingPhoPos < 0) continue; // is there at least one possible photon
 
     ++(eventCounter[3]);
 
-    //    Get rid of this - Messing w/ under and overflow handling
+    //Get rid of this - Messing w/ under and overflow handling
+
+    //Cut 5: Does leading photon pass pT cuts
     if(photon_pt_p->at(leadingPhoPos) < gammaPtBins[0]) continue;
     if(photon_pt_p->at(leadingPhoPos) >= gammaPtBins[nGammaPtBins]) continue;
 
@@ -1840,6 +1847,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
       else correctedIso = getPtCorrectedPhotonIsolation(correctedIso, photon_pt_p->at(leadingPhoPos), photon_eta_p->at(leadingPhoPos));
     }
     
+    //Cut 6: Leading reco photon passes full photon selection
+    //Isolation (corrected), either in sideband or 'good' region, in good eta
     if(!isGoodPhoton(isPP, doPtIsoCorrection, sidebandType, photon_tight_p->at(leadingPhoPos), correctedIso, photon_eta_p->at(leadingPhoPos))) continue;
 
     ++(eventCounter[4]);
@@ -1879,7 +1888,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	}
       }
     }
-   
+  
     if(ptPos >= 0){//this reco photon exists w/in the fiducial range
       if(!isMC){
 	++(gammaCountsPerPtCent[ptPos][centPos]);
@@ -2130,7 +2139,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 			}
 		      }
 		    }
-
+		  
 		    if(truthPt > assocGenMinPt){
 		      if(truthPt < jtPtBins[0]) truthPt = jtPtBins[0] + 0.01;
 		      else if(truthPt > jtPtBins[nJtPtBins]) truthPt = jtPtBins[nJtPtBins] - 0.01;
