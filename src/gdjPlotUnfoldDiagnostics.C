@@ -1,4 +1,3 @@
-
 //Author: Chris McGinn (2021.01.13)
 //Contact at chmc7718@colorado.edu or cffionn on skype for bugs
 
@@ -75,6 +74,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   std::vector<std::string> necessaryParams = {"INUNFOLDFILENAME",
 					      "OUTUNFOLDCONFIG",
 					      "TERMTHRESH",
+					      "DORELATIVETERM",
 					      "SAVETAG",
 					      "SAVEEXT",
 					      "DOLOGX",
@@ -103,7 +103,11 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 
   const std::string saveTag = config_p->GetValue("SAVETAG", "");
   const std::string saveExt = config_p->GetValue("SAVEEXT", "");
+  const bool doRelativeTerm = config_p->GetValue("DORELATIVETERM",  0);
+  std::string deltaStr = "Rel";
+  if(!doRelativeTerm) deltaStr = "Abs";
 
+  
   const bool doLogX = config_p->GetValue("DOLOGX", 0);
   const bool doLogY = config_p->GetValue("DOLOGY", 0);
   
@@ -476,16 +480,18 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       
       std::string saveName = matrices_p[mI]->GetName();
       saveName.replace(saveName.rfind("_h"), 2, "");
-      saveName = "pdfDir/" + dateStr + "/" + saveName + "_" + saveNameTag + "." + saveExt;
+      saveName = "pdfDir/" + dateStr + "/" + saveName + "_Delta" + deltaStr + "_" + saveNameTag + "." + saveExt;
       quietSaveAs(canv_p, saveName);    
       delete canv_p;
     }
-  
+
+    
+    
     //2-D analysis of the unfolding results - this should be the overriding result - the 1-D analysis is cross-check + possible systematic
     //    for(int yExclude = -1; yExclude < nGammaPtBins; ++yExclude){
-    TH1F* statsDelta2D_p = new TH1F(statsDeltaNames2D[cI].c_str(), ";Number of Iterations;#sqrt{#Sigma #delta^{2}}", nIter-1, 1.5, nIter+0.5);
-    TH1F* iterDelta2D_p = new TH1F(iterDeltaNames2D[cI].c_str(), ";Number of Iterations;#sqrt{#Sigma #delta^{2}}", nIter-1, 1.5, ((double)nIter)+0.5);
-    TH1F* totalDelta2D_p = new TH1F(totalDeltaNames2D[cI].c_str(), ";Number of Iterations;#sqrt{#Sigma #delta^{2}}", nIter-1, 1.5, ((double)nIter)+0.5);
+    TH1F* statsDelta2D_p = new TH1F(statsDeltaNames2D[cI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIter-1, 1.5, nIter+0.5);
+    TH1F* iterDelta2D_p = new TH1F(iterDeltaNames2D[cI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIter-1, 1.5, ((double)nIter)+0.5);
+    TH1F* totalDelta2D_p = new TH1F(totalDeltaNames2D[cI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" +deltaStr + "}}").c_str(), nIter-1, 1.5, ((double)nIter)+0.5);
     TH2F* unfold2D_p[nIterMax];
     
     //If its sub data lets save a nice 2-D version of the input before unfolding
@@ -515,7 +521,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       
       std::string saveName = inputName;
       saveName.replace(saveName.rfind("_h"), 2, "");
-      saveName = "pdfDir/" + dateStr + "/" + saveName + "_" + saveNameTag + "." + saveExt;
+      saveName = "pdfDir/" + dateStr + "/" + saveName + "_Delta" + deltaStr + "_" + saveNameTag + "." + saveExt;
       quietSaveAs(canv_p, saveName);    
       delete canv_p;
     }
@@ -540,14 +546,14 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       
       std::string saveName = unfoldNames2D[cI][i];
       saveName.replace(saveName.rfind("_h"), 2, "");
-      saveName = "pdfDir/" + dateStr + "/" + saveName + "_" + saveNameTag + "." + saveExt;
+      saveName = "pdfDir/" + dateStr + "/" + saveName + "_Delta" + deltaStr + "_" + saveNameTag + "." + saveExt;
       quietSaveAs(canv_p, saveName);    
       delete canv_p;
       
       unfoldedHists2D_p.push_back(unfold2D_p[i]);
     }
     
-    getIterativeHists2D(unfoldedHists2D_p, statsDelta2D_p, iterDelta2D_p, totalDelta2D_p);
+    getIterativeHists2D(unfoldedHists2D_p, statsDelta2D_p, iterDelta2D_p, totalDelta2D_p, doRelativeTerm);
     
     std::vector<std::string> tempLabels = globalLabels;
     if(!isMC && truthHistNames[cI][0].find("PURCORR") != std::string::npos){
@@ -647,7 +653,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
     
     for(unsigned int lI = 0; lI < leg_p.size(); ++lI){leg_p[lI]->Draw("SAME");}
     for(unsigned int tI = 0; tI < tempLabels.size(); ++tI){label_p->DrawLatex(diagLabelXGlobal, diagLabelYGlobal - tI*0.06, tempLabels[tI].c_str());}
-    quietSaveAs(canv_p, "pdfDir/" + dateStr + "/diag" + varName + "_GammaPtAll_" + centBinsStr[cI%centBinsStr.size()] + "_" + saveNameTag +  "." + saveExt);
+    quietSaveAs(canv_p, "pdfDir/" + dateStr + "/diag" + varName + "_GammaPtAll_" + centBinsStr[cI%centBinsStr.size()] + "_Delta" + deltaStr + "_" + saveNameTag +  "." + saveExt);
     delete canv_p;
     delete label_p;
     
@@ -693,9 +699,9 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       TH1F* unfold_p[nIterMax];
       if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;    
 
-      TH1F* statsDelta_p = new TH1F(statsDeltaNames[cI][gI].c_str(), ";Number of Iterations;#sqrt{#Sigma #delta^{2}}", nIter-1, 1.5, nIter+0.5);
-      TH1F* iterDelta_p = new TH1F(iterDeltaNames[cI][gI].c_str(), ";Number of Iterations;#sqrt{#Sigma #delta^{2}}", nIter-1, 1.5, ((double)nIter)+0.5);
-      TH1F* totalDelta_p = new TH1F(totalDeltaNames[cI][gI].c_str(), ";Number of Iterations;#sqrt{#Sigma #delta^{2}}", nIter-1, 1.5, ((double)nIter)+0.5);
+      TH1F* statsDelta_p = new TH1F(statsDeltaNames[cI][gI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIter-1, 1.5, nIter+0.5);
+      TH1F* iterDelta_p = new TH1F(iterDeltaNames[cI][gI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIter-1, 1.5, ((double)nIter)+0.5);
+      TH1F* totalDelta_p = new TH1F(totalDeltaNames[cI][gI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIter-1, 1.5, ((double)nIter)+0.5);
 
       std::vector<TH1F*> unfoldedHists_p;
       for(Int_t i = 1; i < nIter; ++i){
@@ -703,7 +709,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	unfoldedHists_p.push_back(unfold_p[i]);
       }
     
-      getIterativeHists(unfoldedHists_p, statsDelta_p, iterDelta_p, totalDelta_p, gI == 1);
+      getIterativeHists(unfoldedHists_p, statsDelta_p, iterDelta_p, totalDelta_p, doRelativeTerm);
       
       tempLabels = globalLabels;
       if(!isMC && truthHistNames[cI][gI].find("PURCORR") != std::string::npos){
@@ -812,7 +818,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	label_p->DrawLatex(diagLabelXGlobal, diagLabelYGlobal - tI*0.06, tempLabels[tI].c_str());
       }
 
-      quietSaveAs(canv_p, "pdfDir/" + dateStr + "/diag" + varName + "_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI%centBinsStr.size()] + "_" + saveNameTag +  "." + saveExt);
+      quietSaveAs(canv_p, "pdfDir/" + dateStr + "/diag" + varName + "_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI%centBinsStr.size()] + "_Delta" + deltaStr + "_" + saveNameTag +  "." + saveExt);
       delete canv_p;
 
       //Write termination to a config
@@ -1389,7 +1395,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       delete label_p;
       if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", gI: " << gI << "/" << nGammaPtBins << std::endl;      
     
-      quietSaveAs(canv_p, "pdfDir/" + dateStr + "/unfold" + varName + "_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI%centBinsStr.size()] + "_" + saveNameTag + "." + saveExt);
+      quietSaveAs(canv_p, "pdfDir/" + dateStr + "/unfold" + varName + "_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI%centBinsStr.size()] + "_Delta" + deltaStr + "_" + saveNameTag + "." + saveExt);
 
       if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", gI: " << gI << "/" << nGammaPtBins << std::endl;
       
@@ -1497,7 +1503,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	leg_p[lI]->Draw("SAME");
       }      
       
-      quietSaveAs(canvBest_p, "pdfDir/" + dateStr + "/unfold" + varName + "_BESTIterations_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI%centBinsStr.size()] + "_" + saveNameTag + "." + saveExt);
+      quietSaveAs(canvBest_p, "pdfDir/" + dateStr + "/unfold" + varName + "_BESTIterations_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI%centBinsStr.size()] + "_Delta" + deltaStr + "_" + saveNameTag + "." + saveExt);
 
       for(Int_t i = 0; i < nPad; ++i){
 	delete padsBest_p[i];
