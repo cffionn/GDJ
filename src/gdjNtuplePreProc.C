@@ -1255,7 +1255,10 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	    break;
 	  }
 	}
-	if(!isGoodGamma) continue;
+	if(!isGoodGamma){
+	  ++currTotalEntries;
+	  continue;
+	}
       }
 
       if(!isPP){
