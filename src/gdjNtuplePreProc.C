@@ -43,13 +43,20 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 					      "OUTFILENAME",
 					      "CENTFILENAME",
 					      "ISPP",
-					      "ISMC"};  
+					      "ISMC",
+					      "KEEPTRUTH",
+					      "DOMINGAMMAPT",
+					      "MINGAMMAPT"};  
   if(!checkEnvForParams(inConfig_p, necessaryParams)) return 1;
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   const bool isPP = inConfig_p->GetValue("ISPP", 0);
   const bool isMC = inConfig_p->GetValue("ISMC", 0);
+  const bool keepTruth = inConfig_p->GetValue("KEEPTRUTH", 0);
+
+  const bool doMinGammaPt = inConfig_p->GetValue("DOMINGAMMAPT", 0);
+  const double minGammaPt = inConfig_p->GetValue("MINGAMMAPT", -1.0);
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
@@ -91,13 +98,8 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   inFile_p->Close();
   delete inFile_p;
 
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE NAME: " << fileList[0] << std::endl;
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
   bool getTracks = false;
   if(checkEnvForParams(fileConfig_p, {"GETTRACKS"})) getTracks = fileConfig_p->GetValue("GETTRACKS", 0);
-
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   std::string topOutDir = "output";
   if(checkEnvForParams(inConfig_p, {"OUTDIRNAME"})){
@@ -107,8 +109,6 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       return 1;
     }
   }
-
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   const std::string dateStr = getDateStr();
   check.doCheckMakeDir(topOutDir);
@@ -131,13 +131,11 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 					       "truthPhotonPt",
 					       "truthPhotonEta",
 					       "truthPhotonPhi",
+					       "truthPhotonType",
+					       "truthPhotonOrigin",
 					       "truthPhotonIso2",
 					       "truthPhotonIso3",
 					       "truthPhotonIso4"};
-
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   Int_t runNumber_, eventNumber_;
   UInt_t lumiBlock_;
@@ -208,6 +206,8 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   Float_t truthPhotonPt_;
   Float_t truthPhotonEta_;
   Float_t truthPhotonPhi_;
+  Int_t truthPhotonType_;
+  Int_t truthPhotonOrigin_;
   Float_t truthPhotonIso2_;
   Float_t truthPhotonIso3_;
   Float_t truthPhotonIso4_;
@@ -447,20 +447,24 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   }
   
   if(isMC){
-    outTree_p->Branch("truth_n", &truthOut_n_, "truth_n/I");
-    outTree_p->Branch("truth_charge", &truthOut_charge_p);
-    outTree_p->Branch("truth_pt", &truthOut_pt_p);
-    outTree_p->Branch("truth_eta", &truthOut_eta_p);
-    outTree_p->Branch("truth_phi", &truthOut_phi_p);
-    outTree_p->Branch("truth_pdg", &truthOut_pdg_p);
-    outTree_p->Branch("truth_e", &truthOut_e_p);
-    outTree_p->Branch("truth_type", &truthOut_type_p);
-    outTree_p->Branch("truth_origin", &truthOut_origin_p);
-    outTree_p->Branch("truth_status", &truthOut_status_p);
-    
+    if(keepTruth){
+      outTree_p->Branch("truth_n", &truthOut_n_, "truth_n/I");
+      outTree_p->Branch("truth_charge", &truthOut_charge_p);
+      outTree_p->Branch("truth_pt", &truthOut_pt_p);
+      outTree_p->Branch("truth_eta", &truthOut_eta_p);
+      outTree_p->Branch("truth_phi", &truthOut_phi_p);
+      outTree_p->Branch("truth_pdg", &truthOut_pdg_p);
+      outTree_p->Branch("truth_e", &truthOut_e_p);
+      outTree_p->Branch("truth_type", &truthOut_type_p);
+      outTree_p->Branch("truth_origin", &truthOut_origin_p);
+      outTree_p->Branch("truth_status", &truthOut_status_p);
+    }
+
     outTree_p->Branch("truthPhotonPt", &truthPhotonPt_, "truthPhotonPt/F");
     outTree_p->Branch("truthPhotonPhi", &truthPhotonPhi_, "truthPhotonPhi/F");
     outTree_p->Branch("truthPhotonEta", &truthPhotonEta_, "truthPhotonEta/F");
+    outTree_p->Branch("truthPhotonType", &truthPhotonType_, "truthPhotonType/I");
+    outTree_p->Branch("truthPhotonOrigin", &truthPhotonOrigin_, "truthPhotonOrigin/I");
     outTree_p->Branch("truthPhotonIso2", &truthPhotonIso2_, "truthPhotonIso2/F");
     outTree_p->Branch("truthPhotonIso3", &truthPhotonIso3_, "truthPhotonIso3/F");
     outTree_p->Branch("truthPhotonIso4", &truthPhotonIso4_, "truthPhotonIso4/F");
@@ -548,10 +552,12 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   outTree_p->Branch("photon_n", &photon_n_, "photon_n/I");
   outTree_p->Branch("photon_pt", &photon_pt_p);
   outTree_p->Branch("photon_pt_precali", &photon_pt_precali_p);
-  outTree_p->Branch("photon_pt_sys1", &photon_pt_sys1_p);
-  outTree_p->Branch("photon_pt_sys2", &photon_pt_sys2_p);
-  outTree_p->Branch("photon_pt_sys3", &photon_pt_sys3_p);
-  outTree_p->Branch("photon_pt_sys4", &photon_pt_sys4_p);
+  if(isMC){
+    outTree_p->Branch("photon_pt_sys1", &photon_pt_sys1_p);
+    outTree_p->Branch("photon_pt_sys2", &photon_pt_sys2_p);
+    outTree_p->Branch("photon_pt_sys3", &photon_pt_sys3_p);
+    outTree_p->Branch("photon_pt_sys4", &photon_pt_sys4_p);
+  }
   outTree_p->Branch("photon_eta", &photon_eta_p);
   outTree_p->Branch("photon_phi", &photon_phi_p);
   outTree_p->Branch("photon_tight", &photon_tight_p);
@@ -784,19 +790,49 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   bool allBranchesGood = true;
   for(auto const & branchIn : listOfBranchesIn){
     bool containsBranch = vectContainsStr(branchIn, &listOfBranchesOut);
-    allBranchesGood = allBranchesGood && containsBranch;
+    if(!containsBranch){
+      if(!keepTruth){
+	if(isStrSame(branchIn, "truth_n")) continue;
+	if(isStrSame(branchIn, "truth_charge")) continue;
+	if(isStrSame(branchIn, "truth_pt")) continue;
+	if(isStrSame(branchIn, "truth_eta")) continue;
+	if(isStrSame(branchIn, "truth_phi")) continue;
+	if(isStrSame(branchIn, "truth_e")) continue;
+	if(isStrSame(branchIn, "truth_pdg")) continue;
+	if(isStrSame(branchIn, "truth_type")) continue;
+	if(isStrSame(branchIn, "truth_origin")) continue;
+	if(isStrSame(branchIn, "truth_status")) continue;
+      }
 
-    if(!containsBranch) std::cout << "GDJMCNTUPLEPREPROC ERROR - \'" << branchIn << "\' branch is not part of output tree. please fix macro, return 1" << std::endl;
+      std::cout << "GDJMCNTUPLEPREPROC ERROR - \'" << branchIn << "\' branch is not part of output tree. please fix macro, return 1" << std::endl;
+    }
+
+    allBranchesGood = allBranchesGood && containsBranch;    
   }
 
   bool allBranchesGood2 = true;
   for(auto const & branchOut : listOfBranchesOut){
     if(vectContainsStr(branchOut, &outBranchesToAdd)) continue;//Dont want to throw error on branches we added
-
     bool containsBranch = vectContainsStr(branchOut, &listOfBranchesIn);
-    allBranchesGood2 = allBranchesGood2 && containsBranch;
 
-    if(!containsBranch) std::cout << "GDJMCNTUPLEPREPROC ERROR - \'" << branchOut << "\' branch is not part of input tree. please fix macro, return 1" << std::endl;
+    if(!containsBranch){
+      if(!keepTruth){
+	if(isStrSame(branchOut, "truth_n")) continue;
+	if(isStrSame(branchOut, "truth_charge")) continue;
+	if(isStrSame(branchOut, "truth_pt")) continue;
+	if(isStrSame(branchOut, "truth_eta")) continue;
+	if(isStrSame(branchOut, "truth_phi")) continue;
+	if(isStrSame(branchOut, "truth_e")) continue;
+	if(isStrSame(branchOut, "truth_pdg")) continue;
+	if(isStrSame(branchOut, "truth_type")) continue;
+	if(isStrSame(branchOut, "truth_origin")) continue;
+	if(isStrSame(branchOut, "truth_status")) continue;
+      }
+
+      std::cout << "GDJMCNTUPLEPREPROC ERROR - \'" << branchOut << "\' branch is not part of input tree. please fix macro, return 1" << std::endl;
+    }
+
+    allBranchesGood2 = allBranchesGood2 && containsBranch;
   }
 
   
@@ -1065,10 +1101,12 @@ int gdjNtuplePreProc(std::string inConfigFileName)
     inTree_p->SetBranchAddress("photon_n", &photon_n_);
     inTree_p->SetBranchAddress("photon_pt", &photon_pt_p);
     inTree_p->SetBranchAddress("photon_pt_precali", &photon_pt_precali_p);
-    inTree_p->SetBranchAddress("photon_pt_sys1", &photon_pt_sys1_p);
-    inTree_p->SetBranchAddress("photon_pt_sys2", &photon_pt_sys2_p);
-    inTree_p->SetBranchAddress("photon_pt_sys3", &photon_pt_sys3_p);
-    inTree_p->SetBranchAddress("photon_pt_sys4", &photon_pt_sys4_p);
+    if(isMC){
+      inTree_p->SetBranchAddress("photon_pt_sys1", &photon_pt_sys1_p);
+      inTree_p->SetBranchAddress("photon_pt_sys2", &photon_pt_sys2_p);
+      inTree_p->SetBranchAddress("photon_pt_sys3", &photon_pt_sys3_p);
+      inTree_p->SetBranchAddress("photon_pt_sys4", &photon_pt_sys4_p);
+    }
     inTree_p->SetBranchAddress("photon_eta", &photon_eta_p);
     inTree_p->SetBranchAddress("photon_phi", &photon_phi_p);
     inTree_p->SetBranchAddress("photon_tight", &photon_tight_p);
@@ -1139,8 +1177,6 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       inTree_p->SetBranchAddress("akt2to10_truth_jet_partonid", &akt2to10_truth_jet_partonid_p);
       inTree_p->SetBranchAddress("akt2to10_truth_jet_recopos", &akt2to10_truth_jet_recopos_p);            
     }
-
-    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
     const ULong64_t nEntries = inTree_p->GetEntries();
     for(ULong64_t entry = 0; entry < nEntries; ++entry){
@@ -1205,13 +1241,22 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	  break;
 	}
       }
-      
-      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
       inTree_p->GetEntry(entry);
-      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
       subTimer1.stop();
       subTimer2.start();
+
+      if(doMinGammaPt){
+	bool isGoodGamma = false;
+	for(unsigned int pI = 0; pI < photon_pt_p->size(); ++pI){
+	  if(photon_pt_p->at(pI) > minGammaPt){
+	    isGoodGamma = true;
+	    break;
+	  }
+	}
+	if(!isGoodGamma) continue;
+      }
 
       if(!isPP){
 	cent_ = centTable.GetCent(fcalA_et_ + fcalC_et_);
@@ -1224,8 +1269,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       subTimer2.stop();
       subTimer3.start();
     
-
-      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+      
 
       if(minNVert > nvert_) minNVert = nvert_;
       if(maxNVert < nvert_) maxNVert = nvert_;
@@ -1280,7 +1324,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
       //truth size checks
-      if(isMC){
+      if(isMC){	
 	if(truth_charge_p->size() != (unsigned int)truth_n_) std::cout << "TRUTH VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
 	if(truth_pt_p->size() != (unsigned int)truth_n_) std::cout << "TRUTH VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
 	if(truth_e_p->size() != (unsigned int)truth_n_) std::cout << "TRUTH VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
@@ -1387,10 +1431,12 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       //Burned a few times on photon vector mismatches so adding a check here
       if(photon_pt_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(photon_pt_precali_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(photon_pt_sys1_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(photon_pt_sys2_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(photon_pt_sys3_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(photon_pt_sys4_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(isMC){
+	if(photon_pt_sys1_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(photon_pt_sys2_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(photon_pt_sys3_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(photon_pt_sys4_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      }
       if(photon_eta_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(photon_phi_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(photon_tight_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
@@ -1461,37 +1507,61 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	truthPhotonPt_ = -999.;     
 	truthPhotonPhi_ = -999.;      
 	truthPhotonEta_ = -999.;
+	truthPhotonType_ = -999;
+	truthPhotonOrigin_ = -999;
 	truthPhotonIso2_ = -999.;
 	truthPhotonIso3_ = -999.;
 	truthPhotonIso4_ = -999.;
-
-	truthOut_charge_p->clear();
-	truthOut_pt_p->clear();
-	truthOut_eta_p->clear();
-	truthOut_phi_p->clear();
-	truthOut_e_p->clear();
-	truthOut_pdg_p->clear();
-	truthOut_type_p->clear();
-	truthOut_origin_p->clear();
-	truthOut_status_p->clear();
-	truthOut_n_ = 0;
+	
+	if(keepTruth){
+	  truthOut_charge_p->clear();
+	  truthOut_pt_p->clear();
+	  truthOut_eta_p->clear();
+	  truthOut_phi_p->clear();
+	  truthOut_e_p->clear();
+	  truthOut_pdg_p->clear();
+	  truthOut_type_p->clear();
+	  truthOut_origin_p->clear();
+	  truthOut_status_p->clear();
+	  truthOut_n_ = 0;
+	}
 
 	for(unsigned int tI = 0; tI < truth_pt_p->size(); ++tI){
 	  if(truth_status_p->at(tI) != 1) continue;	
 
-	  truthOut_charge_p->push_back(truth_charge_p->at(tI));
-	  truthOut_pt_p->push_back(truth_pt_p->at(tI));
-	  truthOut_eta_p->push_back(truth_eta_p->at(tI));
-	  truthOut_phi_p->push_back(truth_phi_p->at(tI));
-	  truthOut_e_p->push_back(truth_e_p->at(tI));
-	  truthOut_pdg_p->push_back(truth_pdg_p->at(tI));
-	  truthOut_type_p->push_back(truth_type_p->at(tI));
-	  truthOut_origin_p->push_back(truth_origin_p->at(tI));
-	  truthOut_status_p->push_back(truth_status_p->at(tI));	  
-	  ++truthOut_n_;
+	  if(keepTruth){
+	    truthOut_charge_p->push_back(truth_charge_p->at(tI));
+	    truthOut_pt_p->push_back(truth_pt_p->at(tI));
+	    truthOut_eta_p->push_back(truth_eta_p->at(tI));
+	    truthOut_phi_p->push_back(truth_phi_p->at(tI));
+	    truthOut_e_p->push_back(truth_e_p->at(tI));
+	    truthOut_pdg_p->push_back(truth_pdg_p->at(tI));
+	    truthOut_type_p->push_back(truth_type_p->at(tI));
+	    truthOut_origin_p->push_back(truth_origin_p->at(tI));
+	    truthOut_status_p->push_back(truth_status_p->at(tI));	  
+	    ++truthOut_n_;
+	  }
 
-	  if(truth_type_p->at(tI) != 14) continue;
-	  if(truth_origin_p->at(tI) != 37) continue;
+	  //The following needs to be replaced according to what YJ found in MC truth photon definition
+	  //Need to take more photons than just 14 type origin 37	 
+	  //	  if(truth_type_p->at(tI) != 14) continue;
+	  //	  if(truth_origin_p->at(tI) != 37) continue;
+
+          int truthType = truth_type_p->at(tI);
+          if(!( truthType >= 14 && truthType <= 16)) continue;
+	  //  IsoPhoton         =  14,
+	  //  NonIsoPhoton      =  15,
+	  //  BkgPhoton         =  16,
+
+	  int truthOrigin = truth_origin_p->at(tI);
+          //https://gitlab.cern.ch/atlas/athena/-/blob/21.2/PhysicsAnalysis/MCTruthClassifier/MCTruthClassifier/MCTruthClassifierDefs.h
+          if((truthOrigin<=35) || (truthOrigin>=41)) continue;
+	  // BremPhot      = 36,
+	  // PromptPhot    = 37,
+	  // UndrPhot      = 38,
+	  // ISRPhot       = 39,
+	  // FSRPhot       = 40,
+
 	  if(truth_pdg_p->at(tI) != 22) continue;
 
 	  //Truth isolation via Yeonju Go (username YeonjuGo on github)
@@ -1501,7 +1571,8 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	  for(unsigned int tI2 = 0; tI2 <truth_pt_p->size() ; ++tI2){
 	    if( tI2==tI) continue;
 	    if( truth_status_p->at(tI2) != 1) continue;
-	    if( (truth_type_p->at(tI2) == 14 && truth_origin_p->at(tI2)==37 && truth_pdg_p->at(tI2) == 22)) continue;
+
+	    //	    if( (truth_type_p->at(tI2) == 14 && truth_origin_p->at(tI2)==37 && truth_pdg_p->at(tI2) == 22)) continue;
 
 	    TLorentzVector temp;
 	    temp.SetPtEtaPhiE(truth_pt_p->at(tI2), truth_eta_p->at(tI2), truth_phi_p->at(tI2), truth_e_p->at(tI2));
@@ -1518,6 +1589,8 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	      truthPhotonPt_ = truth_pt_p->at(tI);
 	      truthPhotonPhi_ = truth_phi_p->at(tI);
 	      truthPhotonEta_ = truth_eta_p->at(tI);
+	      truthPhotonType_ = truth_type_p->at(tI);
+	      truthPhotonOrigin_ = truth_origin_p->at(tI);
 	      truthPhotonIso2_ = genEtSum2; 
 	      truthPhotonIso3_ = genEtSum3; 
 	      truthPhotonIso4_ = genEtSum4; 
@@ -1527,6 +1600,8 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	    truthPhotonPt_ = truth_pt_p->at(tI);
 	    truthPhotonPhi_ = truth_phi_p->at(tI);
 	    truthPhotonEta_ = truth_eta_p->at(tI);
+	    truthPhotonType_ = truth_type_p->at(tI);
+	    truthPhotonOrigin_ = truth_origin_p->at(tI);
 	    truthPhotonIso2_ = genEtSum2; 
 	    truthPhotonIso3_ = genEtSum3; 
 	    truthPhotonIso4_ = genEtSum4; 
@@ -1602,7 +1677,7 @@ int main(int argc, char* argv[])
     std::cout << "return 1." << std::endl;
     return 1;
   }
- 
+
   int retVal = 0;
   retVal += gdjNtuplePreProc(argv[1]);
   return retVal;

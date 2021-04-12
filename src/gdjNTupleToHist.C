@@ -1280,13 +1280,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
   std::vector<float>* vert_z_p=nullptr;
   const Double_t mmToCMDivFactor = 10.;
 
-  
+  /*  
   std::vector<float>* truth_pt_p=nullptr;
   std::vector<float>* truth_phi_p=nullptr;
   std::vector<float>* truth_eta_p=nullptr;
   std::vector<int>* truth_pdg_p=nullptr;
   std::vector<int>* truth_type_p=nullptr;
   std::vector<int>* truth_origin_p=nullptr;
+  */
 
   Float_t truthPhotonPt, truthPhotonPhi, truthPhotonEta;
   
@@ -1552,12 +1553,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
     if(!isPP) inTree_p->SetBranchStatus("ncollWeight", 1);
     inTree_p->SetBranchStatus("fullWeight", 1);
 
+    /*
     inTree_p->SetBranchStatus("truth_pt", 1);
     inTree_p->SetBranchStatus("truth_eta", 1);
     inTree_p->SetBranchStatus("truth_phi", 1);
     inTree_p->SetBranchStatus("truth_pdg", 1);
     inTree_p->SetBranchStatus("truth_origin", 1);
     inTree_p->SetBranchStatus("truth_type", 1);
+    */
 
     inTree_p->SetBranchStatus("truthPhotonPt", 1);
     inTree_p->SetBranchStatus("truthPhotonEta", 1);
@@ -1614,12 +1617,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
     if(!isPP) inTree_p->SetBranchAddress("ncollWeight", &ncollWeight);
     inTree_p->SetBranchAddress("fullWeight", &fullWeight);
 
+    /*
     inTree_p->SetBranchAddress("truth_pt", &truth_pt_p);
     inTree_p->SetBranchAddress("truth_eta", &truth_eta_p);
     inTree_p->SetBranchAddress("truth_phi", &truth_phi_p);
     inTree_p->SetBranchAddress("truth_pdg", &truth_pdg_p);
     inTree_p->SetBranchAddress("truth_origin", &truth_origin_p);
     inTree_p->SetBranchAddress("truth_type", &truth_type_p);
+    */
 
     inTree_p->SetBranchAddress("truthPhotonPt", &truthPhotonPt);
     inTree_p->SetBranchAddress("truthPhotonEta", &truthPhotonEta);
@@ -1774,6 +1779,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
     // https://github.com/YeonjuGo/GDJ/blob/master/src/gdjNtuplePreProc_phoTaggedJetRaa.C#L1362-L1375
     // We need to veto on events w/ undressed background photons sneaking thru - we cannot handle them in MC w/ purity correction as in data
     if(isMC){
+      /*
       Int_t leadingTruthPhotonPos = -1;
       Int_t leadingTruthPhotonPt = -1;
       for(unsigned int tI = 0; tI < truth_pt_p->size(); ++tI){
@@ -1788,10 +1794,12 @@ int gdjNTupleToHist(std::string inConfigFileName)
       if(leadingTruthPhotonPos < 0) continue; //You need at least 1 leading photon
       if(truth_type_p->at(leadingTruthPhotonPos) != 14) continue; // Must be prompt iso
       if(truth_origin_p->at(leadingTruthPhotonPos) != 37) continue; // Must be origin prompt photon
+      */
 
+      
       //Make sure the photon is w/in the DP range
-      if(leadingTruthPhotonPt < minPthat) continue;
-      if(leadingTruthPhotonPt >= maxPthat) continue;
+      if(truthPhotonPt < minPthat) continue;
+      if(truthPhotonPt >= maxPthat) continue;
     }
 
     ++(eventCounter[2]);
