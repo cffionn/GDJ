@@ -36,8 +36,118 @@
 #include "include/plotUtilities.h"
 #include "include/stringUtil.h"
 
-void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>* labelMap, TEnv* plotConfig_p, std::string envStr, std::string dateStr,  std::vector<TH1F*> hists_p)
+//Based on file provided by YJ 2021.04.27
+//See input/yjDPhi for pdf and C file
+void fillYJHist(TH1F* inHist_p)
 {
+  const Int_t nBins = 16;
+  const Double_t binVals[nBins] = {0.04494337, 0.05285863, 0.06226765, 0.09007777, 0.08434847, 0.07955648, 0.08816509, 0.09671815, 0.1008858, 0.1199762, 0.1605424, 0.2304045, 0.3904447, 0.6729873, 1.310041, 3.538677};
+
+  
+  
+  return
+}
+
+std::vector<std::string> getLabels(TEnv* plotConfig_p, TH1F* histForLabels_p, std::map<std::string, std::string>* labelMap, std::vector<std::string>* labelsForSaveStr = nullptr)
+{
+  std::vector<std::string> labelVect;
+  Int_t nGlobalLabels = 0;
+  for(Int_t gI = 0; gI < 10; ++gI){
+    std::string tempStr = plotConfig_p->GetValue(("MIXEDEVTPLOT.GLOBALLABEL." + std::to_string(gI)).c_str(), "");
+    if(tempStr.size() == 0) break;
+    while(tempStr.find("\"") != std::string::npos){tempStr.replace(tempStr.find("\""), 1, "");}
+
+    labelVect.push_back(tempStr);
+    ++nGlobalLabels;
+  }
+
+  int jetR = plotConfig_p->GetValue("JETR", 100);
+  std::string jetRStr = "anti-k_{t} #it{R}=";
+  if(jetR < 10) jetRStr = jetRStr + "0." + std::to_string(jetR) + " jets";
+  else{
+    jetRStr = jetRStr + prettyString(((double)jetR)/10., 1, false) + " jets";
+  }
+  labelVect.push_back(jetRStr);
+
+  std::string labelStr = histForLabels_p->GetName();
+  if(labelStr.find("_") != std::string::npos) labelStr.replace(0, labelStr.find("_")+1, "");
+  if(labelStr.rfind("_h") != std::string::npos) labelStr.replace(labelStr.rfind("_h"), 2, "");
+
+  while(labelStr.find("_") != std::string::npos){
+    std::string centStr = labelStr.substr(0, labelStr.find("_"));
+    labelStr.replace(0, labelStr.find("_")+1, "");
+   
+    if(centStr.find("Alt") == std::string::npos) labelVect.push_back(centStr);
+    if(isStrSame("RAW_h", labelStr)) break;
+  }
+  if(labelStr.size() != 0) labelVect.push_back(labelStr);
+
+  if(labelsForSaveStr != nullptr){
+    for(unsigned int pI = nGlobalLabels; pI < labelVect.size(); ++pI){
+      if(labelVect[pI].find("anti-k") != std::string::npos) continue;
+      if(labelVect[pI].find("ATLAS") != std::string::npos) continue;
+
+      labelsForSaveStr->push_back(labelVect[pI]);
+    }       
+  }
+  
+  for(unsigned int pI = 0; pI < labelVect.size(); ++pI){
+    if(labelMap->count(labelVect[pI]) != 0){
+      labelVect[pI] = (*labelMap)[labelVect[pI]];
+    }
+  }
+
+  const bool isMC = plotConfig_p->GetValue("ISMC", 0);
+  if(isMC){
+    std::string assocGenMinPtStr = plotConfig_p->GetValue("ASSOCGENMINPT", "");
+    if(assocGenMinPtStr.size() != 0) labelVect.push_back("p_{T}^{Gen. Match} > " + assocGenMinPtStr);
+  }
+
+  std::string jtPtLowStr = plotConfig_p->GetValue("JTPTBINSLOW", "");
+  std::string jtPtHighStr = plotConfig_p->GetValue("JTPTBINSHIGH", "");
+  std::string mixJJDR = plotConfig_p->GetValue("MIXJETEXCLUSIONDR", "");
+  //Add the two relevant jet cuts
+  labelVect.push_back(jtPtLowStr + "<p_{T,Jet}<" + jtPtHighStr);
+  labelVect.push_back("#DeltaR_{JJ}>" + mixJJDR);
+
+
+  for(unsigned int pI = 0; pI < labelVect.size(); ++pI){
+    if(labelVect[pI].find("Barrel") != std::string::npos || labelVect[pI].find("EC") != std::string::npos) labelVect[pI] = labelVect[pI] + " #gamma";
+  }
+  
+  return labelVect;
+}
+
+
+std::string plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>* labelMap, TEnv* plotConfig_p, std::string envStr, std::string dateStr, std::string saveTag,  std::vector<TH1F*> hists_p, std::vector<std::string> legStrs, std::vector<TH1F*> refHist_p, std::vector<std::string> refLegStr, std::vector<std::string> yLabels, std::vector<bool> yLogs, bool doReducedLabel)
+{
+  if(hists_p.size() == 0){
+    std::cout << "No hists given to plotMixClosure - return" << std::endl;
+    return "";
+  }
+
+  if(refHist_p.size() >= 3){
+    std::cout << "Max 2 references allowed. return" << std::endl;
+    return "";
+  }
+
+  if(refHist_p.size() == 0){
+    std::cout << "Must have at least 1 reference allowed. return" << std::endl;
+    return "";
+  }
+
+  for(unsigned int hI = 0; hI < refHist_p.size(); ++hI){
+    hists_p.push_back(refHist_p[hI]);
+    legStrs.push_back(refLegStr[hI]);
+  }
+  
+  //Fix the y-labels
+  std::string yLabelNominal = "N_{J,#gamma}/N_{#gamma}";
+  std::string firstHistName = hists_p[0]->GetName();
+  if(firstHistName.find("JJVCent") != std::string::npos){
+    yLabelNominal = "N_{JJ,#gamma}/N_{#gamma}";    
+  }
+  
   const double max = plotConfig_p->GetValue(("MIXEDEVTPLOT." + envStr + "MAX").c_str(), 0.5);
   const double min = plotConfig_p->GetValue(("MIXEDEVTPLOT." + envStr + "MIN").c_str(), -0.05);
   const double zoomMax = plotConfig_p->GetValue(("MIXEDEVTPLOT." + envStr + "ZOOMMAX").c_str(), 0.05);
@@ -48,7 +158,7 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
   const bool doLogY = plotConfig_p->GetValue(("MIXEDEVTPLOT." + envStr + "DOLOGY").c_str(), 0);
 
   const bool alignRight = plotConfig_p->GetValue(("MIXEDEVTPLOT." + envStr + "LABELALIGNRIGHT").c_str(), 0);
-
+   
   std::vector<std::vector<float> > generalBoxes;
 
   for(int gI = 0; gI < 10; ++gI){
@@ -57,9 +167,10 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
     generalBoxes.push_back(strToVectF(tempStr));
   }
 
-  std::vector<std::string> legStrs = {"Raw", "Mixed", "Raw - Mixed", "Gen. Matched"};
-  if(legStrs.size() < hists_p.size()) return;
+  if(legStrs.size() != hists_p.size()) return "";
 
+  int jetR = plotConfig_p->GetValue("JETR", 100);
+  
   std::string preStr = hists_p[0]->GetName();
 
   while(preStr.find("/") != std::string::npos){preStr.replace(0, preStr.find("/")+1, "");}
@@ -69,60 +180,60 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
   double titleSize = 0.035;
   double labelSize = titleSize*0.9;
 
-  std::string labelStr = hists_p[0]->GetName();  
-  if(labelStr.find("_") != std::string::npos) labelStr.replace(0, labelStr.find("_")+1, "");  
-  if(labelStr.rfind("_h") != std::string::npos) labelStr.replace(labelStr.rfind("_h"), 2, "");
-  std::vector<std::string> preLabels;
-  int nGlobalLabels = 0;
-  for(Int_t gI = 0; gI < 10; ++gI){
-    std::string tempStr = plotConfig_p->GetValue(("MIXEDEVTPLOT.GLOBALLABEL." + std::to_string(gI)).c_str(), "");
-    if(tempStr.size() == 0) break;
-    while(tempStr.find("\"") != std::string::npos){tempStr.replace(tempStr.find("\""), 1, "");}
-    preLabels.push_back(tempStr);
-    ++nGlobalLabels;
-  }
-
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
-  int jetR = plotConfig_p->GetValue("JETR", 100);
-  std::string jetRStr = "anti-k_{t} #it{R}=";
-  if(jetR < 10) jetRStr = jetRStr + "0." + std::to_string(jetR) + " jets";
-  else{
-    jetRStr = jetRStr + prettyString(((double)jetR)/10., 1, false) + " jets";
-  }
-  preLabels.push_back(jetRStr);
+  std::vector<std::string> preLabelsAlt;
+  std::vector<std::string> preLabels = getLabels(plotConfig_p, hists_p[0], labelMap, &preLabelsAlt);
   
-  while(labelStr.find("_") != std::string::npos){
-    std::string centStr = labelStr.substr(0, labelStr.find("_"));
-    preLabels.push_back(centStr);
-    labelStr.replace(0, labelStr.find("_")+1, "");
-    if(isStrSame("RAW_h", labelStr)) break;
-  }    
-  if(labelStr.size() != 0) preLabels.push_back(labelStr);
-
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
   const Int_t nMaxBins = 100;
   const Int_t nBinsTemp = hists_p[0]->GetXaxis()->GetNbins();
   if(nBinsTemp > nMaxBins){
     std::cout << "Number of bins needed \'" << nBinsTemp << "\' exceeds max \'" << nMaxBins << "\'. return 1" << std::endl;
-    return;
+    return "";
   }
   Double_t binsTemp[nMaxBins+1];
   for(Int_t bIX = 0; bIX < nBinsTemp+1; ++bIX){
     binsTemp[bIX] = hists_p[0]->GetXaxis()->GetBinLowEdge(bIX+1);
   }
 
+  Double_t padSplit = 0.32;
+  const Double_t leftMargin2Pad = 0.16;
+  const Double_t bottomMargin2Pad = 0.125/padSplit;
+  const Double_t topMargin2Pad = 0.01;
+  const Double_t rightMargin2Pad = 0.01;
+  Double_t height2Pad = 900.0;
+  Double_t width2Pad = height2Pad*(1.0 - topMargin2Pad*(1.0 - padSplit) - bottomMargin2Pad*padSplit)/(1.0 - leftMargin2Pad - rightMargin2Pad);
   
-  Double_t padSplit1 = 0.435;
-  Double_t padSplit2 = 0.275;
-  const Double_t leftMargin = 0.16;
-  const Double_t bottomMargin = 0.125/padSplit2;
-  const Double_t topMargin = 0.01;
-  const Double_t rightMargin = 0.01;
-  Double_t height = 450.0;
-  Double_t width = height*(1.0 - topMargin*(1.0 - padSplit1) - bottomMargin*padSplit2)/(1.0 - leftMargin - rightMargin);
+  Double_t padSplit1 = 0.455;
+  Double_t padSplit2 = 0.285;
+  const Double_t leftMargin3Pad = 0.16;
+  const Double_t bottomMargin3Pad = 0.125/padSplit2;
+  const Double_t topMargin3Pad = 0.01;
+  const Double_t rightMargin3Pad = 0.01;
+  Double_t height3Pad = 900.0;
+  Double_t width3Pad = height3Pad*(1.0 - topMargin3Pad*(1.0 - padSplit1) - bottomMargin3Pad*padSplit2)/(1.0 - leftMargin3Pad - rightMargin3Pad);
+  
+  Int_t nPads = 3;
+  Double_t leftMargin = leftMargin3Pad;
+  Double_t rightMargin = rightMargin3Pad;
+  Double_t bottomMargin = bottomMargin3Pad;
+  Double_t topMargin = topMargin3Pad;
+  Double_t height = height3Pad;
+  Double_t width = width3Pad;
+  
+  if(refHist_p.size() == 1){
+    nPads = 2;
+    leftMargin = leftMargin2Pad;
+    rightMargin = rightMargin2Pad;
+    bottomMargin = bottomMargin2Pad;
+    topMargin = topMargin2Pad;
+    height = height2Pad;
+    width = width2Pad;
+  }
 
+  if(nPads != (Int_t)yLabels.size()){
+    std::cout << "Number of pads \'" << nPads << "\' does not match the yLables.size() \'" << yLabels.size() << "\'. return" << std::endl;
+    return "";
+  }
+  
   TLine* line_p = new TLine();
   line_p->SetLineStyle(2);
 
@@ -131,17 +242,16 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
   label_p->SetTextFont(titleFont);
   label_p->SetTextSize(titleSize/(1.0 - padSplit1));
 
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-  
   TCanvas* canv_p = new TCanvas("canv_p", "", width, height);
   TPad* pads_p[3];
   canv_p->SetTopMargin(0.001);
   canv_p->SetRightMargin(0.001);
   canv_p->SetLeftMargin(0.001);
   canv_p->SetBottomMargin(0.001);
-  canv_p->cd();
+  canv_p->cd();  
   
-  pads_p[0] = new TPad("pad0", "", 0.0, padSplit1, 1.0, 1.0);
+  if(nPads == 3) pads_p[0] = new TPad("pad0", "", 0.0, padSplit1, 1.0, 1.0);
+  else pads_p[0] = new TPad("pad0", "", 0.0, padSplit, 1.0, 1.0);
   pads_p[0]->SetTopMargin(topMargin);
   pads_p[0]->SetRightMargin(rightMargin);
   pads_p[0]->SetLeftMargin(leftMargin);
@@ -152,48 +262,84 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
   pads_p[0]->cd();
   canv_p->cd();
 
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-  
-  pads_p[1] = new TPad("pad1", "", 0.0, padSplit2, 1.0, padSplit1);
+  if(nPads == 3) pads_p[1] = new TPad("pad1", "", 0.0, padSplit2, 1.0, padSplit1);
+  else pads_p[1] = new TPad("pad1", "", 0.0, 0.0, 1.0, padSplit);
+
   pads_p[1]->SetTopMargin(0.001);
   pads_p[1]->SetRightMargin(rightMargin);
   pads_p[1]->SetLeftMargin(leftMargin);
-  pads_p[1]->SetBottomMargin(0.001);
+  if(nPads == 3) pads_p[1]->SetBottomMargin(0.001);
+  else pads_p[1]->SetBottomMargin(bottomMargin);
 
   canv_p->cd();
   pads_p[1]->Draw("SAME");
   pads_p[1]->cd();
   canv_p->cd();
 
-  pads_p[2] = new TPad("pad2", "", 0.0, 0.0, 1.0, padSplit2);
-  pads_p[2]->SetTopMargin(0.001);
-  pads_p[2]->SetRightMargin(rightMargin);
-  pads_p[2]->SetLeftMargin(leftMargin);
-  pads_p[2]->SetBottomMargin(bottomMargin);
+  if(nPads == 3){
+    pads_p[2] = new TPad("pad2", "", 0.0, 0.0, 1.0, padSplit2);
+    pads_p[2]->SetTopMargin(0.001);
+    pads_p[2]->SetRightMargin(rightMargin3Pad);
+    pads_p[2]->SetLeftMargin(leftMargin3Pad);
+    pads_p[2]->SetBottomMargin(bottomMargin3Pad);
 
-  canv_p->cd();
-  pads_p[2]->Draw("SAME");
-  pads_p[2]->cd();
-  canv_p->cd();
+    canv_p->cd();
+    pads_p[2]->Draw("SAME");
+    pads_p[2]->cd();
+    canv_p->cd();
+  }
   
   const double legX = plotConfig_p->GetValue(("MIXEDEVTPLOT." + envStr + "LEGX").c_str(), 0.7);
   const double legY = plotConfig_p->GetValue(("MIXEDEVTPLOT." + envStr + "LEGY").c_str(), 0.9);
 
   Int_t maxLegX = 0;
   Int_t nLeg = hists_p.size();
+  
   for(Int_t lI = 0; lI < nLeg; ++lI){
     if(legStrs[lI].size() > (unsigned int)maxLegX) maxLegX = legStrs[lI].size();
   }
+  
+  TLegend* leg_p = nullptr;
+  if(nPads == 3) leg_p = new TLegend(legX, legY - nLeg*0.04/(1.0 - padSplit1), legX + maxLegX*0.016, legY);
+  else leg_p = new TLegend(legX, legY - nLeg*0.04/(1.0 - padSplit), legX + maxLegX*0.016, legY);
 
-  TLegend* leg_p = new TLegend(legX, legY - nLeg*0.04/(1.0 - padSplit1), legX + maxLegX*0.02, legY);
   leg_p->SetTextFont(titleFont);
-  leg_p->SetTextSize(titleSize/(1.0-padSplit1));
+
+  if(nPads == 3) leg_p->SetTextSize(titleSize/(1.0-padSplit1));
+  else leg_p->SetTextSize(titleSize/(1.0-padSplit));
+
   leg_p->SetBorderSize(0);
   leg_p->SetFillColor(0);
   leg_p->SetFillStyle(0);
 
   double yOffset = 1.2;
 
+  //Gotta do a quick pre-process to get nice ranges
+  std::vector<Double_t> refMaxIfLog, refMinIfLog;
+  for(unsigned int hI = 0; hI < refHist_p.size(); ++hI){
+    refMaxIfLog.push_back(-1);
+    refMinIfLog.push_back(-1);
+
+    if(yLogs[hI+1]){
+      for(unsigned int cI = 0; cI < hists_p.size(); ++cI){
+	if(refHist_p[hI] == hists_p[cI]) continue;
+
+	TH1F* tempHist_p = new TH1F("tempHist_p", "", nBinsTemp, binsTemp);	
+	tempHist_p->Divide(hists_p[cI], refHist_p[hI]);
+    
+	Double_t tempMin = getMinGTZero(tempHist_p);
+	Double_t tempMax = getMax(tempHist_p);
+
+	if(refMaxIfLog[hI] < tempMax) refMaxIfLog[hI] = tempMax;
+
+	if(refMinIfLog[hI] < 0) refMinIfLog[hI] = tempMin;
+	else if(refMinIfLog[hI] > tempMin) refMinIfLog[hI] = tempMin;
+
+	delete tempHist_p;
+      }
+    }
+  }
+  
   for(unsigned int cI = 0; cI < hists_p.size(); ++cI){
     leg_p->AddEntry(hists_p[cI], legStrs[cI].c_str(), "P L");
     
@@ -208,60 +354,110 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
     hists_p[cI]->GetXaxis()->SetTitleFont(titleFont);
     hists_p[cI]->GetYaxis()->SetTitleFont(titleFont);
     hists_p[cI]->GetXaxis()->SetTitleSize(0.00001);
-    hists_p[cI]->GetYaxis()->SetTitleSize(titleSize/(1.0-padSplit1));
+
+    if(nPads == 3) hists_p[cI]->GetYaxis()->SetTitleSize(titleSize/(1.0-padSplit1));
+    else hists_p[cI]->GetYaxis()->SetTitleSize(titleSize/(1.0-padSplit));
 
     hists_p[cI]->GetXaxis()->SetLabelFont(titleFont);
     hists_p[cI]->GetYaxis()->SetLabelFont(titleFont);
     hists_p[cI]->GetXaxis()->SetLabelSize(0.00001);
-    hists_p[cI]->GetYaxis()->SetLabelSize(labelSize/(1.0-padSplit1));
+    if(nPads == 3) hists_p[cI]->GetYaxis()->SetLabelSize(labelSize/(1.0-padSplit1));
+    else hists_p[cI]->GetYaxis()->SetLabelSize(labelSize/(1.0-padSplit));
     
     hists_p[cI]->GetYaxis()->SetNdivisions(505);
     hists_p[cI]->GetXaxis()->SetNdivisions(505);
 
-    hists_p[cI]->GetYaxis()->SetTitle("N_{#gamma,jet}/N_{#gamma}");
+    if(yLabels[0].size() == 0) hists_p[cI]->GetYaxis()->SetTitle(yLabelNominal.c_str());
+    else hists_p[cI]->GetYaxis()->SetTitle(yLabels[0].c_str());
     hists_p[cI]->GetYaxis()->SetTitleOffset(yOffset);
+    
     
     if(cI == 0) hists_p[cI]->DrawCopy("HIST E1 P");
     else hists_p[cI]->DrawCopy("HIST E1 P SAME");
+
+    gPad->SetTicks();
     gStyle->SetOptStat(0);
     if(doLogX) gPad->SetLogx();
     if(doLogY) gPad->SetLogy();
     
-    canv_p->cd();
-    pads_p[1]->cd();
+    //editing here
 
-    if(!isMC || hists_p.size() == 3){
+    for(unsigned int hI = 0; hI < refHist_p.size(); ++hI){
+      if(refHist_p[hI] == hists_p[cI]) continue;
+
+      canv_p->cd();
+      pads_p[hI+1]->cd();
+
       TH1F* tempHist_p = new TH1F("tempHist_p", "", nBinsTemp, binsTemp);
       tempHist_p->GetXaxis()->SetTitle(hists_p[cI]->GetXaxis()->GetTitle());
 
-      tempHist_p->SetMaximum(zoomMax);
-      tempHist_p->SetMinimum(zoomMin);
-      
-      tempHist_p->Divide(hists_p[2], hists_p[1]);
+      tempHist_p->Divide(hists_p[cI], refHist_p[hI]);
+    
+      if(yLogs[hI+1]){
+	tempHist_p->SetMaximum(refMaxIfLog[hI]*10.);
+	tempHist_p->SetMinimum(refMinIfLog[hI]/10.);
+      }
+      else{
+	tempHist_p->SetMaximum(zoomMax);
+	tempHist_p->SetMinimum(zoomMin);
+      }
       
       std::string yTitle = tempHist_p->GetYaxis()->GetTitle();
       yTitle = yTitle + " (ZOOM)";
-      tempHist_p->GetYaxis()->SetTitle(yTitle.c_str());
       tempHist_p->GetXaxis()->SetTitleOffset(1.2);
-      tempHist_p->GetYaxis()->SetTitleOffset(yOffset*(padSplit1 - padSplit2)/(1.0 - padSplit1));
+
+      if(nPads == 3){
+	if(hI == 0) tempHist_p->GetYaxis()->SetTitleOffset(yOffset*(padSplit1 - padSplit2)/(1.0 - padSplit1));
+	else tempHist_p->GetYaxis()->SetTitleOffset(yOffset*(padSplit2)/(1.0 - padSplit1));
+      }
+      else tempHist_p->GetYaxis()->SetTitleOffset(yOffset*(padSplit)/(1.0 - padSplit));
       
       tempHist_p->GetXaxis()->SetTitleFont(titleFont);
       tempHist_p->GetYaxis()->SetTitleFont(titleFont);
-      tempHist_p->GetXaxis()->SetTitleSize(titleSize/(padSplit1 - padSplit2));
-      tempHist_p->GetYaxis()->SetTitleSize(titleSize/(padSplit1 - padSplit2));
       
       tempHist_p->GetXaxis()->SetLabelFont(titleFont);
       tempHist_p->GetYaxis()->SetLabelFont(titleFont);
-      tempHist_p->GetXaxis()->SetLabelSize(labelSize/(padSplit1 - padSplit2));
-      tempHist_p->GetYaxis()->SetLabelSize(labelSize/(padSplit1 - padSplit2));
+
+      if(nPads == 3){
+	if(hI == 0){
+	  tempHist_p->GetXaxis()->SetTitleSize(titleSize/(padSplit1 - padSplit2));
+	  tempHist_p->GetYaxis()->SetTitleSize(titleSize/(padSplit1 - padSplit2));
+	  tempHist_p->GetXaxis()->SetLabelSize(labelSize/(padSplit1 - padSplit2));
+	  tempHist_p->GetYaxis()->SetLabelSize(labelSize/(padSplit1 - padSplit2));
+	}
+	else{
+	  tempHist_p->GetXaxis()->SetTitleSize(titleSize/(padSplit2));
+	  tempHist_p->GetYaxis()->SetTitleSize(titleSize/(padSplit2));
+	  tempHist_p->GetXaxis()->SetLabelSize(labelSize/(padSplit2));
+	  tempHist_p->GetYaxis()->SetLabelSize(labelSize/(padSplit2));
+	}
+      }
+      else{
+	tempHist_p->GetXaxis()->SetTitleSize(titleSize/(padSplit));
+	tempHist_p->GetYaxis()->SetTitleSize(titleSize/(padSplit));
+	tempHist_p->GetXaxis()->SetLabelSize(labelSize/(padSplit));
+	tempHist_p->GetYaxis()->SetLabelSize(labelSize/(padSplit));
+      }
       
+      tempHist_p->SetMarkerColor(hists_p[cI]->GetMarkerColor());
+      tempHist_p->SetMarkerSize(hists_p[cI]->GetMarkerSize());
+      tempHist_p->SetMarkerStyle(hists_p[cI]->GetMarkerStyle());
+      tempHist_p->SetLineColor(hists_p[cI]->GetLineColor());
+    
+      if(yLabels[hI+1].size() == 0) tempHist_p->GetYaxis()->SetTitle(yTitle.c_str());
+      else tempHist_p->GetYaxis()->SetTitle(yLabels[hI+1].c_str());
+
       tempHist_p->GetYaxis()->SetNdivisions(505);
       
       if(cI == 0) tempHist_p->DrawCopy("HIST E1 P");
       else tempHist_p->DrawCopy("HIST E1 P SAME");  
-
+    
+      if(yLogs[1+hI]) gPad->SetLogy();
+      
       delete tempHist_p;
     }
+    /*
+    //EDITING HERE 2 - ADVANCED
     else if(hists_p.size() == 4){
       if(cI < 2) continue;
       if(cI == 3) continue;
@@ -359,62 +555,38 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
     }
 
     if(doLogX) gPad->SetLogx();
+    */
   }
-
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   canv_p->cd();
   pads_p[0]->cd();
   leg_p->Draw("SAME");
 
-  labelStr = "";
-
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-  
   const double xPos = plotConfig_p->GetValue(("MIXEDEVTPLOT." + envStr + "LABELX").c_str(), 0.18);
   double yPos = plotConfig_p->GetValue(("MIXEDEVTPLOT." + envStr + "LABELY").c_str(), 0.9);
 
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
   std::string preLabelSaveStr = "";
-  for(unsigned int pI = nGlobalLabels; pI < preLabels.size(); ++pI){
-    if(preLabels[pI].find("anti-k") != std::string::npos) continue;
-    if(preLabels[pI].find("ATLAS") != std::string::npos) continue;
-    else preLabelSaveStr = preLabelSaveStr + preLabels[pI] + "_";
+  for(unsigned int pI = 0; pI < preLabelsAlt.size(); ++pI){
+    if(preLabelsAlt[pI].find("anti-k") != std::string::npos) continue;
+    if(preLabelsAlt[pI].find("ATLAS") != std::string::npos) continue;
+    else preLabelSaveStr = preLabelSaveStr + preLabelsAlt[pI] + "_";
   }
 
   if(isMC) preLabelSaveStr = preLabelSaveStr + "MC_";
   else preLabelSaveStr = preLabelSaveStr + "DATA_";
   preLabelSaveStr = preLabelSaveStr + "R" + std::to_string(jetR) + "_";
 
-  //  double maxX = 0.0;
-  for(unsigned int pI = 0; pI < preLabels.size(); ++pI){
-    canv_p->cd();
-    pads_p[0]->cd();
-
-    std::string preStr = "";
-    if(preLabels[pI].find("Cent") != std::string::npos) preStr = "";//"Pb+Pb";
-    if(labelMap->count(preLabels[pI]) != 0){
-      if(preStr.size() != 0) preLabels[pI] = preStr + " " + (*labelMap)[preLabels[pI]];
-      else preLabels[pI] = (*labelMap)[preLabels[pI]];	
-    }
-  }
-  
-  if(isMC){
-    if(hists_p.size() >= 4){
-      std::string assocGenMinPtStr = plotConfig_p->GetValue("ASSOCGENMINPT", "");
-      
-      if(assocGenMinPtStr.size() != 0) preLabels.push_back("p_{T}^{Gen. Match} > " + assocGenMinPtStr);
-    }
-  }
-
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
   if(alignRight) label_p->SetTextAlign(31);
   for(unsigned int pI = 0; pI < preLabels.size(); ++pI){    
-    label_p->DrawLatex(xPos, yPos, preLabels[pI].c_str());
+    if(preLabels[pI].find("Alt") != std::string::npos) continue;
+
+    if(!doReducedLabel || preLabels[pI].find("ATLAS") != std::string::npos) label_p->DrawLatex(xPos, yPos, preLabels[pI].c_str());
     yPos -= 0.083;
   }
+
   
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
@@ -425,14 +597,24 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
      line_p->DrawLine(hists_p[0]->GetBinLowEdge(1), 0.0, hists_p[0]->GetBinLowEdge(hists_p[0]->GetXaxis()->GetNbins()+1), 0.0);
   }
 
-  canv_p->cd();
-  pads_p[2]->cd();
+  if(zoomMax > 1.0 && zoomMin < 1.0 && !doLogX){
+    for(unsigned int hI = 0; hI < refHist_p.size(); ++hI){
+      canv_p->cd();
+      pads_p[hI+1]->cd();
 
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+      line_p->DrawLine(hists_p[0]->GetBinLowEdge(1), 1.0, hists_p[0]->GetBinLowEdge(hists_p[0]->GetXaxis()->GetNbins()+1), 1.0);      
+    }
+  }
   
-  if(!doLogX){
-    if(!isMC || hists_p.size() == 3) line_p->DrawLine(hists_p[0]->GetBinLowEdge(1), 0.0, hists_p[0]->GetBinLowEdge(hists_p[0]->GetXaxis()->GetNbins()+1), 0.0);
-    else if(hists_p.size() == 4) line_p->DrawLine(hists_p[0]->GetBinLowEdge(1), 1.0, hists_p[0]->GetBinLowEdge(hists_p[0]->GetXaxis()->GetNbins()+1), 1.0);
+  
+  if(nPads == 3){
+    canv_p->cd();
+    pads_p[2]->cd();
+    
+    if(!doLogX){
+      if(!isMC || hists_p.size() == 3) line_p->DrawLine(hists_p[0]->GetBinLowEdge(1), 0.0, hists_p[0]->GetBinLowEdge(hists_p[0]->GetXaxis()->GetNbins()+1), 0.0);
+      else if(hists_p.size() == 4) line_p->DrawLine(hists_p[0]->GetBinLowEdge(1), 1.0, hists_p[0]->GetBinLowEdge(hists_p[0]->GetXaxis()->GetNbins()+1), 1.0);
+    }
   }
 
   canv_p->cd();
@@ -444,22 +626,25 @@ void plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>
 
   std::string extStr = plotConfig_p->GetValue("SAVEEXT", "");
   if(extStr.substr(0,1).find(".") == std::string::npos) extStr = "." + extStr;
-  std::string saveName = "pdfDir/" + dateStr + "/" + preStr + "_" + preLabelSaveStr + dateStr + extStr;
+  std::string saveName = "pdfDir/" + dateStr + "/" + preStr + "_" + preLabelSaveStr;
+
+  if(saveName.substr(saveName.size()-1, 1).find("_") != std::string::npos) saveName = saveName.substr(0, saveName.size()-1);
+  if(saveTag.size() != 0){
+    saveName = saveName + "_" + saveTag;
+  }
+  saveName = saveName + "_" + dateStr + extStr;
   quietSaveAs(canv_p, saveName);
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-  
+
   delete leg_p;
   delete pads_p[0];
   delete pads_p[1];
-  delete pads_p[2];
+  if(nPads == 3) delete pads_p[2];
   delete canv_p;
 
   delete line_p;
   delete label_p;
-  
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
-  return;
+  return saveName;
 }
 
 int gdjMixedEventPlotter(std::string inConfigFileName)
@@ -472,9 +657,12 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 
   TEnv* plotConfig_p = new TEnv(inConfigFileName.c_str());
 
-  std::vector<std::string> reqConfigParams = {"MIXEDEVTPLOT.INFILENAME", "SAVEEXT"};
+  std::vector<std::string> reqConfigParams = {"MIXEDEVTPLOT.INFILENAME", "SAVETAG", "SAVEEXT", "DOREDUCEDLABEL"};
   if(!checkEnvForParams(plotConfig_p, reqConfigParams)) return 1;
 
+  const std::string globalSaveTag = plotConfig_p->GetValue("SAVETAG", "");
+  const bool doReducedLabel = plotConfig_p->GetValue("DOREDUCEDLABEL", 0);
+  
   std::string inFileName = plotConfig_p->GetValue("MIXEDEVTPLOT.INFILENAME", "");
   if(!check.checkFileExt(inFileName, "root")) return 1;
 
@@ -543,8 +731,8 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
     nCentBins = centBins.size()-1;
   }
 
-  std::vector<std::string> observables1 = {"JtXJ", "JtXJJ", "JtPt"};
-  std::vector<std::string> mixStrings = {"MIX", "MIXCorrected", "MIX"};
+  std::vector<std::string> observables1 = {"JtXJ", "JtXJJ", "JtDPhiJJ", "JtPt", "JtDPhi"};
+  std::vector<std::string> mixStrings = {"MIX", "MIXCorrected", "MIXCorrected", "MIX", "MIX"};
   std::vector<std::string> barrelECStr = {"Barrel", "EC"};
 
   //  std::vector<std::string> observables1 = {"JtPt"};
@@ -557,6 +745,10 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
     return 1;
   }
 
+  plotConfig_p->SetValue("JTPTBINSLOW", config_p->GetValue("JTPTBINSLOW", ""));
+  plotConfig_p->SetValue("JTPTBINSHIGH", config_p->GetValue("JTPTBINSHIGH", ""));
+  plotConfig_p->SetValue("MIXJETEXCLUSIONDR", config_p->GetValue("MIXJETEXCLUSIONDR", ""));
+    
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   const Int_t nMaxBins = 100;
@@ -565,6 +757,12 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
     if(!isPP) centStr = "Cent" + centBins[cI] + "to" + centBins[cI+1];
 
     for(unsigned int bI = 0; bI < barrelECStr.size(); ++bI){
+      //      std::string phoName = centStr + "/photonPtVCent_" + centStr + "_" + barrelECStr[bI] + "_DPhi0_PURCORR_h";
+      //THIS MUST BE FIXED TO BE PURCORR (ABOVE)
+      std::string phoName = centStr + "/photonPtVCent_" + centStr + "_" + barrelECStr[bI] + "_RAW_h";
+      TH1F* photonHist_p = (TH1F*)inFile_p->Get(phoName.c_str());
+      std::cout << "PHONAME: " << phoName << " (PLEASE FIX IF NOT 'PURCORR'" << std::endl;
+      
       for(unsigned int oI = 0; oI < observables1.size(); ++oI){     
 	std::string rawName = centStr + "/photonPt" + observables1[oI] + "VCent_" + centStr + "_" + barrelECStr[bI] + "_DPhi0_RAW_h";
 	std::string mixName = rawName;
@@ -572,25 +770,70 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	std::string subName = rawName;
 	subName.replace(subName.find("RAW"), 3, "SUB");
 
-
-	std::cout << "NAMES: " << std::endl;
+	if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	
-	//	std::cout << "RAWNAME: " << rawName << std::endl;
+
 	TH2F* raw_p = (TH2F*)inFile_p->Get(rawName.c_str());
 	TH2F* mix_p = (TH2F*)inFile_p->Get(mixName.c_str());
 	TH2F* sub_p = (TH2F*)inFile_p->Get(subName.c_str());
 	TH2F* mc_p = nullptr;
+	TH2F* mixUncorrected_p = nullptr;
+	TH2F* mixCorrection_p = nullptr;
+
+	TH2F* pureBkgdMC_p = nullptr;
+	TH2F* pureBkgd_p = nullptr;
+
+	TH2F* mixBkgdMC_p = nullptr;
+	TH2F* mixBkgd_p = nullptr;
+	TH2F* mixBkgdUncorr_p = nullptr;
+	  
 	if(isMC){
 	  std::string mcName = rawName;
 	  mcName.replace(mcName.find("RAW"), 3, "TRUTHMATCHEDRECO");
 	  mc_p = (TH2F*)inFile_p->Get(mcName.c_str());	  
-
-	  std::cout << " RAW: " << rawName << std::endl;
-	  std::cout << " MIX: " << mixName << std::endl;
-	  std::cout << " SUB: " << subName << std::endl;
-	  std::cout << " MC: " << mcName << std::endl;
 	}
 
+	std::string mixUncorrectedName = mixName;
+	std::string mixCorrectionName = mixName;
+	std::string pureBkgdName = mixName;
+	std::string pureBkgdMCName = mixName;
+	std::string mixBkgdName = mixName;
+	std::string mixBkgdUncorrName = mixName;
+	std::string mixBkgdMCName = mixName;
+	if(isStrSame(observables1[oI], "JtXJJ") || isStrSame(observables1[oI], "JtDPhiJJ")){
+	  mixUncorrectedName.replace(mixUncorrectedName.find("MIXCorrected"), std::string("MIXCorrected").size(), "MIX");
+
+	  mixCorrectionName.replace(mixCorrectionName.find("MIXCorrected"), std::string("MIXCorrected").size(), "MIXCorrection");
+
+	  pureBkgdName.replace(mixBkgdName.find("MIXCorrected"), std::string("MIXCorrected").size(), "MIXPURE");
+	  pureBkgdMCName.replace(mixBkgdMCName.find("MIXCorrected"), std::string("MIXCorrected").size(), "PUREBKGD");
+
+	  mixBkgdName.replace(mixBkgdName.find("MIXCorrected"), std::string("MIXCorrected").size(), "MIXMIXCorrected");
+	  mixBkgdUncorrName.replace(mixBkgdUncorrName.find("MIXCorrected"), std::string("MIXCorrected").size(), "MIXMIX");
+	  mixBkgdMCName.replace(mixBkgdMCName.find("MIXCorrected"), std::string("MIXCorrected").size(), "MIXBKGD");
+	  
+	  mixUncorrected_p = (TH2F*)inFile_p->Get(mixUncorrectedName.c_str());
+	  mixCorrection_p = (TH2F*)inFile_p->Get(mixCorrectionName.c_str());
+
+	  pureBkgd_p = (TH2F*)inFile_p->Get(pureBkgdName.c_str());
+	  mixBkgd_p = (TH2F*)inFile_p->Get(mixBkgdName.c_str());
+	  mixBkgdUncorr_p = (TH2F*)inFile_p->Get(mixBkgdUncorrName.c_str());
+
+	  std::cout << pureBkgdName << std::endl;
+	  std::cout << mixBkgdName << std::endl;
+
+	  std::cout << pureBkgdMCName << std::endl;
+	  std::cout << mixBkgdMCName << std::endl;
+	  
+	  if(isMC){
+	    pureBkgdMC_p = (TH2F*)inFile_p->Get(pureBkgdMCName.c_str());	  
+	    mixBkgdMC_p = (TH2F*)inFile_p->Get(mixBkgdMCName.c_str());
+	  }
+	}
+
+	if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+    	
+       
 	const Int_t nBinsTemp = raw_p->GetXaxis()->GetNbins();
 	if(nBinsTemp > nMaxBins){
 	  std::cout << "Number of bins needed \'" << nBinsTemp << "\' exceeds max \'" << nMaxBins << "\'. return 1" << std::endl;
@@ -601,9 +844,25 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	  binsTemp[bIX] = raw_p->GetXaxis()->GetBinLowEdge(bIX+1);
 	}
 
+	if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+	
 	for(Int_t bIY = 0; bIY < raw_p->GetYaxis()->GetNbins(); ++bIY){	
-	  std::string axisStr = ";" + std::string(raw_p->GetXaxis()->GetTitle()) + ";Counts";
+	  //Calculate photon integral of this bin
+	  Float_t lowEdge = raw_p->GetYaxis()->GetBinLowEdge(bIY+1);
+	  Float_t highEdge = raw_p->GetYaxis()->GetBinLowEdge(bIY+2);
 
+	  Float_t photonIntegral = 0.0;
+	  for(Int_t pI = 0; pI < photonHist_p->GetXaxis()->GetNbins(); ++pI){
+	    Float_t binCenter = photonHist_p->GetXaxis()->GetBinCenter(pI+1);
+	    if(binCenter < lowEdge) continue;
+	    if(binCenter >= highEdge) continue;
+
+	    photonIntegral += photonHist_p->GetBinContent(pI+1);
+	  }
+
+	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+	  
+	  std::string axisStr = ";" + std::string(raw_p->GetXaxis()->GetTitle()) + ";Counts";
 	  std::string newName = rawName.substr(0, rawName.rfind("_RAW"));
 	  newName = newName + "_GammaPt" + std::to_string(bIY) + "_h";
 	  
@@ -611,33 +870,321 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	  TH1F* mixTemp_p = new TH1F("mixTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
 	  TH1F* subTemp_p = new TH1F("subTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
 	  TH1F* mcTemp_p = nullptr;
-	  if(isMC) mcTemp_p = new TH1F("mcTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
+	  TH1F* mixUncorrectedTemp_p = nullptr;
+	  TH1F* mixCorrectionTemp_p = nullptr;
 
+	  TH1F* pureBkgdTemp_p = nullptr;
+	  TH1F* pureBkgdMCTemp_p = nullptr;
+	  TH1F* mixBkgdTemp_p = nullptr;
+	  TH1F* mixBkgdUncorrTemp_p = nullptr;
+	  TH1F* mixBkgdMCTemp_p = nullptr;
+	  
+	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
+	  if(isMC) mcTemp_p = new TH1F("mcTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
+	  
+	  if(isStrSame(observables1[oI], "JtXJJ") || isStrSame(observables1[oI], "JtDPhiJJ")){
+	    newName = mixUncorrectedName.substr(0, mixUncorrectedName.rfind("_MIX"));
+	    newName = newName + "_Alt_GammaPt" + std::to_string(bIY) + "_h";
+
+	    mixUncorrectedTemp_p = new TH1F(newName.c_str(), axisStr.c_str(), nBinsTemp, binsTemp);
+ 	    mixCorrectionTemp_p = new TH1F("mixCorrectionTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
+
+	    newName.replace(newName.find("Alt"), 3, "Alt2");
+	    pureBkgdTemp_p = new TH1F(newName.c_str(), axisStr.c_str(), nBinsTemp, binsTemp);
+
+	    newName.replace(newName.find("Alt2"), 4, "Alt3");
+	    mixBkgdTemp_p = new TH1F(newName.c_str(), axisStr.c_str(), nBinsTemp, binsTemp);
+	    mixBkgdUncorrTemp_p = new TH1F("mixBkgdUncorrTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
+
+	    if(isMC){
+	      mixBkgdMCTemp_p = new TH1F("mixBkgdMCTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
+	      pureBkgdMCTemp_p = new TH1F("pureBkgdMCTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
+	    }
+	    
+	  }
+
+	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+	  
 	  for(Int_t bIX = 0; bIX < raw_p->GetXaxis()->GetNbins(); ++bIX){	
 	    rawTemp_p->SetBinContent(bIX+1, raw_p->GetBinContent(bIX+1, bIY+1));
 	    mixTemp_p->SetBinContent(bIX+1, mix_p->GetBinContent(bIX+1, bIY+1));
 	    subTemp_p->SetBinContent(bIX+1, sub_p->GetBinContent(bIX+1, bIY+1));
-	    if(isMC) mcTemp_p->SetBinContent(bIX+1, mc_p->GetBinContent(bIX+1, bIY+1));
-
+	  
 	    rawTemp_p->SetBinError(bIX+1, raw_p->GetBinError(bIX+1, bIY+1));
 	    mixTemp_p->SetBinError(bIX+1, mix_p->GetBinError(bIX+1, bIY+1));
 	    subTemp_p->SetBinError(bIX+1, sub_p->GetBinError(bIX+1, bIY+1));
-	    if(isMC) mcTemp_p->SetBinError(bIX+1, mc_p->GetBinError(bIX+1, bIY+1));
-	  }
-	  std::vector<TH1F*> hists_p = {rawTemp_p, mixTemp_p, subTemp_p};
-	  if(isMC && mcTemp_p != nullptr) hists_p.push_back(mcTemp_p);
-	
-      	  plotMixClosure(doGlobalDebug, &labelMap, plotConfig_p, strLowerToUpper(observables1[oI]), dateStr, hists_p);
 
+	    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+	    
+	    if(isMC){
+	      mcTemp_p->SetBinContent(bIX+1, mc_p->GetBinContent(bIX+1, bIY+1));
+	      mcTemp_p->SetBinError(bIX+1, mc_p->GetBinError(bIX+1, bIY+1));
+	    }
+
+	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+	    
+	    if(isStrSame(observables1[oI], "JtXJJ") || isStrSame(observables1[oI], "JtDPhiJJ")){
+	      mixUncorrectedTemp_p->SetBinContent(bIX+1, mixUncorrected_p->GetBinContent(bIX+1, bIY+1));
+              mixUncorrectedTemp_p->SetBinError(bIX+1, mixUncorrected_p->GetBinError(bIX+1, bIY+1));
+
+	      mixCorrectionTemp_p->SetBinContent(bIX+1, mixCorrection_p->GetBinContent(bIX+1, bIY+1));
+              mixCorrectionTemp_p->SetBinError(bIX+1, mixCorrection_p->GetBinError(bIX+1, bIY+1));
+
+	      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+	  
+	      mixBkgdTemp_p->SetBinContent(bIX+1, mixBkgd_p->GetBinContent(bIX+1, bIY+1));
+	      mixBkgdTemp_p->SetBinError(bIX+1, mixBkgd_p->GetBinError(bIX+1, bIY+1));
+
+	      mixBkgdUncorrTemp_p->SetBinContent(bIX+1, mixBkgdUncorr_p->GetBinContent(bIX+1, bIY+1));
+	      mixBkgdUncorrTemp_p->SetBinError(bIX+1, mixBkgdUncorr_p->GetBinError(bIX+1, bIY+1));
+
+	      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+	      
+	      pureBkgdTemp_p->SetBinContent(bIX+1, pureBkgd_p->GetBinContent(bIX+1, bIY+1));
+	      pureBkgdTemp_p->SetBinError(bIX+1, pureBkgd_p->GetBinError(bIX+1, bIY+1));
+
+	      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+	      
+	      if(isMC){
+		if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+		
+		mixBkgdMCTemp_p->SetBinContent(bIX+1, mixBkgdMC_p->GetBinContent(bIX+1, bIY+1));
+		mixBkgdMCTemp_p->SetBinError(bIX+1, mixBkgdMC_p->GetBinError(bIX+1, bIY+1));
+
+		if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+		
+		pureBkgdMCTemp_p->SetBinContent(bIX+1, pureBkgdMC_p->GetBinContent(bIX+1, bIY+1));
+		pureBkgdMCTemp_p->SetBinError(bIX+1, pureBkgdMC_p->GetBinError(bIX+1, bIY+1));
+
+		if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;		
+	      }
+	    }
+	  }	
+
+	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+	  
+	  std::vector<TH1F*> hists_p = {rawTemp_p, subTemp_p};
+	  std::vector<std::string> legStrs = {"Raw", "Raw - Mixed"};
+
+	  HIJet::Style::EquipHistogram(mixTemp_p, 2);
+    
+	  
+	  std::vector<TH1F*> refHists_p = {mixTemp_p};
+	  std::vector<std::string> refLegStrs = {"Mixed"};
+	  std::vector<std::string> yLabels = {"", ("X/#color[" + std::to_string(mixTemp_p->GetMarkerColor()) + "]{Bkgd}").c_str()};
+	  std::vector<bool> yLogs = {false, true};
+	  if(isMC && mcTemp_p != nullptr){
+	    HIJet::Style::EquipHistogram(mcTemp_p, 3);
+	    refHists_p.push_back(mcTemp_p);
+	    refLegStrs.push_back("Gen. Matched");
+
+	    yLabels.push_back("Reco./#color[" + std::to_string(mcTemp_p->GetMarkerColor()) + "]{Truth}");
+	    yLogs.push_back(false);
+	  }
+
+	  for(unsigned int hI = 0; hI < hists_p.size(); ++hI){
+	    hists_p[hI]->Scale(1.0/photonIntegral);
+	  }
+
+	  for(unsigned int hI = 0; hI < refHists_p.size(); ++hI){
+	    refHists_p[hI]->Scale(1.0/photonIntegral);
+	  }
+
+	  std::string firstPlotName = plotMixClosure(doGlobalDebug, &labelMap, plotConfig_p, strLowerToUpper(observables1[oI]), dateStr, globalSaveTag, hists_p, legStrs, refHists_p, refLegStrs, yLabels, yLogs, doReducedLabel);
+	  
+	  if(isStrSame(observables1[oI], "JtXJJ") || isStrSame(observables1[oI], "JtDPhiJJ")){
+	    hists_p.clear();
+	    legStrs.clear();
+	    hists_p = {mixUncorrectedTemp_p, mixCorrectionTemp_p};
+	    legStrs = {"Uncorrected Mix", "Mix Correction", "Final Mix"};
+
+	    for(unsigned int hI = 0; hI < hists_p.size(); ++hI){
+	      hists_p[hI]->Scale(1.0/photonIntegral);
+	    }
+	    hists_p.push_back(mixTemp_p);
+	    
+	    //	    plotMixClosure(doGlobalDebug, &labelMap, plotConfig_p, strLowerToUpper(observables1[oI]), dateStr, "MultiMixCheck", hists_p, legStrs);
+
+	    if(isMC){
+	      hists_p.clear();
+	      legStrs.clear();
+	      hists_p = {mixBkgdTemp_p, mixBkgdUncorrTemp_p};
+	      legStrs = {"Corr. Sig.+Fake Bkgd.", "Uncorr. Sig.+Fake Bkgd."};
+	      for(unsigned int hI = 0; hI < hists_p.size(); ++hI){
+		hists_p[hI]->Scale(1.0/photonIntegral);
+	      }
+	      mixBkgdMCTemp_p->Scale(1.0/photonIntegral);
+	      HIJet::Style::EquipHistogram(mixBkgdMCTemp_p, 2);
+	      
+	      
+	      plotMixClosure(doGlobalDebug, &labelMap, plotConfig_p, strLowerToUpper(observables1[oI]), dateStr, "MixBkgdCheck_" + globalSaveTag, hists_p, legStrs, {mixBkgdMCTemp_p}, {"Truth Sig.+Fake Bkgd."}, {"", ("Reco./#color[" + std::to_string(mixBkgdMCTemp_p->GetMarkerColor()) + "]{Truth}").c_str()}, {false, false}, doReducedLabel);
+	    
+	      hists_p.clear();
+	      legStrs.clear();
+	      hists_p = {pureBkgdTemp_p};
+	      refHists_p = {pureBkgdMCTemp_p};
+	      legStrs = {"Fake+Fake Bkgd."};
+	      refLegStrs = {"Fake+Fake Truth Bkgd."};
+	      HIJet::Style::EquipHistogram(pureBkgdMCTemp_p, 1);
+	      for(unsigned int hI = 0; hI < hists_p.size(); ++hI){
+		hists_p[hI]->Scale(1.0/photonIntegral);
+		refHists_p[hI]->Scale(1.0/photonIntegral);
+	      }
+	    
+	      plotMixClosure(doGlobalDebug, &labelMap, plotConfig_p, strLowerToUpper(observables1[oI]), dateStr, "PureBkgdCheck_" + globalSaveTag, hists_p, legStrs, refHists_p, refLegStrs, {"", ("Reco./#color[" + std::to_string(pureBkgdMCTemp_p->GetMarkerColor()) + "]{Truth}").c_str()}, {false, false}, doReducedLabel);
+	    }
+	  }
+
+	  //EDITING HERE - LETS MAKE THIS SUPER NICE AND AUTOMATED - N Labels -> XxY, Lengths well placed, etc.
+	  //Making one of these for every single hist is dumb come up with a better system
+	  if(doReducedLabel){
+	    std::vector<std::string> fourLabels = {"All", "NoPtGamma", "NoCent", "NoDeltaR"};
+	    std::vector<std::string> preLabels = getLabels(plotConfig_p, rawTemp_p, &labelMap);
+
+	    int titleFont = 42;
+	    double titleSize = 0.1875;
+	    const Int_t nMaxX = 4;
+	    const Int_t nMaxY = 3;
+
+	    for(unsigned int tI = 0; tI < fourLabels.size(); ++tI){	      	    
+	      std::vector<std::string> tempLabels = preLabels;
+
+	      if(fourLabels[tI].find("All") == std::string::npos){
+		for(unsigned int fI = 0; fI < tempLabels.size(); ++fI){
+		  if(fourLabels[tI].find("NoPtGamma") != std::string::npos && tempLabels[fI].find("p_{T,#gamma}") != std::string::npos){
+		    tempLabels.erase(tempLabels.begin()+fI);
+		    break;
+		  }
+
+		  if(fourLabels[tI].find("NoCent") != std::string::npos && tempLabels[fI].find("%") != std::string::npos){
+		    tempLabels.erase(tempLabels.begin()+fI);
+		    break;
+		  }
+
+		  if(fourLabels[tI].find("NoDeltaR") != std::string::npos && tempLabels[fI].find("#DeltaR") != std::string::npos){
+		    tempLabels.erase(tempLabels.begin()+fI);
+		    break;
+		  }
+		  
+		}
+	      }
+	      
+	      Int_t nLabels = tempLabels.size();
+	      
+	      Double_t xWidth[nMaxX];
+	      Double_t yHeight = -1.0;
+	      
+	      for(Int_t xI = 0; xI < nMaxX; ++xI){
+		xWidth[xI] = -1.0;
+	      }
+	      
+	      Int_t nX = 3;
+	      Int_t nY = 2;
+	      if(nLabels >= 7) nY = 3;
+	      if(nLabels >= 10) nX = 4;
+	      
+	      if(nX > nMaxX){
+		std::cout << "nX \'" << nX << "\' for total labels \'" << tempLabels.size() << "\' exceeds maxX \'" << nMaxX << "\'. return 1" << std::endl;
+		return 1;
+	      }
+	      if(nY > nMaxY){
+		std::cout << "nY \'" << nY << "\' for total labels \'" << tempLabels.size() << "\' exceeds maxY \'" << nMaxY << "\'. return 1" << std::endl;
+		return 1;
+	      }
+	      
+	      const Int_t width = 350 + 225*(nX-1);
+	      const Int_t height = 60*nY;
+	      
+	      TCanvas* labelCanv_p = new TCanvas("labelCanv_p", "", width, height);
+	      labelCanv_p->SetTopMargin(0.001);
+	      labelCanv_p->SetLeftMargin(0.001);
+	      labelCanv_p->SetRightMargin(0.001);
+	      labelCanv_p->SetBottomMargin(0.001);
+	      
+	      labelCanv_p->cd();
+	      
+	      TLatex* label_p = new TLatex();
+	      label_p->SetNDC();
+	      label_p->SetTextFont(titleFont);
+	      label_p->SetTextSize(titleSize);	    
+	      
+	      for(unsigned int pI = 0; pI < tempLabels.size(); ++pI){
+		label_p->SetText(0.01, 0.01, tempLabels[pI].c_str());
+		
+		Double_t tempX = label_p->GetXsize();
+		Double_t tempY = label_p->GetYsize();
+		
+		if(tempY > yHeight) yHeight = tempY;
+		Int_t xPos = pI/nY;
+		
+		if(tempX > xWidth[xPos]) xWidth[xPos] = tempX;
+	      }
+	      
+	      for(unsigned int eI = 0; eI < tempLabels.size(); ++eI){
+		if(tempLabels[eI].find("Alt") != std::string::npos){
+		  tempLabels.erase(tempLabels.begin() + eI);
+		  break;
+		}
+	      }
+	    
+	      Double_t xStart = 0.01;
+	      
+	      bool doBreak = false;
+	      for(Int_t xI = 0; xI < nX; ++xI){
+		Double_t yStart = 0.8;
+		
+		for(Int_t yI = 0; yI < nY; ++yI){
+		  unsigned int labelPos = xI*nY + yI;
+		  
+		  if(labelPos >= tempLabels.size()){
+		    doBreak = true;
+		    break;
+		  }
+		  
+		  label_p->DrawLatex(xStart, yStart - yI*yHeight, tempLabels[labelPos].c_str());
+		  
+		}
+		if(doBreak) break;
+		
+		xStart += 0.04 + xWidth[xI];
+	      }
+	    
+	      std::string saveName = firstPlotName;
+	      saveName.replace(saveName.find(dateStr + "."), dateStr.size()+1, fourLabels[tI] + "_" + dateStr + ".");
+	      quietSaveAs(labelCanv_p, saveName);
+ 	      delete labelCanv_p;
+	    } 
+	  }
+	    
+	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+	  
 	  delete rawTemp_p;
 	  delete mixTemp_p;
 	  delete subTemp_p;
 	  if(isMC) delete mcTemp_p;	  
+	  
+	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
+	  if(isStrSame(observables1[oI], "JtXJJ") || isStrSame(observables1[oI], "JtDPhiJJ")){
+	    delete mixUncorrectedTemp_p;
+	    delete mixCorrectionTemp_p;
+
+	    delete mixBkgdTemp_p;
+	    delete mixBkgdUncorrTemp_p;
+	    delete pureBkgdTemp_p;
+
+	    if(isMC){
+	      delete mixBkgdMCTemp_p;
+	      delete pureBkgdMCTemp_p;
+	    }
+	  }
 	}	
       }
     }
   }
 
+  
   
   inFile_p->Close();
   delete inFile_p;
