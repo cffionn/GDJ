@@ -19,8 +19,8 @@ namespace HIJet
 				     kOrange+2,kCyan+3,28,41,kGray};
 
     const int style_scheme[NSTYLES]={20,21,33,34,29,
-				     24,25,27,28,30,
-				     23,20,21,33,34};
+    				     24,25,27,28,30,
+    				     23,20,21,33,34};
   
     const float size_scheme[NSTYLES]={1,1,1.6,1.2,1.6,1,
 				      1,1,1.6,1,1,
@@ -30,7 +30,7 @@ namespace HIJet
 					 0.3,0.3,0.3,0.3,0.3,
 					 0.3,0.3,0.3,0.3,0.3};
     
-    const Width_t line_width=1;
+    const Width_t line_width=3;
     const int Npx=1000;
 
     inline void EquipHistogram(TH1* h1, unsigned int index)
