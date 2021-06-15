@@ -74,6 +74,9 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   std::vector<std::string> necessaryParams = {"INUNFOLDFILENAME",
 					      "OUTUNFOLDCONFIG",
 					      "TERMTHRESH",
+					      "TERM1D",
+					      "TERM2D",
+					      "TERMBOTH",
 					      "DORELATIVETERM",
 					      "SAVETAG",
 					      "SAVEEXT",
@@ -101,6 +104,30 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   const double termThresh = config_p->GetValue("TERMTHRESH", -1.0);
   outUnfoldConfig_p->SetValue("TERMTHRESH", config_p->GetValue("TERMTHRESH", termThresh));
 
+  const bool term1D = (bool)config_p->GetValue("TERM1D", 0);
+  outUnfoldConfig_p->SetValue("TERM1D", config_p->GetValue("TERM1D", term1D));
+  const bool term2D = (bool)config_p->GetValue("TERM2D", 0);
+  outUnfoldConfig_p->SetValue("TERM2D", config_p->GetValue("TERM2D", term2D));
+  const bool termBoth = (bool)config_p->GetValue("TERMBoth", 0);
+  outUnfoldConfig_p->SetValue("TERMBoth", config_p->GetValue("TERMBoth", termBoth));
+
+  if(term1D){
+    if(term2D || termBoth){
+      std::cout << "TERM1D \'" << term1D << "\' and 1 of TERM2D (" << term2D << ") or TERMBOTH (" << termBoth << ") selected. please pick 1. return 1" << std::endl;
+      return 1;
+    }
+  }
+  else if(term2D){
+    if(term1D || termBoth){
+      std::cout << "TERM2D \'" << term2D << "\' and 1 of TERM1D (" << term1D << ") or TERMBOTH (" << termBoth << ") selected. please pick 1. return 1" << std::endl;
+      return 1;
+    }
+  }
+  else if(!termBoth){
+    std::cout << "All termination for best iterations 'TERM1D', 'TERM2D', 'TERMBOTH' are false. Please set one to true. Return 1" << std::endl;
+    return 1;
+  }
+  
   const std::string saveTag = config_p->GetValue("SAVETAG", "");
   const std::string saveExt = config_p->GetValue("SAVEEXT", "");
   const bool doRelativeTerm = config_p->GetValue("DORELATIVETERM",  0);
@@ -117,7 +144,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
     std::cout << "Given SAVEEXT \'" << saveExt << "\' is not valid. return 1" << std::endl;
     return 1;
   }  
-  
+    
   const Int_t nIterCap = config_p->GetValue("NITERPLOTCAP", 100000);
   
   const Float_t xjMinGlobal = config_p->GetValue("XJMIN.GLOBAL", -1000.);
@@ -319,14 +346,20 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   const Int_t nPad = 3;
   Double_t padSplit1 = 0.43;
   Double_t padSplit2 = 0.27976;
+  Double_t height = 900.0;
+  //  height = 1200.0;
+  //  padSplit1 = 0.45;
+  //  padSplit2 = 0.29976;
+
+
   const Double_t leftMargin = 0.16;
   const Double_t bottomMargin = 0.125/padSplit2;
   const Double_t topMargin = 0.01;
   const Double_t rightMargin = 0.01;
   const Double_t noMargin = 0.001;
-  Double_t height = 900.0;
-  Double_t width = height*(1.0 - topMargin*(1.0 - padSplit1) - bottomMargin*padSplit2)/(1.0 - leftMargin - rightMargin);
 
+  Double_t width = height*(1.0 - topMargin*(1.0 - padSplit1) - bottomMargin*padSplit2)/(1.0 - leftMargin - rightMargin);
+  
   const Double_t leftMargin2D = 0.12;
   const Double_t bottomMargin2D = leftMargin2D;
   const Double_t topMargin2D = 0.01;
@@ -367,7 +400,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 
   std::vector<std::string> recoMatrixNames, truthMatrixNames;
   std::vector<std::vector<std::string> > recoHistNames, truthHistNames, statsDeltaNames, iterDeltaNames, totalDeltaNames;
-  std::vector<std::vector<std::vector<std::string> > > unfoldNames;
+  std::vector<std::vector<std::vector<std::string> > > unfoldNames, refoldNames;
 
   std::vector<std::string> statsDeltaNames2D, iterDeltaNames2D, totalDeltaNames2D;
   std::vector<std::vector<std::string> > unfoldNames2D;
@@ -392,7 +425,6 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
     totalDeltaNames2D.push_back("totalDelta_GammaPtAll_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
 
     unfoldNames2D.push_back({});
-
     for(Int_t i = 0; i < nIter; ++i){
       unfoldNames2D[cI + centBinsStr.size()].push_back(("photonPtJet" + varName + "Reco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h").c_str());
     }
@@ -408,6 +440,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
     iterDeltaNames.push_back({});
     totalDeltaNames.push_back({});
     unfoldNames.push_back({});
+    refoldNames.push_back({});
     
     for(Int_t gI = 0; gI < nGammaPtBins; ++gI){    
       recoHistNames[cI].push_back(varNameLower + "Reco_HalfToUnfold_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_h");
@@ -418,8 +451,10 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       totalDeltaNames[cI].push_back("totalDelta_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_h");
 
       unfoldNames[cI].push_back({});
+      refoldNames[cI].push_back({});
       for(Int_t uI = 0; uI < nIter; ++uI){
 	unfoldNames[cI][gI].push_back(varNameLower + "Reco_HalfToUnfold_Iter" + std::to_string(uI) + "_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_h");
+	refoldNames[cI][gI].push_back(varNameLower + "Reco_HalfToUnfold_Iter" + std::to_string(uI) + "_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_Refolded_h");
       }
     }    
   }   
@@ -437,6 +472,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
     iterDeltaNames.push_back({});
     totalDeltaNames.push_back({});
     unfoldNames.push_back({});
+    refoldNames.push_back({});
     
     for(Int_t gI = 0; gI < nGammaPtBins; ++gI){    
       recoHistNames[cI2].push_back(varNameLower + "Reco_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
@@ -447,8 +483,11 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       totalDeltaNames[cI2].push_back("totalDelta_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
 
       unfoldNames[cI2].push_back({});
+      refoldNames[cI2].push_back({});
+
       for(Int_t uI = 0; uI < nIter; ++uI){
 	unfoldNames[cI2][gI].push_back(varNameLower + "Reco_Iter" + std::to_string(uI) + "_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
+	refoldNames[cI2][gI].push_back(varNameLower + "Reco_Iter" + std::to_string(uI) + "_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_Refolded_h");
       }
     }
   }
@@ -485,46 +524,46 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       delete canv_p;
     }
 
-    
-    
     //2-D analysis of the unfolding results - this should be the overriding result - the 1-D analysis is cross-check + possible systematic
     //    for(int yExclude = -1; yExclude < nGammaPtBins; ++yExclude){
     TH1F* statsDelta2D_p = new TH1F(statsDeltaNames2D[cI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIter-1, 1.5, nIter+0.5);
     TH1F* iterDelta2D_p = new TH1F(iterDeltaNames2D[cI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIter-1, 1.5, ((double)nIter)+0.5);
     TH1F* totalDelta2D_p = new TH1F(totalDeltaNames2D[cI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" +deltaStr + "}}").c_str(), nIter-1, 1.5, ((double)nIter)+0.5);
     TH2F* unfold2D_p[nIterMax];
-    
+
     //If its sub data lets save a nice 2-D version of the input before unfolding
     if(unfoldNames2D[cI][0].find("PURCORR") != std::string::npos){// && yExclude < 0){
       std::string inputName = unfoldNames2D[cI][0];
-      
+
       std::string preName = inputName.substr(0, inputName.find("_Iter"));
       std::string postName = inputName;
       while(postName.find("Iter") != std::string::npos){
-	postName.replace(0, postName.find("_")+1, "");
+        postName.replace(0, postName.find("_")+1, "");
       }
-      
+
       inputName = preName + "_PreUnfold_" + postName;
-      
-      TH2F* preUnfold_p = (TH2F*)inUnfoldFile_p->Get(inputName.c_str());  
-      
+
+      TH2F* preUnfold_p = (TH2F*)inUnfoldFile_p->Get(inputName.c_str());
+
       TCanvas* canv_p = new TCanvas("canv_p", "", width2D, height2D);
       canv_p->SetTopMargin(topMargin2D);
       canv_p->SetBottomMargin(bottomMargin2D);
       canv_p->SetLeftMargin(leftMargin2D);
       canv_p->SetRightMargin(rightMargin2D);
-      
+
       canv_p->cd();
-      
+
       preUnfold_p->DrawCopy("COLZ");
       gPad->SetLogz();
-      
+
       std::string saveName = inputName;
       saveName.replace(saveName.rfind("_h"), 2, "");
       saveName = "pdfDir/" + dateStr + "/" + saveName + "_Delta" + deltaStr + "_" + saveNameTag + "." + saveExt;
-      quietSaveAs(canv_p, saveName);    
+      quietSaveAs(canv_p, saveName);
       delete canv_p;
     }
+
+
     
     std::vector<TH2F*> unfoldedHists2D_p;
     for(Int_t i = 1; i < nIter; ++i){
@@ -697,16 +736,20 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;    
       TH1F* reco_p = (TH1F*)inUnfoldFile_p->Get(recoHistNames[cI][gI].c_str());
       TH1F* unfold_p[nIterMax];
+      TH1F* refold_p[nIterMax];
       if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;    
 
       TH1F* statsDelta_p = new TH1F(statsDeltaNames[cI][gI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIter-1, 1.5, nIter+0.5);
       TH1F* iterDelta_p = new TH1F(iterDeltaNames[cI][gI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIter-1, 1.5, ((double)nIter)+0.5);
       TH1F* totalDelta_p = new TH1F(totalDeltaNames[cI][gI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIter-1, 1.5, ((double)nIter)+0.5);
 
-      std::vector<TH1F*> unfoldedHists_p;
+      std::vector<TH1F*> unfoldedHists_p, refoldedHists_p;
       for(Int_t i = 1; i < nIter; ++i){
 	unfold_p[i] = (TH1F*)inUnfoldFile_p->Get(unfoldNames[cI][gI][i].c_str());
 	unfoldedHists_p.push_back(unfold_p[i]);
+
+	refold_p[i] = (TH1F*)inUnfoldFile_p->Get(refoldNames[cI][gI][i].c_str());
+	refoldedHists_p.push_back(refold_p[i]);
       }
     
       getIterativeHists(unfoldedHists_p, statsDelta_p, iterDelta_p, totalDelta_p, doRelativeTerm);
@@ -1073,6 +1116,12 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       for(Int_t i = 1; i < nIter; ++i){
 	HIJet::Style::EquipHistogram(unfold_p[i], i-1);
 	binWidthAndSelfNorm(unfold_p[i]);
+
+	HIJet::Style::EquipHistogram(refold_p[i], i-1);
+	binWidthAndSelfNorm(refold_p[i]);
+
+	refold_p[i]->SetMarkerSize(0.00001);
+	refold_p[i]->SetLineStyle(2);
       }
       
       for(Int_t i = 1; i < nIterForLoop; ++i){
@@ -1094,9 +1143,22 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       
       std::vector<double> deltaVals;
       for(Int_t i = 1; i < nIter; ++i){
+	bool isGood = false;
+	if(i+1 == termPos && (term1D || termBoth)) isGood = true;
+	else if(i+1 == termPos2D && (term2D || termBoth)) isGood = true;
+
+	if(!isGood) continue;
+
+
 	HIJet::Style::EquipHistogram(unfold_p[i], i-1);
+	HIJet::Style::EquipHistogram(refold_p[i], i-1);
+	refold_p[i]->SetMarkerSize(0.00001);
+	refold_p[i]->SetLineStyle(2);
+
 	if(termPos2D == i+1 || termPos == i+1){
 	  unfold_p[i]->DrawCopy("HIST E1 P SAME");
+	  refold_p[i]->DrawCopy("HIST E1 SAME");
+	  
 	  if(termPos2D == i+1){
 	    Int_t tempColor = HIJet::Style::GetColor(i-1);
 	    Float_t tempOpacity = HIJet::Style::GetOpacity(i-1);	                
@@ -1229,37 +1291,48 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
     
       bool hasDrawn = false;
       for(Int_t i = 1; i < nIter; ++i){
-	if(i+1 != termPos && i+1 != termPos2D) continue;
+	bool isGood = false;
+	if(i+1 == termPos && (term1D || termBoth)) isGood = true;
+	else if(i+1 == termPos2D && (term2D || termBoth)) isGood = true;
+
+	if(!isGood) continue;
 
 	TH1F* unfoldClone_p = (TH1F*)unfold_p[i]->Clone("tempClone");    
 	unfoldClone_p->Divide(reco_p);
+
+	TH1F* refoldClone_p = (TH1F*)refold_p[i]->Clone("tempClone2");	
+	refoldClone_p->Divide(reco_p);	
 	
 	if(!hasDrawn){
-	  unfoldClone_p->GetYaxis()->SetTitle("#frac{Unfolded}{Reco.}");
-	  unfoldClone_p->SetMinimum(xjRatMinTemp);
-	  unfoldClone_p->SetMaximum(xjRatMaxTemp);
+	  refoldClone_p->GetYaxis()->SetTitle("#frac{Refold}{Reco.}");
+	  refoldClone_p->SetMinimum(xjRatMinTemp);
+	  refoldClone_p->SetMaximum(xjRatMaxTemp);
 	  
-	  unfoldClone_p->GetXaxis()->SetTitleOffset(1.2);
-	  unfoldClone_p->GetYaxis()->SetTitleOffset(yOffset*(padSplit1 - padSplit2)/(1.0-padSplit1));
+	  refoldClone_p->GetXaxis()->SetTitleOffset(1.2);
+	  refoldClone_p->GetYaxis()->SetTitleOffset(yOffset*(padSplit1 - padSplit2)/(1.0-padSplit1));
 	  
-	  unfoldClone_p->GetXaxis()->SetTitleFont(titleFont);
-	  unfoldClone_p->GetYaxis()->SetTitleFont(titleFont);
-	  unfoldClone_p->GetXaxis()->SetTitleSize(titleSize/(padSplit1 - padSplit2));
-	  unfoldClone_p->GetYaxis()->SetTitleSize(titleSize/(padSplit1 - padSplit2));
+	  refoldClone_p->GetXaxis()->SetTitleFont(titleFont);
+	  refoldClone_p->GetYaxis()->SetTitleFont(titleFont);
+	  refoldClone_p->GetXaxis()->SetTitleSize(titleSize/(padSplit1 - padSplit2));
+	  refoldClone_p->GetYaxis()->SetTitleSize(titleSize/(padSplit1 - padSplit2));
 	  
-	  unfoldClone_p->GetXaxis()->SetLabelFont(titleFont);
-	  unfoldClone_p->GetYaxis()->SetLabelFont(titleFont);
-	  unfoldClone_p->GetXaxis()->SetLabelSize(labelSize/(padSplit1 - padSplit2));
-	  unfoldClone_p->GetYaxis()->SetLabelSize(labelSize/(padSplit1 - padSplit2));
+	  refoldClone_p->GetXaxis()->SetLabelFont(titleFont);
+	  refoldClone_p->GetYaxis()->SetLabelFont(titleFont);
+	  refoldClone_p->GetXaxis()->SetLabelSize(labelSize/(padSplit1 - padSplit2));
+	  refoldClone_p->GetYaxis()->SetLabelSize(labelSize/(padSplit1 - padSplit2));
 	  
-	  unfoldClone_p->GetYaxis()->SetNdivisions(404);	
+	  refoldClone_p->GetYaxis()->SetNdivisions(404);	
 	  
-	  unfoldClone_p->DrawCopy("HIST E1 P");	 
+	  refoldClone_p->DrawCopy("HIST E1 P");	 
 	  if(doLogX) gPad->SetLogx();
 	  hasDrawn = true;
 	}
-	else unfoldClone_p->DrawCopy("HIST E1 P SAME");
+	else refoldClone_p->DrawCopy("HIST E1 P SAME");
 
+	/*
+	refoldClone_p->DrawCopy("HIST E1 P SAME");
+	delete refoldClone_p;
+	*/
 	if(i+1 == termPos2D){
 	  Int_t tempColor = HIJet::Style::GetColor(i-1);
 	  Float_t tempOpacity = HIJet::Style::GetOpacity(i-1);
@@ -1277,11 +1350,12 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  delete box_p;
 	}
 
+	delete refoldClone_p;
 	delete unfoldClone_p;
       }
 
       //Third panel, divide by truth
-      canvBest_p->cd();
+      canv_p->cd();
       pads_p[2]->cd();
       
       for(Int_t i = 1; i < nIterForLoop; ++i){
@@ -1322,8 +1396,12 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       padsBest_p[2]->cd();
     
       hasDrawn = false;
-      for(Int_t i = 1; i < nIter; ++i){
-	if(i+1 != termPos && i+1 != termPos2D) continue;
+      for(Int_t i = 1; i < nIter; ++i){       
+	bool isGood = false;
+	if(i+1 == termPos && (term1D || termBoth)) isGood = true;
+	else if(i+1 == termPos2D && (term2D || termBoth)) isGood = true;
+
+	if(!isGood) continue;
 
 	TH1F* unfoldClone_p = (TH1F*)unfold_p[i]->Clone("tempClone");    
 	unfoldClone_p->Divide(truth_p);
@@ -1461,16 +1539,30 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       legFillStr.push_back("L");
 
       for(Int_t i = 1; i < nIter; ++i){
+	bool isGood = false;
+	if(i+1 == termPos && (term1D || termBoth)) isGood = true;
+	else if(i+1 == termPos2D && (term2D || termBoth)) isGood = true;
+
+	if(!isGood) continue;
+
 	if(i+1 == termPos2D){
 	  histsForLeg_p.push_back(unfold_p[i]);
 	  if(i+1 == termPos) stringsForLeg_p.push_back("Iter. " + std::to_string(termPos2D) + ", Best 1 and 2D");
 	  else stringsForLeg_p.push_back("Iter. " + std::to_string(termPos2D) + ", Best 2D");
+	  
+	  legFillStr.push_back("L P");
 
+	  histsForLeg_p.push_back(refold_p[i]);
+	  stringsForLeg_p.push_back("Iter. " + std::to_string(termPos2D) + " Refold");
 	  legFillStr.push_back("L P");
 	}
 	else if(i+1 == termPos){
 	  histsForLeg_p.push_back(unfold_p[i]);
 	  stringsForLeg_p.push_back("Iter. " + std::to_string(termPos) + ", Best 1D");
+	  legFillStr.push_back("L P");
+
+	  histsForLeg_p.push_back(refold_p[i]);
+	  stringsForLeg_p.push_back("Iter. " + std::to_string(termPos) + " Refold");
 	  legFillStr.push_back("L P");
 	}
       }
@@ -1523,9 +1615,9 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   if(outUnfoldConfigName.find(".config") != std::string::npos){
     outUnfoldConfigName.replace(outUnfoldConfigName.rfind(".config"), 7, "");
   }
-
+  
   outUnfoldConfigName = outUnfoldConfigName + "_" + varName + ".config";
-
+  
   if(outUnfoldConfigName.find("/") == std::string::npos){//means no path is supplied
     outUnfoldConfigName = "output/" + dateStr + "/" + outUnfoldConfigName;    
   }

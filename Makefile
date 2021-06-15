@@ -114,6 +114,9 @@ bin/gdjGammaJetResponsePlot.exe: src/gdjGammaJetResponsePlot.C
 bin/gdjMixedEventPlotter.exe: src/gdjMixedEventPlotter.C
 	$(CXX) $(CXXFLAGS) src/gdjMixedEventPlotter.C -o bin/gdjMixedEventPlotter.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
 
+bin/gdjControlPlotter.exe: src/gdjControlPlotter.C
+	$(CXX) $(CXXFLAGS) src/gdjControlPlotter.C -o bin/gdjControlPlotter.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
+
 bin/gdjResponsePlotter.exe: src/gdjResponsePlotter.C
 	$(CXX) $(CXXFLAGS) src/gdjResponsePlotter.C -o bin/gdjResponsePlotter.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
 
