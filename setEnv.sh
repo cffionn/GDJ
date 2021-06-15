@@ -1,8 +1,8 @@
 #!/bin/bash
 
-GDJDIR=/home/cfmcginn/Projects/GDJ/
+GDJDIR=/usatlas/u/cfmcginn/Projects/GDJ/
 GDJDIRLIB="$GDJDIR"lib
-ROOUNFOLDDIR=/home/cfmcginn/Packages/RooUnfold/RooUnfold-build/
+ROOUNFOLDDIR=/usatlas/u/cfmcginn/Projects/GDJ
 #THIS IS A DUMMY FOR MAKE - UNFOLD HAPPENS OFFLINE
 #ROOUNFOLDDIR=$GDJDIR
 

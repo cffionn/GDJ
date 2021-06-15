@@ -26,7 +26,6 @@
 #include "include/centralityFromInput.h"
 #include "include/checkMakeDir.h"
 #include "include/cppWatch.h"
-//#include "include/configParser.h"
 #include "include/envUtil.h"
 #include "include/etaPhiFunc.h"
 #include "include/getLinBins.h"
@@ -43,7 +42,7 @@
 
 void fillTH1(TH1F* inHist_p, Float_t fillVal, Float_t weight = -1.0)
 {
-  if(weight < 0) inHist_p->Fill(fillVal);
+ if(weight < 0) inHist_p->Fill(fillVal);
   else{
     if(inHist_p->GetSumw2()->fN == 0) inHist_p->Sumw2();
     inHist_p->Fill(fillVal, weight);
@@ -69,12 +68,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
   const Int_t randSeed = 5573; // from coin flips -> binary number 1010111000101
   TRandom3* randGen_p = new TRandom3(randSeed);
 
-
   checkMakeDir check;
   if(!check.checkFileExt(inConfigFileName, ".config")) return 1;
 
   globalDebugHandler gDebug;
-  const bool doGlobalDebug = gDebug.GetDoGlobalDebug();
+  bool doGlobalDebug = gDebug.GetDoGlobalDebug();
   
   TEnv* config_p = new TEnv(inConfigFileName.c_str());
 
@@ -135,11 +133,17 @@ int gdjNTupleToHist(std::string inConfigFileName)
 					      "DPHIBINSLOW",
 					      "DPHIBINSHIGH",
 					      "GAMMAJTDPHI",  
+					      "GAMMAMULTIJTDPHI",  
 					      "NXJBINS",
 					      "XJBINSLOW",
 					      "XJBINSHIGH",
 					      "XJBINSDOCUSTOM",
-					      "XJBINSCUSTOM"};
+					      "XJBINSCUSTOM",
+					      "NAJBINS",
+					      "AJBINSLOW",
+					      "AJBINSHIGH",
+					      "AJBINSDOCUSTOM",
+					      "AJBINSCUSTOM"};
 
   std::vector<std::string> mixParams = {"DOMIXCENT",
 					"NMIXCENTBINS",
@@ -319,7 +323,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	std::cout << " BIN " << cI << ": " << mixVzBins[cI] << "-" << mixVzBins[cI+1] << std::endl;
       }      
     }
-
   }
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
@@ -667,7 +670,20 @@ int gdjNTupleToHist(std::string inConfigFileName)
   const Int_t nDPhiBins = config_p->GetValue("NDPHIBINS", 16);
   const Float_t dPhiBinsLow = config_p->GetValue("DPHIBINSLOW", 0.0);
   const Float_t dPhiBinsHigh = config_p->GetValue("DPHIBINSHIGH", TMath::Pi());
+  Double_t dphiBins[nMaxPtBins+1];
+  getLinBins(dPhiBinsLow, dPhiBinsHigh, nDPhiBins, dphiBins);
+
   const Double_t gammaJtDPhiCut = mathStringToNum(config_p->GetValue("GAMMAJTDPHI", ""), doGlobalDebug);  
+  const Double_t gammaMultiJtDPhiCut = mathStringToNum(config_p->GetValue("GAMMAMULTIJTDPHI", ""), doGlobalDebug);  
+
+  /*
+  std::cout << "CHECK GAMMA JTDPHI, MULTIJTDPHI:" << std::endl;
+  std::cout << "GammaJtDPhiCut: " << gammaJtDPhiCut << std::endl;
+  std::cout << "GammaMultiJtDPhiCut: " << gammaMultiJtDPhiCut << std::endl;
+  std::cout << std::endl; 
+  return 1;
+  */
+  
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   const std::string gammaJtDPhiStr = "DPhi0";
   std::string gammaJtDPhiLabel = returnAllCapsString(config_p->GetValue("GAMMAJTDPHI", ""));
@@ -720,7 +736,48 @@ int gdjNTupleToHist(std::string inConfigFileName)
     }
   }
 
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
+  const Int_t nAJBins = config_p->GetValue("NAJBINS", 20);
+  const Float_t ajBinsLow = config_p->GetValue("AJBINSLOW", 0.0);
+  const Float_t ajBinsHigh = config_p->GetValue("AJBINSHIGH", 2.0);
+  const Bool_t ajBinsDoCustom = config_p->GetValue("AJBINSDOCUSTOM", 0);
+  std::string ajBinsCustomStr = config_p->GetValue("AJBINSCUSTOM", "");
+  Double_t ajBins[nMaxPtBins+1];
+  if(!ajBinsDoCustom) getLinBins(ajBinsLow, ajBinsHigh, nAJBins, ajBins);
+  else{
+    if(ajBinsCustomStr.size() == 0){
+      std::cout << "No custom bins supplied despite AJBINSDOCUSOM \'" << ajBinsDoCustom <<  "'\". Reverting to uniform binning." << std::endl;
+      getLinBins(ajBinsLow, ajBinsHigh, nAJBins, ajBins);
+    }
+    else{
+      std::vector<float> ajBinsCustomVect = strToVectF(ajBinsCustomStr);
+      //Check that the bins are ordered and the number matches nAJBins
+      Int_t nAJBinsCustomVect = ajBinsCustomVect.size();
+      if(nAJBinsCustomVect-1 != nAJBins){
+	std::cout << "Number of supplied NAJBINS, \'" << nAJBins << "\', does not match number from custom bin string \'" << nAJBinsCustomVect-1 << "\'. Reverting to uniform bins" << std::endl;
+        getLinBins(ajBinsLow, ajBinsHigh, nAJBins, ajBins);
+      }
+      else{
+        bool areBinsOrdered = true;
+        for(unsigned int i = 1; i < ajBinsCustomVect.size(); ++i){
+          if(ajBinsCustomVect[i] < ajBinsCustomVect[i-1]){
+            areBinsOrdered = false;
+            break;
+          }
+        }
+
+        if(areBinsOrdered){
+          for(unsigned int i = 0; i < ajBinsCustomVect.size(); ++i){
+            ajBins[i] = ajBinsCustomVect[i];
+          }
+        }
+        else{
+	  std::cout << "AJBINSCUSTOM provided \'" << ajBinsCustomStr << "\'is not ordered. Reverting to uniform bins"  << std::endl;
+          getLinBins(ajBinsLow, ajBinsHigh, nAJBins, ajBins);
+        }
+      }
+    }
+  }
 
   const unsigned long long mixCap = config_p->GetValue("MIXCAP", 100000000);
   const unsigned long long nMixEvents = config_p->GetValue("NMIXEVENTS", 1);
@@ -833,15 +890,24 @@ int gdjNTupleToHist(std::string inConfigFileName)
   TH1F* photonJtMultVCentPt_p[nMaxCentBins][nMaxSubBins+1];
 
   //2-D histograms to be unfolded
+  //Make this a class, one for multijet one for single jet, so you dont have to carry stuff around
   TH1F* photonPtVCent_RAW_p[nMaxCentBins][nBarrelAndEC];//This is needed for the purity correction - it is a pure partner of JtPt and JtXJ to be filled on every one of their fills. unclear yet whether it also works for XJJ
   TH2F* photonPtJtPtVCent_RAW_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtXJVCent_RAW_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiVCent_RAW_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtXJJVCent_RAW_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtAJJVCent_RAW_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJGVCent_RAW_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJVCent_RAW_p[nMaxCentBins][nBarrelAndEC];
 
   TH1F* photonPtVCent_RAWSideband_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtPtVCent_RAWSideband_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtXJVCent_RAWSideband_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiVCent_RAWSideband_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtXJJVCent_RAWSideband_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtAJJVCent_RAWSideband_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJGVCent_RAWSideband_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJVCent_RAWSideband_p[nMaxCentBins][nBarrelAndEC];
 
   TH1F* photonJtRecoOverGenVCentJtPt_p[nMaxCentBins][nMaxPtBins];
   TH2F* photonJtGenResVCentGenPtRecoPt_p[nMaxCentBins][nMaxPtBins][nMaxPtBins];
@@ -863,15 +929,51 @@ int gdjNTupleToHist(std::string inConfigFileName)
   //2-D histograms to be unfolded
   TH2F* photonPtJtPtVCent_MIX_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtXJVCent_MIX_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiVCent_MIX_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtXJJVCent_MIX_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtXJJVCent_MIXCorrected_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtXJJVCent_MIXCorrection_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtXJJVCent_MIXPURE_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtXJJVCent_MIXMIX_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtXJJVCent_MIXMIXCorrected_p[nMaxCentBins][nBarrelAndEC];
+
+  TH2F* photonPtJtAJJVCent_MIX_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtAJJVCent_MIXCorrected_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtAJJVCent_MIXCorrection_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtAJJVCent_MIXPURE_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtAJJVCent_MIXMIX_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtAJJVCent_MIXMIXCorrected_p[nMaxCentBins][nBarrelAndEC];
+
+  TH2F* photonPtJtDPhiJJGVCent_MIX_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJGVCent_MIXCorrected_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJGVCent_MIXCorrection_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJGVCent_MIXPURE_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJGVCent_MIXMIX_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJGVCent_MIXMIXCorrected_p[nMaxCentBins][nBarrelAndEC];
+
+  TH2F* photonPtJtDPhiJJVCent_MIX_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJVCent_MIXCorrected_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJVCent_MIXCorrection_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJVCent_MIXPURE_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJVCent_MIXMIX_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJVCent_MIXMIXCorrected_p[nMaxCentBins][nBarrelAndEC];
 
   TH2F* photonPtJtPtVCent_MIXSideband_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtXJVCent_MIXSideband_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiVCent_MIXSideband_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtXJJVCent_MIXSideband_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtXJJVCent_MIXSidebandCorrected_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtXJJVCent_MIXSidebandCorrection_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtAJJVCent_MIXSideband_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtAJJVCent_MIXSidebandCorrected_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtAJJVCent_MIXSidebandCorrection_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJGVCent_MIXSideband_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJGVCent_MIXSidebandCorrected_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJGVCent_MIXSidebandCorrection_p[nMaxCentBins][nBarrelAndEC];
+
+  TH2F* photonPtJtDPhiJJVCent_MIXSideband_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJVCent_MIXSidebandCorrected_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJVCent_MIXSidebandCorrection_p[nMaxCentBins][nBarrelAndEC];
 
   TH1F* photonSubJtDPhiVCentPt_p[nMaxCentBins][nMaxSubBins+1];
   TH1F* photonSubJtPtVCentPt_p[nMaxCentBins][nMaxSubBins+1];
@@ -887,24 +989,56 @@ int gdjNTupleToHist(std::string inConfigFileName)
   //2-D histograms to be unfolded
   TH2F* photonPtJtPtVCent_SUB_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtXJVCent_SUB_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiVCent_SUB_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtXJJVCent_SUB_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtAJJVCent_SUB_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJGVCent_SUB_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJVCent_SUB_p[nMaxCentBins][nBarrelAndEC];
 
   TH2F* photonPtJtPtVCent_SUBSideband_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtXJVCent_SUBSideband_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiVCent_SUBSideband_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtXJJVCent_SUBSideband_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtAJJVCent_SUBSideband_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJGVCent_SUBSideband_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJVCent_SUBSideband_p[nMaxCentBins][nBarrelAndEC];
 
   TH1F* photonPtVCent_PURCORR_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtPtVCent_PURCORR_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtXJVCent_PURCORR_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiVCent_PURCORR_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtXJJVCent_PURCORR_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtAJJVCent_PURCORR_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJGVCent_PURCORR_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJVCent_PURCORR_p[nMaxCentBins][nBarrelAndEC];
 
   TH2F* photonPtJtPtVCent_TRUTH_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtXJVCent_TRUTH_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiVCent_TRUTH_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtXJJVCent_TRUTH_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtAJJVCent_TRUTH_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJGVCent_TRUTH_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJVCent_TRUTH_p[nMaxCentBins][nBarrelAndEC];
 
   TH2F* photonPtJtPtVCent_TRUTHMATCHEDRECO_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtXJVCent_TRUTHMATCHEDRECO_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiVCent_TRUTHMATCHEDRECO_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtXJJVCent_TRUTHMATCHEDRECO_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtAJJVCent_TRUTHMATCHEDRECO_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJGVCent_TRUTHMATCHEDRECO_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJVCent_TRUTHMATCHEDRECO_p[nMaxCentBins][nBarrelAndEC];
+
+  TH2F* photonPtJtPtVCent_PUREBKGD_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtXJVCent_PUREBKGD_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiVCent_PUREBKGD_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtXJJVCent_PUREBKGD_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtXJJVCent_MIXBKGD_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtAJJVCent_PUREBKGD_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtAJJVCent_MIXBKGD_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJGVCent_PUREBKGD_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJGVCent_MIXBKGD_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJVCent_PUREBKGD_p[nMaxCentBins][nBarrelAndEC];
+  TH2F* photonPtJtDPhiJJVCent_MIXBKGD_p[nMaxCentBins][nBarrelAndEC];
 
   TH1F* photonGenJtDPhiVCentPt_p[nMaxCentBins][nMaxSubBins+1];
   TH1F* photonGenJtPtVCentPt_p[nMaxCentBins][nMaxSubBins+1];
@@ -923,6 +1057,19 @@ int gdjNTupleToHist(std::string inConfigFileName)
   TH1F* photonGenMatchedJtMultVCentPt_p[nMaxCentBins][nMaxSubBins+1];
   
   TH1F* photonJtFakeVCentPt_p[nMaxCentBins][nMaxSubBins+1];
+
+  TH1F* vzPassing_p = new TH1F("vzPassing_h", ";vz;Counts", 80, -20.0, 20.0);
+  TH1F* centPassing_p = new TH1F("centPassing_h", ";Centrality;Counts", 80, -0.5, 79.5);
+  TH1F* truPhoPtPassing_p = new TH1F("truPhoPt_h", ";True Photon p_{T};Counts", 255, -5.0, 505.0);
+  TH1F* leadingPhoPtPassing_p = new TH1F("leadingPhoPt_h", ";Leading Photon p_{T};Counts", 255, -5.0, 505.0);
+  TH1F* leadingPhoEtaPassing_p = new TH1F("leadingPhoEta_h", ";Leading Photon #eta;Counts", 84, -2.1, 2.1);
+  TH1F* leadingPhoIsoPassing_p = new TH1F("leadingPhoIso_h", ";Leading Photon Iso;Counts", 80, -10, 30);
+  TH1F* leadingPhoTightPassing_p = new TH1F("leadingPhoTight_h", ";Leading Photon Tight;Counts", 2, -0.5, 1.5);
+
+  TH1F* jtEtaPassing_p = new TH1F("jtEtaPassing_h", ";Jet #eta;Counts", 124, -3.1, 3.1);
+  TH1F* jtGammaDRPassing_p = new TH1F("jtGammaDRPassing_h", ";Jet-Gamma #DeltaR;Counts", 44, 0.0, 2.2);
+  TH1F* jtPtPassing_p = new TH1F("jtPtPassing_h", ";Jet p_{T};Counts", 255, -5, 505);
+  TH1F* jtDPhiPassing_p = new TH1F("jtDPhiPassing_h", ";#Delta#phi_{#gamma,jet};Counts", 100, -0.1, TMath::Pi()+0.1);
   
   //Type and origin defined here
   //https://gitlab.cern.ch/atlas/athena/-/blob/21.2/PhysicsAnalysis/MCTruthClassifier/MCTruthClassifier/MCTruthClassifierDefs.h
@@ -1078,61 +1225,153 @@ int gdjNTupleToHist(std::string inConfigFileName)
       photonPtVCent_RAW_p[cI][eI] = new TH1F(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_RAW_h").c_str(), ";Photon p_{T};Counts (Weighted)", nTempBins, gammaPtBins[0], gammaPtBins[nGammaPtBins]);
       photonPtJtPtVCent_RAW_p[cI][eI] = new TH2F(("photonPtJtPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_RAW_h").c_str(), ";Reco. Jet p_{T};Reco. Photon p_{T}", nJtPtBins, jtPtBins, nGammaPtBins, gammaPtBins);
       photonPtJtXJVCent_RAW_p[cI][eI] = new TH2F(("photonPtJtXJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_RAW_h").c_str(), ";Reco. x_{J};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+      photonPtJtDPhiVCent_RAW_p[cI][eI] = new TH2F(("photonPtJtDPhiVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_RAW_h").c_str(), ";Reco. #Delta#phi_{#gamma,J};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
       photonPtJtXJJVCent_RAW_p[cI][eI] = new TH2F(("photonPtJtXJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_RAW_h").c_str(), ";Reco. #vec{x}_{JJ#gamma};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+      photonPtJtAJJVCent_RAW_p[cI][eI] = new TH2F(("photonPtJtAJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_RAW_h").c_str(), ";Reco. A_{JJ#gamma};Reco. Photon p_{T}", nAJBins, ajBins, nGammaPtBins, gammaPtBins);
+      photonPtJtDPhiJJGVCent_RAW_p[cI][eI] = new TH2F(("photonPtJtDPhiJJGVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_RAW_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+       photonPtJtDPhiJJVCent_RAW_p[cI][eI] = new TH2F(("photonPtJtDPhiJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_RAW_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
       
       photonPtVCent_RAWSideband_p[cI][eI] = new TH1F(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_RAWSideband_h").c_str(), ";Photon p_{T};Counts (Weighted)", nTempBins, gammaPtBins[0], gammaPtBins[nGammaPtBins]);
       photonPtJtPtVCent_RAWSideband_p[cI][eI] = new TH2F(("photonPtJtPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_RAWSideband_h").c_str(), ";Reco. Jet p_{T};Reco. Photon p_{T}", nJtPtBins, jtPtBins, nGammaPtBins, gammaPtBins);
       photonPtJtXJVCent_RAWSideband_p[cI][eI] = new TH2F(("photonPtJtXJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_RAWSideband_h").c_str(), ";Reco. x_{J};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+      photonPtJtDPhiVCent_RAWSideband_p[cI][eI] = new TH2F(("photonPtJtDPhiVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_RAWSideband_h").c_str(), ";Reco. #Delta#phi_{#gamma,J};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
       photonPtJtXJJVCent_RAWSideband_p[cI][eI] = new TH2F(("photonPtJtXJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_RAWSideband_h").c_str(), ";Reco. #vec{x}_{JJ#gamma};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+      photonPtJtAJJVCent_RAWSideband_p[cI][eI] = new TH2F(("photonPtJtAJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_RAWSideband_h").c_str(), ";Reco. A_{JJ#gamma};Reco. Photon p_{T}", nAJBins, ajBins, nGammaPtBins, gammaPtBins);
+      photonPtJtDPhiJJGVCent_RAWSideband_p[cI][eI] = new TH2F(("photonPtJtDPhiJJGVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_RAWSideband_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+      photonPtJtDPhiJJVCent_RAWSideband_p[cI][eI] = new TH2F(("photonPtJtDPhiJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_RAWSideband_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
 
       setSumW2({photonPtVCent_RAW_p[cI][eI], photonPtVCent_RAWSideband_p[cI][eI]});
-      setSumW2({photonPtJtPtVCent_RAW_p[cI][eI], photonPtJtXJVCent_RAW_p[cI][eI], photonPtJtXJJVCent_RAW_p[cI][eI], photonPtJtPtVCent_RAWSideband_p[cI][eI], photonPtJtXJVCent_RAWSideband_p[cI][eI], photonPtJtXJJVCent_RAWSideband_p[cI][eI]});
+      setSumW2({photonPtJtPtVCent_RAW_p[cI][eI], photonPtJtXJVCent_RAW_p[cI][eI], photonPtJtDPhiVCent_RAW_p[cI][eI], photonPtJtXJJVCent_RAW_p[cI][eI], photonPtJtAJJVCent_RAW_p[cI][eI], photonPtJtDPhiJJGVCent_RAW_p[cI][eI], photonPtJtDPhiJJVCent_RAW_p[cI][eI], photonPtJtPtVCent_RAWSideband_p[cI][eI], photonPtJtXJVCent_RAWSideband_p[cI][eI], photonPtJtDPhiVCent_RAWSideband_p[cI][eI], photonPtJtXJJVCent_RAWSideband_p[cI][eI], photonPtJtAJJVCent_RAWSideband_p[cI][eI], photonPtJtDPhiJJGVCent_RAWSideband_p[cI][eI], photonPtJtDPhiJJVCent_RAWSideband_p[cI][eI]});
     
       if(doMix){
 	photonPtJtPtVCent_MIX_p[cI][eI] = new TH2F(("photonPtJtPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIX_h").c_str(), ";Reco. Jet p_{T};Reco. Photon p_{T}", nJtPtBins, jtPtBins, nGammaPtBins, gammaPtBins);
 	photonPtJtXJVCent_MIX_p[cI][eI] = new TH2F(("photonPtJtXJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIX_h").c_str(), ";Reco. x_{J};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+	photonPtJtDPhiVCent_MIX_p[cI][eI] = new TH2F(("photonPtJtDPhiVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIX_h").c_str(), ";Reco. #Delta#phi_{J#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+
 	photonPtJtXJJVCent_MIX_p[cI][eI] = new TH2F(("photonPtJtXJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIX_h").c_str(), ";Reco. #vec{x}_{JJ#gamma};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
 	photonPtJtXJJVCent_MIXCorrection_p[cI][eI] = new TH2F(("photonPtJtXJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXCorrection_h").c_str(), ";Reco. #vec{x}_{JJ#gamma};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
 	photonPtJtXJJVCent_MIXCorrected_p[cI][eI] = new TH2F(("photonPtJtXJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXCorrected_h").c_str(), ";Reco. #vec{x}_{JJ#gamma};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+
+	photonPtJtXJJVCent_MIXPURE_p[cI][eI] = new TH2F(("photonPtJtXJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXPURE_h").c_str(), ";Reco. #vec{x}_{JJ#gamma};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+	photonPtJtXJJVCent_MIXMIX_p[cI][eI] = new TH2F(("photonPtJtXJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXMIX_h").c_str(), ";Reco. #vec{x}_{JJ#gamma};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+	photonPtJtXJJVCent_MIXMIXCorrected_p[cI][eI] = new TH2F(("photonPtJtXJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXMIXCorrected_h").c_str(), ";Reco. #vec{x}_{JJ#gamma};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+
+
+	photonPtJtAJJVCent_MIX_p[cI][eI] = new TH2F(("photonPtJtAJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIX_h").c_str(), ";Reco. A_{JJ#gamma};Reco. Photon p_{T}", nAJBins, ajBins, nGammaPtBins, gammaPtBins);
+	photonPtJtAJJVCent_MIXCorrection_p[cI][eI] = new TH2F(("photonPtJtAJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXCorrection_h").c_str(), ";Reco. A_{JJ#gamma};Reco. Photon p_{T}", nAJBins, ajBins, nGammaPtBins, gammaPtBins);
+	photonPtJtAJJVCent_MIXCorrected_p[cI][eI] = new TH2F(("photonPtJtAJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXCorrected_h").c_str(), ";Reco. A_{JJ#gamma};Reco. Photon p_{T}", nAJBins, ajBins, nGammaPtBins, gammaPtBins);
+	photonPtJtAJJVCent_MIXPURE_p[cI][eI] = new TH2F(("photonPtJtAJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXPURE_h").c_str(), ";Reco. A_{JJ#gamma};Reco. Photon p_{T}", nAJBins, ajBins, nGammaPtBins, gammaPtBins);
+	photonPtJtAJJVCent_MIXMIX_p[cI][eI] = new TH2F(("photonPtJtAJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXMIX_h").c_str(), ";Reco. A_{JJ#gamma};Reco. Photon p_{T}", nAJBins, ajBins, nGammaPtBins, gammaPtBins);
+	photonPtJtAJJVCent_MIXMIXCorrected_p[cI][eI] = new TH2F(("photonPtJtAJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXMIXCorrected_h").c_str(), ";Reco. A_{JJ#gamma};Reco. Photon p_{T}", nAJBins, ajBins, nGammaPtBins, gammaPtBins);
+
+
+	photonPtJtDPhiJJGVCent_MIX_p[cI][eI] = new TH2F(("photonPtJtDPhiJJGVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIX_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+	photonPtJtDPhiJJGVCent_MIXCorrection_p[cI][eI] = new TH2F(("photonPtJtDPhiJJGVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXCorrection_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+	photonPtJtDPhiJJGVCent_MIXCorrected_p[cI][eI] = new TH2F(("photonPtJtDPhiJJGVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXCorrected_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+	photonPtJtDPhiJJGVCent_MIXPURE_p[cI][eI] = new TH2F(("photonPtJtDPhiJJGVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXPURE_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+	photonPtJtDPhiJJGVCent_MIXMIX_p[cI][eI] = new TH2F(("photonPtJtDPhiJJGVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXMIX_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+	photonPtJtDPhiJJGVCent_MIXMIXCorrected_p[cI][eI] = new TH2F(("photonPtJtDPhiJJGVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXMIXCorrected_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+
+	photonPtJtDPhiJJVCent_MIX_p[cI][eI] = new TH2F(("photonPtJtDPhiJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIX_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+	photonPtJtDPhiJJVCent_MIXCorrection_p[cI][eI] = new TH2F(("photonPtJtDPhiJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXCorrection_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+	photonPtJtDPhiJJVCent_MIXCorrected_p[cI][eI] = new TH2F(("photonPtJtDPhiJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXCorrected_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+	photonPtJtDPhiJJVCent_MIXPURE_p[cI][eI] = new TH2F(("photonPtJtDPhiJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXPURE_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+	photonPtJtDPhiJJVCent_MIXMIX_p[cI][eI] = new TH2F(("photonPtJtDPhiJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXMIX_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+	photonPtJtDPhiJJVCent_MIXMIXCorrected_p[cI][eI] = new TH2F(("photonPtJtDPhiJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXMIXCorrected_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
 	
+
 	photonPtJtPtVCent_MIXSideband_p[cI][eI] = new TH2F(("photonPtJtPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXSideband_h").c_str(), ";Reco. Jet p_{T};Reco. Photon p_{T}", nJtPtBins, jtPtBins, nGammaPtBins, gammaPtBins);
 	photonPtJtXJVCent_MIXSideband_p[cI][eI] = new TH2F(("photonPtJtXJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXSideband_h").c_str(), ";Reco. x_{J};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+	photonPtJtDPhiVCent_MIXSideband_p[cI][eI] = new TH2F(("photonPtJtDPhiVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXSideband_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+
 	photonPtJtXJJVCent_MIXSideband_p[cI][eI] = new TH2F(("photonPtJtXJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXSideband_h").c_str(), ";Reco. #vec{x}_{JJ#gamma};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
 	photonPtJtXJJVCent_MIXSidebandCorrection_p[cI][eI] = new TH2F(("photonPtJtXJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXSidebandCorrection_h").c_str(), ";Reco. #vec{x}_{JJ#gamma};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
 	photonPtJtXJJVCent_MIXSidebandCorrected_p[cI][eI] = new TH2F(("photonPtJtXJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXSidebandCorrected_h").c_str(), ";Reco. #vec{x}_{JJ#gamma};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+
+
+	photonPtJtAJJVCent_MIXSideband_p[cI][eI] = new TH2F(("photonPtJtAJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXSideband_h").c_str(), ";Reco. A_{JJ#gamma};Reco. Photon p_{T}", nAJBins, ajBins, nGammaPtBins, gammaPtBins);
+	photonPtJtAJJVCent_MIXSidebandCorrection_p[cI][eI] = new TH2F(("photonPtJtAJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXSidebandCorrection_h").c_str(), ";Reco. A_{JJ#gamma};Reco. Photon p_{T}", nAJBins, ajBins, nGammaPtBins, gammaPtBins);
+	photonPtJtAJJVCent_MIXSidebandCorrected_p[cI][eI] = new TH2F(("photonPtJtAJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXSidebandCorrected_h").c_str(), ";Reco. A_{JJ#gamma};Reco. Photon p_{T}", nAJBins, ajBins, nGammaPtBins, gammaPtBins);
 	
-	setSumW2({photonPtJtPtVCent_MIX_p[cI][eI], photonPtJtXJVCent_MIX_p[cI][eI], photonPtJtXJJVCent_MIX_p[cI][eI], photonPtJtXJJVCent_MIXCorrection_p[cI][eI], photonPtJtXJJVCent_MIXCorrected_p[cI][eI], photonPtJtPtVCent_MIXSideband_p[cI][eI], photonPtJtXJVCent_MIXSideband_p[cI][eI], photonPtJtXJJVCent_MIXSideband_p[cI][eI], photonPtJtXJJVCent_MIXSidebandCorrection_p[cI][eI], photonPtJtXJJVCent_MIXSidebandCorrected_p[cI][eI]});
+	photonPtJtDPhiJJGVCent_MIXSideband_p[cI][eI] = new TH2F(("photonPtJtDPhiJJGVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXSideband_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+	photonPtJtDPhiJJGVCent_MIXSidebandCorrection_p[cI][eI] = new TH2F(("photonPtJtDPhiJJGVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXSidebandCorrection_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+	photonPtJtDPhiJJGVCent_MIXSidebandCorrected_p[cI][eI] = new TH2F(("photonPtJtDPhiJJGVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXSidebandCorrected_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+
+	photonPtJtDPhiJJVCent_MIXSideband_p[cI][eI] = new TH2F(("photonPtJtDPhiJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXSideband_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+	photonPtJtDPhiJJVCent_MIXSidebandCorrection_p[cI][eI] = new TH2F(("photonPtJtDPhiJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXSidebandCorrection_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+	photonPtJtDPhiJJVCent_MIXSidebandCorrected_p[cI][eI] = new TH2F(("photonPtJtDPhiJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXSidebandCorrected_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+	
+
+	setSumW2({photonPtJtPtVCent_MIX_p[cI][eI], photonPtJtXJVCent_MIX_p[cI][eI], photonPtJtDPhiVCent_MIX_p[cI][eI], photonPtJtXJJVCent_MIX_p[cI][eI], photonPtJtXJJVCent_MIXCorrection_p[cI][eI], photonPtJtXJJVCent_MIXCorrected_p[cI][eI], photonPtJtXJJVCent_MIXPURE_p[cI][eI], photonPtJtXJJVCent_MIXMIX_p[cI][eI], photonPtJtXJJVCent_MIXMIXCorrected_p[cI][eI], photonPtJtAJJVCent_MIX_p[cI][eI], photonPtJtAJJVCent_MIXCorrection_p[cI][eI], photonPtJtAJJVCent_MIXCorrected_p[cI][eI], photonPtJtAJJVCent_MIXPURE_p[cI][eI], photonPtJtAJJVCent_MIXMIX_p[cI][eI], photonPtJtAJJVCent_MIXMIXCorrected_p[cI][eI], photonPtJtDPhiJJGVCent_MIX_p[cI][eI], photonPtJtDPhiJJGVCent_MIXCorrection_p[cI][eI], photonPtJtDPhiJJGVCent_MIXCorrected_p[cI][eI], photonPtJtDPhiJJGVCent_MIXPURE_p[cI][eI], photonPtJtDPhiJJGVCent_MIXMIX_p[cI][eI], photonPtJtDPhiJJGVCent_MIXMIXCorrected_p[cI][eI], photonPtJtDPhiJJVCent_MIX_p[cI][eI], photonPtJtDPhiJJVCent_MIXCorrection_p[cI][eI], photonPtJtDPhiJJVCent_MIXCorrected_p[cI][eI], photonPtJtDPhiJJVCent_MIXPURE_p[cI][eI], photonPtJtDPhiJJVCent_MIXMIX_p[cI][eI], photonPtJtDPhiJJVCent_MIXMIXCorrected_p[cI][eI], photonPtJtPtVCent_MIXSideband_p[cI][eI], photonPtJtXJVCent_MIXSideband_p[cI][eI], photonPtJtDPhiVCent_MIXSideband_p[cI][eI], photonPtJtXJJVCent_MIXSideband_p[cI][eI], photonPtJtXJJVCent_MIXSidebandCorrection_p[cI][eI], photonPtJtXJJVCent_MIXSidebandCorrected_p[cI][eI], photonPtJtAJJVCent_MIXSideband_p[cI][eI], photonPtJtAJJVCent_MIXSidebandCorrection_p[cI][eI], photonPtJtAJJVCent_MIXSidebandCorrected_p[cI][eI], photonPtJtDPhiJJGVCent_MIXSideband_p[cI][eI], photonPtJtDPhiJJGVCent_MIXSidebandCorrection_p[cI][eI], photonPtJtDPhiJJGVCent_MIXSidebandCorrected_p[cI][eI], photonPtJtDPhiJJVCent_MIXSideband_p[cI][eI], photonPtJtDPhiJJVCent_MIXSidebandCorrection_p[cI][eI], photonPtJtDPhiJJVCent_MIXSidebandCorrected_p[cI][eI]});
       }
       
       if(doMix || isPP){
 	photonPtJtPtVCent_SUB_p[cI][eI] = new TH2F(("photonPtJtPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_SUB_h").c_str(), ";Reco. Jet p_{T};Reco. Photon p_{T}", nJtPtBins, jtPtBins, nGammaPtBins, gammaPtBins);
 	photonPtJtXJVCent_SUB_p[cI][eI] = new TH2F(("photonPtJtXJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_SUB_h").c_str(), ";Reco. x_{J};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+	photonPtJtDPhiVCent_SUB_p[cI][eI] = new TH2F(("photonPtJtDPhiVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_SUB_h").c_str(), ";Reco. #Delta#phi_{J#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
 	photonPtJtXJJVCent_SUB_p[cI][eI] = new TH2F(("photonPtJtXJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_SUB_h").c_str(), ";Reco. #vec{x}_{JJ#gamma};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+	photonPtJtAJJVCent_SUB_p[cI][eI] = new TH2F(("photonPtJtAJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_SUB_h").c_str(), ";Reco. A_{JJ#gamma};Reco. Photon p_{T}", nAJBins, ajBins, nGammaPtBins, gammaPtBins);
+	photonPtJtDPhiJJGVCent_SUB_p[cI][eI] = new TH2F(("photonPtJtDPhiJJGVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_SUB_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+	photonPtJtDPhiJJVCent_SUB_p[cI][eI] = new TH2F(("photonPtJtDPhiJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_SUB_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
 	
 	photonPtJtPtVCent_SUBSideband_p[cI][eI] = new TH2F(("photonPtJtPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_SUBSideband_h").c_str(), ";Reco. Jet p_{T};Reco. Photon p_{T}", nJtPtBins, jtPtBins, nGammaPtBins, gammaPtBins);
 	photonPtJtXJVCent_SUBSideband_p[cI][eI] = new TH2F(("photonPtJtXJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_SUBSideband_h").c_str(), ";Reco. x_{J};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+	photonPtJtDPhiVCent_SUBSideband_p[cI][eI] = new TH2F(("photonPtJtDPhiVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_SUBSideband_h").c_str(), ";Reco. #Delta#phi_{J#gamam};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
 	photonPtJtXJJVCent_SUBSideband_p[cI][eI] = new TH2F(("photonPtJtXJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_SUBSideband_h").c_str(), ";Reco. #vec{x}_{JJ#gamma};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
 
-	photonPtVCent_PURCORR_p[cI][eI] = new TH1F(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_PURCORR_h").c_str(), ";Photon p_{T};Counts (Weighted)", nTempBins, gammaPtBins[0], gammaPtBins[nGammaPtBins]);
+	photonPtJtAJJVCent_SUBSideband_p[cI][eI] = new TH2F(("photonPtJtAJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_SUBSideband_h").c_str(), ";Reco. A_{JJ#gamma};Reco. Photon p_{T}", nAJBins, ajBins, nGammaPtBins, gammaPtBins);
+
+	photonPtJtDPhiJJGVCent_SUBSideband_p[cI][eI] = new TH2F(("photonPtJtDPhiJJGVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_SUBSideband_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+	photonPtJtDPhiJJVCent_SUBSideband_p[cI][eI] = new TH2F(("photonPtJtDPhiJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_SUBSideband_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+
+	photonPtVCent_PURCORR_p[cI][eI] = new TH1F(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_PURCORR_h").c_str(), ";Photon p_{T};Counts (Weighted)", nTempBins, gammaPtBins[0], gammaPtBins[nGammaPtBins]);
 
 	photonPtJtPtVCent_PURCORR_p[cI][eI] = new TH2F(("photonPtJtPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_PURCORR_h").c_str(), ";Reco. Jet p_{T};Reco. Photon p_{T}", nJtPtBins, jtPtBins, nGammaPtBins, gammaPtBins);
 	photonPtJtXJVCent_PURCORR_p[cI][eI] = new TH2F(("photonPtJtXJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_PURCORR_h").c_str(), ";Reco. x_{J};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+	photonPtJtDPhiVCent_PURCORR_p[cI][eI] = new TH2F(("photonPtJtDPhiVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_PURCORR_h").c_str(), ";Reco. #Delta#phi_{J#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
 	photonPtJtXJJVCent_PURCORR_p[cI][eI] = new TH2F(("photonPtJtXJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_PURCORR_h").c_str(), ";Reco. #vec{x}_{JJ#gamma};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
-	setSumW2({photonPtJtPtVCent_SUB_p[cI][eI], photonPtJtXJVCent_SUB_p[cI][eI], photonPtJtXJJVCent_SUB_p[cI][eI], photonPtJtPtVCent_SUBSideband_p[cI][eI], photonPtJtXJVCent_SUBSideband_p[cI][eI], photonPtJtXJJVCent_SUBSideband_p[cI][eI], photonPtJtPtVCent_PURCORR_p[cI][eI], photonPtJtXJVCent_PURCORR_p[cI][eI], photonPtJtXJJVCent_PURCORR_p[cI][eI]});
+	photonPtJtAJJVCent_PURCORR_p[cI][eI] = new TH2F(("photonPtJtAJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_PURCORR_h").c_str(), ";Reco. A_{JJ#gamma};Reco. Photon p_{T}", nAJBins, ajBins, nGammaPtBins, gammaPtBins);
+	photonPtJtDPhiJJGVCent_PURCORR_p[cI][eI] = new TH2F(("photonPtJtDPhiJJGVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_PURCORR_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+	photonPtJtDPhiJJVCent_PURCORR_p[cI][eI] = new TH2F(("photonPtJtDPhiJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_PURCORR_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+
+	setSumW2({photonPtJtPtVCent_SUB_p[cI][eI], photonPtJtXJVCent_SUB_p[cI][eI], photonPtJtDPhiVCent_SUB_p[cI][eI], photonPtJtXJJVCent_SUB_p[cI][eI], photonPtJtAJJVCent_SUB_p[cI][eI], photonPtJtDPhiJJGVCent_SUB_p[cI][eI], photonPtJtDPhiJJVCent_SUB_p[cI][eI], photonPtJtPtVCent_SUBSideband_p[cI][eI], photonPtJtXJVCent_SUBSideband_p[cI][eI], photonPtJtDPhiVCent_SUBSideband_p[cI][eI], photonPtJtXJJVCent_SUBSideband_p[cI][eI], photonPtJtAJJVCent_SUBSideband_p[cI][eI], photonPtJtDPhiJJGVCent_SUBSideband_p[cI][eI], photonPtJtDPhiJJVCent_SUBSideband_p[cI][eI], photonPtJtPtVCent_PURCORR_p[cI][eI], photonPtJtXJVCent_PURCORR_p[cI][eI], photonPtJtDPhiVCent_PURCORR_p[cI][eI], photonPtJtXJJVCent_PURCORR_p[cI][eI], photonPtJtAJJVCent_PURCORR_p[cI][eI], photonPtJtDPhiJJGVCent_PURCORR_p[cI][eI], photonPtJtDPhiJJVCent_PURCORR_p[cI][eI]});
 
 	if(isMC){
 	  photonPtJtPtVCent_TRUTH_p[cI][eI] = new TH2F(("photonPtJtPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_TRUTH_h").c_str(), ";Reco. Jet p_{T};Reco. Photon p_{T}", nJtPtBins, jtPtBins, nGammaPtBins, gammaPtBins);
 	  photonPtJtXJVCent_TRUTH_p[cI][eI] = new TH2F(("photonPtJtXJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_TRUTH_h").c_str(), ";Reco. x_{J};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+	  photonPtJtDPhiVCent_TRUTH_p[cI][eI] = new TH2F(("photonPtJtDPhiVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_TRUTH_h").c_str(), ";Reco. #Delta#phi_{J#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
 	  photonPtJtXJJVCent_TRUTH_p[cI][eI] = new TH2F(("photonPtJtXJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_TRUTH_h").c_str(), ";Reco. #vec{x}_{JJ#gamma};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+	  photonPtJtAJJVCent_TRUTH_p[cI][eI] = new TH2F(("photonPtJtAJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_TRUTH_h").c_str(), ";Reco. A_{JJ#gamma};Reco. Photon p_{T}", nAJBins, ajBins, nGammaPtBins, gammaPtBins);
+	  photonPtJtDPhiJJGVCent_TRUTH_p[cI][eI] = new TH2F(("photonPtJtDPhiJJGVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_TRUTH_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+	  photonPtJtDPhiJJVCent_TRUTH_p[cI][eI] = new TH2F(("photonPtJtDPhiJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_TRUTH_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
 
 	  photonPtJtPtVCent_TRUTHMATCHEDRECO_p[cI][eI] = new TH2F(("photonPtJtPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_TRUTHMATCHEDRECO_h").c_str(), ";Reco. Jet p_{T};Reco. Photon p_{T}", nJtPtBins, jtPtBins, nGammaPtBins, gammaPtBins);
 	  photonPtJtXJVCent_TRUTHMATCHEDRECO_p[cI][eI] = new TH2F(("photonPtJtXJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_TRUTHMATCHEDRECO_h").c_str(), ";Reco. x_{J};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+	  photonPtJtDPhiVCent_TRUTHMATCHEDRECO_p[cI][eI] = new TH2F(("photonPtJtDPhiVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_TRUTHMATCHEDRECO_h").c_str(), ";Reco. #Delta#phi_{J#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
 	  photonPtJtXJJVCent_TRUTHMATCHEDRECO_p[cI][eI] = new TH2F(("photonPtJtXJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_TRUTHMATCHEDRECO_h").c_str(), ";Reco. #vec{x}_{JJ#gamma};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
-	  setSumW2({photonPtJtPtVCent_TRUTH_p[cI][eI], photonPtJtXJVCent_TRUTH_p[cI][eI], photonPtJtXJJVCent_TRUTH_p[cI][eI], photonPtJtPtVCent_TRUTHMATCHEDRECO_p[cI][eI], photonPtJtXJVCent_TRUTHMATCHEDRECO_p[cI][eI], photonPtJtXJJVCent_TRUTHMATCHEDRECO_p[cI][eI]});
+	  photonPtJtAJJVCent_TRUTHMATCHEDRECO_p[cI][eI] = new TH2F(("photonPtJtAJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_TRUTHMATCHEDRECO_h").c_str(), ";Reco. A_{JJ#gamma};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+	  photonPtJtDPhiJJGVCent_TRUTHMATCHEDRECO_p[cI][eI] = new TH2F(("photonPtJtDPhiJJGVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_TRUTHMATCHEDRECO_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+	  photonPtJtDPhiJJVCent_TRUTHMATCHEDRECO_p[cI][eI] = new TH2F(("photonPtJtDPhiJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_TRUTHMATCHEDRECO_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+
+	  photonPtJtPtVCent_PUREBKGD_p[cI][eI] = new TH2F(("photonPtJtPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_PUREBKGD_h").c_str(), ";Reco. Jet p_{T};Reco. Photon p_{T}", nJtPtBins, jtPtBins, nGammaPtBins, gammaPtBins);
+	  photonPtJtXJVCent_PUREBKGD_p[cI][eI] = new TH2F(("photonPtJtXJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_PUREBKGD_h").c_str(), ";Reco. x_{J};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+	  photonPtJtDPhiVCent_PUREBKGD_p[cI][eI] = new TH2F(("photonPtJtDPhiVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_PUREBKGD_h").c_str(), ";Reco. #Delta#phi_{J#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+	  photonPtJtXJJVCent_PUREBKGD_p[cI][eI] = new TH2F(("photonPtJtXJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_PUREBKGD_h").c_str(), ";Reco. #vec{x}_{JJ#gamma};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+	  photonPtJtXJJVCent_MIXBKGD_p[cI][eI] = new TH2F(("photonPtJtXJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXBKGD_h").c_str(), ";Reco. #vec{x}_{JJ#gamma};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+
+	  photonPtJtAJJVCent_PUREBKGD_p[cI][eI] = new TH2F(("photonPtJtAJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_PUREBKGD_h").c_str(), ";Reco. A_{JJ#gamma};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+	  photonPtJtAJJVCent_MIXBKGD_p[cI][eI] = new TH2F(("photonPtJtAJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXBKGD_h").c_str(), ";Reco. A_{JJ#gamma};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
+
+	  photonPtJtDPhiJJGVCent_PUREBKGD_p[cI][eI] = new TH2F(("photonPtJtDPhiJJGVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_PUREBKGD_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+	  photonPtJtDPhiJJGVCent_MIXBKGD_p[cI][eI] = new TH2F(("photonPtJtDPhiJJGVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXBKGD_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+
+	  photonPtJtDPhiJJVCent_PUREBKGD_p[cI][eI] = new TH2F(("photonPtJtDPhiJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_PUREBKGD_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+	  photonPtJtDPhiJJVCent_MIXBKGD_p[cI][eI] = new TH2F(("photonPtJtDPhiJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_MIXBKGD_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
+
+	  setSumW2({photonPtJtPtVCent_TRUTH_p[cI][eI], photonPtJtXJVCent_TRUTH_p[cI][eI], photonPtJtDPhiVCent_TRUTH_p[cI][eI], photonPtJtXJJVCent_TRUTH_p[cI][eI], photonPtJtAJJVCent_TRUTH_p[cI][eI], photonPtJtDPhiJJGVCent_TRUTH_p[cI][eI], photonPtJtDPhiJJVCent_TRUTH_p[cI][eI], photonPtJtPtVCent_TRUTHMATCHEDRECO_p[cI][eI], photonPtJtDPhiVCent_TRUTHMATCHEDRECO_p[cI][eI], photonPtJtXJVCent_TRUTHMATCHEDRECO_p[cI][eI], photonPtJtXJJVCent_TRUTHMATCHEDRECO_p[cI][eI], photonPtJtAJJVCent_TRUTHMATCHEDRECO_p[cI][eI], photonPtJtDPhiJJGVCent_TRUTHMATCHEDRECO_p[cI][eI], photonPtJtDPhiJJVCent_TRUTHMATCHEDRECO_p[cI][eI], photonPtJtPtVCent_PUREBKGD_p[cI][eI], photonPtJtXJVCent_PUREBKGD_p[cI][eI], photonPtJtDPhiVCent_PUREBKGD_p[cI][eI], photonPtJtXJJVCent_PUREBKGD_p[cI][eI], photonPtJtXJJVCent_MIXBKGD_p[cI][eI], photonPtJtAJJVCent_PUREBKGD_p[cI][eI], photonPtJtAJJVCent_MIXBKGD_p[cI][eI], photonPtJtDPhiJJGVCent_PUREBKGD_p[cI][eI], photonPtJtDPhiJJGVCent_MIXBKGD_p[cI][eI], photonPtJtDPhiJJVCent_PUREBKGD_p[cI][eI], photonPtJtDPhiJJVCent_MIXBKGD_p[cI][eI]});
 	}
       }
     }
-
 
     photonEtaPt_p[cI] = new TH2F(("photonEtaPt_" + centBinsStr[cI] + "_h").c_str(), ";#gamma #eta;#gamma p_{T} [GeV]", nGammaEtaBins, gammaEtaBins, nGammaPtBins, gammaPtBins);
 
@@ -1160,36 +1399,42 @@ int gdjNTupleToHist(std::string inConfigFileName)
   sampleHandler sHandler;
   sHandler.Init("mc16_5TeV.423102.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP50_70.merge.AOD.e5094_d1516_r11439_r11217");//we wont actually use this sample but i need to initialize w/ something
 
-  inTree_p->SetBranchStatus("*", 0);
-  inTree_p->SetBranchStatus("sampleTag", 1);
-
-  inTree_p->SetBranchAddress("sampleTag", &sampleTag);
-
-  for(Int_t entry = 0; entry < inTree_p->GetEntries(); ++entry){
-    inTree_p->GetEntry(entry);
-    
-    ++(sampleTagCounter[sampleTag]);
-  }
   
-  std::cout << "SAMPLE TAG, COUNTS:" << std::endl;
-  for(auto const& tempTag : sampleTagCounter){
-    std::cout << " " << tempTag.first << ", " << tempTag.second << std::endl;
-
-    Float_t pthatMin = sHandler.GetMinPthat(tempTag.first);
-    uniqueMinPthats.push_back(pthatMin);
+  if(isMC){
+    inTree_p->SetBranchStatus("*", 0);
+    inTree_p->SetBranchStatus("sampleTag", 1);
+    
+    inTree_p->SetBranchAddress("sampleTag", &sampleTag);
+    
+    for(Int_t entry = 0; entry < inTree_p->GetEntries(); ++entry){
+      inTree_p->GetEntry(entry);
+      
+      ++(sampleTagCounter[sampleTag]);
+    }
+    
+    
+    std::cout << "SAMPLE TAG, COUNTS:" << std::endl;
+    for(auto const& tempTag : sampleTagCounter){
+      std::cout << " " << tempTag.first << ", " << tempTag.second << std::endl;
+      
+      Float_t pthatMin = sHandler.GetMinPthat(tempTag.first);
+      uniqueMinPthats.push_back(pthatMin);
+    }
+    std::sort(std::begin(uniqueMinPthats), std::end(uniqueMinPthats));
+    
+    std::cout << "UNIQUE PTHATMINS: " << std::endl;
+    for(unsigned int uI = 0; uI < uniqueMinPthats.size(); ++uI){
+      std::cout << " " << uniqueMinPthats[uI] << std::endl;
+    }
+    uniqueMinPthats.push_back(10000.);
   }
-  std::sort(std::begin(uniqueMinPthats), std::end(uniqueMinPthats));
-
-  std::cout << "UNIQUE PTHATMINS: " << std::endl;
-  for(unsigned int uI = 0; uI < uniqueMinPthats.size(); ++uI){
-    std::cout << " " << uniqueMinPthats[uI] << std::endl;
-  }
-  uniqueMinPthats.push_back(10000.);
 
   outFile_p->cd();
 
   runNumber_p = new TH1F(("runNumber_" + systStr + "_h").c_str(), ";Run;Counts", nRunBins+1, runMinF, runMaxF);
   if(!isMC) lumiFractionPerRun_p = new TH1F(("lumiFractionPerRun_" + systStr + "_h").c_str(), ";Run;Fraction of Lumiblocks", nRunBins+1, runMinF, runMaxF);
+
+  
 
   std::map<unsigned long long, bool> runLumiIsFired;
   std::map<int, int> runLumiCounter;
@@ -1383,14 +1628,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
     //Fix to prev. bug - used etajes instead of fully corrected jets
     //since for the mixing we are working with overlay, always take insitu corrections
-    mixTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_pt").c_str(), 1);
-    mixTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_eta").c_str(), 1);
-    mixTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_phi").c_str(), 1);
+    mixTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_insitu_jet_pt").c_str(), 1);
+    mixTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_insitu_jet_eta").c_str(), 1);
+    mixTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_insitu_jet_phi").c_str(), 1);
 
     mixTree_p->SetBranchAddress("vert_z", &vert_z_p);
-    mixTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_pt").c_str(), &aktRhi_insitu_jet_pt_p);
-    mixTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_eta").c_str(), &aktRhi_insitu_jet_eta_p);
-    mixTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "hi_em_xcalib_jet_phi").c_str(), &aktRhi_insitu_jet_phi_p);
+    mixTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "hi_insitu_jet_pt").c_str(), &aktRhi_insitu_jet_pt_p);
+    mixTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "hi_insitu_jet_eta").c_str(), &aktRhi_insitu_jet_eta_p);
+    mixTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "hi_insitu_jet_phi").c_str(), &aktRhi_insitu_jet_phi_p);
 
     if(!isPP){
       mixTree_p->SetBranchStatus("fcalA_et", 1);
@@ -1450,8 +1695,12 @@ int gdjNTupleToHist(std::string inConfigFileName)
       for(unsigned int jI = 0; jI < aktRhi_insitu_jet_pt_p->size(); ++jI){
 	if(aktRhi_insitu_jet_pt_p->at(jI) < jtPtBinsLow) continue;
 	if(aktRhi_insitu_jet_pt_p->at(jI) >= jtPtBinsHigh) continue;
-	if(aktRhi_insitu_jet_eta_p->at(jI) <= jtEtaBinsLow) continue;
-	if(aktRhi_insitu_jet_eta_p->at(jI) >= jtEtaBinsHigh) continue;
+
+	Float_t jtEtaToCut = aktRhi_insitu_jet_eta_p->at(jI);
+	if(jtEtaBinsDoAbs) jtEtaToCut = TMath::Abs(jtEtaToCut);
+
+	if(jtEtaToCut <= jtEtaBinsLow) continue;
+	if(jtEtaToCut >= jtEtaBinsHigh) continue;
 
 	TLorentzVector temp;
 	temp.SetPtEtaPhiM(aktRhi_insitu_jet_pt_p->at(jI), aktRhi_insitu_jet_eta_p->at(jI), aktRhi_insitu_jet_phi_p->at(jI), 0.0);
@@ -1695,7 +1944,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
     eventCounter[i] = 0;
   }
 
-  
+
   for(ULong64_t entry = 0; entry < nEntries; ++entry){
     if(entry%nDiv == 0) std::cout << " Entry " << entry << "/" << nEntries << "..." << std::endl;
     inTree_p->GetEntry(entry);
@@ -1705,6 +1954,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
     //Cut 1: z vertex
     if(vert_z <= -15. || vert_z >= 15.) continue;      
+
+    vzPassing_p->Fill(vert_z);
 
     ++(eventCounter[0]);
 
@@ -1723,22 +1974,27 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	didOneFireMiss = true;
       }
     }
-
-    Float_t minPthat = sHandler.GetMinPthat(sampleTag);
-    int minPtHatPos = -1;    
-    for(unsigned int pI = 0; pI < uniqueMinPthats.size()-1; ++pI){
-      if(TMath::Abs(minPthat - uniqueMinPthats[pI]) < 1.0){
-	minPtHatPos = pI;
-	break;
-      }
-    }
-
-    if(minPtHatPos < 0){
-      std::cout << "Min pthat of event, " << minPthat << ", not found in vector of unique minimum pthats. Please fix. return 1" << std::endl;
-      return 1;
-    }
-    Float_t maxPthat = uniqueMinPthats[minPtHatPos+1];
     
+    Float_t minPthat = -1.0;
+    Float_t maxPthat = -1.0;
+
+    if(isMC){
+      minPthat = sHandler.GetMinPthat(sampleTag);
+      int minPtHatPos = -1;    
+      for(unsigned int pI = 0; pI < uniqueMinPthats.size()-1; ++pI){
+	if(TMath::Abs(minPthat - uniqueMinPthats[pI]) < 1.0){
+	  minPtHatPos = pI;
+	  break;
+	}
+      }
+      
+      if(minPtHatPos < 0){
+	std::cout << "Min pthat of event, " << minPthat << ", not found in vector of unique minimum pthats. Please fix. return 1" << std::endl;
+	return 1;
+      }
+      maxPthat = uniqueMinPthats[minPtHatPos+1];
+    }
+
     //Check prescale is 1 in case I made a mistake on first unprescaled
 
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
@@ -1769,6 +2025,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
       
       continue;
     }
+
+    centPassing_p->Fill(cent);
 
     ++(eventCounter[1]);
 
@@ -1801,6 +2059,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
       if(truthPhotonPt < minPthat) continue;
       if(truthPhotonPt >= maxPthat) continue;
     }
+
+    truPhoPtPassing_p->Fill(truthPhotonPt);
 
     ++(eventCounter[2]);
   
@@ -1859,6 +2119,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
       if(getDR(truthPhotonEta, truthPhotonPhi, photon_eta_p->at(leadingPhoPos), photon_phi_p->at(leadingPhoPos)) > 0.2) continue;
     }
     
+    leadingPhoPtPassing_p->Fill(photon_pt_p->at(leadingPhoPos));
+    leadingPhoEtaPassing_p->Fill(photon_eta_p->at(leadingPhoPos));
+    leadingPhoIsoPassing_p->Fill(correctedIso);
+    leadingPhoTightPassing_p->Fill(photon_tight_p->at(leadingPhoPos));
+
     bool isSideband = isSidebandPhoton(isPP, doPtIsoCorrection, sidebandType, photon_tight_p->at(leadingPhoPos), correctedIso);
     const Int_t phoPos = leadingPhoPos;
      
@@ -1915,7 +2180,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
     int multCounter = 0;
     int multCounterGen = 0;
     int multCounterGenMatched = 0;	
-    
+      
     std::vector<TLorentzVector> goodJets, goodJetsDPhi;
     std::vector<int> goodJetsTPos, goodJetsDPhiTPos;
     std::vector<std::vector<TLorentzVector> > goodJetsMix, goodJetsDPhiMix;
@@ -1945,8 +2210,12 @@ int gdjNTupleToHist(std::string inConfigFileName)
       }
     }
 
+    //Fill for photons
+    if(!isSideband) fillTH1(photonPtVCent_RAW_p[centPos][barrelAndECPos], photon_pt_p->at(phoPos), fullWeight);
+    else fillTH1(photonPtVCent_RAWSideband_p[centPos][barrelAndECPos], photon_pt_p->at(phoPos), fullWeight);
+
     //Now go thru reco jets 
-    for(unsigned int jI = 0; jI < aktRhi_etajes_jet_pt_p->size(); ++jI){
+    for(unsigned int jI = 0; jI < aktRhi_insitu_jet_pt_p->size(); ++jI){
       Float_t ptToUse = aktRhi_insitu_jet_pt_p->at(jI);
       Float_t etaToUse = aktRhi_insitu_jet_eta_p->at(jI);
       Float_t phiToUse = aktRhi_insitu_jet_phi_p->at(jI);
@@ -1967,11 +2236,15 @@ int gdjNTupleToHist(std::string inConfigFileName)
       //Jet Cut 1: Jet must be within eta acceptance      
       if(jtEtaToCut <= jtEtaBinsLow) continue;
       if(jtEtaToCut >= jtEtaBinsHigh) continue;
+
+      jtEtaPassing_p->Fill(etaToUse);
       
       //Jet Cut 2: continue if jet is on top of the photon (usual choice is dR)
       Float_t dR = getDR(etaToUse, phiToUse, photon_eta_p->at(phoPos), photon_phi_p->at(phoPos));
       if(dR < gammaExclusionDR) continue;
       
+      jtGammaDRPassing_p->Fill(dR);
+
       if(recoJtPtMin > ptToUse) recoJtPtMin = ptToUse;//This is just to check what the input minimum recojtpt is
       
       if(isMC){
@@ -1982,12 +2255,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    if(!isSideband) fillTH1(photonJtRecoOverGenVCentJtPt_p[centPos][genJtPtPos], ptToUse/aktR_truth_jet_pt_p->at(pos), fullWeight);
 	  }
 	}
-      } 
-      
+      }
+     
       //Jet Cut 3: Continue if reco is outside fiducial region
       if(ptToUse < jtPtBinsLow) continue;
       if(ptToUse >= jtPtBinsHigh) continue;
       
+      jtPtPassing_p->Fill(ptToUse);
+
       TLorentzVector tempJet;
       tempJet.SetPtEtaPhiM(ptToUse, etaToUse, phiToUse, 0.0);
       goodJets.push_back(tempJet);
@@ -2018,20 +2293,39 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  }
 	}
       }
-           
-      //Require jets be 'back-to-back' w/ the photon
-      if(dPhi >= gammaJtDPhiCut){
-	goodJetsDPhi.push_back(tempJet);
-	goodJetsDPhiTPos.push_back(-1);
-	if(isMC){
-	  if(aktRhi_truthpos_p->at(jI) >= 0){
-	    if(aktR_truth_jet_pt_p->at(aktRhi_truthpos_p->at(jI)) >= assocGenMinPt){
-	      goodJetsDPhiTPos[goodJetsDPhiTPos.size()-1] = aktRhi_truthpos_p->at(jI);
+        
+      //Fill for the inclusive DPhi
+      if(!isSideband) fillTH2(photonPtJtDPhiVCent_RAW_p[centPos][barrelAndECPos], dPhi, photon_pt_p->at(phoPos), fullWeight);
+      else fillTH2(photonPtJtDPhiVCent_RAWSideband_p[centPos][barrelAndECPos], dPhi, photon_pt_p->at(phoPos), fullWeight);
+    
+      if(!isSideband){
+	if(isMC){	  
+	  if(truthPhotonPt > 0){
+	    int truthPos = aktRhi_truthpos_p->at(jI);
+	      
+	    if(truthPos >= 0){
+	      Float_t truthPt = aktR_truth_jet_pt_p->at(truthPos);
+	      Float_t truthPhi = aktR_truth_jet_phi_p->at(truthPos);
+	    
+	      if(truthPt > assocGenMinPt){
+		Float_t dPhiTruth = TMath::Abs(getDPHI(truthPhi, truthPhotonPhi));
+
+		fillTH2(photonPtJtDPhiVCent_TRUTHMATCHEDRECO_p[centPos][barrelAndECPos], dPhi, photon_pt_p->at(phoPos), fullWeight);
+		fillTH2(photonPtJtDPhiVCent_TRUTH_p[centPos][barrelAndECPos], dPhiTruth, truthPhotonPt, fullWeight);
+	      }
+	      else fillTH2(photonPtJtDPhiVCent_PUREBKGD_p[centPos][barrelAndECPos], dPhi, photon_pt_p->at(phoPos), fullWeight);
 	    }
-	    else goodJetsDPhiTPos[goodJetsDPhiTPos.size()-1] = -1;
+	    else fillTH2(photonPtJtDPhiVCent_PUREBKGD_p[centPos][barrelAndECPos], dPhi, photon_pt_p->at(phoPos), fullWeight);
 	  }
-	  else goodJetsDPhiTPos[goodJetsDPhiTPos.size()-1] = -1;
 	}
+      }
+           
+      //Require jets be 'back-to-back' w/ the photon     
+      if(dPhi >= gammaJtDPhiCut){
+	jtDPhiPassing_p->Fill(dPhi);
+	
+	goodJetsDPhi.push_back(tempJet);
+	goodJetsDPhiTPos.push_back(goodJetsTPos[goodJetsTPos.size()-1]);
 	  
 	if(!isSideband){
 	  fillTH1(photonJtPtVCentPt_p[centPos][ptPos], ptToUse, fullWeight);
@@ -2041,10 +2335,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  fillTH1(photonJtXJVCentPt_p[centPos][ptPos], ptToUse/photon_pt_p->at(phoPos), fullWeight);
 	  fillTH1(photonJtXJVCentPt_p[centPos][nGammaPtBins], ptToUse/photon_pt_p->at(phoPos), fullWeight);
 	}	
-	
-	if(!isSideband){
-	  fillTH1(photonPtVCent_RAW_p[centPos][barrelAndECPos], photon_pt_p->at(phoPos), fullWeight);
-	  
+      
+	if(!isSideband){       	  
 	  fillTH2(photonPtJtPtVCent_RAW_p[centPos][barrelAndECPos], ptToUse, photon_pt_p->at(phoPos), fullWeight);
 	  fillTH2(photonPtJtXJVCent_RAW_p[centPos][barrelAndECPos], ptToUse/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);
 	  
@@ -2056,17 +2348,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		Float_t truthPt = aktR_truth_jet_pt_p->at(truthPos);
 		Float_t truthEta = aktR_truth_jet_eta_p->at(truthPos);
 		Float_t truthPhi = aktR_truth_jet_phi_p->at(truthPos);
-		
-		
+				
 		if(centPos == 0){
-		  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-		  
 		  if(ptToUse >= jtPtBins[0] && ptToUse < jtPtBins[nJtPtBins]){
 		    if(photon_pt_p->at(phoPos) >= gammaPtBins[3] && photon_pt_p->at(phoPos) < gammaPtBins[5]){
-		      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-		      
-		      Int_t recoPtPos = ghostPos(nJtPtBins, jtPtBins, ptToUse, true, doGlobalDebug);
-		      
+		      Int_t recoPtPos = ghostPos(nJtPtBins, jtPtBins, ptToUse, true, doGlobalDebug);		      
 		      Float_t deltaRTruthReco = getDR(truthEta, truthPhi, etaToUse, phiToUse);
 		      
 		      truthPtOfMatches_Unweighted_p[recoPtPos]->Fill(truthPt);
@@ -2075,7 +2361,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		      truthPtDeltaROfMatches_Unweighted_p[recoPtPos]->Fill(truthPt, deltaRTruthReco);
 		      truthPtDeltaROfMatches_Weighted_p[recoPtPos]->Fill(truthPt, deltaRTruthReco, fullWeight);
 		      
-		      if(ptToUse >= jtPtBins[0] && ptToUse < jtPtBins[1]){
+		      if(ptToUse >= jtPtBins[0] && ptToUse < jtPtBins[1] && false){
 			std::cout << "EVENT OF INTEREST: " << std::endl;
 			std::cout << " Entry: " << entry << std::endl;
 			//			std::cout << " RUN, LUMI, EVENT: " << runNumber << ", " << lumiBlock << std::endl;
@@ -2087,28 +2373,35 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		    }
 		  }
 		}
-		
+	   		
 		if(truthPt > assocGenMinPt){
 		  if(truthPt < jtPtBins[0]) truthPt = jtPtBins[0] + 0.01;
 		  else if(truthPt > jtPtBins[nJtPtBins]) truthPt = jtPtBins[nJtPtBins] - 0.01;
 		  
 		  fillTH2(photonPtJtPtVCent_TRUTHMATCHEDRECO_p[centPos][barrelAndECPos], ptToUse, photon_pt_p->at(phoPos), fullWeight);
 		  fillTH2(photonPtJtXJVCent_TRUTHMATCHEDRECO_p[centPos][barrelAndECPos], ptToUse/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);
+
 		  fillTH2(photonPtJtPtVCent_TRUTH_p[centPos][barrelAndECPos], truthPt, truthPhotonPt, fullWeight);
 		  fillTH2(photonPtJtXJVCent_TRUTH_p[centPos][barrelAndECPos], truthPt/truthPhotonPt, truthPhotonPt, fullWeight);
 		}
+		else{
+		  fillTH2(photonPtJtPtVCent_PUREBKGD_p[centPos][barrelAndECPos], ptToUse, photon_pt_p->at(phoPos), fullWeight);
+		  fillTH2(photonPtJtXJVCent_PUREBKGD_p[centPos][barrelAndECPos], ptToUse/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);
+		}
+	      }
+	      else{
+		fillTH2(photonPtJtPtVCent_PUREBKGD_p[centPos][barrelAndECPos], ptToUse, photon_pt_p->at(phoPos), fullWeight);
+		fillTH2(photonPtJtXJVCent_PUREBKGD_p[centPos][barrelAndECPos], ptToUse/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);
 	      }
 	    }
 	  }	    
 	}
-	else{
-	  fillTH1(photonPtVCent_RAWSideband_p[centPos][barrelAndECPos], photon_pt_p->at(phoPos), fullWeight);
-	  
+	else{	  
 	  fillTH2(photonPtJtPtVCent_RAWSideband_p[centPos][barrelAndECPos], ptToUse, photon_pt_p->at(phoPos), fullWeight);
 	  fillTH2(photonPtJtXJVCent_RAWSideband_p[centPos][barrelAndECPos], ptToUse/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);
 	}
 	
-	
+      
 	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << std::endl; 
 
 	if(isMC && truthPhotonPt > 0){
@@ -2124,7 +2417,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    TLorentzVector tempRecoJet1, tempRecoJet2;
 	    TLorentzVector tempTruthJet1, tempTruthJet2;
 	    tempTruthJet1.SetPtEtaPhiM(tempTruthJtPt, tempTruthJtEta, tempTruthJtPhi, 0.0);
-	    tempRecoJet1.SetPtEtaPhiM(ptToUse, aktRhi_etajes_jet_eta_p->at(jI), aktRhi_etajes_jet_phi_p->at(jI), 0.0);
+	    tempRecoJet1.SetPtEtaPhiM(ptToUse, etaToUse, phiToUse, 0.0);
 		
 	    //		    if(tempTruthJtPt >= jtPtBins[0] && tempTruthJtPt < jtPtBins[nJtPtBins]){
 	    truthGammaPt_ = truthPhotonPt;
@@ -2171,10 +2464,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	      if(!isSideband) unfoldXJJTree_p->Fill();		   				     	 
 	    }
 	  }	
-	}       
+	}
 
 	++multCounter;
-	  
+      	  
 	if(isMC){
 	  if(aktRhi_truthpos_p->at(jI) < 0){
 	    if(!isSideband) fillTH1(photonJtFakeVCentPt_p[centPos][ptPos], ptToUse, fullWeight);
@@ -2260,9 +2553,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	      
 	    fillTH1(photonGenMultiJtDPhiJJVCentPt_p[centPos][ptPos], dPhiJJ, fullWeight);
 	    fillTH1(photonGenMultiJtDPhiJJVCentPt_p[centPos][nGammaPtBins], dPhiJJ, fullWeight);
-	  }
-	    
-	    
+	  }	    	    
 	}
       }
     }
@@ -2271,7 +2562,116 @@ int gdjNTupleToHist(std::string inConfigFileName)
       fillTH1(photonJtMultVCentPt_p[centPos][ptPos], multCounter, fullWeight);
       fillTH1(photonJtMultVCentPt_p[centPos][nGammaPtBins], multCounter, fullWeight);	
     }
-    
+  
+  
+    for(unsigned int jI = 0; jI < goodJets.size(); ++jI){
+      TLorentzVector jet1 = goodJets[jI];
+      
+      for(unsigned int jI2 = jI+1; jI2 < goodJets.size(); ++jI2){
+	TLorentzVector jet2 = goodJets[jI2];
+	
+	Float_t dR = getDR(jet1.Eta(), jet1.Phi(), jet2.Eta(), jet2.Phi());
+	if(dR < mixJetExclusionDR) continue;	    
+	
+	Float_t interJtDPhi = TMath::Abs(getDPHI(jet2.Phi(), jet1.Phi()));    
+
+	//	  double dPhiJJ = TMath::Abs(getDPHI(jet1.Phi(), jet2.Phi()));
+	jet2 += jet1;
+	
+	Float_t multiJtDPhi = TMath::Abs(getDPHI(jet2.Phi(), photon_phi_p->at(phoPos)));    
+	if(!isSideband){
+	  fillTH2(photonPtJtDPhiJJGVCent_RAW_p[centPos][barrelAndECPos], multiJtDPhi, photon_pt_p->at(phoPos), fullWeight);
+	  fillTH2(photonPtJtDPhiJJVCent_RAW_p[centPos][barrelAndECPos], interJtDPhi, photon_pt_p->at(phoPos), fullWeight);
+	}
+	else{
+	  fillTH2(photonPtJtDPhiJJGVCent_RAWSideband_p[centPos][barrelAndECPos], multiJtDPhi, photon_pt_p->at(phoPos), fullWeight);
+	  fillTH2(photonPtJtDPhiJJVCent_RAWSideband_p[centPos][barrelAndECPos], interJtDPhi, photon_pt_p->at(phoPos), fullWeight);
+	}
+	
+	if(isMC){		
+	  if(goodJetsTPos[jI] >= 0){
+	    Float_t truthJt1Pt = aktR_truth_jet_pt_p->at(goodJetsTPos[jI]);
+	    Float_t truthJt1Eta = aktR_truth_jet_eta_p->at(goodJetsTPos[jI]);
+	    Float_t truthJt1Phi = aktR_truth_jet_phi_p->at(goodJetsTPos[jI]);
+	    
+	    TLorentzVector truthJt1;
+	    truthJt1.SetPtEtaPhiM(truthJt1Pt, truthJt1Eta, truthJt1Phi, 0.0);
+	    
+	    if(goodJetsTPos[jI2] >= 0){
+	      Float_t truthJt2Pt = aktR_truth_jet_pt_p->at(goodJetsTPos[jI2]);
+	      Float_t truthJt2Eta = aktR_truth_jet_eta_p->at(goodJetsTPos[jI2]);
+	      Float_t truthJt2Phi = aktR_truth_jet_phi_p->at(goodJetsTPos[jI2]);
+	      
+	      TLorentzVector truthJt2;
+	      truthJt2.SetPtEtaPhiM(truthJt2Pt, truthJt2Eta, truthJt2Phi, 0.0);
+	      
+	      if(!isSideband){
+		if(truthPhotonPt > 0){
+		  if(truthJt1Pt > assocGenMinPt && truthJt2Pt > assocGenMinPt){
+		    fillTH2(photonPtJtDPhiJJGVCent_TRUTHMATCHEDRECO_p[centPos][barrelAndECPos], multiJtDPhi, photon_pt_p->at(phoPos), fullWeight);
+		    fillTH2(photonPtJtDPhiJJVCent_TRUTHMATCHEDRECO_p[centPos][barrelAndECPos], interJtDPhi, photon_pt_p->at(phoPos), fullWeight);
+
+		    Float_t truthAJJ = TMath::Abs(truthJt1Pt - truthJt2Pt);
+		    truthJt1 += truthJt2;
+		    
+		    //		    Float_t truthMultiJtDPhi = TMath::Abs(getDPHI(truthJt1.Phi(), truthPhotonPhi));    
+		    fillTH2(photonPtJtXJJVCent_TRUTH_p[centPos][barrelAndECPos], truthJt1.Pt()/truthPhotonPt, truthPhotonPt, fullWeight);
+		    fillTH2(photonPtJtAJJVCent_TRUTH_p[centPos][barrelAndECPos], truthAJJ/truthPhotonPt, truthPhotonPt, fullWeight);
+		  }
+		}
+	      }
+	    
+	      if(!isSideband){
+		if(truthJt2Pt > assocGenMinPt){
+		  fillTH2(photonPtJtDPhiJJGVCent_MIXBKGD_p[centPos][barrelAndECPos], multiJtDPhi, photon_pt_p->at(phoPos), fullWeight);
+		   fillTH2(photonPtJtDPhiJJVCent_MIXBKGD_p[centPos][barrelAndECPos], interJtDPhi, photon_pt_p->at(phoPos), fullWeight);
+		}
+		else{
+		  fillTH2(photonPtJtDPhiJJGVCent_PUREBKGD_p[centPos][barrelAndECPos], multiJtDPhi, photon_pt_p->at(phoPos), fullWeight);
+		  fillTH2(photonPtJtDPhiJJVCent_PUREBKGD_p[centPos][barrelAndECPos], interJtDPhi, photon_pt_p->at(phoPos), fullWeight);
+		}
+	      }
+	    }
+	    else{
+	      if(!isSideband){
+		if(truthJt1Pt > assocGenMinPt){
+		  fillTH2(photonPtJtDPhiJJGVCent_MIXBKGD_p[centPos][barrelAndECPos], multiJtDPhi, photon_pt_p->at(phoPos), fullWeight);
+	  fillTH2(photonPtJtDPhiJJVCent_MIXBKGD_p[centPos][barrelAndECPos], interJtDPhi, photon_pt_p->at(phoPos), fullWeight);
+		}
+		else{
+		  fillTH2(photonPtJtDPhiJJGVCent_PUREBKGD_p[centPos][barrelAndECPos], multiJtDPhi, photon_pt_p->at(phoPos), fullWeight);
+		  fillTH2(photonPtJtDPhiJJVCent_PUREBKGD_p[centPos][barrelAndECPos], interJtDPhi, photon_pt_p->at(phoPos), fullWeight);
+		}
+	      }
+	    }
+	  }
+	  else{
+	    if(goodJetsTPos[jI2] >= 0){
+	      Float_t truthJt2Pt = aktR_truth_jet_pt_p->at(goodJetsTPos[jI2]);
+
+	      if(!isSideband){
+		if(truthJt2Pt > assocGenMinPt){
+		  fillTH2(photonPtJtDPhiJJGVCent_MIXBKGD_p[centPos][barrelAndECPos], multiJtDPhi, photon_pt_p->at(phoPos), fullWeight);
+		  fillTH2(photonPtJtDPhiJJVCent_MIXBKGD_p[centPos][barrelAndECPos], interJtDPhi, photon_pt_p->at(phoPos), fullWeight);
+		}
+		else{
+		  fillTH2(photonPtJtDPhiJJGVCent_PUREBKGD_p[centPos][barrelAndECPos], multiJtDPhi, photon_pt_p->at(phoPos), fullWeight);
+		  fillTH2(photonPtJtDPhiJJVCent_PUREBKGD_p[centPos][barrelAndECPos], interJtDPhi, photon_pt_p->at(phoPos), fullWeight);
+		}
+	      }
+	    }
+	    else{
+	      if(!isSideband){
+		fillTH2(photonPtJtDPhiJJGVCent_PUREBKGD_p[centPos][barrelAndECPos], multiJtDPhi, photon_pt_p->at(phoPos), fullWeight);
+		fillTH2(photonPtJtDPhiJJVCent_PUREBKGD_p[centPos][barrelAndECPos], interJtDPhi, photon_pt_p->at(phoPos), fullWeight);
+	      }
+	    }
+	  }
+	  
+	}
+      }
+    }
+      
     if(goodJetsDPhi.size() >= 2){
       for(auto const & jet : goodJetsDPhi){
 	if(!isSideband){
@@ -2280,17 +2680,25 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  fillTH1(photonMultiJtXJVCentPt_p[centPos][ptPos], jet.Pt()/photon_pt_p->at(phoPos), fullWeight);
 	  fillTH1(photonMultiJtXJVCentPt_p[centPos][nGammaPtBins], jet.Pt()/photon_pt_p->at(phoPos), fullWeight);
 	}
-      }
-      
+      }     
+
       for(unsigned int jI = 0; jI < goodJetsDPhi.size(); ++jI){
 	TLorentzVector jet1 = goodJetsDPhi[jI];
 	
 	for(unsigned int jI2 = jI+1; jI2 < goodJetsDPhi.size(); ++jI2){
 	  TLorentzVector jet2 = goodJetsDPhi[jI2];
+
+	  Float_t dR = getDR(jet1.Eta(), jet1.Phi(), jet2.Eta(), jet2.Phi());
+	  if(dR < mixJetExclusionDR) continue;	    
 	  
+	  Float_t multiJtAJ = TMath::Abs(jet1.Pt() - jet2.Pt());
+	
 	  double dPhiJJ = TMath::Abs(getDPHI(jet1.Phi(), jet2.Phi()));
 	  jet2 += jet1;
 	  
+	  Float_t multiJtDPhi = TMath::Abs(getDPHI(jet2.Phi(), photon_phi_p->at(phoPos)));
+	  if(multiJtDPhi < gammaMultiJtDPhiCut) continue;
+
 	  if(!isSideband){
 	    fillTH1(photonMultiJtXJJVCentPt_p[centPos][ptPos], jet2.Pt()/photon_pt_p->at(phoPos), fullWeight);
 	    fillTH1(photonMultiJtXJJVCentPt_p[centPos][nGammaPtBins], jet2.Pt()/photon_pt_p->at(phoPos), fullWeight);
@@ -2299,12 +2707,15 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    fillTH1(photonMultiJtDPhiJJVCentPt_p[centPos][nGammaPtBins], dPhiJJ, fullWeight);
 	    
 	    fillTH2(photonPtJtXJJVCent_RAW_p[centPos][barrelAndECPos], jet2.Pt()/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);	      
+	    fillTH2(photonPtJtAJJVCent_RAW_p[centPos][barrelAndECPos], multiJtAJ/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);	      
 	  }
-	  else fillTH2(photonPtJtXJJVCent_RAWSideband_p[centPos][barrelAndECPos], jet2.Pt()/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);
+	  else{
+	    fillTH2(photonPtJtXJJVCent_RAWSideband_p[centPos][barrelAndECPos], jet2.Pt()/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);
+	    fillTH2(photonPtJtAJJVCent_RAWSideband_p[centPos][barrelAndECPos], multiJtAJ/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);
+	  }
 	  
 	  if(isMC){		
 	    if(goodJetsDPhiTPos[jI] >= 0){
-	      
 	      Float_t truthJt1Pt = aktR_truth_jet_pt_p->at(goodJetsDPhiTPos[jI]);
 	      Float_t truthJt1Eta = aktR_truth_jet_eta_p->at(goodJetsDPhiTPos[jI]);
 	      Float_t truthJt1Phi = aktR_truth_jet_phi_p->at(goodJetsDPhiTPos[jI]);
@@ -2330,14 +2741,60 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		  if(truthPhotonPt > 0){
 		    if(truthJt1Pt > assocGenMinPt && truthJt2Pt > assocGenMinPt){
 		      fillTH2(photonPtJtXJJVCent_TRUTHMATCHEDRECO_p[centPos][barrelAndECPos], jet2.Pt()/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);
-		      truthJt1 += truthJt2;
-			
+		      fillTH2(photonPtJtAJJVCent_TRUTHMATCHEDRECO_p[centPos][barrelAndECPos], multiJtAJ/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);
+
+		      Float_t truthJtAJ = TMath::Abs(truthJt1.Pt() - truthJt2.Pt());
+		      truthJt1 += truthJt2;			
 		      fillTH2(photonPtJtXJJVCent_TRUTH_p[centPos][barrelAndECPos], truthJt1.Pt()/truthPhotonPt, truthPhotonPt, fullWeight);
+		      fillTH2(photonPtJtAJJVCent_TRUTH_p[centPos][barrelAndECPos], truthJtAJ/truthPhotonPt, truthPhotonPt, fullWeight);
 		    }
+		  }
+		}
+		
+		if(!isSideband){
+		  if(truthJt2Pt > assocGenMinPt){
+		    fillTH2(photonPtJtXJJVCent_MIXBKGD_p[centPos][barrelAndECPos], jet2.Pt()/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);
+		    fillTH2(photonPtJtAJJVCent_MIXBKGD_p[centPos][barrelAndECPos], multiJtAJ/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);
+		  }
+		  else{
+		    fillTH2(photonPtJtXJJVCent_PUREBKGD_p[centPos][barrelAndECPos], jet2.Pt()/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);
+		    fillTH2(photonPtJtAJJVCent_PUREBKGD_p[centPos][barrelAndECPos], multiJtAJ/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);
+		  }
+		}
+	      }
+	      else{
+		if(!isSideband){
+		  if(truthJt1Pt > assocGenMinPt){
+		    fillTH2(photonPtJtXJJVCent_MIXBKGD_p[centPos][barrelAndECPos], jet2.Pt()/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);
+		    fillTH2(photonPtJtAJJVCent_MIXBKGD_p[centPos][barrelAndECPos], multiJtAJ/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);
+		  }
+		  else{
+		    fillTH2(photonPtJtXJJVCent_PUREBKGD_p[centPos][barrelAndECPos], jet2.Pt()/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);
+		    fillTH2(photonPtJtAJJVCent_PUREBKGD_p[centPos][barrelAndECPos], multiJtAJ/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);
 		  }
 		}
 	      }
 	    }
+	    else{
+	      if(!isSideband){
+		if(goodJetsDPhiTPos[jI2] >= 0){
+		  Float_t truthJt2Pt = aktR_truth_jet_pt_p->at(goodJetsDPhiTPos[jI2]);		
+		  
+		  if(truthJt2Pt > assocGenMinPt){
+		    fillTH2(photonPtJtXJJVCent_MIXBKGD_p[centPos][barrelAndECPos], jet2.Pt()/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);
+		    fillTH2(photonPtJtAJJVCent_MIXBKGD_p[centPos][barrelAndECPos], multiJtAJ/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);
+		  }
+		  else{
+		    fillTH2(photonPtJtXJJVCent_PUREBKGD_p[centPos][barrelAndECPos], jet2.Pt()/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);
+		    fillTH2(photonPtJtAJJVCent_PUREBKGD_p[centPos][barrelAndECPos], multiJtAJ/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);
+		  }
+		}
+		else{
+		  fillTH2(photonPtJtXJJVCent_PUREBKGD_p[centPos][barrelAndECPos], jet2.Pt()/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);
+		  fillTH2(photonPtJtAJJVCent_PUREBKGD_p[centPos][barrelAndECPos], multiJtAJ/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), fullWeight);
+		}
+	      }
+	    }	  
 	  }
 	}
       }
@@ -2393,11 +2850,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	while(jetPos == maxPos){jetPos = randGen_p->Uniform(0, maxPos-1);}
 	++(signalMapCounterPost[key]);
 	std::vector<TLorentzVector> jets = mixingMap[key][jetPos];
-	  
-	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE, JETS SIZE, MAX, CHOSEN: " << __FILE__ << ", " << __LINE__ << ", " << jets.size() << ", " << maxPos << ", " << jetPos << std::endl; 
-	
-	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << key << ", " << jetPos << ", " << std::endl; 
-	  
+	  		  
 	unsigned long long jetPos2 = maxPos;
 	while(jetPos2 == jetPos || jetPos2 == maxPos){jetPos2 = randGen_p->Uniform(0, maxPos-1);}
 	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
@@ -2413,28 +2866,29 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	goodJetsDPhiMix[1].clear();
 	
 	for(unsigned int jI = 0; jI < jets.size(); ++jI){
-	  if(jets[jI].Pt()< jtPtBinsLow) continue;
+	  if(jets[jI].Pt() < jtPtBinsLow) continue;
+	  if(jets[jI].Pt() >= jtPtBinsHigh) continue;
+
+	  Float_t jtEtaToCut = jets[jI].Eta();
+	  if(jtEtaBinsDoAbs) jtEtaToCut = TMath::Abs(jtEtaToCut);
 	  
-	  if(jets[jI].Eta() <= jtEtaBinsLow) continue;
-	  if(jets[jI].Eta() >= jtEtaBinsHigh) continue;
+	  if(jtEtaToCut <= jtEtaBinsLow) continue;
+	  if(jtEtaToCut >= jtEtaBinsHigh) continue;
 	  
 	  Float_t dR = getDR(jets[jI].Eta(), jets[jI].Phi(), photon_eta_p->at(phoPos), photon_phi_p->at(phoPos));
 	  if(dR < gammaExclusionDR) continue;
-	  
-	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-	  
+	  	  
 	  goodJetsMix[0].push_back(jets[jI]);
 	  
-	  Float_t dPhi = TMath::Abs(getDPHI(jets[jI].Phi(), photon_phi_p->at(phoPos)));
-	  
-	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+	  Float_t dPhi = TMath::Abs(getDPHI(jets[jI].Phi(), photon_phi_p->at(phoPos)));	  
 	    
 	  if(!isSideband){
 	    fillTH1(photonMixJtDPhiVCentPt_p[centPos][ptPos], dPhi, mixWeight);
 	    fillTH1(photonMixJtDPhiVCentPt_p[centPos][nGammaPtBins], dPhi, mixWeight);
 	  }
-	  
-	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+
+	  if(!isSideband) fillTH2(photonPtJtDPhiVCent_MIX_p[centPos][barrelAndECPos], dPhi, photon_pt_p->at(phoPos), mixWeight);
+	  else fillTH2(photonPtJtDPhiVCent_MIX_p[centPos][barrelAndECPos], dPhi, photon_pt_p->at(phoPos), mixWeight);
 	  
 	  if(dPhi >= gammaJtDPhiCut){
 	    goodJetsDPhiMix[0].push_back(jets[jI]);
@@ -2458,13 +2912,16 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    ++multCounterMix;
 	  }	    
 	}
-	  
-	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 	
 	for(unsigned int jI = 0; jI < jets2.size(); ++jI){
-	  if(jets2[jI].Pt()< jtPtBinsLow) continue;
-	  if(jets2[jI].Eta() <= jtEtaBinsLow) continue;
-	  if(jets2[jI].Eta() >= jtEtaBinsHigh) continue;
+	  if(jets2[jI].Pt() < jtPtBinsLow) continue;
+	  if(jets2[jI].Pt() >= jtPtBinsHigh) continue;
+
+	  Float_t jtEtaToCut = jets2[jI].Eta();
+	  if(jtEtaBinsDoAbs) jtEtaToCut = TMath::Abs(jtEtaToCut);
+
+	  if(jtEtaToCut <= jtEtaBinsLow) continue;
+	  if(jtEtaToCut >= jtEtaBinsHigh) continue;
 	  
 	  Float_t dR = getDR(jets2[jI].Eta(), jets2[jI].Phi(), photon_eta_p->at(phoPos), photon_phi_p->at(phoPos));
 	  if(dR < gammaExclusionDR) continue;
@@ -2476,98 +2933,215 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    goodJetsDPhiMix[1].push_back(jets2[jI]);
 	  }	    
 	}
+       
+      
+	//	if(goodJetsDPhiMix[0].size() >= 2){
+	for(auto const & jet : goodJetsDPhiMix[0]){
+	  if(!isSideband){
+	    fillTH1(photonMixMultiJtPtVCentPt_p[centPos][ptPos], jet.Pt(), mixWeight);
+	    fillTH1(photonMixMultiJtPtVCentPt_p[centPos][nGammaPtBins], jet.Pt(), mixWeight);
+	    fillTH1(photonMixMultiJtXJVCentPt_p[centPos][ptPos], jet.Pt()/photon_pt_p->at(phoPos), mixWeight);
+	    fillTH1(photonMixMultiJtXJVCentPt_p[centPos][nGammaPtBins], jet.Pt()/photon_pt_p->at(phoPos), mixWeight);
+	  }
+	}
 	
-	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-	
-	if(goodJetsDPhiMix[0].size() >= 2){
-	  for(auto const & jet : goodJetsDPhiMix[0]){
+	//First do pure background
+	for(unsigned int bI = 0; bI < goodJetsMix[0].size(); ++bI){
+	  TLorentzVector jet1 = goodJetsMix[0][bI];
+	    
+	  for(unsigned int bI2 = bI+1; bI2 < goodJetsMix[0].size(); ++bI2){
+	    TLorentzVector jet2 = goodJetsMix[0][bI2];
+
+	    Float_t dR = getDR(jet1.Eta(), jet1.Phi(), jet2.Eta(), jet2.Phi());
+	    if(dR < mixJetExclusionDR) continue;	    
+	    
+	    //	    double dPhiJJ = TMath::Abs(getDPHI(jet1.Phi(), jet2.Phi()));
+	    Float_t interJtDPhi = TMath::Abs(getDPHI(jet2.Phi(), jet1.Phi()));
+
+	    jet2 += jet1;
+
+	    Float_t multiJtDPhi = TMath::Abs(getDPHI(jet2.Phi(), photon_phi_p->at(phoPos)));
+	      
 	    if(!isSideband){
-	      fillTH1(photonMixMultiJtPtVCentPt_p[centPos][ptPos], jet.Pt(), mixWeight);
-	      fillTH1(photonMixMultiJtPtVCentPt_p[centPos][nGammaPtBins], jet.Pt(), mixWeight);
-	      fillTH1(photonMixMultiJtXJVCentPt_p[centPos][ptPos], jet.Pt()/photon_pt_p->at(phoPos), mixWeight);
-	      fillTH1(photonMixMultiJtXJVCentPt_p[centPos][nGammaPtBins], jet.Pt()/photon_pt_p->at(phoPos), mixWeight);
+	      fillTH2(photonPtJtDPhiJJGVCent_MIX_p[centPos][barrelAndECPos], multiJtDPhi, photon_pt_p->at(phoPos), mixWeight);
+	      fillTH2(photonPtJtDPhiJJGVCent_MIXPURE_p[centPos][barrelAndECPos], multiJtDPhi, photon_pt_p->at(phoPos), mixWeight);
+	      fillTH2(photonPtJtDPhiJJVCent_MIX_p[centPos][barrelAndECPos], interJtDPhi, photon_pt_p->at(phoPos), mixWeight);
+	      fillTH2(photonPtJtDPhiJJVCent_MIXPURE_p[centPos][barrelAndECPos], interJtDPhi, photon_pt_p->at(phoPos), mixWeight);
+	    }
+	    else{
+	      fillTH2(photonPtJtDPhiJJGVCent_MIXSideband_p[centPos][barrelAndECPos], multiJtDPhi, photon_pt_p->at(phoPos), mixWeight);	
+	      fillTH2(photonPtJtDPhiJJVCent_MIXSideband_p[centPos][barrelAndECPos], interJtDPhi, photon_pt_p->at(phoPos), mixWeight);	
+	    }
+	  }	
+	}
+
+	for(unsigned int bI = 0; bI < goodJetsDPhiMix[0].size(); ++bI){
+	  TLorentzVector jet1 = goodJetsDPhiMix[0][bI];
+	    
+	  for(unsigned int bI2 = bI+1; bI2 < goodJetsDPhiMix[0].size(); ++bI2){
+	    TLorentzVector jet2 = goodJetsDPhiMix[0][bI2];
+
+	    Float_t dR = getDR(jet1.Eta(), jet1.Phi(), jet2.Eta(), jet2.Phi());
+	    if(dR < mixJetExclusionDR) continue;	    
+
+	    Float_t multiJtAJ = TMath::Abs(jet1.Pt() - jet2.Pt());
+	    
+	    double dPhiJJ = TMath::Abs(getDPHI(jet1.Phi(), jet2.Phi()));
+	    jet2 += jet1;
+
+	    Float_t multiJtDPhi = TMath::Abs(getDPHI(jet2.Phi(), photon_phi_p->at(phoPos)));
+	    if(multiJtDPhi < gammaMultiJtDPhiCut) continue;
+	      
+	    if(!isSideband){
+	      fillTH1(photonMixMultiJtXJJVCentPt_p[centPos][ptPos], jet2.Pt()/photon_pt_p->at(phoPos), mixWeight);
+	      fillTH1(photonMixMultiJtXJJVCentPt_p[centPos][nGammaPtBins], jet2.Pt()/photon_pt_p->at(phoPos), mixWeight);
+		
+	      fillTH1(photonMixMultiJtDPhiJJVCentPt_p[centPos][ptPos], dPhiJJ, mixWeight);
+	      fillTH1(photonMixMultiJtDPhiJJVCentPt_p[centPos][nGammaPtBins], dPhiJJ, mixWeight);
+	      
+	      fillTH2(photonPtJtXJJVCent_MIX_p[centPos][barrelAndECPos], jet2.Pt()/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), mixWeight);	
+	      fillTH2(photonPtJtXJJVCent_MIXPURE_p[centPos][barrelAndECPos], jet2.Pt()/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), mixWeight);	
+
+	      fillTH2(photonPtJtAJJVCent_MIX_p[centPos][barrelAndECPos], multiJtAJ/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), mixWeight);	
+	      fillTH2(photonPtJtAJJVCent_MIXPURE_p[centPos][barrelAndECPos], multiJtAJ/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), mixWeight);	
+
+	    }	  
+	    else{
+	      fillTH2(photonPtJtXJJVCent_MIXSideband_p[centPos][barrelAndECPos], jet2.Pt()/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), mixWeight);	
+	      fillTH2(photonPtJtAJJVCent_MIXSideband_p[centPos][barrelAndECPos], multiJtAJ/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), mixWeight);	
 	    }
 	  }
+	}
+        
+	//Now do mixed background (signal jet + associated w/ fake jets)
+	for(unsigned int sI = 0; sI < goodJets.size(); ++sI){
+	  TLorentzVector jet1 = goodJets[sI];
 	  
-	  //First do pure background
+	  for(unsigned int bI = 0; bI < goodJetsMix[0].size(); ++bI){
+	    TLorentzVector jet2 = goodJetsMix[0][bI];
+	    
+	    Float_t dR = getDR(jet1.Eta(), jet1.Phi(), jet2.Eta(), jet2.Phi());
+	    if(dR < mixJetExclusionDR) continue;
+	      
+	    //	    double dPhiJJ = TMath::Abs(getDPHI(jet1.Phi(), jet2.Phi()));
+	    Float_t interJtDPhi = TMath::Abs(getDPHI(jet2.Phi(), jet1.Phi()));
+	    jet2 += jet1;
+
+	    Float_t multiJtDPhi = TMath::Abs(getDPHI(jet2.Phi(), photon_phi_p->at(phoPos)));
+	    
+	    if(!isSideband){
+	      fillTH2(photonPtJtDPhiJJGVCent_MIX_p[centPos][barrelAndECPos], multiJtDPhi, photon_pt_p->at(phoPos), mixWeight); 	   
+	      fillTH2(photonPtJtDPhiJJGVCent_MIXMIX_p[centPos][barrelAndECPos], multiJtDPhi, photon_pt_p->at(phoPos), mixWeight); 	   
+
+	      fillTH2(photonPtJtDPhiJJVCent_MIX_p[centPos][barrelAndECPos], interJtDPhi, photon_pt_p->at(phoPos), mixWeight); 	   
+	      fillTH2(photonPtJtDPhiJJVCent_MIXMIX_p[centPos][barrelAndECPos], interJtDPhi, photon_pt_p->at(phoPos), mixWeight); 	   
+	    }
+	    else{
+	      fillTH2(photonPtJtDPhiJJGVCent_MIXSideband_p[centPos][barrelAndECPos], multiJtDPhi, photon_pt_p->at(phoPos), mixWeight);		      
+	      fillTH2(photonPtJtDPhiJJVCent_MIXSideband_p[centPos][barrelAndECPos], interJtDPhi, photon_pt_p->at(phoPos), mixWeight);		      
+	    }
+	  }
+	}
+
+	for(unsigned int sI = 0; sI < goodJetsDPhi.size(); ++sI){
+	  TLorentzVector jet1 = goodJetsDPhi[sI];
+	  
 	  for(unsigned int bI = 0; bI < goodJetsDPhiMix[0].size(); ++bI){
-	    TLorentzVector jet1 = goodJetsDPhiMix[0][bI];
+	    TLorentzVector jet2 = goodJetsDPhiMix[0][bI];
 	    
-	    for(unsigned int bI2 = bI+1; bI2 < goodJetsDPhiMix[0].size(); ++bI2){
-	      TLorentzVector jet2 = goodJetsDPhiMix[0][bI2];
+	    Float_t dR = getDR(jet1.Eta(), jet1.Phi(), jet2.Eta(), jet2.Phi());
+	    if(dR < mixJetExclusionDR) continue;
 	      
-	      double dPhiJJ = TMath::Abs(getDPHI(jet1.Phi(), jet2.Phi()));
-	      jet2 += jet1;
+	    double dPhiJJ = TMath::Abs(getDPHI(jet1.Phi(), jet2.Phi()));
+	    Float_t multiJtAJ = TMath::Abs(jet1.Pt() - jet2.Pt());
+
+	    jet2 += jet1;
+
+	    Float_t multiJtDPhi = TMath::Abs(getDPHI(jet2.Phi(), photon_phi_p->at(phoPos)));
+	    if(multiJtDPhi < gammaMultiJtDPhiCut) continue;
+	    
+	    if(!isSideband){
+	      fillTH1(photonMixMultiJtXJJVCentPt_p[centPos][ptPos], jet2.Pt()/photon_pt_p->at(phoPos), mixWeight);
+	      fillTH1(photonMixMultiJtXJJVCentPt_p[centPos][nGammaPtBins],jet2.Pt()/photon_pt_p->at(phoPos), mixWeight);
 	      
-	      if(!isSideband){
-		fillTH1(photonMixMultiJtXJJVCentPt_p[centPos][ptPos], jet2.Pt()/photon_pt_p->at(phoPos), mixWeight);
-		fillTH1(photonMixMultiJtXJJVCentPt_p[centPos][nGammaPtBins], jet2.Pt()/photon_pt_p->at(phoPos), mixWeight);
-		
-		fillTH1(photonMixMultiJtDPhiJJVCentPt_p[centPos][ptPos], dPhiJJ, mixWeight);
-		fillTH1(photonMixMultiJtDPhiJJVCentPt_p[centPos][nGammaPtBins], dPhiJJ, mixWeight);
-		  
-		fillTH2(photonPtJtXJJVCent_MIX_p[centPos][barrelAndECPos], jet2.Pt()/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), mixWeight);	
-	      }	  
-	      else fillTH2(photonPtJtXJJVCent_MIXSideband_p[centPos][barrelAndECPos], jet2.Pt()/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), mixWeight);	
+	      fillTH1(photonMixMultiJtDPhiJJVCentPt_p[centPos][ptPos], dPhiJJ, mixWeight);
+	      fillTH1(photonMixMultiJtDPhiJJVCentPt_p[centPos][nGammaPtBins], dPhiJJ, mixWeight);
+	      
+	      fillTH2(photonPtJtXJJVCent_MIX_p[centPos][barrelAndECPos], jet2.Pt()/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), mixWeight);	
+	      fillTH2(photonPtJtXJJVCent_MIXMIX_p[centPos][barrelAndECPos], jet2.Pt()/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), mixWeight);	
+
+	      fillTH2(photonPtJtAJJVCent_MIX_p[centPos][barrelAndECPos], multiJtAJ/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), mixWeight);	
+	      fillTH2(photonPtJtAJJVCent_MIXMIX_p[centPos][barrelAndECPos], multiJtAJ/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), mixWeight);	
+	    }	  
+	    else{
+	      fillTH2(photonPtJtXJJVCent_MIXSideband_p[centPos][barrelAndECPos], jet2.Pt()/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), mixWeight);		      
+	      fillTH2(photonPtJtAJJVCent_MIXSideband_p[centPos][barrelAndECPos], multiJtAJ/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), mixWeight);		      
 	    }
 	  }
-	    
-	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+	}	  	
+
+	//Now calculate the mixed event correction, for cases where your gamma + single jet embed accidentally picked a fake jet
+	for(unsigned int bI = 0; bI < goodJetsMix[0].size(); ++bI){
+	  TLorentzVector jet1 = goodJetsMix[0][bI];
 	  
-	  //Now do mixed background (signal jet + associated w/ fake jets)
-	  for(unsigned int sI = 0; sI < goodJetsDPhi.size(); ++sI){
-	    TLorentzVector jet1 = goodJetsDPhi[sI];
+	  for(unsigned int bI2 = 0; bI2 < goodJetsMix[1].size(); ++bI2){
+	    TLorentzVector jet2 = goodJetsMix[1][bI2];
 	    
-	    for(unsigned int bI = 0; bI < goodJetsDPhiMix[0].size(); ++bI){
-	      TLorentzVector jet2 = goodJetsDPhiMix[0][bI];
-	      
-	      Float_t dR = getDR(jet1.Eta(), jet1.Phi(), jet2.Eta(), jet2.Phi());
-	      if(dR < mixJetExclusionDR) continue;
-	      
-	      double dPhiJJ = TMath::Abs(getDPHI(jet1.Phi(), jet2.Phi()));
-	      jet2 += jet1;
-	      
-	      if(!isSideband){
-		fillTH1(photonMixMultiJtXJJVCentPt_p[centPos][ptPos], jet2.Pt()/photon_pt_p->at(phoPos), mixWeight);
-		fillTH1(photonMixMultiJtXJJVCentPt_p[centPos][nGammaPtBins],jet2.Pt()/photon_pt_p->at(phoPos), mixWeight);
-		
-		fillTH1(photonMixMultiJtDPhiJJVCentPt_p[centPos][ptPos], dPhiJJ, mixWeight);
-		fillTH1(photonMixMultiJtDPhiJJVCentPt_p[centPos][nGammaPtBins], dPhiJJ, mixWeight);
-		  
-		fillTH2(photonPtJtXJJVCent_MIX_p[centPos][barrelAndECPos], jet2.Pt()/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), mixWeight);	
-	      }	  
-	      else fillTH2(photonPtJtXJJVCent_MIXSideband_p[centPos][barrelAndECPos], jet2.Pt()/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), mixWeight);		      
+	    Float_t dR = getDR(jet1.Eta(), jet1.Phi(), jet2.Eta(), jet2.Phi());
+	    if(dR < mixJetExclusionDR) continue;
+
+	    Float_t interJtDPhi = TMath::Abs(getDPHI(jet2.Phi(), jet1.Phi()));
+	    
+	    jet2 += jet1;
+
+	    Float_t multiJtDPhi = TMath::Abs(getDPHI(jet2.Phi(), photon_phi_p->at(phoPos)));
+	    
+	    if(!isSideband){
+	      fillTH2(photonPtJtDPhiJJGVCent_MIXCorrection_p[centPos][barrelAndECPos], multiJtDPhi, photon_pt_p->at(phoPos), mixWeight);		  
+	      fillTH2(photonPtJtDPhiJJGVCent_MIXCorrection_p[centPos][barrelAndECPos], multiJtDPhi, photon_pt_p->at(phoPos), mixWeight);		  
+
+	      fillTH2(photonPtJtDPhiJJVCent_MIXCorrection_p[centPos][barrelAndECPos], interJtDPhi, photon_pt_p->at(phoPos), mixWeight);		  
+	      fillTH2(photonPtJtDPhiJJVCent_MIXCorrection_p[centPos][barrelAndECPos], interJtDPhi, photon_pt_p->at(phoPos), mixWeight);		  
+	    }
+	    else{
+	      fillTH2(photonPtJtDPhiJJGVCent_MIXSidebandCorrection_p[centPos][barrelAndECPos], multiJtDPhi, photon_pt_p->at(phoPos), mixWeight);
+	      fillTH2(photonPtJtDPhiJJVCent_MIXSidebandCorrection_p[centPos][barrelAndECPos], interJtDPhi, photon_pt_p->at(phoPos), mixWeight);
 	    }
 	  }
-	    
-	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+	}
+
+	for(unsigned int bI = 0; bI < goodJetsDPhiMix[0].size(); ++bI){
+	  TLorentzVector jet1 = goodJetsDPhiMix[0][bI];
 	  
-	  
-	  //Now calculate the mixed event correction, for cases where your gamma + single jet embed accidentally picked a fake jet
-	  for(unsigned int bI = 0; bI < goodJetsDPhiMix[0].size(); ++bI){
-	    TLorentzVector jet1 = goodJetsDPhiMix[0][bI];
+	  for(unsigned int bI2 = 0; bI2 < goodJetsDPhiMix[1].size(); ++bI2){
+	    TLorentzVector jet2 = goodJetsDPhiMix[1][bI2];
 	    
-	    for(unsigned int bI2 = 0; bI2 < goodJetsDPhiMix[1].size(); ++bI2){
-	      TLorentzVector jet2 = goodJetsDPhiMix[1][bI2];
+	    Float_t dR = getDR(jet1.Eta(), jet1.Phi(), jet2.Eta(), jet2.Phi());
+	    if(dR < mixJetExclusionDR) continue;
+	    
+	    Float_t multiJtAJ = TMath::Abs(jet1.Pt() - jet2.Pt());
+	    double dPhiJJ = TMath::Abs(getDPHI(jet1.Phi(), jet2.Phi()));
+
+	    jet2 += jet1;
+
+	    Float_t multiJtDPhi = TMath::Abs(getDPHI(jet2.Phi(), photon_phi_p->at(phoPos)));
+	    if(multiJtDPhi < gammaMultiJtDPhiCut) continue;
+	    
+	    if(!isSideband){
+ 	      fillTH1(photonMixCorrectionMultiJtXJJVCentPt_p[centPos][ptPos], jet2.Pt()/photon_pt_p->at(phoPos), mixWeight);
+	      fillTH1(photonMixCorrectionMultiJtXJJVCentPt_p[centPos][nGammaPtBins], jet2.Pt()/photon_pt_p->at(phoPos), mixWeight);
 	      
-	      Float_t dR = getDR(jet1.Eta(), jet1.Phi(), jet2.Eta(), jet2.Phi());
-	      if(dR < mixJetExclusionDR) continue;
-		
-	      double dPhiJJ = TMath::Abs(getDPHI(jet1.Phi(), jet2.Phi()));
-	      jet2 += jet1;
-		
-	      if(!isSideband){
-		fillTH1(photonMixCorrectionMultiJtXJJVCentPt_p[centPos][ptPos], jet2.Pt()/photon_pt_p->at(phoPos), mixWeight);
-		fillTH1(photonMixCorrectionMultiJtXJJVCentPt_p[centPos][nGammaPtBins], jet2.Pt()/photon_pt_p->at(phoPos), mixWeight);
-		
-		fillTH1(photonMixCorrectionMultiJtDPhiJJVCentPt_p[centPos][ptPos], dPhiJJ, mixWeight);
-		fillTH1(photonMixCorrectionMultiJtDPhiJJVCentPt_p[centPos][nGammaPtBins], dPhiJJ, mixWeight);
-		
-		fillTH2(photonPtJtXJJVCent_MIXCorrection_p[centPos][barrelAndECPos], jet2.Pt()/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), mixWeight);		  
-	      }
-	      else fillTH2(photonPtJtXJJVCent_MIXSidebandCorrection_p[centPos][barrelAndECPos], jet2.Pt()/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), mixWeight);
+	      fillTH1(photonMixCorrectionMultiJtDPhiJJVCentPt_p[centPos][ptPos], dPhiJJ, mixWeight);
+	      fillTH1(photonMixCorrectionMultiJtDPhiJJVCentPt_p[centPos][nGammaPtBins], dPhiJJ, mixWeight);
+	      
+	      fillTH2(photonPtJtXJJVCent_MIXCorrection_p[centPos][barrelAndECPos], jet2.Pt()/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), mixWeight);		  
+	      fillTH2(photonPtJtAJJVCent_MIXCorrection_p[centPos][barrelAndECPos], multiJtAJ/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), mixWeight);		  
 	    }
-	  }	      	      
+	    else{
+	      fillTH2(photonPtJtXJJVCent_MIXSidebandCorrection_p[centPos][barrelAndECPos], jet2.Pt()/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), mixWeight);
+	      fillTH2(photonPtJtAJJVCent_MIXSidebandCorrection_p[centPos][barrelAndECPos], multiJtAJ/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), mixWeight);
+	    }
+	  }
 	}
 	  
 	if(!isSideband){
@@ -2640,7 +3214,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
     std::cout << " N=" << val.first << ": " << val.second << std::endl;
   }
   std::cout << std::endl;
-  
+
+  doGlobalDebug = true;
+  std::cout << "DOGLOBALDEBUG MANUALLY TURNED ON AT LINE: " << __LINE__ << std::endl;
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   inFile_p->Close();
@@ -2783,18 +3359,39 @@ int gdjNTupleToHist(std::string inConfigFileName)
   
     if(doMix){
       for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){         
-	//Correct XJJ Mix Event
+	//Correct DPhiJJ and XJJ Mix Event
+	photonPtJtDPhiJJGVCent_MIXCorrected_p[cI][eI]->Add(photonPtJtDPhiJJGVCent_MIX_p[cI][eI], photonPtJtDPhiJJGVCent_MIXCorrection_p[cI][eI], 1.0, -1.0);
+	photonPtJtDPhiJJGVCent_MIXMIXCorrected_p[cI][eI]->Add(photonPtJtDPhiJJGVCent_MIXMIX_p[cI][eI], photonPtJtDPhiJJGVCent_MIXCorrection_p[cI][eI], 1.0, -1.0);
+	photonPtJtDPhiJJGVCent_MIXSidebandCorrected_p[cI][eI]->Add(photonPtJtDPhiJJGVCent_MIXSideband_p[cI][eI], photonPtJtDPhiJJGVCent_MIXSidebandCorrection_p[cI][eI], 1.0, -1.0);
+
+	photonPtJtDPhiJJVCent_MIXCorrected_p[cI][eI]->Add(photonPtJtDPhiJJVCent_MIX_p[cI][eI], photonPtJtDPhiJJVCent_MIXCorrection_p[cI][eI], 1.0, -1.0);
+	photonPtJtDPhiJJVCent_MIXMIXCorrected_p[cI][eI]->Add(photonPtJtDPhiJJVCent_MIXMIX_p[cI][eI], photonPtJtDPhiJJVCent_MIXCorrection_p[cI][eI], 1.0, -1.0);
+	photonPtJtDPhiJJVCent_MIXSidebandCorrected_p[cI][eI]->Add(photonPtJtDPhiJJVCent_MIXSideband_p[cI][eI], photonPtJtDPhiJJVCent_MIXSidebandCorrection_p[cI][eI], 1.0, -1.0);
+
 	photonPtJtXJJVCent_MIXCorrected_p[cI][eI]->Add(photonPtJtXJJVCent_MIX_p[cI][eI], photonPtJtXJJVCent_MIXCorrection_p[cI][eI], 1.0, -1.0);
+	photonPtJtXJJVCent_MIXMIXCorrected_p[cI][eI]->Add(photonPtJtXJJVCent_MIXMIX_p[cI][eI], photonPtJtXJJVCent_MIXCorrection_p[cI][eI], 1.0, -1.0);
 	photonPtJtXJJVCent_MIXSidebandCorrected_p[cI][eI]->Add(photonPtJtXJJVCent_MIXSideband_p[cI][eI], photonPtJtXJJVCent_MIXSidebandCorrection_p[cI][eI], 1.0, -1.0);
+
+	photonPtJtAJJVCent_MIXCorrected_p[cI][eI]->Add(photonPtJtAJJVCent_MIX_p[cI][eI], photonPtJtAJJVCent_MIXCorrection_p[cI][eI], 1.0, -1.0);
+	photonPtJtAJJVCent_MIXMIXCorrected_p[cI][eI]->Add(photonPtJtAJJVCent_MIXMIX_p[cI][eI], photonPtJtAJJVCent_MIXCorrection_p[cI][eI], 1.0, -1.0);
+	photonPtJtAJJVCent_MIXSidebandCorrected_p[cI][eI]->Add(photonPtJtAJJVCent_MIXSideband_p[cI][eI], photonPtJtAJJVCent_MIXSidebandCorrection_p[cI][eI], 1.0, -1.0);
 
 	//Subtract off the mixed event
 	photonPtJtPtVCent_SUB_p[cI][eI]->Add(photonPtJtPtVCent_RAW_p[cI][eI], photonPtJtPtVCent_MIX_p[cI][eI], 1.0, -1.0);
 	photonPtJtXJVCent_SUB_p[cI][eI]->Add(photonPtJtXJVCent_RAW_p[cI][eI], photonPtJtXJVCent_MIX_p[cI][eI], 1.0, -1.0);
+	photonPtJtDPhiVCent_SUB_p[cI][eI]->Add(photonPtJtDPhiVCent_RAW_p[cI][eI], photonPtJtDPhiVCent_MIX_p[cI][eI], 1.0, -1.0);
 	photonPtJtXJJVCent_SUB_p[cI][eI]->Add(photonPtJtXJJVCent_RAW_p[cI][eI], photonPtJtXJJVCent_MIXCorrected_p[cI][eI], 1.0, -1.0);
+	photonPtJtAJJVCent_SUB_p[cI][eI]->Add(photonPtJtAJJVCent_RAW_p[cI][eI], photonPtJtAJJVCent_MIXCorrected_p[cI][eI], 1.0, -1.0);
+	photonPtJtDPhiJJGVCent_SUB_p[cI][eI]->Add(photonPtJtDPhiJJGVCent_RAW_p[cI][eI], photonPtJtDPhiJJGVCent_MIXCorrected_p[cI][eI], 1.0, -1.0);
+	photonPtJtDPhiJJVCent_SUB_p[cI][eI]->Add(photonPtJtDPhiJJVCent_RAW_p[cI][eI], photonPtJtDPhiJJVCent_MIXCorrected_p[cI][eI], 1.0, -1.0);
 
 	photonPtJtPtVCent_SUBSideband_p[cI][eI]->Add(photonPtJtPtVCent_RAWSideband_p[cI][eI], photonPtJtPtVCent_MIXSideband_p[cI][eI], 1.0, -1.0);
 	photonPtJtXJVCent_SUBSideband_p[cI][eI]->Add(photonPtJtXJVCent_RAWSideband_p[cI][eI], photonPtJtXJVCent_MIXSideband_p[cI][eI], 1.0, -1.0);
+	photonPtJtDPhiVCent_SUBSideband_p[cI][eI]->Add(photonPtJtDPhiVCent_RAWSideband_p[cI][eI], photonPtJtDPhiVCent_MIXSideband_p[cI][eI], 1.0, -1.0);
 	photonPtJtXJJVCent_SUBSideband_p[cI][eI]->Add(photonPtJtXJJVCent_RAWSideband_p[cI][eI], photonPtJtXJJVCent_MIXSidebandCorrected_p[cI][eI], 1.0, -1.0);
+	photonPtJtAJJVCent_SUBSideband_p[cI][eI]->Add(photonPtJtAJJVCent_RAWSideband_p[cI][eI], photonPtJtAJJVCent_MIXSidebandCorrected_p[cI][eI], 1.0, -1.0);
+	photonPtJtDPhiJJGVCent_SUBSideband_p[cI][eI]->Add(photonPtJtDPhiJJGVCent_RAWSideband_p[cI][eI], photonPtJtDPhiJJGVCent_MIXSidebandCorrected_p[cI][eI], 1.0, -1.0);
+	photonPtJtDPhiJJVCent_SUBSideband_p[cI][eI]->Add(photonPtJtDPhiJJVCent_RAWSideband_p[cI][eI], photonPtJtDPhiJJVCent_MIXSidebandCorrected_p[cI][eI], 1.0, -1.0);
 
 	if(!isMC){
 	  //Purity correction
@@ -2835,10 +3432,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    Float_t meanVal = totalNum/totalDenom;
 	    Float_t purity = purityFit_p->Eval(meanVal);
 
-	    std::vector<TH2F*> inSignalHists_p = {photonPtJtPtVCent_SUB_p[cI][eI], photonPtJtXJVCent_SUB_p[cI][eI], photonPtJtXJJVCent_SUB_p[cI][eI]};
-	    std::vector<TH2F*> inSidebandHists_p = {photonPtJtPtVCent_SUBSideband_p[cI][eI], photonPtJtXJVCent_SUBSideband_p[cI][eI], photonPtJtXJJVCent_SUBSideband_p[cI][eI]};
-	    std::vector<TH2F*> outHists_p = {photonPtJtPtVCent_PURCORR_p[cI][eI], photonPtJtXJVCent_PURCORR_p[cI][eI], photonPtJtXJJVCent_PURCORR_p[cI][eI]};
-	    
+	    std::vector<TH2F*> inSignalHists_p = {photonPtJtPtVCent_SUB_p[cI][eI], photonPtJtXJVCent_SUB_p[cI][eI], photonPtJtDPhiVCent_SUB_p[cI][eI], photonPtJtXJJVCent_SUB_p[cI][eI], photonPtJtAJJVCent_SUB_p[cI][eI], photonPtJtDPhiJJGVCent_SUB_p[cI][eI], photonPtJtDPhiJJVCent_SUB_p[cI][eI]};
+	    std::vector<TH2F*> inSidebandHists_p = {photonPtJtPtVCent_SUBSideband_p[cI][eI], photonPtJtXJVCent_SUBSideband_p[cI][eI], photonPtJtDPhiVCent_SUBSideband_p[cI][eI], photonPtJtXJJVCent_SUBSideband_p[cI][eI], photonPtJtAJJVCent_SUBSideband_p[cI][eI], photonPtJtDPhiJJGVCent_SUBSideband_p[cI][eI], photonPtJtDPhiJJVCent_SUBSideband_p[cI][eI]};
+	    std::vector<TH2F*> outHists_p = {photonPtJtPtVCent_PURCORR_p[cI][eI], photonPtJtXJVCent_PURCORR_p[cI][eI], photonPtJtDPhiVCent_PURCORR_p[cI][eI], photonPtJtXJJVCent_PURCORR_p[cI][eI], photonPtJtAJJVCent_PURCORR_p[cI][eI], photonPtJtDPhiJJGVCent_PURCORR_p[cI][eI], photonPtJtDPhiJJVCent_PURCORR_p[cI][eI]};
+	   
 	    //We will correct the values on a loop
 	    for(unsigned int hI = 0; hI < inSignalHists_p.size(); ++hI){
 	      for(Int_t bIX = 0; bIX < inSignalHists_p[hI]->GetXaxis()->GetNbins(); ++bIX){
@@ -2882,8 +3479,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  }
 	}
 	else{
-	  std::vector<TH2F*> inSignalHists_p = {photonPtJtPtVCent_SUB_p[cI][eI], photonPtJtXJVCent_SUB_p[cI][eI], photonPtJtXJJVCent_SUB_p[cI][eI]};
-	  std::vector<TH2F*> outHists_p = {photonPtJtPtVCent_PURCORR_p[cI][eI], photonPtJtXJVCent_PURCORR_p[cI][eI], photonPtJtXJJVCent_PURCORR_p[cI][eI]};
+	  std::vector<TH2F*> inSignalHists_p = {photonPtJtPtVCent_SUB_p[cI][eI], photonPtJtXJVCent_SUB_p[cI][eI], photonPtJtDPhiVCent_SUB_p[cI][eI], photonPtJtXJJVCent_SUB_p[cI][eI], photonPtJtAJJVCent_PURCORR_p[cI][eI], photonPtJtDPhiJJGVCent_SUB_p[cI][eI], photonPtJtDPhiJJVCent_SUB_p[cI][eI]};
+	  std::vector<TH2F*> outHists_p = {photonPtJtPtVCent_PURCORR_p[cI][eI], photonPtJtXJVCent_PURCORR_p[cI][eI], photonPtJtDPhiVCent_PURCORR_p[cI][eI], photonPtJtXJJVCent_PURCORR_p[cI][eI], photonPtJtAJJVCent_PURCORR_p[cI][eI], photonPtJtDPhiJJGVCent_PURCORR_p[cI][eI], photonPtJtDPhiJJVCent_PURCORR_p[cI][eI]};
 
 	  for(unsigned int hI = 0; hI < inSignalHists_p.size(); ++hI){
 	    for(Int_t bIX = 0; bIX < inSignalHists_p[hI]->GetXaxis()->GetNbins(); ++bIX){
@@ -2903,11 +3500,19 @@ int gdjNTupleToHist(std::string inConfigFileName)
       for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
 	photonPtJtPtVCent_SUB_p[cI][eI]->Add(photonPtJtPtVCent_RAW_p[cI][eI]);
 	photonPtJtXJVCent_SUB_p[cI][eI]->Add(photonPtJtXJVCent_RAW_p[cI][eI]);
+	photonPtJtDPhiVCent_SUB_p[cI][eI]->Add(photonPtJtDPhiVCent_RAW_p[cI][eI]);
 	photonPtJtXJJVCent_SUB_p[cI][eI]->Add(photonPtJtXJJVCent_RAW_p[cI][eI]);
-	
+	photonPtJtAJJVCent_SUB_p[cI][eI]->Add(photonPtJtAJJVCent_RAW_p[cI][eI]);
+	photonPtJtDPhiJJGVCent_SUB_p[cI][eI]->Add(photonPtJtDPhiJJGVCent_RAW_p[cI][eI]);
+	photonPtJtDPhiJJVCent_SUB_p[cI][eI]->Add(photonPtJtDPhiJJVCent_RAW_p[cI][eI]);
+		
 	photonPtJtPtVCent_SUBSideband_p[cI][eI]->Add(photonPtJtPtVCent_RAWSideband_p[cI][eI]);
 	photonPtJtXJVCent_SUBSideband_p[cI][eI]->Add(photonPtJtXJVCent_RAWSideband_p[cI][eI]);
+	photonPtJtDPhiVCent_SUBSideband_p[cI][eI]->Add(photonPtJtDPhiVCent_RAWSideband_p[cI][eI]);
 	photonPtJtXJJVCent_SUBSideband_p[cI][eI]->Add(photonPtJtXJJVCent_RAWSideband_p[cI][eI]);
+	photonPtJtAJJVCent_SUBSideband_p[cI][eI]->Add(photonPtJtAJJVCent_RAWSideband_p[cI][eI]);
+	photonPtJtDPhiJJGVCent_SUBSideband_p[cI][eI]->Add(photonPtJtDPhiJJGVCent_RAWSideband_p[cI][eI]);
+	photonPtJtDPhiJJVCent_SUBSideband_p[cI][eI]->Add(photonPtJtDPhiJJVCent_RAWSideband_p[cI][eI]);
 	
 	if(!isMC){
 	  std::string purityFitStr = "fit_purity_" + centBinsStr[cI] + "_" + barrelAndECFitStr[eI];
@@ -2947,12 +3552,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    
 	    Float_t meanVal = totalNum/totalDenom;
 	    Float_t purity = purityFit_p->Eval(meanVal);
-
-	    std::cout << "MEAN AND PURITY " << lowVal << "-" << hiVal << ": " << meanVal << ", " << purity << std::endl;
 	    
-	    std::vector<TH2F*> inSignalHists_p = {photonPtJtPtVCent_SUB_p[cI][eI], photonPtJtXJVCent_SUB_p[cI][eI], photonPtJtXJJVCent_SUB_p[cI][eI]};
-	    std::vector<TH2F*> inSidebandHists_p = {photonPtJtPtVCent_SUBSideband_p[cI][eI], photonPtJtXJVCent_SUBSideband_p[cI][eI], photonPtJtXJJVCent_SUBSideband_p[cI][eI]};
-	    std::vector<TH2F*> outHists_p = {photonPtJtPtVCent_PURCORR_p[cI][eI], photonPtJtXJVCent_PURCORR_p[cI][eI], photonPtJtXJJVCent_PURCORR_p[cI][eI]};
+	    std::vector<TH2F*> inSignalHists_p = {photonPtJtPtVCent_SUB_p[cI][eI], photonPtJtXJVCent_SUB_p[cI][eI], photonPtJtDPhiVCent_SUB_p[cI][eI], photonPtJtXJJVCent_SUB_p[cI][eI], photonPtJtAJJVCent_SUB_p[cI][eI], photonPtJtDPhiJJGVCent_SUB_p[cI][eI], photonPtJtDPhiJJVCent_SUB_p[cI][eI]};
+	    std::vector<TH2F*> inSidebandHists_p = {photonPtJtPtVCent_SUBSideband_p[cI][eI], photonPtJtXJVCent_SUBSideband_p[cI][eI], photonPtJtDPhiVCent_SUBSideband_p[cI][eI], photonPtJtXJJVCent_SUBSideband_p[cI][eI], photonPtJtAJJVCent_SUBSideband_p[cI][eI], photonPtJtDPhiJJGVCent_SUBSideband_p[cI][eI], photonPtJtDPhiJJVCent_SUBSideband_p[cI][eI]};
+	    std::vector<TH2F*> outHists_p = {photonPtJtPtVCent_PURCORR_p[cI][eI], photonPtJtXJVCent_PURCORR_p[cI][eI], photonPtJtDPhiVCent_PURCORR_p[cI][eI], photonPtJtXJJVCent_PURCORR_p[cI][eI], photonPtJtAJJVCent_PURCORR_p[cI][eI], photonPtJtDPhiJJGVCent_PURCORR_p[cI][eI], photonPtJtDPhiJJVCent_PURCORR_p[cI][eI]};
 	      
 	    //We will correct the values on a loop
 	    for(unsigned int hI = 0; hI < inSignalHists_p.size(); ++hI){
@@ -2978,7 +3581,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	      }
 	    }	  
 	  }
-
+       
 	  for(Int_t bIX = 0; bIX < photonPtVCent_RAW_p[cI][eI]->GetXaxis()->GetNbins(); ++bIX){
 	    Float_t center = photonPtVCent_RAW_p[cI][eI]->GetXaxis()->GetBinCenter(bIX+1);
 	    Float_t purity = purityFit_p->Eval(center);
@@ -3000,8 +3603,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  }	  
 	}
 	else{
-	  std::vector<TH2F*> inSignalHists_p = {photonPtJtPtVCent_SUB_p[cI][eI], photonPtJtXJVCent_SUB_p[cI][eI], photonPtJtXJJVCent_SUB_p[cI][eI]};
-	  std::vector<TH2F*> outHists_p = {photonPtJtPtVCent_PURCORR_p[cI][eI], photonPtJtXJVCent_PURCORR_p[cI][eI], photonPtJtXJJVCent_PURCORR_p[cI][eI]};
+	  std::vector<TH2F*> inSignalHists_p = {photonPtJtPtVCent_SUB_p[cI][eI], photonPtJtXJVCent_SUB_p[cI][eI], photonPtJtDPhiVCent_SUB_p[cI][eI], photonPtJtXJJVCent_SUB_p[cI][eI], photonPtJtAJJVCent_SUB_p[cI][eI], photonPtJtDPhiJJGVCent_SUB_p[cI][eI], photonPtJtDPhiJJVCent_SUB_p[cI][eI]};
+	  std::vector<TH2F*> outHists_p = {photonPtJtPtVCent_PURCORR_p[cI][eI], photonPtJtXJVCent_PURCORR_p[cI][eI], photonPtJtDPhiVCent_PURCORR_p[cI][eI], photonPtJtXJJVCent_PURCORR_p[cI][eI], photonPtJtAJJVCent_PURCORR_p[cI][eI], photonPtJtDPhiJJGVCent_PURCORR_p[cI][eI], photonPtJtDPhiJJVCent_PURCORR_p[cI][eI]};
 
 	  for(unsigned int hI = 0; hI < inSignalHists_p.size(); ++hI){
 	    for(Int_t bIX = 0; bIX < inSignalHists_p[hI]->GetXaxis()->GetNbins(); ++bIX){
@@ -3207,74 +3810,183 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
       photonPtJtPtVCent_RAW_p[cI][eI]->Write("", TObject::kOverwrite);
       photonPtJtXJVCent_RAW_p[cI][eI]->Write("", TObject::kOverwrite);
+      photonPtJtDPhiVCent_RAW_p[cI][eI]->Write("", TObject::kOverwrite);
       photonPtJtXJJVCent_RAW_p[cI][eI]->Write("", TObject::kOverwrite);
+      photonPtJtAJJVCent_RAW_p[cI][eI]->Write("", TObject::kOverwrite);
+      photonPtJtDPhiJJGVCent_RAW_p[cI][eI]->Write("", TObject::kOverwrite);
+      photonPtJtDPhiJJVCent_RAW_p[cI][eI]->Write("", TObject::kOverwrite);
 
-      photonPtVCent_RAWSideband_p[cI][eI]->Write("", TObject::kOverwrite);
-      
+      photonPtVCent_RAWSideband_p[cI][eI]->Write("", TObject::kOverwrite);      
       photonPtJtPtVCent_RAWSideband_p[cI][eI]->Write("", TObject::kOverwrite);
       photonPtJtXJVCent_RAWSideband_p[cI][eI]->Write("", TObject::kOverwrite);
+      photonPtJtDPhiVCent_RAWSideband_p[cI][eI]->Write("", TObject::kOverwrite);
       photonPtJtXJJVCent_RAWSideband_p[cI][eI]->Write("", TObject::kOverwrite);
+      photonPtJtAJJVCent_RAWSideband_p[cI][eI]->Write("", TObject::kOverwrite);
+      photonPtJtDPhiJJGVCent_RAWSideband_p[cI][eI]->Write("", TObject::kOverwrite);
+      photonPtJtDPhiJJVCent_RAWSideband_p[cI][eI]->Write("", TObject::kOverwrite);
+
+      photonPtVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
 
       if(doMix){
 	photonPtJtPtVCent_MIX_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtJtXJVCent_MIX_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiVCent_MIX_p[cI][eI]->Write("", TObject::kOverwrite);
 	
 	photonPtJtXJJVCent_MIX_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtJtXJJVCent_MIXCorrection_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtJtXJJVCent_MIXCorrected_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtXJJVCent_MIXPURE_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtXJJVCent_MIXMIX_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtXJJVCent_MIXMIXCorrected_p[cI][eI]->Write("", TObject::kOverwrite);
+
+	photonPtJtAJJVCent_MIX_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtAJJVCent_MIXCorrection_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtAJJVCent_MIXCorrected_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtAJJVCent_MIXPURE_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtAJJVCent_MIXMIX_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtAJJVCent_MIXMIXCorrected_p[cI][eI]->Write("", TObject::kOverwrite);
+
+	photonPtJtDPhiJJGVCent_MIX_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiJJGVCent_MIXCorrection_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiJJGVCent_MIXCorrected_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiJJGVCent_MIXPURE_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiJJGVCent_MIXMIX_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiJJGVCent_MIXMIXCorrected_p[cI][eI]->Write("", TObject::kOverwrite);
+
+	photonPtJtDPhiJJVCent_MIX_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiJJVCent_MIXCorrection_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiJJVCent_MIXCorrected_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiJJVCent_MIXPURE_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiJJVCent_MIXMIX_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiJJVCent_MIXMIXCorrected_p[cI][eI]->Write("", TObject::kOverwrite);
 	
 	photonPtJtPtVCent_SUB_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtJtXJVCent_SUB_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiVCent_SUB_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtJtXJJVCent_SUB_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtAJJVCent_SUB_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiJJGVCent_SUB_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiJJVCent_SUB_p[cI][eI]->Write("", TObject::kOverwrite);
 	
 	photonPtJtPtVCent_MIXSideband_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtJtXJVCent_MIXSideband_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiVCent_MIXSideband_p[cI][eI]->Write("", TObject::kOverwrite);
 	
 	photonPtJtXJJVCent_MIXSideband_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtJtXJJVCent_MIXSidebandCorrection_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtJtXJJVCent_MIXSidebandCorrected_p[cI][eI]->Write("", TObject::kOverwrite);
+
+	photonPtJtAJJVCent_MIXSideband_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtAJJVCent_MIXSidebandCorrection_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtAJJVCent_MIXSidebandCorrected_p[cI][eI]->Write("", TObject::kOverwrite);
+
+	photonPtJtDPhiJJGVCent_MIXSideband_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiJJGVCent_MIXSidebandCorrection_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiJJGVCent_MIXSidebandCorrected_p[cI][eI]->Write("", TObject::kOverwrite);
+
+	photonPtJtDPhiJJVCent_MIXSideband_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiJJVCent_MIXSidebandCorrection_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiJJVCent_MIXSidebandCorrected_p[cI][eI]->Write("", TObject::kOverwrite);
 	
 	photonPtJtPtVCent_SUBSideband_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtJtXJVCent_SUBSideband_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiVCent_SUBSideband_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtJtXJJVCent_SUBSideband_p[cI][eI]->Write("", TObject::kOverwrite);
-
-	photonPtVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
-	
+	photonPtJtAJJVCent_SUBSideband_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiJJGVCent_SUBSideband_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiJJVCent_SUBSideband_p[cI][eI]->Write("", TObject::kOverwrite);
+      	
 	photonPtJtPtVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtJtXJVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtJtXJJVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtAJJVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiJJGVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiJJVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
 
 	if(isMC){
 	  photonPtJtPtVCent_TRUTHMATCHEDRECO_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtXJVCent_TRUTHMATCHEDRECO_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtDPhiVCent_TRUTHMATCHEDRECO_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtXJJVCent_TRUTHMATCHEDRECO_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtAJJVCent_TRUTHMATCHEDRECO_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtDPhiJJGVCent_TRUTHMATCHEDRECO_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtDPhiJJVCent_TRUTHMATCHEDRECO_p[cI][eI]->Write("", TObject::kOverwrite);
+
+	  photonPtJtPtVCent_PUREBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtXJVCent_PUREBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtDPhiVCent_PUREBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtXJJVCent_PUREBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtXJJVCent_MIXBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtAJJVCent_PUREBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtAJJVCent_MIXBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtDPhiJJGVCent_PUREBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtDPhiJJGVCent_MIXBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtDPhiJJVCent_PUREBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtDPhiJJVCent_MIXBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
 
 	  photonPtJtPtVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtXJVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtDPhiVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtXJJVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtAJJVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtDPhiJJGVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtDPhiJJVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
 	}
       }
       else if(isPP){
 	photonPtJtPtVCent_SUB_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtJtXJVCent_SUB_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiVCent_SUB_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtJtXJJVCent_SUB_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtAJJVCent_SUB_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiJJGVCent_SUB_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiJJVCent_SUB_p[cI][eI]->Write("", TObject::kOverwrite);
 
 	photonPtJtPtVCent_SUBSideband_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtJtXJVCent_SUBSideband_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiVCent_SUBSideband_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtJtXJJVCent_SUBSideband_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtAJJVCent_SUBSideband_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiJJGVCent_SUBSideband_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiJJVCent_SUBSideband_p[cI][eI]->Write("", TObject::kOverwrite);
 	
 	photonPtJtPtVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtJtXJVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtJtXJJVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtAJJVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiJJGVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDPhiJJVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
 
 	if(isMC){
 	  photonPtJtPtVCent_TRUTHMATCHEDRECO_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtXJVCent_TRUTHMATCHEDRECO_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtDPhiVCent_TRUTHMATCHEDRECO_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtXJJVCent_TRUTHMATCHEDRECO_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtAJJVCent_TRUTHMATCHEDRECO_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtDPhiJJGVCent_TRUTHMATCHEDRECO_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtDPhiJJVCent_TRUTHMATCHEDRECO_p[cI][eI]->Write("", TObject::kOverwrite);
+
+	  photonPtJtPtVCent_PUREBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtXJVCent_PUREBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtDPhiVCent_PUREBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtXJJVCent_PUREBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtXJJVCent_MIXBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtAJJVCent_PUREBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtAJJVCent_MIXBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtDPhiJJGVCent_PUREBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtDPhiJJGVCent_MIXBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtDPhiJJVCent_PUREBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtDPhiJJVCent_MIXBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
 
 	  photonPtJtPtVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtXJVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtDPhiVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtXJJVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtAJJVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtDPhiJJGVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
+	  photonPtJtDPhiJJVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
 	}
       }
     }    
@@ -3472,6 +4184,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	delete photonSubJtMultModVCentPt_p[cI][pI];
       }
       else if(isPP){
+	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
       	delete photonSubJtDPhiVCentPt_p[cI][pI];
 	delete photonSubJtPtVCentPt_p[cI][pI];
 	delete photonSubMultiJtPtVCentPt_p[cI][pI];
@@ -3509,73 +4223,177 @@ int gdjNTupleToHist(std::string inConfigFileName)
       delete photonPtVCent_RAW_p[cI][eI];
 
       delete photonPtJtPtVCent_RAW_p[cI][eI];
+      delete photonPtJtDPhiVCent_RAW_p[cI][eI];
       delete photonPtJtXJVCent_RAW_p[cI][eI];
       delete photonPtJtXJJVCent_RAW_p[cI][eI];
+      delete photonPtJtAJJVCent_RAW_p[cI][eI];
+      delete photonPtJtDPhiJJGVCent_RAW_p[cI][eI];
+      delete photonPtJtDPhiJJVCent_RAW_p[cI][eI];
 
       delete photonPtVCent_RAWSideband_p[cI][eI];
       
       delete photonPtJtPtVCent_RAWSideband_p[cI][eI];
       delete photonPtJtXJVCent_RAWSideband_p[cI][eI];
+      delete photonPtJtDPhiVCent_RAWSideband_p[cI][eI];
       delete photonPtJtXJJVCent_RAWSideband_p[cI][eI];
+      delete photonPtJtAJJVCent_RAWSideband_p[cI][eI];
+      delete photonPtJtDPhiJJGVCent_RAWSideband_p[cI][eI];
+      delete photonPtJtDPhiJJVCent_RAWSideband_p[cI][eI];
+
+      delete photonPtVCent_PURCORR_p[cI][eI];
       
       if(doMix){
 	delete photonPtJtPtVCent_MIX_p[cI][eI];
 	delete photonPtJtXJVCent_MIX_p[cI][eI];
+	delete photonPtJtDPhiVCent_MIX_p[cI][eI];
+
 	delete photonPtJtXJJVCent_MIX_p[cI][eI];
 	delete photonPtJtXJJVCent_MIXCorrection_p[cI][eI];
 	delete photonPtJtXJJVCent_MIXCorrected_p[cI][eI];
+	delete photonPtJtXJJVCent_MIXPURE_p[cI][eI];
+	delete photonPtJtXJJVCent_MIXMIX_p[cI][eI];
+	delete photonPtJtXJJVCent_MIXMIXCorrected_p[cI][eI];
+
+	delete photonPtJtAJJVCent_MIX_p[cI][eI];
+	delete photonPtJtAJJVCent_MIXCorrection_p[cI][eI];
+	delete photonPtJtAJJVCent_MIXCorrected_p[cI][eI];
+	delete photonPtJtAJJVCent_MIXPURE_p[cI][eI];
+	delete photonPtJtAJJVCent_MIXMIX_p[cI][eI];
+	delete photonPtJtAJJVCent_MIXMIXCorrected_p[cI][eI];
+
+	delete photonPtJtDPhiJJGVCent_MIX_p[cI][eI];
+	delete photonPtJtDPhiJJGVCent_MIXCorrection_p[cI][eI];
+	delete photonPtJtDPhiJJGVCent_MIXCorrected_p[cI][eI];
+	delete photonPtJtDPhiJJGVCent_MIXPURE_p[cI][eI];
+	delete photonPtJtDPhiJJGVCent_MIXMIX_p[cI][eI];
+	delete photonPtJtDPhiJJGVCent_MIXMIXCorrected_p[cI][eI];
+
+	delete photonPtJtDPhiJJVCent_MIX_p[cI][eI];
+	delete photonPtJtDPhiJJVCent_MIXCorrection_p[cI][eI];
+	delete photonPtJtDPhiJJVCent_MIXCorrected_p[cI][eI];
+	delete photonPtJtDPhiJJVCent_MIXPURE_p[cI][eI];
+	delete photonPtJtDPhiJJVCent_MIXMIX_p[cI][eI];
+	delete photonPtJtDPhiJJVCent_MIXMIXCorrected_p[cI][eI];
 	
 	delete photonPtJtPtVCent_SUB_p[cI][eI];
 	delete photonPtJtXJVCent_SUB_p[cI][eI];
+	delete photonPtJtDPhiVCent_SUB_p[cI][eI];
 	delete photonPtJtXJJVCent_SUB_p[cI][eI];
+	delete photonPtJtAJJVCent_SUB_p[cI][eI];
+	delete photonPtJtDPhiJJGVCent_SUB_p[cI][eI];
+	delete photonPtJtDPhiJJVCent_SUB_p[cI][eI];
 	
 	delete photonPtJtPtVCent_MIXSideband_p[cI][eI];
 	delete photonPtJtXJVCent_MIXSideband_p[cI][eI];
+	delete photonPtJtDPhiVCent_MIXSideband_p[cI][eI];
 	delete photonPtJtXJJVCent_MIXSideband_p[cI][eI];
 	delete photonPtJtXJJVCent_MIXSidebandCorrection_p[cI][eI];
 	delete photonPtJtXJJVCent_MIXSidebandCorrected_p[cI][eI];
+	delete photonPtJtAJJVCent_MIXSideband_p[cI][eI];
+	delete photonPtJtAJJVCent_MIXSidebandCorrection_p[cI][eI];
+	delete photonPtJtAJJVCent_MIXSidebandCorrected_p[cI][eI];
+	delete photonPtJtDPhiJJGVCent_MIXSideband_p[cI][eI];
+	delete photonPtJtDPhiJJGVCent_MIXSidebandCorrection_p[cI][eI];
+	delete photonPtJtDPhiJJGVCent_MIXSidebandCorrected_p[cI][eI];
+	delete photonPtJtDPhiJJVCent_MIXSideband_p[cI][eI];
+	delete photonPtJtDPhiJJVCent_MIXSidebandCorrection_p[cI][eI];
+	delete photonPtJtDPhiJJVCent_MIXSidebandCorrected_p[cI][eI];
 	
 	delete photonPtJtPtVCent_SUBSideband_p[cI][eI];
 	delete photonPtJtXJVCent_SUBSideband_p[cI][eI];
+	delete photonPtJtDPhiVCent_SUBSideband_p[cI][eI];
 	delete photonPtJtXJJVCent_SUBSideband_p[cI][eI];
-
-	delete photonPtVCent_PURCORR_p[cI][eI];
+	delete photonPtJtAJJVCent_SUBSideband_p[cI][eI];
+	delete photonPtJtDPhiJJGVCent_SUBSideband_p[cI][eI];
+	delete photonPtJtDPhiJJVCent_SUBSideband_p[cI][eI];
 
 	delete photonPtJtPtVCent_PURCORR_p[cI][eI];
 	delete photonPtJtXJVCent_PURCORR_p[cI][eI];
+	delete photonPtJtDPhiVCent_PURCORR_p[cI][eI];
 	delete photonPtJtXJJVCent_PURCORR_p[cI][eI];
+	delete photonPtJtAJJVCent_PURCORR_p[cI][eI];
+	delete photonPtJtDPhiJJGVCent_PURCORR_p[cI][eI];
+	delete photonPtJtDPhiJJVCent_PURCORR_p[cI][eI];
 
 	if(isMC){
 	  delete photonPtJtPtVCent_TRUTHMATCHEDRECO_p[cI][eI];
 	  delete photonPtJtXJVCent_TRUTHMATCHEDRECO_p[cI][eI];
+	  delete photonPtJtDPhiVCent_TRUTHMATCHEDRECO_p[cI][eI];
 	  delete photonPtJtXJJVCent_TRUTHMATCHEDRECO_p[cI][eI];
+	  delete photonPtJtAJJVCent_TRUTHMATCHEDRECO_p[cI][eI];
+	  delete photonPtJtDPhiJJGVCent_TRUTHMATCHEDRECO_p[cI][eI];
+	  delete photonPtJtDPhiJJVCent_TRUTHMATCHEDRECO_p[cI][eI];
+
+	  delete photonPtJtPtVCent_PUREBKGD_p[cI][eI];
+	  delete photonPtJtXJVCent_PUREBKGD_p[cI][eI];
+	  delete photonPtJtDPhiVCent_PUREBKGD_p[cI][eI];
+	  delete photonPtJtXJJVCent_PUREBKGD_p[cI][eI];
+	  delete photonPtJtXJJVCent_MIXBKGD_p[cI][eI];
+	  delete photonPtJtAJJVCent_PUREBKGD_p[cI][eI];
+	  delete photonPtJtAJJVCent_MIXBKGD_p[cI][eI];
+	  delete photonPtJtDPhiJJGVCent_PUREBKGD_p[cI][eI];
+	  delete photonPtJtDPhiJJGVCent_MIXBKGD_p[cI][eI];
+	  delete photonPtJtDPhiJJVCent_PUREBKGD_p[cI][eI];
+	  delete photonPtJtDPhiJJVCent_MIXBKGD_p[cI][eI];
 
 	  delete photonPtJtPtVCent_TRUTH_p[cI][eI];
 	  delete photonPtJtXJVCent_TRUTH_p[cI][eI];
+	  delete photonPtJtDPhiVCent_TRUTH_p[cI][eI];
 	  delete photonPtJtXJJVCent_TRUTH_p[cI][eI];
+	  delete photonPtJtAJJVCent_TRUTH_p[cI][eI];
+	  delete photonPtJtDPhiJJGVCent_TRUTH_p[cI][eI];
+	  delete photonPtJtDPhiJJVCent_TRUTH_p[cI][eI];
 	}
       }
       else if(isPP){
+	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
 	delete photonPtJtPtVCent_SUB_p[cI][eI];
 	delete photonPtJtXJVCent_SUB_p[cI][eI];
+	delete photonPtJtDPhiVCent_SUB_p[cI][eI];
 	delete photonPtJtXJJVCent_SUB_p[cI][eI];
+	delete photonPtJtAJJVCent_SUB_p[cI][eI];
+	delete photonPtJtDPhiJJGVCent_SUB_p[cI][eI];
+	delete photonPtJtDPhiJJVCent_SUB_p[cI][eI];
+
+	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	
 	delete photonPtJtPtVCent_SUBSideband_p[cI][eI];
 	delete photonPtJtXJVCent_SUBSideband_p[cI][eI];
+	delete photonPtJtDPhiVCent_SUBSideband_p[cI][eI];
 	delete photonPtJtXJJVCent_SUBSideband_p[cI][eI];
+	delete photonPtJtAJJVCent_SUBSideband_p[cI][eI];
+	delete photonPtJtDPhiJJGVCent_SUBSideband_p[cI][eI];
+	delete photonPtJtDPhiJJVCent_SUBSideband_p[cI][eI];
 	
+	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
 	delete photonPtJtPtVCent_PURCORR_p[cI][eI];
 	delete photonPtJtXJVCent_PURCORR_p[cI][eI];
+	delete photonPtJtDPhiVCent_PURCORR_p[cI][eI];
 	delete photonPtJtXJJVCent_PURCORR_p[cI][eI];
+	delete photonPtJtAJJVCent_PURCORR_p[cI][eI];
+	delete photonPtJtDPhiJJGVCent_PURCORR_p[cI][eI];
+	delete photonPtJtDPhiJJVCent_PURCORR_p[cI][eI];
 
 	if(isMC){
 	  delete photonPtJtPtVCent_TRUTHMATCHEDRECO_p[cI][eI];
 	  delete photonPtJtXJVCent_TRUTHMATCHEDRECO_p[cI][eI];
+	  delete photonPtJtDPhiVCent_TRUTHMATCHEDRECO_p[cI][eI];
 	  delete photonPtJtXJJVCent_TRUTHMATCHEDRECO_p[cI][eI];
+	  delete photonPtJtAJJVCent_TRUTHMATCHEDRECO_p[cI][eI];
+	  delete photonPtJtDPhiJJGVCent_TRUTHMATCHEDRECO_p[cI][eI];
+	  delete photonPtJtDPhiJJVCent_TRUTHMATCHEDRECO_p[cI][eI];
+
+	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
 	  delete photonPtJtPtVCent_TRUTH_p[cI][eI];
 	  delete photonPtJtXJVCent_TRUTH_p[cI][eI];
+	  delete photonPtJtDPhiVCent_TRUTH_p[cI][eI];
 	  delete photonPtJtXJJVCent_TRUTH_p[cI][eI];
+	  delete photonPtJtAJJVCent_TRUTH_p[cI][eI];
+	  delete photonPtJtDPhiJJGVCent_TRUTH_p[cI][eI];
+	  delete photonPtJtDPhiJJVCent_TRUTH_p[cI][eI];
 	}
       }
     }      
@@ -3613,6 +4431,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   configEnv.Write("config", TObject::kOverwrite);  
   */
 
+  outFile_p->cd();
   config_p->SetValue("RECOJTPTMIN", prettyString(recoJtPtMin, 1, false).c_str());
   config_p->Write("config", TObject::kOverwrite);
 
@@ -3621,6 +4440,32 @@ int gdjNTupleToHist(std::string inConfigFileName)
     labelEnv.SetValue(lab.first.c_str(), lab.second.c_str());
   }
   labelEnv.Write("label", TObject::kOverwrite);
+
+  vzPassing_p->Write("", TObject::kOverwrite);  
+  centPassing_p->Write("", TObject::kOverwrite);
+  truPhoPtPassing_p->Write("", TObject::kOverwrite);
+  leadingPhoPtPassing_p->Write("", TObject::kOverwrite);
+  leadingPhoEtaPassing_p->Write("", TObject::kOverwrite);
+  leadingPhoIsoPassing_p->Write("", TObject::kOverwrite);
+  leadingPhoTightPassing_p->Write("", TObject::kOverwrite);
+
+  jtEtaPassing_p->Write("", TObject::kOverwrite);
+  jtPtPassing_p->Write("", TObject::kOverwrite);
+  jtDPhiPassing_p->Write("", TObject::kOverwrite);
+  jtGammaDRPassing_p->Write("", TObject::kOverwrite);
+
+  delete vzPassing_p;  
+  delete centPassing_p;
+  delete truPhoPtPassing_p;
+  delete leadingPhoPtPassing_p;
+  delete leadingPhoEtaPassing_p;
+  delete leadingPhoIsoPassing_p;
+  delete leadingPhoTightPassing_p;
+
+  delete jtEtaPassing_p;
+  delete jtPtPassing_p;
+  delete jtDPhiPassing_p;
+  delete jtGammaDRPassing_p;
 
   outFile_p->Close();
   delete outFile_p;

@@ -4,6 +4,8 @@
 #include <vector>
 
 #include "TH1.h"
+#include "TH1F.h"
+#include "TH2F.h"
 
 void centerTitles(TH1* hist_p)
 {
@@ -65,6 +67,32 @@ Double_t getMax(TH1* inHist_p)
   }
 
   return max;
+}
+
+bool histToHistOverride(TH1F* inHist_p, TH1F* outHist_p)
+{
+  if(inHist_p == nullptr){
+    std::cout << "histToHistOverride: 'inHist' is a nullptr. return" << std::endl;
+    return false;
+  }
+  else if(outHist_p == nullptr){
+    std::cout << "histToHistOverride: 'outHist' is a nullptr. return" << std::endl;
+    return false;
+  }
+
+  Int_t inNBinsX = inHist_p->GetXaxis()->GetNbins();
+  Int_t inNBinsY = inHist_p->GetYaxis()->GetNbins();
+
+  if(inNBinsX != inNBinsY){
+    
+    return false;
+  }
+
+  for(Int_t bIX = 0; bIX < inNBinsX; ++bIX){
+    
+  }
+
+  return true;
 }
 
 
