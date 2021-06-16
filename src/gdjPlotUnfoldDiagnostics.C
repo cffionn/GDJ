@@ -1013,7 +1013,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 
       std::vector<std::string> legFillStr;
       if(truth_p != nullptr){
-	stringsForLeg_p = {"Truth", "Reco."};
+	if(isMC) stringsForLeg_p = {"Truth", "Reco."};
+	else stringsForLeg_p = {"Truth PYTHIA", "Reco. Data"};
 	histsForLeg_p = {truth_p, reco_p};    
 	legFillStr = {"L", "L"};
       }
@@ -1133,6 +1134,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       canvBest_p->cd();
       padsBest_p[0]->cd();
 
+      gPad->SetTicks();
       reco_p->DrawCopy("HIST E1");
       if(truth_p != nullptr) truth_p->DrawCopy("HIST E1 SAME");
 
@@ -1156,6 +1158,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	refold_p[i]->SetLineStyle(2);
 
 	if(termPos2D == i+1 || termPos == i+1){
+	  gPad->SetTicks();
 	  unfold_p[i]->DrawCopy("HIST E1 P SAME");
 	  refold_p[i]->DrawCopy("HIST E1 SAME");
 	  
@@ -1252,6 +1255,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       }
       
       if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+      gPad->SetTicks();
 
       for(Int_t i = 1; i < nIterForLoop; ++i){
 	TH1F* unfoldClone_p = (TH1F*)unfold_p[i]->Clone("tempClone");	
@@ -1289,6 +1293,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       canvBest_p->cd();
       padsBest_p[1]->cd();
     
+      gPad->SetTicks();
       bool hasDrawn = false;
       for(Int_t i = 1; i < nIter; ++i){
 	bool isGood = false;
@@ -1358,6 +1363,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       canv_p->cd();
       pads_p[2]->cd();
       
+      gPad->SetTicks();
       for(Int_t i = 1; i < nIterForLoop; ++i){
 	TH1F* unfoldClone_p = (TH1F*)unfold_p[i]->Clone("tempClone");	
 	unfoldClone_p->Divide(truth_p);
@@ -1406,6 +1412,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	TH1F* unfoldClone_p = (TH1F*)unfold_p[i]->Clone("tempClone");    
 	unfoldClone_p->Divide(truth_p);
 	
+	gPad->SetTicks();
 	if(!hasDrawn){
 	  if(isMC) unfoldClone_p->GetYaxis()->SetTitle("#frac{Unfolded}{Truth}");
 	  else unfoldClone_p->GetYaxis()->SetTitle("#frac{Unfolded Data}{Truth PYTHIA}");
@@ -1427,8 +1434,9 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  unfoldClone_p->GetYaxis()->SetLabelSize(labelSize/(padSplit2));
 	  
 	  unfoldClone_p->GetYaxis()->SetNdivisions(404);	
-	  
+
 	  unfoldClone_p->DrawCopy("HIST E1 P");	 
+	  
 	  if(doLogX) gPad->SetLogx();
 	  hasDrawn = true;
 	}
@@ -1531,11 +1539,13 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       legFillStr.clear();
       if(truth_p != nullptr){
 	histsForLeg_p.push_back(truth_p);
-	stringsForLeg_p.push_back("Truth");
+	if(isMC) stringsForLeg_p.push_back("Truth");
+	else stringsForLeg_p.push_back("Truth PYTHIA");
 	legFillStr.push_back("L");
       }
       histsForLeg_p.push_back(reco_p);
-      stringsForLeg_p.push_back("Reco.");
+      if(isMC) stringsForLeg_p.push_back("Reco.");
+      else stringsForLeg_p.push_back("Reco. Data");
       legFillStr.push_back("L");
 
       for(Int_t i = 1; i < nIter; ++i){
@@ -1547,22 +1557,22 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 
 	if(i+1 == termPos2D){
 	  histsForLeg_p.push_back(unfold_p[i]);
-	  if(i+1 == termPos) stringsForLeg_p.push_back("Iter. " + std::to_string(termPos2D) + ", Best 1 and 2D");
-	  else stringsForLeg_p.push_back("Iter. " + std::to_string(termPos2D) + ", Best 2D");
+	  if(i+1 == termPos) stringsForLeg_p.push_back("Unfold Iter. " + std::to_string(termPos2D) + ", Best 1 and 2D");
+	  else stringsForLeg_p.push_back("Unfold Iter. " + std::to_string(termPos2D) + ", Best 2D");
 	  
 	  legFillStr.push_back("L P");
 
 	  histsForLeg_p.push_back(refold_p[i]);
-	  stringsForLeg_p.push_back("Iter. " + std::to_string(termPos2D) + " Refold");
+	  stringsForLeg_p.push_back("Unfold Iter. " + std::to_string(termPos2D) + " Refold");
 	  legFillStr.push_back("L P");
 	}
 	else if(i+1 == termPos){
 	  histsForLeg_p.push_back(unfold_p[i]);
-	  stringsForLeg_p.push_back("Iter. " + std::to_string(termPos) + ", Best 1D");
+	  stringsForLeg_p.push_back("Unfold Iter. " + std::to_string(termPos) + ", Best 1D");
 	  legFillStr.push_back("L P");
 
 	  histsForLeg_p.push_back(refold_p[i]);
-	  stringsForLeg_p.push_back("Iter. " + std::to_string(termPos) + " Refold");
+	  stringsForLeg_p.push_back("Unfold Iter. " + std::to_string(termPos) + " Refold");
 	  legFillStr.push_back("L P");
 	}
       }
