@@ -290,7 +290,7 @@ inline std::string strLowerToUpper(std::string inStr)
 }
 
 
-std::vector<std::string> getLabels(TEnv* plotConfig_p, TH1F* histForLabels_p, std::map<std::string, std::string>* labelMap, std::vector<std::string>* labelsForSaveStr = nullptr)
+inline std::vector<std::string> getLabels(TEnv* plotConfig_p, TH1F* histForLabels_p, std::map<std::string, std::string>* labelMap, std::vector<std::string>* labelsForSaveStr = nullptr)
 {
   std::vector<std::string> labelVect;
   Int_t nGlobalLabels = 0;
@@ -321,8 +321,7 @@ std::vector<std::string> getLabels(TEnv* plotConfig_p, TH1F* histForLabels_p, st
     std::string centStr = labelStr.substr(0, labelStr.find("_"));
     labelStr.replace(0, labelStr.find("_")+1, "");
 
-    if(histName.find("DPhiVCent") != std::string::npos || histName.find("DPhiJJGVCent") != std::string:\
-:npos){
+    if(histName.find("DPhiVCent") != std::string::npos || histName.find("DPhiJJGVCent") != std::string::npos){
       if(labelStr.find("DPhi") == std::string::npos) continue;
     }
 
