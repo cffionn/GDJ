@@ -58,6 +58,7 @@ void fillYJHist(TH1F* inHist_p)
   return;
 }
 
+/*
 std::vector<std::string> getLabels(TEnv* plotConfig_p, TH1F* histForLabels_p, std::map<std::string, std::string>* labelMap, std::vector<std::string>* labelsForSaveStr = nullptr)
 {
   std::vector<std::string> labelVect;
@@ -96,7 +97,8 @@ std::vector<std::string> getLabels(TEnv* plotConfig_p, TH1F* histForLabels_p, st
     if(isStrSame("RAW_h", labelStr)) break;
   }
   if(labelStr.size() != 0) labelVect.push_back(labelStr);
-
+  
+  
   if(labelsForSaveStr != nullptr){
     for(unsigned int pI = nGlobalLabels; pI < labelVect.size(); ++pI){
       if(labelVect[pI].find("anti-k") != std::string::npos) continue;
@@ -112,11 +114,6 @@ std::vector<std::string> getLabels(TEnv* plotConfig_p, TH1F* histForLabels_p, st
     }
   }
 
-  const bool isMC = plotConfig_p->GetValue("ISMC", 0);
-  if(isMC){
-    std::string assocGenMinPtStr = plotConfig_p->GetValue("ASSOCGENMINPT", "");
-    if(assocGenMinPtStr.size() != 0) labelVect.push_back("p_{T,Jet}^{Truth Match} > " + assocGenMinPtStr);
-  }
 
   std::string jtPtLowStr = plotConfig_p->GetValue("JTPTBINSLOW", "");
   std::string jtPtHighStr = plotConfig_p->GetValue("JTPTBINSHIGH", "");
@@ -131,10 +128,24 @@ std::vector<std::string> getLabels(TEnv* plotConfig_p, TH1F* histForLabels_p, st
   for(unsigned int pI = 0; pI < labelVect.size(); ++pI){
     if(labelVect[pI].find("Barrel") != std::string::npos || labelVect[pI].find("EC") != std::string::npos) labelVect[pI] = labelVect[pI] + " #gamma";
   }
-  
+
+  if(histName.find("XJJVCent") != std::string::npos || histName.find("AJJVCent") != std::string::npos){
+    std::string multiDPhiJJStr = "|#Delta#phi_{#vec{JJ},#gamma}| > " + std::string(plotConfig_p->GetValue("GAMMAMULTIJTDPHI", ""));
+    //    std::cout << "MULTIJTDPHI 1: " << multiDPhiJJStr << std::endl;
+    if(multiDPhiJJStr.find("pi") != std::string::npos) multiDPhiJJStr.replace(multiDPhiJJStr.find("pi"), 2, "#pi");
+    //    std::cout << "MULTIJTDPHI 2: " << multiDPhiJJStr << std::endl;
+    labelVect.push_back(multiDPhiJJStr);    
+  }
+
+  const bool isMC = plotConfig_p->GetValue("ISMC", 0);
+  if(isMC){
+    std::string assocGenMinPtStr = plotConfig_p->GetValue("ASSOCGENMINPT", "");
+    if(assocGenMinPtStr.size() != 0) labelVect.push_back("p_{T,Jet}^{Truth Match} > " + assocGenMinPtStr);
+  }
+
   return labelVect;
 }
-
+*/
 
 std::string plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>* labelMap, TEnv* plotConfig_p, std::string envStr, std::string dateStr, std::string saveTag,  std::vector<TH1F*> hists_p, std::vector<std::string> legStrs, std::vector<TH1F*> refHist_p, std::vector<std::string> refLegStr, std::vector<std::string> yLabels, std::vector<bool> yLogs, bool doReducedLabel)
 {
@@ -828,6 +839,7 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
   std::vector<std::vector<std::string> > globalLabels;
   
   plotConfig_p->SetValue("JETR", config_p->GetValue("JETR", 100));
+  plotConfig_p->SetValue("GAMMAMULTIJTDPHI", config_p->GetValue("GAMMAMULTIJTDPHI", ""));
   int jetR = plotConfig_p->GetValue("JETR", 100);
   if(jetR != 2 && jetR != 4){
     std::cout << "JETR given \'" << jetR << "\' is not valid. Please pick \'2\' or \'4\'. return 1" << std::endl;
