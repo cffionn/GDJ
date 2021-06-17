@@ -171,8 +171,9 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   std::vector<float> *trk_eta_p=nullptr;
   std::vector<float> *trk_phi_p=nullptr;
   std::vector<float> *trk_charge_p=nullptr;
-  std::vector<bool> *trk_tight_primary_p=nullptr;
-  std::vector<bool> *trk_minbias_p=nullptr;
+  std::vector<bool> *trk_tightPrimary_p=nullptr;
+  std::vector<bool> *trk_HILoose_p=nullptr;
+  std::vector<bool> *trk_HITight_p=nullptr;
   std::vector<float> *trk_d0_p=nullptr;
   std::vector<float> *trk_z0_p=nullptr;
   std::vector<float> *trk_vz_p=nullptr;
@@ -435,8 +436,9 @@ int gdjNtuplePreProc(std::string inConfigFileName)
     outTree_p->Branch("trk_phi", &trk_phi_p);
     
     outTree_p->Branch("trk_charge", &trk_charge_p);
-    outTree_p->Branch("trk_tight_primary", &trk_tight_primary_p);
-    outTree_p->Branch("trk_minbias", &trk_minbias_p);
+    outTree_p->Branch("trk_tightPrimary", &trk_tightPrimary_p);
+    outTree_p->Branch("trk_HILoose", &trk_HILoose_p);
+    outTree_p->Branch("trk_HITight", &trk_HITight_p);
     outTree_p->Branch("trk_d0", &trk_d0_p);
     outTree_p->Branch("trk_z0", &trk_z0_p);
     outTree_p->Branch("trk_vz", &trk_vz_p);
@@ -994,8 +996,9 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       inTree_p->SetBranchAddress("trk_phi", &trk_phi_p);
       
       inTree_p->SetBranchAddress("trk_charge", &trk_charge_p);
-      inTree_p->SetBranchAddress("trk_tight_primary", &trk_tight_primary_p);
-      inTree_p->SetBranchAddress("trk_minbias", &trk_minbias_p);
+      inTree_p->SetBranchAddress("trk_tightPrimary", &trk_tightPrimary_p);
+      inTree_p->SetBranchAddress("trk_HILoose", &trk_HILoose_p);
+      inTree_p->SetBranchAddress("trk_HITight", &trk_HITight_p);
       inTree_p->SetBranchAddress("trk_d0", &trk_d0_p);
       inTree_p->SetBranchAddress("trk_z0", &trk_z0_p);
       inTree_p->SetBranchAddress("trk_vz", &trk_vz_p);

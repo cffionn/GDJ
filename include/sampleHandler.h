@@ -10,12 +10,16 @@
 
 class sampleHandler{
  public:
+  enum mcFlag{DATA=0,
+	      PYTHIA=1,
+	      HERWIG=2};
+
   sampleHandler(){Clean(); PreInit();}
-  sampleHandler(bool in_isPP, bool in_isMC, int in_year, int in_minPthat);
+  sampleHandler(bool in_isPP, mcFlag in_mcFlag, int in_year, int in_minPthat);
   ~sampleHandler();
 
   bool Init(std::string sampleString);
-  bool Init(bool in_isPP, bool in_isMC, int in_year, int in_minPthat);
+  bool Init(bool in_isPP, mcFlag in_mcFlag, int in_year, int in_minPthat);
   int GetTag();
   double GetXSection();
   double GetFilterEff();
@@ -26,12 +30,12 @@ class sampleHandler{
   
  private:
   int CreateTag();
-  int CreateTag(bool in_isPP, bool in_isMC, int in_year, int in_minPthat);
+  int CreateTag(bool in_isPP, mcFlag in_mcFlag, int in_year, int in_minPthat);
   void PreInit();
   
   bool m_isInit;
   bool m_isPP;
-  bool m_isMC;
+  mcFlag m_mcFlag;
   int m_year;
   int m_minPthat;
 
@@ -44,7 +48,7 @@ class sampleHandler{
   std::map<int, int> tagToMinPthat;
 
   std::map<std::string, bool> dataSetNameToIsPP;
-  std::map<std::string, bool> dataSetNameToIsMC;
+  std::map<std::string, mcFlag> dataSetNameToMCFlag;
   std::map<std::string, int> dataSetNameToYear;
   std::map<std::string, int> dataSetNameToMinPthat;
 };

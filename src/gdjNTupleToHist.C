@@ -437,6 +437,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
     return 1;
   }
 
+  //Set the gamma pt bins
   const Int_t nMaxPtBins = 200;
   const Int_t nGammaPtBins = config_p->GetValue("NGAMMAPTBINS", 10);
   if(!goodBinning(inConfigFileName, nMaxPtBins, nGammaPtBins, "NGAMMAPTBINS")) return 1;
@@ -480,7 +481,23 @@ int gdjNTupleToHist(std::string inConfigFileName)
   binsToLabelStr[genGammaPtBinsStr[genGammaPtBinsStr.size()-1]] = prettyString(gammaPtBins[0], 1, false) + " < Gen. p_{T,#gamma} < " + prettyString(gammaPtBins[nGammaPtBins], 1, false);
   binsToLabelStr[recoGammaPtBinsStr[recoGammaPtBinsStr.size()-1]] = prettyString(gammaPtBins[0], 1, false) + " < Reco. p_{T,#gamma} < " + prettyString(gammaPtBins[nGammaPtBins], 1, false);
   binsToLabelStr[gammaPtBinsStr[gammaPtBinsStr.size()-1]] = prettyString(gammaPtBins[0], 1, false) + " < p_{T,#gamma} < " + prettyString(gammaPtBins[nGammaPtBins], 1, false);
+  //Also set the fine grain photon bins right now
 
+  
+  const Int_t nGammaFinePtBins = (gammaPtBins[nGammaPtBins-1] - gammaPtBins[0])/5 + 1;
+  if(!goodBinning(inConfigFileName, nMaxPtBins, nGammaFinePtBins, "NGAMMAFINEPTBINS")) return 1;
+  Double_t gammaFinePtBins[nMaxPtBins+1];
+  std::string gammaFinePtBinsStr = "";
+
+  for(Int_t gI = 0; gI < nGammaFinePtBins; ++gI){
+    gammaFinePtBins[gI] = gammaPtBins[0]  + 5*gI;
+
+    gammaFinePtBinsStr = gammaFinePtBinsStr + std::to_string((int)gammaFinePtBins[gI]) + ",";
+  }
+  gammaFinePtBins[nGammaFinePtBins] = gammaPtBins[nGammaPtBins];
+  gammaFinePtBinsStr = gammaFinePtBinsStr + std::to_string((int)gammaPtBins[nGammaPtBins]);
+  
+ 
   const Int_t nMaxEtaPhiBins = 100;
 
   const Int_t nGammaEtaBins = config_p->GetValue("NGAMMAETABINS", 12);
@@ -1012,6 +1029,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   TH2F* photonPtJtDPhiJJGVCent_PURCORR_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtDPhiJJVCent_PURCORR_p[nMaxCentBins][nBarrelAndEC];
 
+  TH1F* photonPtVCent_TRUTH_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtPtVCent_TRUTH_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtXJVCent_TRUTH_p[nMaxCentBins][nBarrelAndEC];
   TH2F* photonPtJtDPhiVCent_TRUTH_p[nMaxCentBins][nBarrelAndEC];
@@ -1219,10 +1237,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
   
 
     for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
-      //Since this needs to be very fine grain we will do 0.5 GeV bins over the range
-      Int_t nTempBins = (gammaPtBins[nGammaPtBins] - gammaPtBins[0])*2;
+      //Since this needs to be fine grain we will do 1.0 GeV bins over the range
 
-      photonPtVCent_RAW_p[cI][eI] = new TH1F(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_RAW_h").c_str(), ";Photon p_{T};Counts (Weighted)", nTempBins, gammaPtBins[0], gammaPtBins[nGammaPtBins]);
+      photonPtVCent_RAW_p[cI][eI] = new TH1F(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_RAW_h").c_str(), ";Photon p_{T};Counts (Weighted)", nGammaFinePtBins, gammaFinePtBins);
       photonPtJtPtVCent_RAW_p[cI][eI] = new TH2F(("photonPtJtPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_RAW_h").c_str(), ";Reco. Jet p_{T};Reco. Photon p_{T}", nJtPtBins, jtPtBins, nGammaPtBins, gammaPtBins);
       photonPtJtXJVCent_RAW_p[cI][eI] = new TH2F(("photonPtJtXJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_RAW_h").c_str(), ";Reco. x_{J};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
       photonPtJtDPhiVCent_RAW_p[cI][eI] = new TH2F(("photonPtJtDPhiVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_RAW_h").c_str(), ";Reco. #Delta#phi_{#gamma,J};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
@@ -1231,7 +1248,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       photonPtJtDPhiJJGVCent_RAW_p[cI][eI] = new TH2F(("photonPtJtDPhiJJGVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_RAW_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
        photonPtJtDPhiJJVCent_RAW_p[cI][eI] = new TH2F(("photonPtJtDPhiJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_RAW_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
       
-      photonPtVCent_RAWSideband_p[cI][eI] = new TH1F(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_RAWSideband_h").c_str(), ";Photon p_{T};Counts (Weighted)", nTempBins, gammaPtBins[0], gammaPtBins[nGammaPtBins]);
+      photonPtVCent_RAWSideband_p[cI][eI] = new TH1F(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_RAWSideband_h").c_str(), ";Photon p_{T};Counts (Weighted)", nGammaFinePtBins, gammaFinePtBins);
       photonPtJtPtVCent_RAWSideband_p[cI][eI] = new TH2F(("photonPtJtPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_RAWSideband_h").c_str(), ";Reco. Jet p_{T};Reco. Photon p_{T}", nJtPtBins, jtPtBins, nGammaPtBins, gammaPtBins);
       photonPtJtXJVCent_RAWSideband_p[cI][eI] = new TH2F(("photonPtJtXJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_RAWSideband_h").c_str(), ";Reco. x_{J};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
       photonPtJtDPhiVCent_RAWSideband_p[cI][eI] = new TH2F(("photonPtJtDPhiVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_RAWSideband_h").c_str(), ";Reco. #Delta#phi_{#gamma,J};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
@@ -1324,7 +1341,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	photonPtJtDPhiJJGVCent_SUBSideband_p[cI][eI] = new TH2F(("photonPtJtDPhiJJGVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_SUBSideband_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
 	photonPtJtDPhiJJVCent_SUBSideband_p[cI][eI] = new TH2F(("photonPtJtDPhiJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_SUBSideband_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
 
-	photonPtVCent_PURCORR_p[cI][eI] = new TH1F(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_PURCORR_h").c_str(), ";Photon p_{T};Counts (Weighted)", nTempBins, gammaPtBins[0], gammaPtBins[nGammaPtBins]);
+	photonPtVCent_PURCORR_p[cI][eI] = new TH1F(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_PURCORR_h").c_str(), ";Photon p_{T};Counts (Weighted)", nGammaFinePtBins, gammaFinePtBins);
 
 	photonPtJtPtVCent_PURCORR_p[cI][eI] = new TH2F(("photonPtJtPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_PURCORR_h").c_str(), ";Reco. Jet p_{T};Reco. Photon p_{T}", nJtPtBins, jtPtBins, nGammaPtBins, gammaPtBins);
 	photonPtJtXJVCent_PURCORR_p[cI][eI] = new TH2F(("photonPtJtXJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_PURCORR_h").c_str(), ";Reco. x_{J};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
@@ -1337,6 +1354,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	setSumW2({photonPtJtPtVCent_SUB_p[cI][eI], photonPtJtXJVCent_SUB_p[cI][eI], photonPtJtDPhiVCent_SUB_p[cI][eI], photonPtJtXJJVCent_SUB_p[cI][eI], photonPtJtAJJVCent_SUB_p[cI][eI], photonPtJtDPhiJJGVCent_SUB_p[cI][eI], photonPtJtDPhiJJVCent_SUB_p[cI][eI], photonPtJtPtVCent_SUBSideband_p[cI][eI], photonPtJtXJVCent_SUBSideband_p[cI][eI], photonPtJtDPhiVCent_SUBSideband_p[cI][eI], photonPtJtXJJVCent_SUBSideband_p[cI][eI], photonPtJtAJJVCent_SUBSideband_p[cI][eI], photonPtJtDPhiJJGVCent_SUBSideband_p[cI][eI], photonPtJtDPhiJJVCent_SUBSideband_p[cI][eI], photonPtJtPtVCent_PURCORR_p[cI][eI], photonPtJtXJVCent_PURCORR_p[cI][eI], photonPtJtDPhiVCent_PURCORR_p[cI][eI], photonPtJtXJJVCent_PURCORR_p[cI][eI], photonPtJtAJJVCent_PURCORR_p[cI][eI], photonPtJtDPhiJJGVCent_PURCORR_p[cI][eI], photonPtJtDPhiJJVCent_PURCORR_p[cI][eI]});
 
 	if(isMC){
+	  photonPtVCent_TRUTH_p[cI][eI] = new TH1F(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_TRUTH_h").c_str(), ";Photon p_{T};Counts (Weighted)", nGammaFinePtBins, gammaFinePtBins);
 	  photonPtJtPtVCent_TRUTH_p[cI][eI] = new TH2F(("photonPtJtPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_TRUTH_h").c_str(), ";Reco. Jet p_{T};Reco. Photon p_{T}", nJtPtBins, jtPtBins, nGammaPtBins, gammaPtBins);
 	  photonPtJtXJVCent_TRUTH_p[cI][eI] = new TH2F(("photonPtJtXJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_TRUTH_h").c_str(), ";Reco. x_{J};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
 	  photonPtJtDPhiVCent_TRUTH_p[cI][eI] = new TH2F(("photonPtJtDPhiVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_TRUTH_h").c_str(), ";Reco. #Delta#phi_{J#gamma};Reco. Photon p_{T}", nDPhiBins, dphiBins, nGammaPtBins, gammaPtBins);
@@ -2209,9 +2227,12 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	unfoldXJTree_p->Fill();
       }
     }
-
+  
     //Fill for photons
-    if(!isSideband) fillTH1(photonPtVCent_RAW_p[centPos][barrelAndECPos], photon_pt_p->at(phoPos), fullWeight);
+    if(!isSideband){
+      fillTH1(photonPtVCent_RAW_p[centPos][barrelAndECPos], photon_pt_p->at(phoPos), fullWeight);
+      if(isMC) fillTH1(photonPtVCent_TRUTH_p[centPos][barrelAndECPos], truthPhotonPt, fullWeight);
+    }
     else fillTH1(photonPtVCent_RAWSideband_p[centPos][barrelAndECPos], photon_pt_p->at(phoPos), fullWeight);
 
     //Now go thru reco jets 
@@ -3460,12 +3481,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
 	  for(Int_t bIX = 0; bIX < photonPtVCent_RAW_p[cI][eI]->GetXaxis()->GetNbins(); ++bIX){
 	    Float_t center = photonPtVCent_RAW_p[cI][eI]->GetXaxis()->GetBinCenter(bIX+1);
-	    Float_t purity = purityFit_p->Eval(center);
+	    Float_t purity = purityFit_p->Eval(center);	   
 
 	    Float_t binContent = photonPtVCent_RAW_p[cI][eI]->GetBinContent(bIX+1);
 	    Float_t binError = photonPtVCent_RAW_p[cI][eI]->GetBinError(bIX+1);
 
-	    Float_t binSidebandContent = photonPtVCent_RAWSideband_p[cI][eI]->GetBinContent(bIX+1);
+	    if(binContent <= TMath::Power(10, -50)) continue;
+
+ 	    Float_t binSidebandContent = photonPtVCent_RAWSideband_p[cI][eI]->GetBinContent(bIX+1);
 	    //	    Float_t binSidebandError = photonPtVCent_RAWSideband_p[cI][eI]->GetBinError(bIX+1);
 
 	    binSidebandContent = (1.0 - purity)*binSidebandContent*binContent/binSidebandContent;
@@ -3481,6 +3504,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	else{
 	  std::vector<TH2F*> inSignalHists_p = {photonPtJtPtVCent_SUB_p[cI][eI], photonPtJtXJVCent_SUB_p[cI][eI], photonPtJtDPhiVCent_SUB_p[cI][eI], photonPtJtXJJVCent_SUB_p[cI][eI], photonPtJtAJJVCent_PURCORR_p[cI][eI], photonPtJtDPhiJJGVCent_SUB_p[cI][eI], photonPtJtDPhiJJVCent_SUB_p[cI][eI]};
 	  std::vector<TH2F*> outHists_p = {photonPtJtPtVCent_PURCORR_p[cI][eI], photonPtJtXJVCent_PURCORR_p[cI][eI], photonPtJtDPhiVCent_PURCORR_p[cI][eI], photonPtJtXJJVCent_PURCORR_p[cI][eI], photonPtJtAJJVCent_PURCORR_p[cI][eI], photonPtJtDPhiJJGVCent_PURCORR_p[cI][eI], photonPtJtDPhiJJVCent_PURCORR_p[cI][eI]};
+
+	  for(Int_t bIX = 0; bIX < photonPtVCent_RAW_p[cI][eI]->GetXaxis()->GetNbins(); ++bIX){
+	    Float_t content = photonPtVCent_RAW_p[cI][eI]->GetBinContent(bIX+1);
+	    Float_t error = photonPtVCent_RAW_p[cI][eI]->GetBinError(bIX+1);
+	    
+	    photonPtVCent_PURCORR_p[cI][eI]->SetBinContent(bIX+1, content);
+	    photonPtVCent_PURCORR_p[cI][eI]->SetBinError(bIX+1, error);
+	  }
 
 	  for(unsigned int hI = 0; hI < inSignalHists_p.size(); ++hI){
 	    for(Int_t bIX = 0; bIX < inSignalHists_p[hI]->GetXaxis()->GetNbins(); ++bIX){
@@ -3589,6 +3620,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    Float_t binContent = photonPtVCent_RAW_p[cI][eI]->GetBinContent(bIX+1);
 	    Float_t binError = photonPtVCent_RAW_p[cI][eI]->GetBinError(bIX+1);
 
+	    if(binContent <= TMath::Power(10, -50)) continue;
+
 	    Float_t binSidebandContent = photonPtVCent_RAWSideband_p[cI][eI]->GetBinContent(bIX+1);
 	    //	    Float_t binSidebandError = photonPtVCent_RAWSideband_p[cI][eI]->GetBinError(bIX+1);
 
@@ -3605,6 +3638,15 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	else{
 	  std::vector<TH2F*> inSignalHists_p = {photonPtJtPtVCent_SUB_p[cI][eI], photonPtJtXJVCent_SUB_p[cI][eI], photonPtJtDPhiVCent_SUB_p[cI][eI], photonPtJtXJJVCent_SUB_p[cI][eI], photonPtJtAJJVCent_SUB_p[cI][eI], photonPtJtDPhiJJGVCent_SUB_p[cI][eI], photonPtJtDPhiJJVCent_SUB_p[cI][eI]};
 	  std::vector<TH2F*> outHists_p = {photonPtJtPtVCent_PURCORR_p[cI][eI], photonPtJtXJVCent_PURCORR_p[cI][eI], photonPtJtDPhiVCent_PURCORR_p[cI][eI], photonPtJtXJJVCent_PURCORR_p[cI][eI], photonPtJtAJJVCent_PURCORR_p[cI][eI], photonPtJtDPhiJJGVCent_PURCORR_p[cI][eI], photonPtJtDPhiJJVCent_PURCORR_p[cI][eI]};
+
+	  for(Int_t bIX = 0; bIX < photonPtVCent_RAW_p[cI][eI]->GetXaxis()->GetNbins(); ++bIX){
+	    Float_t content = photonPtVCent_RAW_p[cI][eI]->GetBinContent(bIX+1);
+	    Float_t error = photonPtVCent_RAW_p[cI][eI]->GetBinError(bIX+1);
+	    
+	    photonPtVCent_PURCORR_p[cI][eI]->SetBinContent(bIX+1, content);
+	    photonPtVCent_PURCORR_p[cI][eI]->SetBinError(bIX+1, error);
+	  }
+
 
 	  for(unsigned int hI = 0; hI < inSignalHists_p.size(); ++hI){
 	    for(Int_t bIX = 0; bIX < inSignalHists_p[hI]->GetXaxis()->GetNbins(); ++bIX){
@@ -3826,6 +3868,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       photonPtJtDPhiJJVCent_RAWSideband_p[cI][eI]->Write("", TObject::kOverwrite);
 
       photonPtVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
+      if(isMC) photonPtVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
 
       if(doMix){
 	photonPtJtPtVCent_MIX_p[cI][eI]->Write("", TObject::kOverwrite);
@@ -3925,6 +3968,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  photonPtJtDPhiJJVCent_PUREBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtDPhiJJVCent_MIXBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
 
+	  
 	  photonPtJtPtVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtXJVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtDPhiVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
@@ -4241,6 +4285,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       delete photonPtJtDPhiJJVCent_RAWSideband_p[cI][eI];
 
       delete photonPtVCent_PURCORR_p[cI][eI];
+      if(isMC) delete photonPtVCent_TRUTH_p[cI][eI];
       
       if(doMix){
 	delete photonPtJtPtVCent_MIX_p[cI][eI];
@@ -4433,6 +4478,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
   outFile_p->cd();
   config_p->SetValue("RECOJTPTMIN", prettyString(recoJtPtMin, 1, false).c_str());
+  config_p->SetValue("NGAMMAFINEPTBINS", nGammaFinePtBins);
+  config_p->SetValue("GAMMAFINEPTBINS", gammaFinePtBinsStr.c_str());
   config_p->Write("config", TObject::kOverwrite);
 
   TEnv labelEnv;

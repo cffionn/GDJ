@@ -8,10 +8,10 @@
 //Local
 #include "include/sampleHandler.h"
 
-int testSampleHandler(bool isPP, bool isMC, int year, int minPthat)
+int testSampleHandler(bool isPP, sampleHandler::mcFlag in_mcFlag, int year, int minPthat)
 {
   sampleHandler test;
-  test.Init(isPP, isMC, year, minPthat);
+  test.Init(isPP, in_mcFlag, year, minPthat);
   test.PrintTags();
 
   int tag = test.GetTag();
@@ -28,7 +28,7 @@ int testSampleHandler(bool isPP, bool isMC, int year, int minPthat)
 int main(int argc, char* argv[])
 {
   if(argc != 5){
-    std::cout << "Usage: ./bin/testSampleHandler.exe <isPP> <isMC> <year> <minPthat>" << std::endl;
+    std::cout << "Usage: ./bin/testSampleHandler.exe <isPP> <in_mcFlag> <year> <minPthat>" << std::endl;
     std::cout << "TO DEBUG:" << std::endl;
     std::cout << " export DOGLOBALDEBUGROOT=1 #from command line" << std::endl;
     std::cout << "TO TURN OFF DEBUG:" << std::endl;
@@ -36,8 +36,10 @@ int main(int argc, char* argv[])
     std::cout << "return 1." << std::endl;
     return 1;
   }
+
+  int mcFlagInt = std::stoi(argv[2]);
  
   int retVal = 0;
-  retVal += testSampleHandler(std::stoi(argv[1]), std::stoi(argv[2]), std::stoi(argv[3]), std::stoi(argv[4]));
+  retVal += testSampleHandler(std::stoi(argv[1]), (sampleHandler::mcFlag)mcFlagInt, std::stoi(argv[3]), std::stoi(argv[4]));
   return retVal;
 }
