@@ -53,7 +53,7 @@ int gdjPlotResults(std::string inConfigFileName)
   const int titleFont = 42;
   const double titleSize = 0.035;
   const double labelSize = titleSize*0.9;
-  const double yOffset = 1.2;
+  const double yOffset = 1.0;
   
   cppWatch globalTimer;
   globalTimer.start();
@@ -244,7 +244,7 @@ int gdjPlotResults(std::string inConfigFileName)
   
   //Define a bunch of parameters for the TCanvas
   const Int_t nPad = 2;
-  Double_t padSplit = 0.35;
+  Double_t padSplit = 0.45;
   const Double_t leftMargin = 0.16;
   const Double_t bottomMargin = 0.125/padSplit;
   const Double_t topMargin = 0.02;
@@ -289,18 +289,31 @@ int gdjPlotResults(std::string inConfigFileName)
 
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
+  const Int_t iterPPPhoPt = inPPTermFileConfig_p->GetValue("GAMMAPT_PP", -1); 
+ 
   for(Int_t gI = 0; gI < nGammaPtBins; ++gI){
     Int_t iterPP = inPPTermFileConfig_p->GetValue((varNameUpper + "_GAMMAPTALL_PP").c_str(), -1);
     if(iterPP < 0){
       std::cout << "Terminating iteration is \'" << iterPP << "\'. return 1" << std::endl;
       return 1;
     }
+
+    TH1F* ppHistPhoPt_p = (TH1F*)inPPFile_p->Get(("photonPtReco_Iter" + std::to_string(iterPPPhoPt) + "_PP_PURCORR_COMBINED_h").c_str());
+    Double_t scaledTotal = 0.0;
+    for(Int_t bIX = 0; bIX < ppHistPhoPt_p->GetXaxis()->GetNbins(); ++bIX){
+      Float_t binCenter = ppHistPhoPt_p->GetBinCenter(bIX+1);
+      if(binCenter < gammaPtBins[gI] || binCenter >= gammaPtBins[gI+1]) continue;
+
+      scaledTotal += ppHistPhoPt_p->GetBinContent(bIX+1);
+    }
     
+
     TH1F* ppHist_p = (TH1F*)inPPFile_p->Get((varName + "Reco_Iter" + std::to_string(iterPP) + "_GammaPt" + std::to_string(gI) + "_PP_PURCORR_COMBINED_h").c_str());
 
     if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << std::endl;
 
-    ppHist_p->Scale(1./ppHist_p->Integral());
+    binWidthAndScaleNorm(ppHist_p, scaledTotal);
+    //    ppHist_p->Scale(1./ppHist_p->Integral());
     HIJet::Style::EquipHistogram(ppHist_p, 2); 
     ppHist_p->GetXaxis()->SetTitleFont(titleFont);
     ppHist_p->GetYaxis()->SetTitleFont(titleFont);
@@ -316,21 +329,53 @@ int gdjPlotResults(std::string inConfigFileName)
     
     ppHist_p->GetYaxis()->SetNdivisions(505);
     
-    ppHist_p->GetYaxis()->SetTitle("Shape");
+    ppHist_p->GetYaxis()->SetTitle("#frac{1}{N_{#gamma}*}#frac{dN_{#vec{JJ}#gamma}}{d#vec{x}_{JJ#gamma}}");
 
     if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << std::endl;
   
-    for(unsigned int cI = 0; cI < centBinsStr.size(); ++cI){    
+    for(unsigned int cI = 0; cI < centBinsStr.size(); ++cI){   
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+ 
+      const Int_t iterPbPbPhoPt = inPbPbTermFileConfig_p->GetValue(("GAMMAPT_" + centBinsStr[cI]).c_str(), -1);
+
+
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+   
       Int_t iterPbPb = inPbPbTermFileConfig_p->GetValue((varNameUpper + "_GAMMAPTALL_" + centBinsStr[cI]).c_str(), -1);
       if(iterPbPb < 0){
 	std::cout << "Terminating iteration is \'" << iterPbPb << "\'. return 1" << std::endl;
 	return 1;
       }
 
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+       
+      std::string centBins2Str = centBinsStr[cI];
+      if(centBins2Str.find("to") != std::string::npos){
+	centBins2Str.replace(0, 4, "");
+	centBins2Str.replace(centBins2Str.find("to"), 2, "-");
+	centBins2Str = centBins2Str + "%";
+      }
       
       TH1F* pbpbHist_p = (TH1F*)inPbPbFile_p->Get((varName + "Reco_Iter" + std::to_string(iterPbPb) + "_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h").c_str());
+      TH1F* pbpbHistPhoPt_p = nullptr;
+      if(iterPbPbPhoPt > 0) pbpbHistPhoPt_p = (TH1F*)inPbPbFile_p->Get(("photonPtReco_Iter" + std::to_string(iterPbPbPhoPt) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h").c_str());
+      else pbpbHistPhoPt_p = (TH1F*)inPbPbFile_p->Get(("photonPtReco_Iter3_" + centBinsStr[cI] + "_PURCORR_COMBINED_h").c_str());
+
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << ", " <<  std::endl;
+       
+      //      std::cout << "NAME: photonPtReco_Iter" << std::to_string(iterPbPbPhoPt) << "_" << centBinsStr[cI] << "_PURCORR_COMBINED_h" << std::endl;
       
-      pbpbHist_p->Scale(1./pbpbHist_p->Integral());
+      scaledTotal = 0.0;
+      for(Int_t bIX = 0; bIX < pbpbHistPhoPt_p->GetXaxis()->GetNbins(); ++bIX){
+	Float_t binCenter = pbpbHistPhoPt_p->GetBinCenter(bIX+1);
+	if(binCenter < gammaPtBins[gI] || binCenter >= gammaPtBins[gI+1]) continue;
+	
+	scaledTotal += pbpbHistPhoPt_p->GetBinContent(bIX+1);
+      }
+      
+      std::cout << scaledTotal << std::endl;
+      binWidthAndScaleNorm(pbpbHist_p, scaledTotal);      
+      //      pbpbHist_p->Scale(1./pbpbHist_p->Integral());
 
       if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
 	
@@ -370,15 +415,40 @@ int gdjPlotResults(std::string inConfigFileName)
       
       HIJet::Style::EquipHistogram(pbpbHist_p, 1); 
 
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+      
+      
       ppHist_p->SetMinimum(minVal);
       ppHist_p->SetMaximum(maxVal);
       
       ppHist_p->DrawCopy("HIST E1 P");
       pbpbHist_p->DrawCopy("HIST E1 P SAME");
 
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+      
+      
       std::vector<std::string> labelsAlt;
-      std::vector<std::string> labels = getLabels(inPbPbFileConfig_p, pbpbHist_p, &labelMap, &labelsAlt);
+      std::vector<std::string> labelsTemp = getLabels(inPbPbFileConfig_p, pbpbHist_p, &labelMap, &labelsAlt);
+      std::vector<std::string> labels = {"#bf{#it{ATLAS Internal}}", "Pb+Pb, #it{pp} at #sqrt{s_{NN}}=5.02 TeV"};
 
+      for(unsigned int lI = 0; lI < labelsTemp.size(); ++lI){
+	labels.push_back(labelsTemp[lI]);
+      }
+      
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+      
+      
+      unsigned int pos = 0;
+      while(pos < labels.size()){
+	if(labels[pos].find("PURCORR") != std::string::npos) labels.erase(pos + labels.begin());
+	else if(labels[pos].find("COMBINED") != std::string::npos) labels.erase(pos + labels.begin());
+	else if(labels[pos].find("Iter") != std::string::npos) labels.erase(pos + labels.begin());
+	else ++pos;
+      }
+
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+      
+      
       TLatex* label_p = new TLatex();
       label_p->SetNDC();
       label_p->SetTextFont(42);
@@ -386,17 +456,17 @@ int gdjPlotResults(std::string inConfigFileName)
       label_p->SetTextAlign(31);
       
       for(unsigned int i = 0; i < labels.size(); ++i){
-	label_p->DrawLatex(0.95, 0.94 - 0.07*i, labels[i].c_str());
+	label_p->DrawLatex(0.95, 0.81 - 0.075*i, labels[i].c_str());
       }
       delete label_p;
       
-      TLegend* leg_p = new TLegend(0.4, 0.8, 0.7, 0.95);
+      TLegend* leg_p = new TLegend(0.25, 0.8, 0.5, 0.95);
       leg_p->SetTextFont(42);
       leg_p->SetTextSize(0.035/(1.0 - padSplit));
       leg_p->SetBorderSize(0);
       leg_p->SetFillStyle(0);
-      
-      leg_p->AddEntry(pbpbHist_p, "0-10% Pb+Pb", "P L");
+   
+      leg_p->AddEntry(pbpbHist_p, ("Pb+Pb " + centBins2Str).c_str(), "P L");
       leg_p->AddEntry(ppHist_p, "p+p", "P L");
 
 
@@ -436,6 +506,9 @@ int gdjPlotResults(std::string inConfigFileName)
       pbpbHist_p->SetTickLength(pbpbHist_p->GetTickLength()*(1.0 - padSplit)/padSplit);
       pbpbHist_p->SetTickLength(pbpbHist_p->GetTickLength("Y")*(1.0 - padSplit)/padSplit, "Y");
       pbpbHist_p->DrawCopy("HIST E1 P");
+
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+      
       
       TLine* line_p = new TLine();
       line_p->SetLineStyle(2);
@@ -446,14 +519,20 @@ int gdjPlotResults(std::string inConfigFileName)
       
       TBox* box_p = new TBox();
       box_p->SetFillColor(0);
-      box_p->DrawBox(0.12, 0.345, 0.1575, 0.37);
+      box_p->DrawBox(0.11, 0.435, 0.1575, 0.46);
       delete box_p;
-      
+
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+         
       quietSaveAs(canv_p, "pdfDir/" + dateStr + "/" + varName + "Unfolded_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_" + dateStr + "." + saveExt);
       delete canv_p;
       delete leg_p;
+
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+         
     }
-  }
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << std::endl;
+   }
 
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
