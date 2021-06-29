@@ -49,8 +49,6 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 					      "MINGAMMAPT"};  
   if(!checkEnvForParams(inConfig_p, necessaryParams)) return 1;
 
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
   const bool isPP = inConfig_p->GetValue("ISPP", 0);
   const bool isMC = inConfig_p->GetValue("ISMC", 0);
   const bool keepTruth = inConfig_p->GetValue("KEEPTRUTH", 0);
@@ -58,8 +56,6 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   const bool doMinGammaPt = inConfig_p->GetValue("DOMINGAMMAPT", 0);
   const double minGammaPt = inConfig_p->GetValue("MINGAMMAPT", -1.0);
 
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-  
   const std::string inDirStr = inConfig_p->GetValue("MCPREPROCDIRNAME", "");
   const std::string inCentFileName = inConfig_p->GetValue("CENTFILENAME", "");
   if(!check.checkDir(inDirStr)){
@@ -629,18 +625,16 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 
   }
 
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
   std::map<int, unsigned long long> tagToCounts;
   std::map<int, double> tagToXSec;
   std::map<int, double> tagToFilterEff;
+  std::map<int, int> tagToMinPthat;
   std::vector<int> minPthats;
   std::map<int, int> minPthatToTag;
   std::map<int, double> tagToWeight;
   
   std::map<std::string, std::vector<std::string> > configMap;
   configMap["MCPREPROCDIRNAME"] = {inDirStr};
-
   
   //Basic pre-processing for output config
   std::vector<std::string> listOfBranchesIn, listOfBranchesHLT, listOfBranchesHLTPre;
@@ -694,6 +688,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	tagToXSec[sampleTag_] = sHandler.GetXSection();
 	tagToFilterEff[sampleTag_] = sHandler.GetFilterEff();
 	int minPthat = sHandler.GetMinPthat();
+	tagToMinPthat[sampleTag_] = minPthat;
 	minPthats.push_back(minPthat);
 	minPthatToTag[sHandler.GetMinPthat()] = sampleTag_;
       }
@@ -741,26 +736,26 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   }
 
   if(isMC){
-    std::sort(std::begin(minPthats), std::end(minPthats));
-    std::cout << "Min pthats: " << std::endl;
-    for(unsigned int pI = 0; pI < minPthats.size(); ++pI){
-      int tag = minPthatToTag[minPthats[pI]];
-      double weight = tagToXSec[tag]*tagToFilterEff[tag]/(double)tagToCounts[tag];
-      tagToWeight[tag] = weight;
+    Float_t maxWeight = -1.0;
+    for(auto const & tag: tagToCounts){
+      sampleTag_ = tag.first;
+
+      double weight = tagToXSec[sampleTag_]*tagToFilterEff[sampleTag_]/(double)tagToCounts[sampleTag_];
+      tagToWeight[sampleTag_] = weight;
+
+      if(maxWeight < weight) maxWeight = weight;
+    }
+
+    
+    for(auto const & tag: tagToWeight){
+      tagToWeight[tag.first] = tag.second/maxWeight;
+    }
+
+    std::cout << "Sample weights: " << std::endl;
+    for(auto const & tag: tagToWeight){
+      std::cout << " tag=" << tag.first << ", pthatMin=" << tagToMinPthat[tag.first] << ", weight=" << tag.second << std::endl;
     }
     
-    for(unsigned int pI = 0; pI < minPthats.size(); ++pI){
-      if(pI == 0) continue;
-      
-      int tag = minPthatToTag[minPthats[pI]];
-      int tag0 = minPthatToTag[minPthats[0]];
-      
-      tagToWeight[tag] /= tagToWeight[tag0];
-    }
-    
-    int tag0 = minPthatToTag[minPthats[0]];
-    tagToWeight[tag0] = 1.0;
-  
     for(unsigned int pI = 0; pI < minPthats.size(); ++pI){
       int tag = minPthatToTag[minPthats[pI]];
 

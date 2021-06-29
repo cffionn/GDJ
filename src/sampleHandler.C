@@ -74,26 +74,56 @@ void sampleHandler::PreInit()
   dataSetNameToMinPthat["mc16_5TeV.423105.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP280_500.merge.AOD.e5094_s3238_r10441_r10210"] = 280;
 
   //HERWIG7
-  std::string dataStr = "mc16_valid.830045.H7EG_gammajet_MMHT2014lo_DP35_70_direct.recon.AOD.e8329_s3469_r11509_tid25757477_00";
+  std::string dataStr = "mc16_valid.830045.H7EG_gammajet_MMHT2014lo_DP35_70_direct.recon.AOD.e8329_s3238_r11199_tid25948263_00";
   dataSetNameToIsPP[dataStr] = 1;
   dataSetNameToMCFlag[dataStr] = HERWIG;
   dataSetNameToYear[dataStr] = 2017;
   dataSetNameToMinPthat[dataStr] = 35;
 
-  dataStr = "mc16_valid.830046.H7EG_gammajet_MMHT2014lo_DP70_140_direct.recon.AOD.e8329_s3469_r11509_tid25757487_00";
+  dataStr = "mc16_valid.830046.H7EG_gammajet_MMHT2014lo_DP70_140_direct.recon.AOD.e8329_s3238_r11199_tid25948269_00";
   dataSetNameToIsPP[dataStr] = 1;
   dataSetNameToMCFlag[dataStr] = HERWIG;
   dataSetNameToYear[dataStr] = 2017;
   dataSetNameToMinPthat[dataStr] = 70;
 
-  dataStr = "mc16_valid.830047.H7EG_gammajet_MMHT2014lo_DP140_280_direct.recon.AOD.e8329_s3469_r11509_tid25757495_00";
+  dataStr = "mc16_valid.830047.H7EG_gammajet_MMHT2014lo_DP140_280_direct.recon.AOD.e8329_s3238_r11199_tid25948275_00";
   dataSetNameToIsPP[dataStr] = 1;
   dataSetNameToMCFlag[dataStr] = HERWIG;
   dataSetNameToYear[dataStr] = 2017;
   dataSetNameToMinPthat[dataStr] = 140;
-  
+
+  dataStr = "mc16_valid.830048.H7EG_gammajet_MMHT2014lo_DP280_500_direct.recon.AOD.e8329_s3238_r11199_tid25948283_00";
+  dataSetNameToIsPP[dataStr] = 1;
+  dataSetNameToMCFlag[dataStr] = HERWIG;
+  dataSetNameToYear[dataStr] = 2017;
+  dataSetNameToMinPthat[dataStr] = 280;
+
+  dataStr = "mc16_valid.830055.H7EG_gammajet_MMHT2014lo_DP35_70_frag.recon.AOD.e8329_s3238_r11199_tid25948484_00";
+  dataSetNameToIsPP[dataStr] = 1;
+  dataSetNameToMCFlag[dataStr] = HERWIGFRAG;
+  dataSetNameToYear[dataStr] = 2017;
+  dataSetNameToMinPthat[dataStr] = 35;
+
+  dataStr = "mc16_valid.830056.H7EG_gammajet_MMHT2014lo_DP70_140_frag.recon.AOD.e8329_s3238_r11199_tid25948490_00";
+  dataSetNameToIsPP[dataStr] = 1;
+  dataSetNameToMCFlag[dataStr] = HERWIGFRAG;
+  dataSetNameToYear[dataStr] = 2017;
+  dataSetNameToMinPthat[dataStr] = 70;
+
+  dataStr = "mc16_valid.830057.H7EG_gammajet_MMHT2014lo_DP140_280_frag.recon.AOD.e8329_s3238_r11199_tid25948498_00";
+  dataSetNameToIsPP[dataStr] = 1;
+  dataSetNameToMCFlag[dataStr] = HERWIGFRAG;
+  dataSetNameToYear[dataStr] = 2017;
+  dataSetNameToMinPthat[dataStr] = 140;
+
+  dataStr = "mc16_valid.830058.H7EG_gammajet_MMHT2014lo_DP280_500_frag.recon.AOD.e8329_s3238_r11199_tid25948504_00";
+  dataSetNameToIsPP[dataStr] = 1;
+  dataSetNameToMCFlag[dataStr] = HERWIGFRAG;
+  dataSetNameToYear[dataStr] = 2017;
+  dataSetNameToMinPthat[dataStr] = 280;
+ 
   for(int ppI = 0; ppI < 2; ++ppI){
-    for(int mcI = 0; mcI < 3; ++mcI){
+    for(int mcI = 0; mcI < 4; ++mcI){
       for(auto const & year : validYears){
 	if(ppI == 0 && year == 2017) continue;
 	if(ppI == 1 && (year == 2015 || year == 2018)) continue;
@@ -127,17 +157,37 @@ void sampleHandler::PreInit()
 	    tagToXSec[tag] = 37.592;//in nanobarn
 	    tagToFilterEff[tag] = 0.000043848;
 	  }
-	  else if(tag == 35201721){//HERWIG x-sections
-	    tagToXSec[tag] = 28.159;//in nanobarn
-	    tagToFilterEff[tag] = 0.17658;	    
+	  else if(tag == 35201721){//HERWIG direct x-sections
+	    tagToXSec[tag] = 28.129;//in nanobarn
+	    tagToFilterEff[tag] = 0.17583;
 	  }
 	  else if(tag == 70201721){
-	    tagToXSec[tag] = 2.7785;//in nanobarn
-	    tagToFilterEff[tag] = 0.15012;
+	    tagToXSec[tag] = 2.7826;//in nanobarn
+	    tagToFilterEff[tag] = 0.14941;
 	  }
 	  else if(tag == 140201721){
-	    tagToXSec[tag] = .20238;//in nanobarn
-	    tagToFilterEff[tag] = 0.12288;
+	    tagToXSec[tag] = .20234;//in nanobarn
+	    tagToFilterEff[tag] = 0.12236;
+	  }
+	  else if(tag == 280201721){
+	    tagToXSec[tag] = .0097675;//in nanobarn
+	    tagToFilterEff[tag] = 0.082607;
+	  }
+	  else if(tag == 35201731){//HERWIG fragmentation x-sections
+	    tagToXSec[tag] = 117310;//in nanobarn
+	    tagToFilterEff[tag] = 0.000027885;
+	  }
+	  else if(tag == 70201731){
+	    tagToXSec[tag] = 6820.8;//in nanobarn
+	    tagToFilterEff[tag] = 0.000030057;
+	  }
+	  else if(tag == 140201731){
+	    tagToXSec[tag] = 304.56;//in nanobarn
+	    tagToFilterEff[tag] = 0.000033703;
+	  }
+	  else if(tag == 280201731){
+	    tagToXSec[tag] = 9.7299;//in nanobarn
+	    tagToFilterEff[tag] = 0.000028205;
 	  }
 	  else if(tag == 35201810){
 	    tagToXSec[tag] = 351620;//in nanobar

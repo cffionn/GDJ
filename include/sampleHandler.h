@@ -12,7 +12,8 @@ class sampleHandler{
  public:
   enum mcFlag{DATA=0,
 	      PYTHIA=1,
-	      HERWIG=2};
+	      HERWIG=2,
+	      HERWIGFRAG=3};
 
   sampleHandler(){Clean(); PreInit();}
   sampleHandler(bool in_isPP, mcFlag in_mcFlag, int in_year, int in_minPthat);
