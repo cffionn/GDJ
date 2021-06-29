@@ -112,11 +112,21 @@ int gdjHistDQM(std::string inConfigFileName)
 
   const std::string inOldFileName = config_p->GetValue("INOLDFILENAME", "");
   const std::string inNewFileName = config_p->GetValue("INNEWFILENAME", "");
-  const double precision = config_p->GetValue("PRECISION", -1);
+  const double precision = config_p->GetValue("PRECISION", -1.0);
 
-  const std::string stringToSubOut = config_p->GetValue("STRINGTOSUBOUT", "");
-  const std::string stringToSubIn = config_p->GetValue("STRINGTOSUBIN", "");
-  
+  std::vector<std::string> stringsToSubOut, stringsToSubIn;
+
+  for(int i = 0; i < 100; ++i){
+    std::string stringToSubOut = config_p->GetValue(("STRINGTOSUBOUT." + std::to_string(i)).c_str(), "");
+    std::string stringToSubIn = config_p->GetValue(("STRINGTOSUBIN." + std::to_string(i)).c_str(), "");
+
+    if(stringToSubOut.size() == 0) continue;
+    if(stringToSubIn.size() == 0) continue;
+
+    stringsToSubOut.push_back(stringToSubOut);
+    stringsToSubIn.push_back(stringToSubIn);
+  }
+    
   if(!check.checkFileExt(inOldFileName, ".root")) return 1;
   if(!check.checkFileExt(inNewFileName, ".root")) return 1;
 
@@ -218,19 +228,31 @@ int gdjHistDQM(std::string inConfigFileName)
   //  const double labelSize = titleSize*0.9;
   const double yOffset = 1.5;
 
+  std::vector<std::string> oldHistSkipped;
+  std::vector<std::string> histFailingPrecision;
+  std::map<std::string, int> newHistUsedCounter;  
+  for(unsigned int sI = 0; sI < goodObjectsNew.size(); ++sI){
+    newHistUsedCounter[goodObjectsNew[sI]] = 0;
+  }
+  
   
   for(unsigned int gI = 0; gI < goodObjectsOld.size(); ++gI){
-
     std::string newStrToFind = goodObjectsOld[gI];
-    if(newStrToFind.find(stringToSubOut) != std::string::npos){
-      newStrToFind.replace(newStrToFind.find(stringToSubOut), stringToSubOut.size(), stringToSubIn);
+
+    for(unsigned int sI = 0; sI < stringsToSubOut.size(); ++sI){
+      if(newStrToFind.find(stringsToSubOut[sI]) != std::string::npos){
+	newStrToFind.replace(newStrToFind.find(stringsToSubOut[sI]), stringsToSubOut[sI].size(), stringsToSubIn[sI]);
+      }
     }
 
     int pos = vectContainsStrPos(newStrToFind, &goodObjectsNew);
     if(pos < 0){
+      oldHistSkipped.push_back(goodObjectsOld[gI]);
       std::cout << "Histogram \'" << goodObjectsOld[gI] << "\' in old file \'" << inOldFileName << "\' had no corresponding partner in new file" << std::endl;
       continue;
     }
+
+    ++(newHistUsedCounter[goodObjectsNew[pos]]);
     
     TCanvas* canv_p = nullptr;
     TPad* pads_p[nPadMax];
@@ -366,7 +388,7 @@ int gdjHistDQM(std::string inConfigFileName)
       
       if(!allGood){
 	std::cout << "Histogram \'" << goodObjectsOld[gI] << "\' fails check at precision \'" << precision << "\'" << std::endl;
-	
+	histFailingPrecision.push_back(goodObjectsOld[gI]);
       }
 
       std::cout << "OLDHISTNAME: " << goodObjectsOld[gI] << std::endl;
@@ -432,6 +454,7 @@ int gdjHistDQM(std::string inConfigFileName)
       
       if(!allGood){
 	std::cout << "Histogram \'" << goodObjectsOld[gI] << "\' fails check at precision \'" << precision << "\'" << std::endl;
+	histFailingPrecision.push_back(goodObjectsOld[gI]);
       }
       
       histNewTH1D_p->Divide(histOldTH1D_p);
@@ -471,7 +494,12 @@ int gdjHistDQM(std::string inConfigFileName)
 
       histOldTH2F_p->GetYaxis()->SetTitleOffset(yOffset);
 
-      histOldTH2F_p->SetTitle(("Old: " + goodObjectsOld[gI]).c_str());
+      std::string titleOld = goodObjectsOld[gI];
+      std::cout << "TITLE OLD: " << titleOld << std::endl;
+      while(titleOld.find("/") != std::string::npos){
+	titleOld.replace(0, titleOld.find("/")+1, "");
+      }
+      histOldTH2F_p->SetTitle(("Old: " + titleOld).c_str());
 	
       histOldTH2F_p->DrawCopy("COLZ"); 
       gPad->SetTicks();
@@ -481,7 +509,12 @@ int gdjHistDQM(std::string inConfigFileName)
 
       histNewTH2F_p->GetYaxis()->SetTitleOffset(yOffset);
 
-      histNewTH2F_p->SetTitle(("New: " + goodObjectsNew[pos]).c_str());
+      std::string titleNew = goodObjectsNew[pos];
+      std::cout << "TITLE OLD: " << titleOld << std::endl;
+      while(titleNew.find("/") != std::string::npos){
+	titleNew.replace(0, titleNew.find("/")+1, "");
+      }
+      histNewTH2F_p->SetTitle(("New: " + titleNew).c_str());
       histNewTH2F_p->DrawCopy("COLZ"); 
       gPad->SetTicks();
       
@@ -498,6 +531,7 @@ int gdjHistDQM(std::string inConfigFileName)
 	
       if(!allGood){
 	std::cout << "Histogram \'" << goodObjectsOld[gI] << "\' fails check at precision \'" << precision << "\'" << std::endl;
+	histFailingPrecision.push_back(goodObjectsOld[gI]);
       }
       
       histNewTH2F_p->Divide(histOldTH2F_p);
@@ -553,6 +587,7 @@ int gdjHistDQM(std::string inConfigFileName)
 	
       if(!allGood){
 	std::cout << "Histogram \'" << goodObjectsOld[gI] << "\' fails check at precision \'" << precision << "\'" << std::endl;
+	histFailingPrecision.push_back(goodObjectsOld[gI]);
       }
       
       histNewTH2D_p->Divide(histOldTH2D_p);
@@ -601,6 +636,25 @@ int gdjHistDQM(std::string inConfigFileName)
   delete newFile_p;
   
   delete config_p;
+
+  std::cout << "JOB SUMMARY: " << std::endl;
+  std::cout << "Skipped histograms in 'old' file: " << std::endl;
+  for(unsigned int sI = 0; sI < oldHistSkipped.size(); ++sI){
+    std::cout << " " << oldHistSkipped[sI] << std::endl;
+  }
+  std::cout << "Histograms failing precision comparisons: " << std::endl;
+  for(unsigned int vI = 0; vI < histFailingPrecision.size(); ++vI){
+    std::cout << " " << histFailingPrecision[vI] << std::endl;
+  }  
+  std::cout << "'New' histograms with zero (0) matches: " << std::endl;
+  for(auto const & val : newHistUsedCounter){
+    if(val.second == 0) std::cout << " " << val.first << std::endl;
+  }
+
+  std::cout << "'New' histograms with multiple matches: " << std::endl;
+  for(auto const & val : newHistUsedCounter){
+    if(val.second >= 2) std::cout << " " << val.first << " (" << val.second << " matches)" << std::endl;
+  }
   
   std::cout << "GDJHISTDQM COMPLETE. return 0." << std::endl;
   return 0;
