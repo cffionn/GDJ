@@ -33,6 +33,7 @@ bool mixMachine::Init(std::string inMixMachineName, mixMachine::mixMode inMixMod
   
 
   std::vector<std::string> reqParamsGlobal = {"IS2DUNFOLD",
+					      "ISMC",
 					      "NBINSX",
 					      "BINSX",
 					      "TITLEX"};
@@ -47,6 +48,7 @@ bool mixMachine::Init(std::string inMixMachineName, mixMachine::mixMode inMixMod
   }
 
   m_is2DUnfold = m_env.GetValue("IS2DUNFOLD", 0);
+  m_isMC = m_env.GetValue("ISMC", 0);
   m_nBinsX = m_env.GetValue("NBINSX", -1);
   std::vector<Float_t> tempBins = strToVectF(m_env.GetValue("BINSX", ""));
   for(unsigned int tI = 0; tI < tempBins.size(); ++tI){
@@ -68,6 +70,8 @@ bool mixMachine::Init(std::string inMixMachineName, mixMachine::mixMode inMixMod
     m_titleY = m_env.GetValue("TITLEY", "");  
     
     for(unsigned int mI = 0; mI < mixNames.size(); ++mI){
+      if(!m_isMC && mixNames[mI].find("TRUTH") != std::string::npos) continue;
+
       m_hists2D.push_back(nullptr);
 
       std::string name = m_mixMachineName + "_MIXMODE" + std::to_string((int)m_mixMode) + "_" + mixNames[mI] + "_h";
@@ -78,6 +82,8 @@ bool mixMachine::Init(std::string inMixMachineName, mixMachine::mixMode inMixMod
   }
   else{
     for(unsigned int mI = 0; mI < mixNames.size(); ++mI){
+      if(!m_isMC && mixNames[mI].find("TRUTH") != std::string::npos) continue;
+
       m_hists1D.push_back(nullptr);
 
       std::string name = m_mixMachineName + "_MIXMODE" + std::to_string((int)m_mixMode) + "_" + mixNames[mI] + "_h";
@@ -147,6 +153,16 @@ bool mixMachine::FillXYMixCorrection(Float_t fillX, Float_t fillY, Float_t fillW
   return FillXY(fillX, fillY, fillWeight, "MIXCORRECTION");
 }
 
+bool mixMachine::FillXYTruth(Float_t fillX, Float_t fillY, Float_t fillWeight)
+{
+  return FillXY(fillX, fillY, fillWeight, "TRUTH");
+}
+
+bool mixMachine::FillXYTruthMatchedReco(Float_t fillX, Float_t fillY, Float_t fillWeight)
+{
+  return FillXY(fillX, fillY, fillWeight, "TRUTHMATCHEDRECO");
+}
+
 bool mixMachine::FillX(Float_t fillX, Float_t fillWeight, std::string mixName)
 {
   if(m_is2DUnfold){
@@ -170,6 +186,16 @@ bool mixMachine::FillXMix(Float_t fillX, Float_t fillWeight)
 bool mixMachine::FillXMixCorrection(Float_t fillX, Float_t fillWeight)
 {
   return FillX(fillX, fillWeight, "MIXCORRECTION");
+}
+
+bool mixMachine::FillXTruth(Float_t fillX, Float_t fillWeight)
+{
+  return FillX(fillX, fillWeight, "TRUTH");
+}
+
+bool mixMachine::FillXTruthMatchedReco(Float_t fillX, Float_t fillWeight)
+{
+  return FillX(fillX, fillWeight, "TRUTHMATCHEDRECO");
 }
 
 void mixMachine::ComputeSub()
