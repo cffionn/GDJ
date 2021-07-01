@@ -238,10 +238,13 @@ int gdjHistDQM(std::string inConfigFileName)
   
   for(unsigned int gI = 0; gI < goodObjectsOld.size(); ++gI){
     std::string newStrToFind = goodObjectsOld[gI];
-
     for(unsigned int sI = 0; sI < stringsToSubOut.size(); ++sI){
       if(newStrToFind.find(stringsToSubOut[sI]) != std::string::npos){
-	newStrToFind.replace(newStrToFind.find(stringsToSubOut[sI]), stringsToSubOut[sI].size(), stringsToSubIn[sI]);
+	std::string tempNewStr = newStrToFind;
+
+	tempNewStr.replace(tempNewStr.find(stringsToSubOut[sI]), stringsToSubOut[sI].size(), stringsToSubIn[sI]);
+
+	if(vectContainsStr(tempNewStr, &goodObjectsNew)){newStrToFind = tempNewStr; break;}
       }
     }
 
@@ -378,7 +381,7 @@ int gdjHistDQM(std::string inConfigFileName)
      
       gPad->SetTicks();
 
-      histNewTH1F_p->Sumw2();
+      if(histNewTH1F_p->GetSumw2()->fN == 0) histNewTH1F_p->Sumw2();
 
       bool allGood = true;
       for(Int_t bIX = 0; bIX < histOldTH1F_p->GetXaxis()->GetNbins()+1; ++bIX){
@@ -390,9 +393,6 @@ int gdjHistDQM(std::string inConfigFileName)
 	std::cout << "Histogram \'" << goodObjectsOld[gI] << "\' fails check at precision \'" << precision << "\'" << std::endl;
 	histFailingPrecision.push_back(goodObjectsOld[gI]);
       }
-
-      std::cout << "OLDHISTNAME: " << goodObjectsOld[gI] << std::endl;
-      std::cout << "NEWHISTNAME: " << goodObjectsNew[pos] << std::endl;
       
       histNewTH1F_p->Divide(histOldTH1F_p);
       canv_p->cd();
@@ -444,7 +444,7 @@ int gdjHistDQM(std::string inConfigFileName)
  
       gPad->SetTicks();
 
-      histNewTH1D_p->Sumw2();
+      if(histNewTH1D_p->GetSumw2()->fN == 0) histNewTH1D_p->Sumw2();
 
       bool allGood = true;
       for(Int_t bIX = 0; bIX < histOldTH1F_p->GetXaxis()->GetNbins()+1; ++bIX){
@@ -495,7 +495,6 @@ int gdjHistDQM(std::string inConfigFileName)
       histOldTH2F_p->GetYaxis()->SetTitleOffset(yOffset);
 
       std::string titleOld = goodObjectsOld[gI];
-      std::cout << "TITLE OLD: " << titleOld << std::endl;
       while(titleOld.find("/") != std::string::npos){
 	titleOld.replace(0, titleOld.find("/")+1, "");
       }
@@ -510,7 +509,6 @@ int gdjHistDQM(std::string inConfigFileName)
       histNewTH2F_p->GetYaxis()->SetTitleOffset(yOffset);
 
       std::string titleNew = goodObjectsNew[pos];
-      std::cout << "TITLE OLD: " << titleOld << std::endl;
       while(titleNew.find("/") != std::string::npos){
 	titleNew.replace(0, titleNew.find("/")+1, "");
       }
@@ -518,8 +516,8 @@ int gdjHistDQM(std::string inConfigFileName)
       histNewTH2F_p->DrawCopy("COLZ"); 
       gPad->SetTicks();
       
-      histNewTH2F_p->Sumw2();
-      histOldTH2F_p->Sumw2();
+      if(histNewTH2F_p->GetSumw2()->fN == 0) histNewTH2F_p->Sumw2();
+      if(histOldTH2F_p->GetSumw2()->fN == 0) histOldTH2F_p->Sumw2();
 
       bool allGood = true;
       for(Int_t bIX = 0; bIX < histOldTH2F_p->GetXaxis()->GetNbins()+1; ++bIX){
@@ -574,8 +572,8 @@ int gdjHistDQM(std::string inConfigFileName)
       histNewTH2D_p->DrawCopy("COLZ"); 
       gPad->SetTicks();
       
-      histNewTH2D_p->Sumw2();
-      histOldTH2D_p->Sumw2();
+      if(histNewTH2D_p->GetSumw2()->fN == 0) histNewTH2D_p->Sumw2();
+      if(histOldTH2D_p->GetSumw2()->fN == 0) histOldTH2D_p->Sumw2();
 
       bool allGood = true;
       for(Int_t bIX = 0; bIX < histOldTH2D_p->GetXaxis()->GetNbins()+1; ++bIX){
