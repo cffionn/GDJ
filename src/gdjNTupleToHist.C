@@ -81,6 +81,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
                                               "OUTFILENAME",
                                               "CENTFILENAME",
 					      "MIXFILENAME",
+					      "DOUNIFIEDPURITY",
 					      "PURITYFILENAME",
 					      "JETR",
 					      "ASSOCGENMINPT",
@@ -167,6 +168,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   std::string outFileName = config_p->GetValue("OUTFILENAME", "");
   std::string inGRLFileName = config_p->GetValue("GRLFILENAME", "");
   std::string inMixFileName = config_p->GetValue("MIXFILENAME", "");
+  const bool doUnifiedPurity = config_p->GetValue("DOUNIFIEDPURITY", 0);
   std::string inPurityFileName = config_p->GetValue("PURITYFILENAME", "");
 
   const std::string nMaxEvtStr = config_p->GetValue("NEVT", "");
@@ -382,9 +384,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
   const bool isPP = config_p->GetValue("ISPP", 1);
   const Int_t nMaxSubBins = 60;
   const Int_t nMaxCentBins = 10;
-  const Int_t nBarrelAndEC = 2;
-  const std::string barrelAndECStr[nBarrelAndEC] = {"Barrel", "EC"};
-  const std::string barrelAndECFitStr[nBarrelAndEC] = {"Eta0p00to1p37", "Eta1p52to2p37"};
+  const Int_t nBarrelAndEC = 3;
+  const std::string barrelAndECStr[nBarrelAndEC] = {"Barrel", "EC", "BarrelAndEC"};
+  const std::string barrelAndECFitStr[nBarrelAndEC] = {"Eta0p00to1p37", "Eta1p52to2p37", "Eta0p00to2p37"};
 
   Int_t nCentBins = 1;
 
@@ -3741,6 +3743,23 @@ int gdjNTupleToHist(std::string inConfigFileName)
       }
     }
 
+    photonPtJtPtVCent_MixMachine_p[cI][2]->Add(photonPtJtPtVCent_MixMachine_p[cI][0], photonPtJtPtVCent_MixMachine_p[cI][1]);
+    photonPtJtXJVCent_MixMachine_p[cI][2]->Add(photonPtJtXJVCent_MixMachine_p[cI][0], photonPtJtXJVCent_MixMachine_p[cI][1]);
+    photonPtJtDPhiVCent_MixMachine_p[cI][2]->Add(photonPtJtDPhiVCent_MixMachine_p[cI][0], photonPtJtDPhiVCent_MixMachine_p[cI][1]);
+    photonPtJtXJJVCent_MixMachine_p[cI][2]->Add(photonPtJtXJJVCent_MixMachine_p[cI][0], photonPtJtXJJVCent_MixMachine_p[cI][1]);
+    photonPtJtAJJVCent_MixMachine_p[cI][2]->Add(photonPtJtAJJVCent_MixMachine_p[cI][0], photonPtJtAJJVCent_MixMachine_p[cI][1]);
+    photonPtJtDPhiJJGVCent_MixMachine_p[cI][2]->Add(photonPtJtDPhiJJGVCent_MixMachine_p[cI][0], photonPtJtDPhiJJGVCent_MixMachine_p[cI][1]);
+    photonPtJtDPhiJJVCent_MixMachine_p[cI][2]->Add(photonPtJtDPhiJJVCent_MixMachine_p[cI][0], photonPtJtDPhiJJVCent_MixMachine_p[cI][1]);
+
+    photonPtJtPtVCent_MixMachine_Sideband_p[cI][2]->Add(photonPtJtPtVCent_MixMachine_Sideband_p[cI][0], photonPtJtPtVCent_MixMachine_Sideband_p[cI][1]);
+    photonPtJtXJVCent_MixMachine_Sideband_p[cI][2]->Add(photonPtJtXJVCent_MixMachine_Sideband_p[cI][0], photonPtJtXJVCent_MixMachine_Sideband_p[cI][1]);
+    photonPtJtDPhiVCent_MixMachine_Sideband_p[cI][2]->Add(photonPtJtDPhiVCent_MixMachine_Sideband_p[cI][0], photonPtJtDPhiVCent_MixMachine_Sideband_p[cI][1]);
+    photonPtJtXJJVCent_MixMachine_Sideband_p[cI][2]->Add(photonPtJtXJJVCent_MixMachine_Sideband_p[cI][0], photonPtJtXJJVCent_MixMachine_Sideband_p[cI][1]);
+    photonPtJtAJJVCent_MixMachine_Sideband_p[cI][2]->Add(photonPtJtAJJVCent_MixMachine_Sideband_p[cI][0], photonPtJtAJJVCent_MixMachine_Sideband_p[cI][1]);
+    photonPtJtDPhiJJGVCent_MixMachine_Sideband_p[cI][2]->Add(photonPtJtDPhiJJGVCent_MixMachine_Sideband_p[cI][0], photonPtJtDPhiJJGVCent_MixMachine_Sideband_p[cI][1]);
+    photonPtJtDPhiJJVCent_MixMachine_Sideband_p[cI][2]->Add(photonPtJtDPhiJJVCent_MixMachine_Sideband_p[cI][0], photonPtJtDPhiJJVCent_MixMachine_Sideband_p[cI][1]);
+    
+
     for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
       photonPtJtPtVCent_MixMachine_p[cI][eI]->ComputeSub();       
       photonPtJtXJVCent_MixMachine_p[cI][eI]->ComputeSub();       
@@ -3758,7 +3777,22 @@ int gdjNTupleToHist(std::string inConfigFileName)
       photonPtJtDPhiJJGVCent_MixMachine_Sideband_p[cI][eI]->ComputeSub();       
       photonPtJtDPhiJJVCent_MixMachine_Sideband_p[cI][eI]->ComputeSub();       
     }
-  
+
+    if(isMC){//Purity correction
+      if(doUnifiedPurity){	
+	
+      }
+      else{
+	for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
+	  if(isStrSame(barrelAndECStr[eI], "BarrelAndEC")) continue;
+
+	  std::string purityFitStr = "fit_purity_" + centBinsStr[cI] + "_" + barrelAndECFitStr[eI];
+	  TF1* purityFit_p = (TF1*)purityFile_p->Get(purityFitStr.c_str());
+	  
+	
+      }
+    }
+    
     if(doMix){
       for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){         
 	//Correct DPhiJJ and XJJ Mix Event
@@ -3797,8 +3831,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	photonPtJtAJJVCent_SUBSideband_p[cI][eI]->Add(photonPtJtAJJVCent_RAWSideband_p[cI][eI], photonPtJtAJJVCent_MIXSidebandCorrected_p[cI][eI], 1.0, -1.0);
 	photonPtJtDPhiJJGVCent_SUBSideband_p[cI][eI]->Add(photonPtJtDPhiJJGVCent_RAWSideband_p[cI][eI], photonPtJtDPhiJJGVCent_MIXSidebandCorrected_p[cI][eI], 1.0, -1.0);
 	photonPtJtDPhiJJVCent_SUBSideband_p[cI][eI]->Add(photonPtJtDPhiJJVCent_RAWSideband_p[cI][eI], photonPtJtDPhiJJVCent_MIXSidebandCorrected_p[cI][eI], 1.0, -1.0);
+    	
 	
-
 	if(!isMC){
 	  //Purity correction
 	  std::string purityFitStr = "fit_purity_" + centBinsStr[cI] + "_" + barrelAndECFitStr[eI];

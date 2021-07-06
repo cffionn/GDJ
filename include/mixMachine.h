@@ -36,6 +36,26 @@ class mixMachine{
   bool FillXTruth(Float_t fillX, Float_t fillWeight);
   bool FillXTruthMatchedReco(Float_t fillX, Float_t fillWeight);
 
+  bool CheckMachinesMatchMode(mixMachine* machineToCheck);
+  bool CheckMachinesMatchMC(mixMachine* machineToCheck);
+  bool CheckMachinesMatch2D(mixMachine* machineToCheck);
+  bool CheckMachinesMatchBins(mixMachine* machineToCheck, double precision = 0.0001);
+
+  mixMode GetMixMode(){return m_mixMode;}
+  bool GetIsMC(){return m_isMC;}
+  bool GetIs2DUnfold(){return m_is2DUnfold;}
+  std::string GetMixMachineName(){return m_mixMachineName;}
+
+  Int_t GetNBinsX(){return m_nBinsX;}
+  std::vector<double> GetBinsX(){return m_binsXVect;}
+  Int_t GetNBinsY(){return m_nBinsY;}
+  std::vector<double> GetBinsY(){return m_binsYVect;}
+
+  std::vector<TH1F*> GetTH1F(){return m_hists1D;}
+  std::vector<TH2F*> GetTH2F(){return m_hists2D;}
+
+  bool Add(mixMachine* machineToAdd, double precision = 0.0001);
+  bool Add(mixMachine* machineToAdd1, mixMachine* machineToAdd2, double precision = 0.0001);
   void ComputeSub();
   void WriteToFile(TFile* inFile_p);
   void WriteToDirectory(TDirectoryFile* inDir_p);
@@ -60,9 +80,11 @@ class mixMachine{
   const static Int_t nMaxBins = 200;
   Int_t m_nBinsX;
   Double_t m_binsX[nMaxBins+1];
+  std::vector<double> m_binsXVect;
 
   Int_t m_nBinsY;
   Double_t m_binsY[nMaxBins+1];
+  std::vector<double> m_binsYVect;
 
   std::string m_titleX, m_titleY;
 };

@@ -50,9 +50,11 @@ bool mixMachine::Init(std::string inMixMachineName, mixMachine::mixMode inMixMod
   m_is2DUnfold = m_env.GetValue("IS2DUNFOLD", 0);
   m_isMC = m_env.GetValue("ISMC", 0);
   m_nBinsX = m_env.GetValue("NBINSX", -1);
+  m_binsXVect.clear();
   std::vector<Float_t> tempBins = strToVectF(m_env.GetValue("BINSX", ""));
   for(unsigned int tI = 0; tI < tempBins.size(); ++tI){
     m_binsX[tI] = tempBins[tI];
+    m_binsXVect.push_back(tempBins[tI]);
   }
   m_titleX = m_env.GetValue("TITLEX", "");  
 
@@ -63,9 +65,11 @@ bool mixMachine::Init(std::string inMixMachineName, mixMachine::mixMode inMixMod
     }
 
     m_nBinsY = m_env.GetValue("NBINSY", -1);
+    m_binsYVect.clear();
     std::vector<Float_t> tempBins = strToVectF(m_env.GetValue("BINSY", ""));
     for(unsigned int tI = 0; tI < tempBins.size(); ++tI){
       m_binsY[tI] = tempBins[tI];
+      m_binsYVect.push_back(tempBins[tI]);
     }
     m_titleY = m_env.GetValue("TITLEY", "");  
     
@@ -198,6 +202,198 @@ bool mixMachine::FillXTruthMatchedReco(Float_t fillX, Float_t fillWeight)
   return FillX(fillX, fillWeight, "TRUTHMATCHEDRECO");
 }
 
+
+bool mixMachine::CheckMachinesMatchMode(mixMachine* machineToCheck)
+{
+  mixMode checkMixMode = machineToCheck->GetMixMode();
+  std::string machineToCheckName = machineToCheck->GetMixMachineName();
+
+  if(checkMixMode != m_mixMode){
+    std::cout << "MIXMACHINE::CHECKMACHINEMATCHMODE() ERROR: mixModes differ." << std::endl;
+    std::cout << " Main Machine: " << m_mixMachineName << ", Mode: " << m_mixMode << std::endl;
+    std::cout << " Machine-to-check: " << machineToCheckName << ", Mode: " << checkMixMode << std::endl;
+    std::cout << "return false" << std::endl;
+    return false;
+  }
+  return true;  
+}
+
+
+bool mixMachine::CheckMachinesMatchMC(mixMachine* machineToCheck)
+{
+  bool checkIsMC = machineToCheck->GetIsMC();
+  std::string machineToCheckName = machineToCheck->GetMixMachineName();
+
+  if(checkIsMC != m_isMC){
+    std::cout << "MIXMACHINE::CHECKMACHINEMATCHMC() ERROR: isMC differs." << std::endl;
+    std::cout << " Main Machine: " << m_mixMachineName << ", isMC: " << m_isMC << std::endl;
+    std::cout << " Machine-to-check: " << machineToCheckName << ", isMC: " << checkIsMC << std::endl;
+    std::cout << "return false" << std::endl;
+    return false;
+  }
+
+  return true;
+}
+
+bool mixMachine::CheckMachinesMatch2D(mixMachine* machineToCheck)
+{
+  bool checkIs2D = machineToCheck->GetIs2DUnfold();
+  std::string machineToCheckName = machineToCheck->GetMixMachineName();
+
+  if(checkIs2D != m_is2DUnfold){
+    std::cout << "MIXMACHINE::CHECKMACHINEMATCH2D() ERROR: is2DUnfold differs." << std::endl;
+    std::cout << " Main Machine: " << m_mixMachineName << ", is2DUnfold: " << m_is2DUnfold << std::endl;
+    std::cout << " Machine-to-check: " << machineToCheckName << ", isMC: " << checkIs2D << std::endl;
+    std::cout << "return false" << std::endl;
+    return false;
+  }
+
+  return true;
+}
+
+bool mixMachine::CheckMachinesMatchBins(mixMachine* machineToCheck, double precision)
+{
+  if(!this->CheckMachinesMatch2D(machineToCheck)){
+    std::cout << "ABOVE ERROR COMES FROM INVOCATION OF MIXMACHINE::CHECKMACHINESMATCHBINS()" << std::endl;
+    return false;
+  }
+
+  std::string machineToCheckName = machineToCheck->GetMixMachineName();
+
+  if(m_is2DUnfold){
+    Int_t nBinsXToCheck = machineToCheck->GetNBinsX();
+    Int_t nBinsYToCheck = machineToCheck->GetNBinsY();
+
+    if(nBinsXToCheck != m_nBinsX){
+      std::cout << "MIXMACHINE::CHECKMACHINEMATCHBINS() ERROR: nBinsX differs." << std::endl;
+      std::cout << " Main Machine: " << m_mixMachineName << ", nBinsX: " << m_nBinsX << std::endl;
+      std::cout << " Machine-to-check: " << machineToCheckName << ", nBinsX: "  << nBinsXToCheck << std::endl;
+      std::cout << "return false" << std::endl;
+      return false;
+    }
+
+    if(nBinsYToCheck != m_nBinsY){
+      std::cout << "MIXMACHINE::CHECKMACHINEMATCHBINS() ERROR: nBinsY differs." << std::endl;
+      std::cout << " Main Machine: " << m_mixMachineName << ", nBinsY: " << m_nBinsY << std::endl;
+      std::cout << " Machine-to-check: " << machineToCheckName << ", nBinsY: "  << nBinsYToCheck << std::endl;
+      std::cout << "return false" << std::endl;
+      return false;
+    }
+
+    std::vector<double> checkBinsX = machineToCheck->GetBinsX();
+    std::vector<double> checkBinsY = machineToCheck->GetBinsY();
+
+    bool allXBinsGood = true;
+    for(unsigned int bIX = 0; bIX < checkBinsX.size(); ++bIX){
+      if(TMath::Abs(checkBinsX[bIX] - m_binsXVect[bIX]) > precision){
+	allXBinsGood = false;
+	break;
+      }
+    }
+    
+    if(!allXBinsGood){
+      std::cout << "MIXMACHINE::CheckMachinesMatchBins(): X-Binning mismatch." << std::endl;
+      std::cout << " Precision level: " << precision << std::endl;
+      std::cout << " Main machine: " << m_mixMachineName << std::endl;
+      std::cout << " Machine-to-check: " << machineToCheckName << std::endl;
+
+      for(unsigned int bIX = 0; bIX < checkBinsX.size(); ++bIX){
+	std::cout << " " << bIX << ": " << m_binsXVect[bIX] << ", " << checkBinsX[bIX] << std::endl;
+      }
+      
+      return false;
+    }
+
+    bool allYBinsGood = true;
+    for(unsigned int bIY = 0; bIY < checkBinsY.size(); ++bIY){
+      if(TMath::Abs(checkBinsY[bIY] - m_binsYVect[bIY]) > precision){
+	allYBinsGood = false;
+	break;
+      }
+    }
+    
+    if(!allYBinsGood){
+      std::cout << "MIXMACHINE::CheckMachinesMatchBins(): Y-Binning mismatch." << std::endl;
+      std::cout << " Precision level: " << precision << std::endl;
+      std::cout << " Main machine: " << m_mixMachineName << std::endl;
+      std::cout << " Machine-to-check: " << machineToCheckName << std::endl;
+
+      for(unsigned int bIY = 0; bIY < checkBinsY.size(); ++bIY){
+	std::cout << " " << bIY << ": " << m_binsYVect[bIY] << ", " << checkBinsY[bIY] << std::endl;
+      }
+      
+      return false;
+    }
+
+  }
+  else{
+    Int_t nBinsXToCheck = machineToCheck->GetNBinsX();
+
+    if(nBinsXToCheck != m_nBinsX){
+      std::cout << "MIXMACHINE::CHECKMACHINEMATCHBINS() ERROR: nBinsX differs." << std::endl;
+      std::cout << " Main Machine: " << m_mixMachineName << ", nBinsX: " << m_nBinsX << std::endl;
+      std::cout << " Machine-to-check: " << machineToCheckName << ", nBinsX: "  << nBinsXToCheck << std::endl;
+      std::cout << "return false" << std::endl;
+      return false;
+    }
+
+    std::vector<double> checkBinsX = machineToCheck->GetBinsX();
+    bool allXBinsGood = true;
+    for(unsigned int bIX = 0; bIX < checkBinsX.size(); ++bIX){
+      if(TMath::Abs(checkBinsX[bIX] - m_binsXVect[bIX]) > precision){
+        allXBinsGood = false;
+        break;
+      }
+    }
+
+    if(!allXBinsGood){
+      std::cout << "MIXMACHINE::CheckMachinesMatchBins(): X-Binning mismatch." << std::endl;
+      std::cout << " Precision level: " << precision << std::endl;
+      std::cout << " Main machine: " << m_mixMachineName << std::endl;
+      std::cout << " Machine-to-check: " << machineToCheckName << std::endl;
+
+      for(unsigned int bIX = 0; bIX < checkBinsX.size(); ++bIX){
+	std::cout << " " << bIX << ": " << m_binsXVect[bIX] << ", " << checkBinsX[bIX] << std::endl;
+      }
+
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool mixMachine::Add(mixMachine *machineToAdd, double precision)
+{
+  //Make sure the machines are compatible
+  if(!(this->CheckMachinesMatchMode(machineToAdd))) return false;
+  if(!(this->CheckMachinesMatchMC(machineToAdd))) return false;
+  if(!(this->CheckMachinesMatch2D(machineToAdd))) return false;
+  if(!(this->CheckMachinesMatchBins(machineToAdd, precision))) return false;
+
+  if(m_is2DUnfold){
+    std::vector<TH2F*> tempHists = machineToAdd->GetTH2F();
+    for(unsigned int i = 0; i < tempHists.size(); ++i){
+      m_hists2D[i]->Add(tempHists[i]);
+    }
+  }
+  else{
+    std::vector<TH1F*> tempHists = machineToAdd->GetTH1F();
+    for(unsigned int i = 0; i < tempHists.size(); ++i){
+      m_hists1D[i]->Add(tempHists[i]);
+    }
+  }
+
+  return true;
+}
+
+bool mixMachine::Add(mixMachine* machineToAdd1, mixMachine* machineToAdd2, double precision)
+{
+  if(!this->Add(machineToAdd1, precision)) return false;
+  if(!this->Add(machineToAdd2, precision)) return false;
+  return true;
+}
+
 void mixMachine::ComputeSub()
 {
   if(m_mixMode == NONE){
@@ -322,7 +518,9 @@ void mixMachine::Clean()
   m_env.Clear();
 
   m_nBinsX = 0;
+  m_binsXVect.clear();
   m_nBinsY = 0;
+  m_binsYVect.clear();
   m_titleX = "";
   m_titleY = "";
 
