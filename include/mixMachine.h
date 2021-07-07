@@ -46,6 +46,9 @@ class mixMachine{
   bool GetIs2DUnfold(){return m_is2DUnfold;}
   std::string GetMixMachineName(){return m_mixMachineName;}
 
+  TH1F* GetTH1FPtr(std::string histType);
+  TH2F* GetTH2FPtr(std::string histType);
+
   Int_t GetNBinsX(){return m_nBinsX;}
   std::vector<double> GetBinsX(){return m_binsXVect;}
   Int_t GetNBinsY(){return m_nBinsY;}

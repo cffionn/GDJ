@@ -3777,8 +3777,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
       photonPtJtDPhiJJGVCent_MixMachine_Sideband_p[cI][eI]->ComputeSub();       
       photonPtJtDPhiJJVCent_MixMachine_Sideband_p[cI][eI]->ComputeSub();       
     }
-
-    if(isMC){//Purity correction
+  
+    if(!isMC){//Purity correction; Data only
       if(doUnifiedPurity){	
 	
       }
@@ -3789,10 +3789,123 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  std::string purityFitStr = "fit_purity_" + centBinsStr[cI] + "_" + barrelAndECFitStr[eI];
 	  TF1* purityFit_p = (TF1*)purityFile_p->Get(purityFitStr.c_str());
 	  
-	
+	  TH2F* tempRawHist_p = photonPtJtPtVCent_MixMachine_p[cI][eI]->GetTH2FPtr("RAW");
+
+	  for(Int_t bIY = 0; bIY < tempRawHist_p->GetYaxis()->GetNbins(); ++bIY){
+	    Float_t lowVal = tempRawHist_p->GetYaxis()->GetBinLowEdge(bIY+1);
+            Float_t hiVal = tempRawHist_p->GetYaxis()->GetBinLowEdge(bIY+2);
+
+	    Float_t totalNum = 0.0;
+	    Float_t totalDenom = 0.0;//Total denom is also the total number of photons
+	    for(Int_t bIX = 0; bIX < photonPtVCent_RAW_p[cI][eI]->GetXaxis()->GetNbins(); ++bIX){
+	      Float_t center = photonPtVCent_RAW_p[cI][eI]->GetXaxis()->GetBinCenter(bIX+1);
+	      
+	      if(center < lowVal) continue;
+	      if(center >= hiVal) continue;
+
+	      Float_t lowVal2 = photonPtVCent_RAW_p[cI][eI]->GetXaxis()->GetBinLowEdge(bIX+1);
+	      Float_t hiVal2 = photonPtVCent_RAW_p[cI][eI]->GetXaxis()->GetBinLowEdge(bIX+2);
+	      
+	      if(lowVal2 < lowVal - 0.0001 || hiVal2 >= hiVal + 0.0001){
+		std::cout << "BIG ERROR BINS ARE NOT SELFCONSISTENT SUBSETS DURING PURITY CALC. return 1" << std::endl;
+		return 1;
+	      }
+
+	      Float_t content = photonPtVCent_RAW_p[cI][eI]->GetBinContent(bIX+1);
+	      totalNum += content*center;
+              totalDenom += content;
+	    }
+
+	    //Get number of sideband photons
+            Float_t totalSideband = 0.0;
+            for(Int_t bIX = 0; bIX < photonPtVCent_RAWSideband_p[cI][eI]->GetXaxis()->GetNbins(); ++bIX){
+              Float_t center = photonPtVCent_RAWSideband_p[cI][eI]->GetXaxis()->GetBinCenter(bIX+1);
+	      
+	      if(center < lowVal) continue;
+              if(center >= hiVal) continue;
+
+	      Float_t lowVal2 = photonPtVCent_RAWSideband_p[cI][eI]->GetXaxis()->GetBinLowEdge(bIX+1);
+              Float_t hiVal2 = photonPtVCent_RAWSideband_p[cI][eI]->GetXaxis()->GetBinLowEdge(bIX+2);
+	      
+	      if(lowVal2 < lowVal - 0.0001 || hiVal2 >= hiVal + 0.0001){
+		std::cout << "BIG ERROR BINS ARE NOT SELFCONSISTENT SUBSETS DURING PURITY CALC. return 1" << std::endl;
+                return 1;
+              }
+
+	      Float_t content = photonPtVCent_RAWSideband_p[cI][eI]->GetBinContent(bIX+1);
+	      totalSideband += content;
+	    }
+	    Float_t meanVal = totalNum/totalDenom;
+            Float_t purity = purityFit_p->Eval(meanVal);
+
+	    std::vector<mixMachine*> inMixMachines_p = {photonPtJtPtVCent_MixMachine_p[cI][eI], photonPtJtXJVCent_MixMachine_p[cI][eI], photonPtJtDPhiVCent_MixMachine_p[cI][eI], photonPtJtXJJVCent_MixMachine_p[cI][eI], photonPtJtAJJVCent_MixMachine_p[cI][eI], photonPtJtDPhiJJGVCent_MixMachine_p[cI][eI], photonPtJtDPhiJJVCent_MixMachine_p[cI][eI]};
+	    std::vector<mixMachine*> inMixMachines_Sideband_p = {photonPtJtPtVCent_MixMachine_Sideband_p[cI][eI], photonPtJtXJVCent_MixMachine_Sideband_p[cI][eI], photonPtJtDPhiVCent_MixMachine_Sideband_p[cI][eI], photonPtJtXJJVCent_MixMachine_Sideband_p[cI][eI], photonPtJtAJJVCent_MixMachine_Sideband_p[cI][eI], photonPtJtDPhiJJGVCent_MixMachine_Sideband_p[cI][eI], photonPtJtDPhiJJVCent_MixMachine_Sideband_p[cI][eI]};
+	    std::vector<TH2F*> outHists_p = {photonPtJtPtVCent_PURCORR_p[cI][eI], photonPtJtXJVCent_PURCORR_p[cI][eI], photonPtJtDPhiVCent_PURCORR_p[cI][eI], photonPtJtXJJVCent_PURCORR_p[cI][eI], photonPtJtAJJVCent_PURCORR_p[cI][eI], photonPtJtDPhiJJGVCent_PURCORR_p[cI][eI], photonPtJtDPhiJJVCent_PURCORR_p[cI][eI]};
+
+	    for(unsigned int hI = 0; hI < inMixMachines_p.size(); ++hI){
+	      TH2F* subHist_p = inMixMachines_p[hI]->GetTH2FPtr("SUB");
+	      TH2F* subHist_Sideband_p = inMixMachines_Sideband_p[hI]->GetTH2FPtr("SUB");
+	      
+	      std::cout << "PRINTING: " << std::endl;
+	      subHist_p->Print("ALL");
+	      subHist_Sideband_p->Print("ALL");
+	      
+	      for(Int_t bIX = 0; bIX < subHist_p->GetXaxis()->GetNbins(); ++bIX){
+		Float_t binContent = subHist_p->GetBinContent(bIX+1, bIY+1);
+		Float_t binError = subHist_p->GetBinError(bIX+1, bIY+1);
+
+		Float_t binSidebandContent = subHist_Sideband_p->GetBinContent(bIX+1, bIY+1);
+                Float_t binSidebandError = subHist_Sideband_p->GetBinError(bIX+1, bIY+1);
+
+		binSidebandContent = (1.0 - purity)*binSidebandContent*totalDenom/totalSideband;
+                binSidebandError = (1.0 - purity)*binSidebandError*totalDenom/totalSideband;
+
+                binContent -= binSidebandContent;
+
+                binError = TMath::Sqrt(binError*binError + binSidebandError*binSidebandError);
+
+		outHists_p[hI]->SetBinContent(bIX+1, bIY+1, binContent);
+                outHists_p[hI]->SetBinError(bIX+1, bIY+1, binError);
+	      }
+	    }
+	  }
+
+	  for(Int_t bIX = 0; bIX < photonPtVCent_RAW_p[cI][eI]->GetXaxis()->GetNbins(); ++bIX){
+	    Float_t center = photonPtVCent_RAW_p[cI][eI]->GetXaxis()->GetBinCenter(bIX+1);
+            Float_t purity = purityFit_p->Eval(center);
+
+            Float_t binContent = photonPtVCent_RAW_p[cI][eI]->GetBinContent(bIX+1);
+            Float_t binError = photonPtVCent_RAW_p[cI][eI]->GetBinError(bIX+1);
+
+	    Float_t binSidebandContent = photonPtVCent_RAWSideband_p[cI][eI]->GetBinContent(bIX+1);
+	    binSidebandContent = (1.0 - purity)*binSidebandContent*binContent/binSidebandContent;
+	    
+	    binContent -= binSidebandContent;
+
+	    photonPtVCent_PURCORR_p[cI][eI]->SetBinContent(bIX+1, binContent);
+            photonPtVCent_PURCORR_p[cI][eI]->SetBinError(bIX+1, binError);
+	  }
+	}
       }
     }
-    
+    else{
+      //If its MC we just pass thru; Purity correction goes on data only
+      for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){	
+	std::vector<mixMachine*> inMixMachines_p = {photonPtJtPtVCent_MixMachine_p[cI][eI], photonPtJtXJVCent_MixMachine_p[cI][eI], photonPtJtDPhiVCent_MixMachine_p[cI][eI], photonPtJtXJJVCent_MixMachine_p[cI][eI], photonPtJtAJJVCent_MixMachine_p[cI][eI], photonPtJtDPhiJJGVCent_MixMachine_p[cI][eI], photonPtJtDPhiJJVCent_MixMachine_p[cI][eI]};
+	std::vector<TH2F*> outHists_p = {photonPtJtPtVCent_PURCORR_p[cI][eI], photonPtJtXJVCent_PURCORR_p[cI][eI], photonPtJtDPhiVCent_PURCORR_p[cI][eI], photonPtJtXJJVCent_PURCORR_p[cI][eI], photonPtJtAJJVCent_PURCORR_p[cI][eI], photonPtJtDPhiJJGVCent_PURCORR_p[cI][eI], photonPtJtDPhiJJVCent_PURCORR_p[cI][eI]};
+	
+	for(unsigned int mI = 0; mI < inMixMachines_p.size(); ++mI){
+	  TH2F* subHist_p = inMixMachines_p[mI]->GetTH2FPtr("SUB");
+	  
+	  for(unsigned int bIX = 0; bIX < outHists_p[mI]->GetXaxis()->GetNbins(); ++bIX){
+	    outHists_p[mI]->SetBinContent(bIX+1, subHist_p->GetBinContent(bIX+1));
+	    outHists_p[mI]->SetBinError(bIX+1, subHist_p->GetBinError(bIX+1));
+	  }
+	}
+      }
+
+    }
+  
     if(doMix){
       for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){         
 	//Correct DPhiJJ and XJJ Mix Event
@@ -3892,8 +4005,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
 		binError = TMath::Sqrt(binError*binError + binSidebandError*binSidebandError);
 		
-		outHists_p[hI]->SetBinContent(bIX+1, bIY+1, binContent);
-		outHists_p[hI]->SetBinError(bIX+1, bIY+1, binError);
+		//		outHists_p[hI]->SetBinContent(bIX+1, bIY+1, binContent);
+		//		outHists_p[hI]->SetBinError(bIX+1, bIY+1, binError);
 	      }
 	    }	  	    
 	  }
@@ -3916,8 +4029,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    binContent -= binSidebandContent;	   
 	    //	    binError = TMath::Sqrt(binError*binError + binSidebandError*binSidebandError);
 		
-	    photonPtVCent_PURCORR_p[cI][eI]->SetBinContent(bIX+1, binContent);
-	    photonPtVCent_PURCORR_p[cI][eI]->SetBinError(bIX+1, binError);
+	    //	    photonPtVCent_PURCORR_p[cI][eI]->SetBinContent(bIX+1, binContent);
+	    //	    photonPtVCent_PURCORR_p[cI][eI]->SetBinError(bIX+1, binError);
 	  }
 	}
 	else{
@@ -3928,8 +4041,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    Float_t content = photonPtVCent_RAW_p[cI][eI]->GetBinContent(bIX+1);
 	    Float_t error = photonPtVCent_RAW_p[cI][eI]->GetBinError(bIX+1);
 	    
-	    photonPtVCent_PURCORR_p[cI][eI]->SetBinContent(bIX+1, content);
-	    photonPtVCent_PURCORR_p[cI][eI]->SetBinError(bIX+1, error);
+	    //	    photonPtVCent_PURCORR_p[cI][eI]->SetBinContent(bIX+1, content);
+	    //	    photonPtVCent_PURCORR_p[cI][eI]->SetBinError(bIX+1, error);
 	  }
 
 	  for(unsigned int hI = 0; hI < inSignalHists_p.size(); ++hI){
@@ -3938,8 +4051,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		Float_t content = inSignalHists_p[hI]->GetBinContent(bIX+1, bIY+1);
 		Float_t error = inSignalHists_p[hI]->GetBinError(bIX+1, bIY+1);
 
-		outHists_p[hI]->SetBinContent(bIX+1, bIY+1, content);
-		outHists_p[hI]->SetBinError(bIX+1, bIY+1, error);
+		//		outHists_p[hI]->SetBinContent(bIX+1, bIY+1, content);
+		//		outHists_p[hI]->SetBinError(bIX+1, bIY+1, error);
 	      }
 	    }
 	  }	 
@@ -4028,8 +4141,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		binContent -= binSidebandContent;
 		binError = TMath::Sqrt(binError*binError + binSidebandError*binSidebandError);
 		
-		outHists_p[hI]->SetBinContent(bIX+1, bIY+1, binContent);
-		outHists_p[hI]->SetBinError(bIX+1, bIY+1, binError);
+		//		outHists_p[hI]->SetBinContent(bIX+1, bIY+1, binContent);
+		//		outHists_p[hI]->SetBinError(bIX+1, bIY+1, binError);
 	      }
 	    }	  
 	  }
@@ -4052,8 +4165,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    binContent -= binSidebandContent;	   
 	    //	    binError = TMath::Sqrt(binError*binError + binSidebandError*binSidebandError);
 		
-	    photonPtVCent_PURCORR_p[cI][eI]->SetBinContent(bIX+1, binContent);
-	    photonPtVCent_PURCORR_p[cI][eI]->SetBinError(bIX+1, binError);
+	    //	    photonPtVCent_PURCORR_p[cI][eI]->SetBinContent(bIX+1, binContent);
+	    //	    photonPtVCent_PURCORR_p[cI][eI]->SetBinError(bIX+1, binError);
 	  }	  
 	}
 	else{
@@ -4075,8 +4188,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		Float_t content = inSignalHists_p[hI]->GetBinContent(bIX+1, bIY+1);
 		Float_t error = inSignalHists_p[hI]->GetBinError(bIX+1, bIY+1);
 
-		outHists_p[hI]->SetBinContent(bIX+1, bIY+1, content);
-		outHists_p[hI]->SetBinError(bIX+1, bIY+1, error);
+		//		outHists_p[hI]->SetBinContent(bIX+1, bIY+1, content);
+		//		outHists_p[hI]->SetBinError(bIX+1, bIY+1, error);
 	      }
 	    }
 	  }

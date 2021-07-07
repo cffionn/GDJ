@@ -97,7 +97,6 @@ bool mixMachine::Init(std::string inMixMachineName, mixMachine::mixMode inMixMod
     }    
   }
 
-
   m_isInit = true;
   return m_isInit;
 }
@@ -361,6 +360,46 @@ bool mixMachine::CheckMachinesMatchBins(mixMachine* machineToCheck, double preci
   }
 
   return true;
+}
+
+TH1F* mixMachine::GetTH1FPtr(std::string histType)
+{
+  if(m_is2DUnfold){
+    std::cout << "ERROR IN MIXMACHINE::GetTH1FPtr(): Unfold is 2-D; Calling GetTH1FPtr is invalid. return nullptr" << std::endl;
+    return nullptr;
+  }
+
+  std::vector<std::string> mixNames = m_noneMixNames;
+  if(m_mixMode == INCLUSIVE) mixNames = m_inclusiveMixNames;
+  else if(m_mixMode == MULTI) mixNames = m_multiMixNames;
+
+  int histPos = vectContainsStr(histType, &mixNames);
+  if(histPos < 0){
+    std::cout << "ERROR IN MIXMACHINE::GetTH1FPtr(): Requested hist \'" << histType << "\' is not found in MixMode \'" << m_mixMode << ". return nullptr" << std::endl;
+    return nullptr;
+  }
+  
+  return m_hists1D[histPos];
+}
+
+TH2F* mixMachine::GetTH2FPtr(std::string histType)
+{
+  if(!m_is2DUnfold){
+    std::cout << "ERROR IN MIXMACHINE::GetTH2FPtr(): Unfold is 1-D; Calling GetTH2FPtr is invalid. return nullptr" << std::endl;
+    return nullptr;
+  }
+
+  std::vector<std::string> mixNames = m_noneMixNames;
+  if(m_mixMode == INCLUSIVE) mixNames = m_inclusiveMixNames;
+  else if(m_mixMode == MULTI) mixNames = m_multiMixNames;
+
+  int histPos = vectContainsStr(histType, &mixNames);
+  if(histPos < 0){
+    std::cout << "ERROR IN MIXMACHINE::GetTH2FPtr(): Requested hist \'" << histType << "\' is not found in MixMode \'" << m_mixMode << ". return nullptr" << std::endl;
+    return nullptr;
+  }
+  
+  return m_hists2D[histPos];
 }
 
 bool mixMachine::Add(mixMachine *machineToAdd, double precision)
