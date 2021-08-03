@@ -7,6 +7,7 @@
 //Local dependencies
 #include "include/envUtil.h"
 #include "include/mixMachine.h"
+#include "include/plotUtilities.h"
 
 mixMachine::mixMachine(std::string inMixMachineName, mixMachine::mixMode inMixMode, TEnv* inParams_p)
 {
@@ -135,7 +136,9 @@ bool mixMachine::FillXY(Float_t fillX, Float_t fillY, Float_t fillWeight, std::s
     return false;
   }  
 
-  if(m_is2DUnfold) m_hists2D[histPos]->Fill(fillX, fillY, fillWeight);
+  if(m_is2DUnfold){
+    m_hists2D[histPos]->Fill(fillX, fillY, fillWeight);
+  }
   else m_hists1D[histPos]->Fill(fillX, fillWeight);
 
   return true;
@@ -373,7 +376,7 @@ TH1F* mixMachine::GetTH1FPtr(std::string histType)
   if(m_mixMode == INCLUSIVE) mixNames = m_inclusiveMixNames;
   else if(m_mixMode == MULTI) mixNames = m_multiMixNames;
 
-  int histPos = vectContainsStr(histType, &mixNames);
+  int histPos = vectContainsStrPos(histType, &mixNames);
   if(histPos < 0){
     std::cout << "ERROR IN MIXMACHINE::GetTH1FPtr(): Requested hist \'" << histType << "\' is not found in MixMode \'" << m_mixMode << ". return nullptr" << std::endl;
     return nullptr;
@@ -393,7 +396,8 @@ TH2F* mixMachine::GetTH2FPtr(std::string histType)
   if(m_mixMode == INCLUSIVE) mixNames = m_inclusiveMixNames;
   else if(m_mixMode == MULTI) mixNames = m_multiMixNames;
 
-  int histPos = vectContainsStr(histType, &mixNames);
+  int histPos = vectContainsStrPos(histType, &mixNames);
+
   if(histPos < 0){
     std::cout << "ERROR IN MIXMACHINE::GetTH2FPtr(): Requested hist \'" << histType << "\' is not found in MixMode \'" << m_mixMode << ". return nullptr" << std::endl;
     return nullptr;
@@ -435,35 +439,97 @@ bool mixMachine::Add(mixMachine* machineToAdd1, mixMachine* machineToAdd2, doubl
 
 void mixMachine::ComputeSub()
 {
-  if(m_mixMode == NONE){
+  //  std::cout << "COMPUTING SUB FOR MIXMACHINE: \'" << m_mixMachineName << std::endl;
+
+  if(m_mixMode == NONE){    
+    //   std::cout << " MIXMODE IS NONE" << std::endl;
     int rawPos = vectContainsStrPos("RAW", &m_noneMixNames);
     int subPos = vectContainsStrPos("SUB", &m_noneMixNames);
+    /*
+    std::cout << " RAW POS: "<< rawPos << std::endl;
+    std::cout << " SUB POS: "<< subPos << std::endl;
+    */
 
     if(m_is2DUnfold) m_hists2D[subPos]->Add(m_hists2D[rawPos], 1.0);
     else m_hists1D[subPos]->Add(m_hists1D[rawPos], 1.0);
   }
   else if(m_mixMode == INCLUSIVE){
+    //    std::cout << " MIXMODE IS INCLUSIVE" << std::endl;
+
     int rawPos = vectContainsStrPos("RAW", &m_inclusiveMixNames);
     int mixPos = vectContainsStrPos("MIX", &m_inclusiveMixNames);
     int subPos = vectContainsStrPos("SUB", &m_inclusiveMixNames);
+    /*
+    std::cout << " RAW POS: "<< rawPos << std::endl;
+    std::cout << " MIX POS: "<< mixPos << std::endl;
+    std::cout << " SUB POS: "<< subPos << std::endl;
+    */
+    if(m_is2DUnfold){
+      m_hists2D[subPos]->Add(m_hists2D[rawPos], m_hists2D[mixPos], 1.0, -1.0);
 
-    if(m_is2DUnfold) m_hists2D[subPos]->Add(m_hists2D[rawPos], m_hists2D[mixPos], -1.0);
-    else m_hists1D[subPos]->Add(m_hists1D[rawPos], m_hists1D[mixPos], -1.0);
+      /*
+      std::cout << "RAW HIST" << std::endl;
+      for(Int_t bIY = m_hists2D[rawPos]->GetXaxis()->GetNbins()-1; bIY >= 0; --bIY){
+	std::string outStr = "";
+	
+	for(Int_t bIX = 0; bIX < m_hists2D[rawPos]->GetXaxis()->GetNbins()+1; ++bIX){
+	  std::string newStr = prettyString(m_hists2D[rawPos]->GetBinContent(bIX+1, bIY+1), 5, false);
+	  while(newStr.size() > 7){newStr = newStr.replace(newStr.size()-1,1,"");}
+	  outStr = outStr + newStr + " ";
+	}
+	std::cout << outStr << std::endl;
+      }
+      
+      std::cout << "MIX HIST" << std::endl;
+      for(Int_t bIY = m_hists2D[mixPos]->GetXaxis()->GetNbins()-1; bIY >= 0; --bIY){
+	std::string outStr = "";
+	
+	for(Int_t bIX = 0; bIX < m_hists2D[mixPos]->GetXaxis()->GetNbins()+1; ++bIX){
+	  std::string newStr = prettyString(m_hists2D[mixPos]->GetBinContent(bIX+1, bIY+1), 5, false);
+	  while(newStr.size() > 7){newStr = newStr.replace(newStr.size()-1,1,"");}
+	  outStr = outStr + newStr + " ";
+	}
+	std::cout << outStr << std::endl;
+      }
+
+      std::cout << "SUB HIST" << std::endl;
+      for(Int_t bIY = m_hists2D[subPos]->GetXaxis()->GetNbins()-1; bIY >= 0; --bIY){
+	std::string outStr = "";
+	
+	for(Int_t bIX = 0; bIX < m_hists2D[subPos]->GetXaxis()->GetNbins()+1; ++bIX){
+	  std::string newStr = prettyString(m_hists2D[subPos]->GetBinContent(bIX+1, bIY+1), 5, false);
+	  while(newStr.size() > 7){newStr = newStr.replace(newStr.size()-1,1,"");}
+	  outStr = outStr + newStr + " ";
+	}
+	std::cout << outStr << std::endl;
+      }
+
+      std::cout << std::endl;
+      */
+    }
+    else m_hists1D[subPos]->Add(m_hists1D[rawPos], m_hists1D[mixPos], 1.0, -1.0);
   }
   else if(m_mixMode == MULTI){
+    std::cout << " MIXMODE IS MULTI" << std::endl;
+
     int rawPos = vectContainsStrPos("RAW", &m_multiMixNames);
     int mixPos = vectContainsStrPos("MIX", &m_multiMixNames);
     int mixCorrectionPos = vectContainsStrPos("MIXCORRECTION", &m_multiMixNames);
     int mixCorrectedPos = vectContainsStrPos("MIXCORRECTED", &m_multiMixNames);
     int subPos = vectContainsStrPos("SUB", &m_multiMixNames);
+    std::cout << " RAW POS: "<< rawPos << std::endl;
+    std::cout << " MIX POS: "<< mixPos << std::endl;
+    std::cout << " MIXCORRECTION POS: "<< mixCorrectionPos << std::endl;
+    std::cout << " MIXCORRECTED POS: "<< mixCorrectedPos << std::endl;
+    std::cout << " SUB POS: "<< subPos << std::endl;
 
     if(m_is2DUnfold){
-      m_hists2D[mixCorrectedPos]->Add(m_hists2D[mixPos], m_hists2D[mixCorrectionPos], -1.0);
-      m_hists2D[subPos]->Add(m_hists2D[rawPos], m_hists2D[mixCorrectedPos], -1.0);
+      m_hists2D[mixCorrectedPos]->Add(m_hists2D[mixPos], m_hists2D[mixCorrectionPos], 1.0, -1.0);
+      m_hists2D[subPos]->Add(m_hists2D[rawPos], m_hists2D[mixCorrectedPos], 1.0, -1.0);
     }
     else{
-      m_hists1D[mixCorrectedPos]->Add(m_hists1D[mixPos], m_hists1D[mixCorrectionPos], -1.0);
-      m_hists1D[subPos]->Add(m_hists1D[rawPos], m_hists1D[mixCorrectedPos], -1.0);
+      m_hists1D[mixCorrectedPos]->Add(m_hists1D[mixPos], m_hists1D[mixCorrectionPos], 1.0, -1.0);
+      m_hists1D[subPos]->Add(m_hists1D[rawPos], m_hists1D[mixCorrectedPos], 1.0, -1.0);
     }
   }
 
