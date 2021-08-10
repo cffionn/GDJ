@@ -74,49 +74,49 @@ void sampleHandler::PreInit()
   dataSetNameToMinPthat["mc16_5TeV.423105.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP280_500.merge.AOD.e5094_s3238_r10441_r10210"] = 280;
 
   //HERWIG7
-  std::string dataStr = "mc16_valid.830045.H7EG_gammajet_MMHT2014lo_DP35_70_direct.recon.AOD.e8329_s3238_r11199_tid25948263_00";
+  std::string dataStr = "mc16_5TeV.830045.H7EG_gammajet_MMHT2014lo_DP35_70_direct.recon.AOD.e8329_s3238_r11199";
   dataSetNameToIsPP[dataStr] = 1;
   dataSetNameToMCFlag[dataStr] = HERWIG;
   dataSetNameToYear[dataStr] = 2017;
   dataSetNameToMinPthat[dataStr] = 35;
 
-  dataStr = "mc16_valid.830046.H7EG_gammajet_MMHT2014lo_DP70_140_direct.recon.AOD.e8329_s3238_r11199_tid25948269_00";
+  dataStr = "mc16_5TeV.830046.H7EG_gammajet_MMHT2014lo_DP70_140_direct.recon.AOD.e8329_s3238_r11199";
   dataSetNameToIsPP[dataStr] = 1;
   dataSetNameToMCFlag[dataStr] = HERWIG;
   dataSetNameToYear[dataStr] = 2017;
   dataSetNameToMinPthat[dataStr] = 70;
 
-  dataStr = "mc16_valid.830047.H7EG_gammajet_MMHT2014lo_DP140_280_direct.recon.AOD.e8329_s3238_r11199_tid25948275_00";
+  dataStr = "mc16_5TeV.830047.H7EG_gammajet_MMHT2014lo_DP140_280_direct.recon.AOD.e8329_s3238_r11199";
   dataSetNameToIsPP[dataStr] = 1;
   dataSetNameToMCFlag[dataStr] = HERWIG;
   dataSetNameToYear[dataStr] = 2017;
   dataSetNameToMinPthat[dataStr] = 140;
 
-  dataStr = "mc16_valid.830048.H7EG_gammajet_MMHT2014lo_DP280_500_direct.recon.AOD.e8329_s3238_r11199_tid25948283_00";
+  dataStr = "mc16_5TeV.830048.H7EG_gammajet_MMHT2014lo_DP280_500_direct.recon.AOD.e8329_s3238_r11199";
   dataSetNameToIsPP[dataStr] = 1;
   dataSetNameToMCFlag[dataStr] = HERWIG;
   dataSetNameToYear[dataStr] = 2017;
   dataSetNameToMinPthat[dataStr] = 280;
 
-  dataStr = "mc16_valid.830055.H7EG_gammajet_MMHT2014lo_DP35_70_frag.recon.AOD.e8329_s3238_r11199_tid25948484_00";
+  dataStr = "mc16_5TeV.830055.H7EG_gammajet_MMHT2014lo_DP35_70_frag.recon.AOD.e8329_s3238_r11199";
   dataSetNameToIsPP[dataStr] = 1;
   dataSetNameToMCFlag[dataStr] = HERWIGFRAG;
   dataSetNameToYear[dataStr] = 2017;
   dataSetNameToMinPthat[dataStr] = 35;
 
-  dataStr = "mc16_valid.830056.H7EG_gammajet_MMHT2014lo_DP70_140_frag.recon.AOD.e8329_s3238_r11199_tid25948490_00";
+  dataStr = "mc16_5TeV.830056.H7EG_gammajet_MMHT2014lo_DP70_140_frag.recon.AOD.e8329_s3238_r11199";
   dataSetNameToIsPP[dataStr] = 1;
   dataSetNameToMCFlag[dataStr] = HERWIGFRAG;
   dataSetNameToYear[dataStr] = 2017;
   dataSetNameToMinPthat[dataStr] = 70;
 
-  dataStr = "mc16_valid.830057.H7EG_gammajet_MMHT2014lo_DP140_280_frag.recon.AOD.e8329_s3238_r11199_tid25948498_00";
+  dataStr = "mc16_5TeV.830057.H7EG_gammajet_MMHT2014lo_DP140_280_frag.recon.AOD.e8329_s3238_r11199";
   dataSetNameToIsPP[dataStr] = 1;
   dataSetNameToMCFlag[dataStr] = HERWIGFRAG;
   dataSetNameToYear[dataStr] = 2017;
   dataSetNameToMinPthat[dataStr] = 140;
 
-  dataStr = "mc16_valid.830058.H7EG_gammajet_MMHT2014lo_DP280_500_frag.recon.AOD.e8329_s3238_r11199_tid25948504_00";
+  dataStr = "mc16_5TeV.830058.H7EG_gammajet_MMHT2014lo_DP280_500_frag.recon.AOD.e8329_s3238_r11199";
   dataSetNameToIsPP[dataStr] = 1;
   dataSetNameToMCFlag[dataStr] = HERWIGFRAG;
   dataSetNameToYear[dataStr] = 2017;
