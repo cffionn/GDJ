@@ -90,7 +90,6 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   TEnv* fileConfig_p = (TEnv*)inFile_p->Get("config");
   
   //  configParser inConfigGlobal(fileConfig_p);
-
   inFile_p->Close();
   delete inFile_p;
 
@@ -622,7 +621,6 @@ int gdjNtuplePreProc(std::string inConfigFileName)
     outTree_p->Branch("akt2to10_truth_jet_m", &akt2to10_truth_jet_m_p);
     outTree_p->Branch("akt2to10_truth_jet_partonid", &akt2to10_truth_jet_partonid_p);
     outTree_p->Branch("akt2to10_truth_jet_recopos", &akt2to10_truth_jet_recopos_p);
-
   }
 
   std::map<int, unsigned long long> tagToCounts;
@@ -1056,6 +1054,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	inTree_p->SetBranchAddress(("akt4hi_etajes_jet_pt_sys_JER_" + std::to_string(eI)).c_str(), &(akt4hi_etajes_jet_pt_sys_JER_p[eI]));
       }
     }
+
     inTree_p->SetBranchAddress("akt4hi_etajes_jet_eta", &akt4hi_etajes_jet_eta_p);
     inTree_p->SetBranchAddress("akt4hi_etajes_jet_phi", &akt4hi_etajes_jet_phi_p);
     inTree_p->SetBranchAddress("akt4hi_etajes_jet_e", &akt4hi_etajes_jet_e_p);
@@ -1269,9 +1268,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 
       subTimer2.stop();
       subTimer3.start();
-    
-      
-
+         
       if(minNVert > nvert_) minNVert = nvert_;
       if(maxNVert < nvert_) maxNVert = nvert_;
       
