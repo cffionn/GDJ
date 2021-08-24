@@ -985,7 +985,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   photonPtJtDPhiVCent_Config.SetValue("ISMC", isMC);
   photonPtJtDPhiVCent_Config.SetValue("NBINSX", nDPhiBins);
   photonPtJtDPhiVCent_Config.SetValue("BINSX", dphiBinsStrForConfig.c_str());
-  photonPtJtDPhiVCent_Config.SetValue("TITLEX", "Jet x_{J#gamma}");  
+  photonPtJtDPhiVCent_Config.SetValue("TITLEX", "Jet #Delta#phi_{J#gamma}");  
   photonPtJtDPhiVCent_Config.SetValue("NBINSY", nGammaPtBins);
   photonPtJtDPhiVCent_Config.SetValue("BINSY", gammaPtBinsStrForConfig.c_str());
   photonPtJtDPhiVCent_Config.SetValue("TITLEY", "Photon p_{T}");
@@ -3108,7 +3108,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	}
       }
     }
-      
+   
     
     if(goodJetsDPhi.size() >= 2){
       for(auto const & jet : goodJetsDPhi){
@@ -3118,7 +3118,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  fillTH1(photonMultiJtXJVCentPt_p[centPos][ptPos], jet.Pt()/photon_pt_p->at(phoPos), fullWeight);
 	  fillTH1(photonMultiJtXJVCentPt_p[centPos][nGammaPtBins], jet.Pt()/photon_pt_p->at(phoPos), fullWeight);
 	}
-      }     
+      }
 
       for(unsigned int jI = 0; jI < goodJetsDPhi.size(); ++jI){
 	TLorentzVector jet1 = goodJetsDPhi[jI];
