@@ -9,6 +9,7 @@
 //ROOT
 #include "TEnv.h"
 #include "TFile.h"
+#include "TInterpreter.h"
 #include "TLorentzVector.h"
 #include "TTree.h"
 
@@ -30,8 +31,67 @@
 #include "include/treeUtil.h"
 
 
+bool doJetSort(std::vector<float>* jetSort, std::vector<std::vector<float>* > jetVarsF, std::vector<std::vector<int>* > jetVarsI, std::vector<std::vector<bool>* > jetVarsB, std::vector<std::vector<std::vector<float> >* > jetConstVars)
+{
+  unsigned int swapI = 0;
+  while(swapI < jetSort->size()){
+    Float_t akt2Pt1 = (*jetSort)[swapI];
+
+    bool noSwap = true;
+    for(unsigned int jI = swapI+1; jI < jetSort->size(); ++jI){
+      Float_t akt2Pt2 = (*jetSort)[jI];
+
+      if(akt2Pt1 < akt2Pt2){
+	(*jetSort)[swapI] = akt2Pt2;
+	(*jetSort)[jI] = akt2Pt1;
+
+	for(unsigned int jI2 = 0; jI2 < jetVarsF.size(); ++jI2){
+	  Float_t jetVar1 = (*(jetVarsF[jI2]))[swapI];
+	  Float_t jetVar2 = (*(jetVarsF[jI2]))[jI];
+	  
+	  (*(jetVarsF[jI2]))[jI] = jetVar1;
+	  (*(jetVarsF[jI2]))[swapI] = jetVar2;
+	}
+
+	for(unsigned int jI2 = 0; jI2 < jetVarsI.size(); ++jI2){
+	  Float_t jetVar1 = (*(jetVarsI[jI2]))[swapI];
+	  Float_t jetVar2 = (*(jetVarsI[jI2]))[jI];
+	  
+	  (*(jetVarsI[jI2]))[jI] = jetVar1;
+	  (*(jetVarsI[jI2]))[swapI] = jetVar2;
+	}
+
+	for(unsigned int jI2 = 0; jI2 < jetVarsB.size(); ++jI2){
+	  Float_t jetVar1 = (*(jetVarsB[jI2]))[swapI];
+	  Float_t jetVar2 = (*(jetVarsB[jI2]))[jI];
+	  
+	  (*(jetVarsB[jI2]))[jI] = jetVar1;
+	  (*(jetVarsB[jI2]))[swapI] = jetVar2;
+	}
+
+	for(unsigned int jI2 = 0; jI2 < jetConstVars.size(); ++jI2){
+	  std::vector<float> jetConstVar1 = (*(jetConstVars[jI2]))[swapI];
+	  std::vector<float> jetConstVar2 = (*(jetConstVars[jI2]))[jI];
+
+	  (*(jetConstVars[jI2]))[jI] = jetConstVar1;
+	  (*(jetConstVars[jI2]))[swapI] = jetConstVar2;
+	}
+
+	noSwap = false;
+      }
+    }
+
+    if(noSwap) ++swapI;
+  }
+  return false;
+}
+
+
 int gdjNtuplePreProc(std::string inConfigFileName)
 {
+  //Just call this right away"
+  gInterpreter->GenerateDictionary("vector<vector<float> >", "vector");
+
   checkMakeDir check;
   if(!check.checkFileExt(inConfigFileName, ".config")) return 1;
   
@@ -45,16 +105,42 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 					      "ISPP",
 					      "ISMC",
 					      "KEEPTRUTH",
+					      "KEEPJETCONSTITUENTS",
 					      "DOMINGAMMAPT",
-					      "MINGAMMAPT"};  
+					      "MINGAMMAPT",
+					      "DONEWR2JETTRUTHMATCH",
+					      "DONEWR4JETTRUTHMATCH"};  
   if(!checkEnvForParams(inConfig_p, necessaryParams)) return 1;
 
   const bool isPP = inConfig_p->GetValue("ISPP", 0);
   const bool isMC = inConfig_p->GetValue("ISMC", 0);
   const bool keepTruth = inConfig_p->GetValue("KEEPTRUTH", 0);
+  const bool keepJetConstituents = inConfig_p->GetValue("KEEPJETCONSTITUENTS", 0);
 
   const bool doMinGammaPt = inConfig_p->GetValue("DOMINGAMMAPT", 0);
   const double minGammaPt = inConfig_p->GetValue("MINGAMMAPT", -1.0);
+
+  const bool doNewR2JetTruthMatch = inConfig_p->GetValue("DONEWR2JETTRUTHMATCH", 0);
+  const bool doNewR4JetTruthMatch = inConfig_p->GetValue("DONEWR4JETTRUTHMATCH", 0);
+
+  Float_t deltaRMaxR2 = -1.0;
+  Float_t deltaRMaxR4 = -1.0;
+  Bool_t doPtSortedMatchR2 = false;
+  Bool_t doPtSortedMatchR4 = false;
+  
+  if(doNewR2JetTruthMatch){
+    if(!checkEnvForParams(inConfig_p, {"DELTARMAXR2", "DOPTSORTEDMATCHR2"})) return 1;
+
+    deltaRMaxR2 = inConfig_p->GetValue("DELTARMAXR2", -1.0);
+    doPtSortedMatchR2 = inConfig_p->GetValue("DOPTSORTEDMATCHR2", false);
+  }
+
+  if(doNewR4JetTruthMatch){
+    if(!checkEnvForParams(inConfig_p, {"DELTARMAXR4", "DOPTSORTEDMATCHR4"})) return 1;
+
+    deltaRMaxR4 = inConfig_p->GetValue("DELTARMAXR4", -1.0);
+    doPtSortedMatchR4 = inConfig_p->GetValue("DOPTSORTEDMATCHR4", false);
+  }  
 
   const std::string inDirStr = inConfig_p->GetValue("MCPREPROCDIRNAME", "");
   const std::string inCentFileName = inConfig_p->GetValue("CENTFILENAME", "");
@@ -240,6 +326,10 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 
   std::vector<bool>* akt2hi_jet_clean_p=nullptr;
   std::vector<int>* akt2hi_truthpos_p=nullptr;
+
+  std::vector<std::vector<float> >* akt2hi_jetconstit_pt_p=nullptr;
+  std::vector<std::vector<float> >* akt2hi_jetconstit_eta_p=nullptr;
+  std::vector<std::vector<float> >* akt2hi_jetconstit_phi_p=nullptr;
   
   Int_t akt4hi_jet_n_;
   std::vector<float>* akt4hi_etajes_jet_pt_p=nullptr;
@@ -271,6 +361,9 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   std::vector<bool>* akt4hi_jet_clean_p=nullptr;
   std::vector<int>* akt4hi_truthpos_p=nullptr;
 
+  std::vector<std::vector<float> >* akt4hi_jetconstit_pt_p=nullptr;
+  std::vector<std::vector<float> >* akt4hi_jetconstit_eta_p=nullptr;
+  std::vector<std::vector<float> >* akt4hi_jetconstit_phi_p=nullptr;
   
   Int_t akt10hi_jet_n_;
   std::vector<float>* akt10hi_etajes_jet_pt_p=nullptr;
@@ -492,7 +585,13 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 
   outTree_p->Branch("akt2hi_jet_clean", &akt2hi_jet_clean_p);
   if(isMC) outTree_p->Branch("akt2hi_truthpos", &akt2hi_truthpos_p);
-  
+
+  if(keepJetConstituents){
+    outTree_p->Branch("akt2hi_jetconstit_pt", &akt2hi_jetconstit_pt_p);
+    outTree_p->Branch("akt2hi_jetconstit_eta", &akt2hi_jetconstit_eta_p);
+    outTree_p->Branch("akt2hi_jetconstit_phi", &akt2hi_jetconstit_phi_p);
+  }
+
   outTree_p->Branch("akt4hi_jet_n", &akt4hi_jet_n_, "akt4hi_jet_n/I");
 
   if(isMC){
@@ -518,6 +617,12 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 
   outTree_p->Branch("akt4hi_jet_clean", &akt4hi_jet_clean_p);
   if(isMC) outTree_p->Branch("akt4hi_truthpos", &akt4hi_truthpos_p);
+
+  if(keepJetConstituents){      
+    outTree_p->Branch("akt4hi_jetconstit_pt", &akt4hi_jetconstit_pt_p);
+    outTree_p->Branch("akt4hi_jetconstit_eta", &akt4hi_jetconstit_eta_p);
+    outTree_p->Branch("akt4hi_jetconstit_phi", &akt4hi_jetconstit_phi_p);
+  }
 
   if(!isPP){   
     outTree_p->Branch("akt10hi_jet_n", &akt10hi_jet_n_, "akt10hi_jet_n/I");
@@ -692,6 +797,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       }
       else tagToCounts[sampleTag_] += inTree_p->GetEntries();
     }
+    else sampleTag_ = -1;
     
     for(auto const & val : tempConfigMap){
       bool isFound = false;
@@ -777,9 +883,14 @@ int gdjNtuplePreProc(std::string inConfigFileName)
     outTree_p->Branch(branchHLTPre.c_str(), hltPreVect[hltPreVect.size()-1], (branchHLTPre + "/F").c_str());
   }
   
-  std::cout << "BRANCHES: " << std::endl;
+  std::cout << "BRANCHES IN: " << std::endl;
   for(auto const &branch : listOfBranchesIn){
-    std::cout << " BRANCH '" << branch << "'" << std::endl;
+    std::cout << " BRANCH IN '" << branch << "'" << std::endl;
+  }
+
+  std::cout << "BRANCHES OUT: " << std::endl;
+  for(auto const &branch : listOfBranchesOut){
+    std::cout << " BRANCH OUT '" << branch << "'" << std::endl;
   }
 
   bool allBranchesGood = true;
@@ -797,6 +908,16 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	if(isStrSame(branchIn, "truth_type")) continue;
 	if(isStrSame(branchIn, "truth_origin")) continue;
 	if(isStrSame(branchIn, "truth_status")) continue;
+      }
+
+      if(!keepJetConstituents){
+	if(isStrSame(branchIn, "akt2hi_jetconstit_pt")) continue;
+	if(isStrSame(branchIn, "akt2hi_jetconstit_phi")) continue;
+	if(isStrSame(branchIn, "akt2hi_jetconstit_eta")) continue;
+
+	if(isStrSame(branchIn, "akt4hi_jetconstit_pt")) continue;
+	if(isStrSame(branchIn, "akt4hi_jetconstit_phi")) continue;
+	if(isStrSame(branchIn, "akt4hi_jetconstit_eta")) continue;
       }
 
       std::cout << "GDJMCNTUPLEPREPROC ERROR - \'" << branchIn << "\' branch is not part of output tree. please fix macro, return 1" << std::endl;
@@ -824,6 +945,16 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	if(isStrSame(branchOut, "truth_status")) continue;
       }
 
+      if(!keepJetConstituents){
+	if(isStrSame(branchOut, "akt2hi_jetconstit_pt")) continue;
+	if(isStrSame(branchOut, "akt2hi_jetconstit_phi")) continue;
+	if(isStrSame(branchOut, "akt2hi_jetconstit_eta")) continue;
+	
+	if(isStrSame(branchOut, "akt4hi_jetconstit_pt")) continue;
+	if(isStrSame(branchOut, "akt4hi_jetconstit_phi")) continue;
+	if(isStrSame(branchOut, "akt4hi_jetconstit_eta")) continue;
+      }	
+      
       std::cout << "GDJMCNTUPLEPREPROC ERROR - \'" << branchOut << "\' branch is not part of input tree. please fix macro, return 1" << std::endl;
     }
 
@@ -1042,6 +1173,12 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 
     inTree_p->SetBranchAddress("akt2hi_jet_clean", &akt2hi_jet_clean_p);
     if(isMC) inTree_p->SetBranchAddress("akt2hi_truthpos", &akt2hi_truthpos_p);
+    
+    if(keepJetConstituents){
+      inTree_p->SetBranchAddress("akt2hi_jetconstit_pt", &akt2hi_jetconstit_pt_p);
+      inTree_p->SetBranchAddress("akt2hi_jetconstit_phi", &akt2hi_jetconstit_phi_p);
+      inTree_p->SetBranchAddress("akt2hi_jetconstit_eta", &akt2hi_jetconstit_eta_p);
+    }
 
     inTree_p->SetBranchAddress("akt4hi_jet_n", &akt4hi_jet_n_);
     inTree_p->SetBranchAddress("akt4hi_etajes_jet_pt", &akt4hi_etajes_jet_pt_p);
@@ -1068,6 +1205,12 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 
     inTree_p->SetBranchAddress("akt4hi_jet_clean", &akt4hi_jet_clean_p);
     if(isMC) inTree_p->SetBranchAddress("akt4hi_truthpos", &akt4hi_truthpos_p);
+
+    if(keepJetConstituents){
+      inTree_p->SetBranchAddress("akt4hi_jetconstit_pt", &akt4hi_jetconstit_pt_p);
+      inTree_p->SetBranchAddress("akt4hi_jetconstit_phi", &akt4hi_jetconstit_phi_p);
+      inTree_p->SetBranchAddress("akt4hi_jetconstit_eta", &akt4hi_jetconstit_eta_p);
+    }    
 
     if(!isPP){      
       inTree_p->SetBranchAddress("akt10hi_jet_n", &akt10hi_jet_n_);
@@ -1367,8 +1510,16 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 
       if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
+      if(keepJetConstituents){	
+	if(akt2hi_jetconstit_pt_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt2hi_jetconstit_phi_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt2hi_jetconstit_eta_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      }
+
       //akt4 jet collection size checks
       if(akt4hi_etajes_jet_pt_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
       if(isMC){
 	for(Int_t eI = 0; eI < nJES; ++eI){
@@ -1379,6 +1530,8 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	  if(akt4hi_etajes_jet_pt_sys_JER_p[eI]->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
 	}
       }
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
       if(akt4hi_etajes_jet_eta_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(akt4hi_etajes_jet_phi_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
@@ -1394,6 +1547,12 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       if(akt4hi_jet_clean_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(isMC){
 	if(akt4hi_truthpos_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      }
+
+      if(keepJetConstituents){      
+	if(akt4hi_jetconstit_pt_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt4hi_jetconstit_phi_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt4hi_jetconstit_eta_p->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       }
 
       //akt10 jet collection size checks
@@ -1416,6 +1575,8 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	}
       }
 
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
       //akt2to10 jet collection size checks
       if(akt2to10hi_etajes_jet_pt_p->size() != (unsigned int)akt2to10hi_jet_n_) std::cout << "AKT2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(akt2to10hi_etajes_jet_eta_p->size() != (unsigned int)akt2to10hi_jet_n_) std::cout << "AKT2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
@@ -1426,6 +1587,8 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	if(akt2to10hi_truthpos_p->size() != (unsigned int)akt2to10hi_jet_n_) std::cout << "AKT2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       }
 
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
       //Burned a few times on photon vector mismatches so adding a check here
       if(photon_pt_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(photon_pt_precali_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
@@ -1435,6 +1598,8 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	if(photon_pt_sys3_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
 	if(photon_pt_sys4_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       }
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
       if(photon_eta_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(photon_phi_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(photon_tight_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
@@ -1462,6 +1627,8 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       if(photon_fracs1_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(photon_DeltaE_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       if(photon_Eratio_p->size() != (unsigned int)photon_n_) std::cout << "PHOTON VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
       if(isMC){
 	if(akt2_truth_jet_pt_p->size() != (unsigned int)akt2_truth_jet_n_) std::cout << "TRUTH JET R2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
@@ -1500,6 +1667,8 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	if(akt2to10_truth_jet_recopos_p->size() != (unsigned int)akt2to10_truth_jet_n_) std::cout << "TRUTH JET R2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
 	if(akt2to10_truth_jet_partonid_p->size() != (unsigned int)akt2to10_truth_jet_n_) std::cout << "TRUTH JET R2to10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
       }
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
       if(isMC){
 	truthPhotonPt_ = -999.;     
@@ -1605,7 +1774,155 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	    truthPhotonIso4_ = genEtSum4; 
 	  }
 	}
+
+	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+      
+	//Re-do jet matching between reco and truth if requested
+	//First do R2
+	if(doNewR2JetTruthMatch){
+	  //Reset reco and truth positions
+	  for(unsigned int jI = 0; jI < akt2hi_truthpos_p->size(); ++jI){
+	    (*akt2hi_truthpos_p)[jI] = -1;	    
+	  }
+
+	  std::vector<std::vector<float>* > akt2JetVarsF = {akt2hi_etajes_jet_eta_p, akt2hi_etajes_jet_phi_p, akt2hi_etajes_jet_e_p, akt2hi_etajes_jet_m_p, akt2hi_insitu_jet_pt_p, akt2hi_insitu_jet_eta_p, akt2hi_insitu_jet_phi_p, akt2hi_insitu_jet_e_p, akt2hi_insitu_jet_m_p};	 
+
+	  std::vector<std::vector<std::vector<float> >* > akt2JetConstVarsF = {};
+	  if(keepJetConstituents) akt2JetConstVarsF = {akt2hi_jetconstit_pt_p, akt2hi_jetconstit_eta_p, akt2hi_jetconstit_phi_p};
+
+	  for(unsigned int jI = 0; jI < akt2hi_etajes_jet_pt_sys_JES_p.size(); ++jI){
+	    akt2JetVarsF.push_back(akt2hi_etajes_jet_pt_sys_JES_p[jI]);
+	  }
+	  for(unsigned int jI = 0; jI < akt2hi_etajes_jet_pt_sys_JER_p.size(); ++jI){
+	    akt2JetVarsF.push_back(akt2hi_etajes_jet_pt_sys_JER_p[jI]);
+	  }
+	  doJetSort(akt2hi_etajes_jet_pt_p, akt2JetVarsF, {akt2hi_truthpos_p}, {akt2hi_jet_clean_p}, akt2JetConstVarsF);
+
+	  for(unsigned int tI = 0; tI < akt2_truth_jet_pt_p->size(); ++tI){
+	    (*akt2_truth_jet_recopos_p)[tI] = -1;
+	  }
+
+	  doJetSort(akt2_truth_jet_pt_p, {akt2_truth_jet_eta_p, akt2_truth_jet_phi_p, akt2_truth_jet_e_p, akt2_truth_jet_m_p}, {akt2_truth_jet_partonid_p, akt2_truth_jet_recopos_p}, {}, {});
+
+	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
+	  //All sorted, redo matching according to given parameters
+	  if(doPtSortedMatchR2){
+	    for(unsigned int tI = 0; tI < akt2_truth_jet_pt_p->size(); ++tI){
+	      Float_t etaValTruth = akt2_truth_jet_eta_p->at(tI);
+	      Float_t phiValTruth = akt2_truth_jet_phi_p->at(tI);
+
+	      for(unsigned int jI = 0; jI < akt2hi_etajes_jet_pt_p->size(); ++jI){
+		if(akt2hi_truthpos_p->at(jI) >= 0) continue;
+
+		Float_t etaValReco = akt2hi_etajes_jet_eta_p->at(jI);
+		Float_t phiValReco = akt2hi_etajes_jet_phi_p->at(jI);
+
+		if(getDR(etaValTruth, phiValTruth, etaValReco, phiValReco) < deltaRMaxR2){
+		  akt2_truth_jet_recopos_p->at(tI) = jI;
+		  akt2hi_truthpos_p->at(jI) = tI;
+		  break;
+		}
+	      }
+	    }
+
+	    //We've done a first pass of tight matching but lets repeat with a relaxed condition,
+	    for(unsigned int tI = 0; tI < akt2_truth_jet_pt_p->size(); ++tI){
+	      if(akt2_truth_jet_recopos_p->at(tI) >= 0) continue;
+
+	      Float_t etaValTruth = akt2_truth_jet_eta_p->at(tI);
+              Float_t phiValTruth = akt2_truth_jet_phi_p->at(tI);
+
+	      for(unsigned int jI = 0; jI < akt2hi_etajes_jet_pt_p->size(); ++jI){
+		if(akt2hi_truthpos_p->at(jI) >= 0) continue;
+
+		Float_t etaValReco = akt2hi_etajes_jet_eta_p->at(jI);
+		Float_t phiValReco = akt2hi_etajes_jet_phi_p->at(jI);
+
+		if(getDR(etaValTruth, phiValTruth, etaValReco, phiValReco) < deltaRMaxR2*1.5){
+		  akt2_truth_jet_recopos_p->at(tI) = jI;
+		  akt2hi_truthpos_p->at(jI) = tI;
+		  break;
+		}
+	      }	      
+	    }
+	  }
+	}
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
+	//Then do R4
+	if(doNewR4JetTruthMatch){
+	  //Reset reco and truth positions
+	  for(unsigned int jI = 0; jI < akt4hi_truthpos_p->size(); ++jI){
+	    (*akt4hi_truthpos_p)[jI] = -1;	    
+	  }
+
+	  std::vector<std::vector<float>* > akt4JetVarsF = {akt4hi_etajes_jet_eta_p, akt4hi_etajes_jet_phi_p, akt4hi_etajes_jet_e_p, akt4hi_etajes_jet_m_p, akt4hi_insitu_jet_pt_p, akt4hi_insitu_jet_eta_p, akt4hi_insitu_jet_phi_p, akt4hi_insitu_jet_e_p, akt4hi_insitu_jet_m_p};	 
+
+	  std::vector<std::vector<std::vector<float> >* > akt4JetConstVarsF = {};
+	  if(keepJetConstituents) akt4JetConstVarsF = {akt4hi_jetconstit_pt_p, akt4hi_jetconstit_eta_p, akt4hi_jetconstit_phi_p};
+
+	  for(unsigned int jI = 0; jI < akt4hi_etajes_jet_pt_sys_JES_p.size(); ++jI){
+	    akt4JetVarsF.push_back(akt4hi_etajes_jet_pt_sys_JES_p[jI]);
+	  }
+	  for(unsigned int jI = 0; jI < akt4hi_etajes_jet_pt_sys_JER_p.size(); ++jI){
+	    akt4JetVarsF.push_back(akt4hi_etajes_jet_pt_sys_JER_p[jI]);
+	  }
+	  doJetSort(akt4hi_etajes_jet_pt_p, akt4JetVarsF, {akt4hi_truthpos_p}, {akt4hi_jet_clean_p}, akt4JetConstVarsF);
+
+	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
+	  for(unsigned int tI = 0; tI < akt4_truth_jet_pt_p->size(); ++tI){
+	    (*akt4_truth_jet_recopos_p)[tI] = -1;
+	  }
+	  doJetSort(akt4_truth_jet_pt_p, {akt4_truth_jet_eta_p, akt4_truth_jet_phi_p, akt4_truth_jet_e_p, akt4_truth_jet_m_p}, {akt4_truth_jet_partonid_p, akt4_truth_jet_recopos_p}, {}, {});
+	  
+	  //All sorted, redo matching according to given parameters
+	  if(doPtSortedMatchR4){
+	    for(unsigned int tI = 0; tI < akt4_truth_jet_pt_p->size(); ++tI){
+	      Float_t etaValTruth = akt4_truth_jet_eta_p->at(tI);
+	      Float_t phiValTruth = akt4_truth_jet_phi_p->at(tI);
+
+	      for(unsigned int jI = 0; jI < akt4hi_etajes_jet_pt_p->size(); ++jI){
+		if(akt4hi_truthpos_p->at(jI) >= 0) continue;
+
+		Float_t etaValReco = akt4hi_etajes_jet_eta_p->at(jI);
+		Float_t phiValReco = akt4hi_etajes_jet_phi_p->at(jI);
+
+		if(getDR(etaValTruth, phiValTruth, etaValReco, phiValReco) < deltaRMaxR4){
+		  akt4_truth_jet_recopos_p->at(tI) = jI;
+		  akt4hi_truthpos_p->at(jI) = tI;
+		  break;
+		}
+	      }
+	    }
+	   
+	    //We've done a first pass of tight matching but lets repeat with a relaxed condition,
+	    for(unsigned int tI = 0; tI < akt4_truth_jet_pt_p->size(); ++tI){
+	      if(akt4_truth_jet_recopos_p->at(tI) >= 0) continue;
+
+	      Float_t etaValTruth = akt4_truth_jet_eta_p->at(tI);
+              Float_t phiValTruth = akt4_truth_jet_phi_p->at(tI);
+
+	      for(unsigned int jI = 0; jI < akt4hi_etajes_jet_pt_p->size(); ++jI){
+		if(akt4hi_truthpos_p->at(jI) >= 0) continue;
+
+		Float_t etaValReco = akt4hi_etajes_jet_eta_p->at(jI);
+		Float_t phiValReco = akt4hi_etajes_jet_phi_p->at(jI);
+
+		if(getDR(etaValTruth, phiValTruth, etaValReco, phiValReco) < deltaRMaxR4*1.5){
+		  akt4_truth_jet_recopos_p->at(tI) = jI;
+		  akt4hi_truthpos_p->at(jI) = tI;
+		  break;
+		}
+	      }	      
+	    }
+	  }
+	}
       }
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
       subTimer3.stop();
       subTimer4.start();
@@ -1622,7 +1939,6 @@ int gdjNtuplePreProc(std::string inConfigFileName)
     if(nTerm > 0){
       if(currTotalEntries > (ULong64_t)nTerm) break;
     }
-
     ++nFile;
   }
 

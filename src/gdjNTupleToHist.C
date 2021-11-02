@@ -61,6 +61,77 @@ void fillTH2(TH2F* inHist_p, Float_t fillVal1, Float_t fillVal2, Float_t weight 
   return;
 }
 
+
+bool sortJetVectAndTruthPos(std::vector<TLorentzVector>* jetVect, std::vector<int>* jetTruthPosVect)
+{  
+  if(jetVect->size() != jetTruthPosVect->size()){
+    std::cout << "SORTJETVECTANDTRUTHPOS: SIZE MISMATCH. RETURN FALSE" << std::endl;
+    return false;
+  }
+
+  unsigned int maxPos = jetVect->size();
+  unsigned int jI = 0;
+  while(jI < maxPos){
+    bool passes = true;
+    for(unsigned int jI2 = jI+1; jI2 < maxPos; ++jI2){
+      if((*jetVect)[jI].Pt() < (*jetVect)[jI2].Pt()){
+	passes = false;
+
+	TLorentzVector tempJet = (*jetVect)[jI];
+	int tempTruthPos = (*jetTruthPosVect)[jI];
+
+	(*jetVect)[jI] = (*jetVect)[jI2];
+	(*jetTruthPosVect)[jI] = (*jetTruthPosVect)[jI2];
+
+	(*jetVect)[jI2] = tempJet;
+	(*jetTruthPosVect)[jI2] = tempTruthPos;
+      }
+    }
+
+    if(passes) ++jI;
+  }
+
+  return true;
+}
+
+bool readBins(TEnv* config_p, std::string varStr, Int_t nMaxBins, Int_t* nBins, Float_t* low, Float_t* high, Bool_t* doLog, Bool_t* doCustom, Double_t bins[], std::string* binsStrForConfig)
+{
+  std::string inConfigFileName = config_p->GetValue("CONFIGFILENAME", "");
+  (*nBins) = config_p->GetValue(("N" + varStr + "BINS").c_str(), nMaxBins+1);
+  if(!goodBinning(inConfigFileName, nMaxBins, *nBins, "N" + varStr + "BINS")) return false;
+
+  (*low) = config_p->GetValue((varStr + "BINSLOW").c_str(), 80.0);
+  (*high) = config_p->GetValue((varStr + "BINSHIGH").c_str(), 280.0);
+  (*doLog) = (bool)config_p->GetValue((varStr + "BINSDOLOG").c_str(), 1);
+  (*doCustom) = (bool)config_p->GetValue((varStr + "BINSDOCUSTOM").c_str(), 0);
+
+  if(*doLog) getLogBins(*low, *high, *nBins, bins);
+  else if(doCustom){
+    std::string binsStr = config_p->GetValue((varStr + "BINSCUSTOM").c_str(), "");
+    if(binsStr.size() == 0){
+      std::cout << "CUSTOM " << varStr << " BINS REQUESTED, BUT \'" << varStr << "BINSDOCUSTOM\' not defined in config \'" << inConfigFileName << "\'. return false" << std::endl;
+      return false;
+    }
+    std::vector<float> binsCustom = strToVectF(binsStr);
+    Int_t nBinsTemp = ((Int_t)binsCustom.size()) - 1;
+    if(nBinsTemp != *nBins){
+      std::cout << "REQUESTED CUSTON BINS \'" << binsStr << "\' HAS SIZE \'" << nBinsTemp << "\' does not match given n" << varStr << "Bins \'" << *nBins << "\'. return false" << std::endl;
+      return false;
+    }
+
+    (*binsStrForConfig) = "";
+    for(unsigned int gI = 0; gI < binsCustom.size(); ++gI){
+      bins[gI] = binsCustom[gI];
+      (*binsStrForConfig) = (*binsStrForConfig) + std::to_string(bins[gI]) + ",";
+    }   
+    if(binsStrForConfig->size() > 0) binsStrForConfig->replace(binsStrForConfig->size()-1, 1, "");
+  }
+  else getLinBins(*low, *high, *nBins, bins);    
+  
+  return true;
+}
+
+
 int gdjNTupleToHist(std::string inConfigFileName)
 {
   cppWatch globalTimer;
@@ -76,6 +147,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   bool doGlobalDebug = gDebug.GetDoGlobalDebug();
   
   TEnv* config_p = new TEnv(inConfigFileName.c_str());
+  config_p->SetValue("CONFIGFILENAME", inConfigFileName.c_str());
 
   std::vector<std::string> necessaryParams = {"INFILENAME",
                                               "OUTFILENAME",
@@ -104,6 +176,12 @@ int gdjNTupleToHist(std::string inConfigFileName)
 					      "GAMMAPTBINSDOLOG",
 					      "GAMMAPTBINSDOCUSTOM",
 					      "GAMMAPTBINSCUSTOM",
+					      "NGAMMAPTFINEBINS",
+					      "GAMMAPTFINEBINSLOW",
+					      "GAMMAPTFINEBINSHIGH",
+					      "GAMMAPTFINEBINSDOLOG",
+					      "GAMMAPTFINEBINSDOCUSTOM",
+					      "GAMMAPTFINEBINSCUSTOM",
 					      "NGAMMAETABINS",
 					      "GAMMAETABINSLOW",
 					      "GAMMAETABINSHIGH",
@@ -131,6 +209,12 @@ int gdjNTupleToHist(std::string inConfigFileName)
 					      "JTPTBINSDOLOG",
 					      "JTPTBINSDOCUSTOM",
 					      "JTPTBINSCUSTOM",
+					      "NJTPTFINEBINS",
+					      "JTPTFINEBINSLOW",
+					      "JTPTFINEBINSHIGH",
+					      "JTPTFINEBINSDOLOG",
+					      "JTPTFINEBINSDOCUSTOM",
+					      "JTPTFINEBINSCUSTOM",
 					      "NDPHIBINS",
 					      "DPHIBINSLOW",
 					      "DPHIBINSHIGH",
@@ -451,6 +535,16 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
   //Set the gamma pt bins
   const Int_t nMaxPtBins = 200;
+
+  Int_t nGammaPtBins;
+  Float_t gammaPtBinsLow, gammaPtBinsHigh;
+  Bool_t gammaPtBinsDoLog, gammaPtBinsDoCustom;
+  Double_t gammaPtBins[nMaxPtBins+1];
+  std::string gammaPtBinsStrForConfig;
+
+  readBins(config_p, "GAMMAPT", nMaxPtBins, &nGammaPtBins, &gammaPtBinsLow, &gammaPtBinsHigh, &gammaPtBinsDoLog, &gammaPtBinsDoCustom, gammaPtBins, &gammaPtBinsStrForConfig);
+
+  /*
   const Int_t nGammaPtBins = config_p->GetValue("NGAMMAPTBINS", 10);
   if(!goodBinning(inConfigFileName, nMaxPtBins, nGammaPtBins, "NGAMMAPTBINS")) return 1;
   const Float_t gammaPtBinsLow = config_p->GetValue("GAMMAPTBINSLOW", 80.0);
@@ -476,20 +570,20 @@ int gdjNTupleToHist(std::string inConfigFileName)
     }
   }
   else getLinBins(gammaPtBinsLow, gammaPtBinsHigh, nGammaPtBins, gammaPtBins);
-  std::string gammaPtBinsStrForConfig = "";
+  */
   std::vector<std::string> genGammaPtBinsStr, recoGammaPtBinsStr, gammaPtBinsStr;
   for(Int_t pI = 0; pI < nGammaPtBins; ++pI){
     genGammaPtBinsStr.push_back("GenGammaPt" + std::to_string(pI));
     recoGammaPtBinsStr.push_back("RecoGammaPt" + std::to_string(pI));
     gammaPtBinsStr.push_back("GammaPt" + std::to_string(pI));
 
-    gammaPtBinsStrForConfig = gammaPtBinsStrForConfig + std::to_string(gammaPtBins[pI]) + ", ";
+    //gammaPtBinsStrForConfig = gammaPtBinsStrForConfig + std::to_string(gammaPtBins[pI]) + ", ";
 
     binsToLabelStr[genGammaPtBinsStr[pI]] = prettyString(gammaPtBins[pI], 1, false) + " < Gen. p_{T,#gamma} < " + prettyString(gammaPtBins[pI+1], 1, false);
     binsToLabelStr[recoGammaPtBinsStr[pI]] = prettyString(gammaPtBins[pI], 1, false) + " < Reco. p_{T,#gamma} < " + prettyString(gammaPtBins[pI+1], 1, false);
     binsToLabelStr[gammaPtBinsStr[pI]] = prettyString(gammaPtBins[pI], 1, false) + " < p_{T,#gamma} < " + prettyString(gammaPtBins[pI+1], 1, false);
   }
-  gammaPtBinsStrForConfig = gammaPtBinsStrForConfig + std::to_string(gammaPtBins[nGammaPtBins]);
+  //  gammaPtBinsStrForConfig = gammaPtBinsStrForConfig + std::to_string(gammaPtBins[nGammaPtBins]);
 
   genGammaPtBinsStr.push_back("GenGammaPt" + std::to_string(nGammaPtBins));
   recoGammaPtBinsStr.push_back("RecoGammaPt" + std::to_string(nGammaPtBins));
@@ -499,7 +593,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
   binsToLabelStr[recoGammaPtBinsStr[recoGammaPtBinsStr.size()-1]] = prettyString(gammaPtBins[0], 1, false) + " < Reco. p_{T,#gamma} < " + prettyString(gammaPtBins[nGammaPtBins], 1, false);
   binsToLabelStr[gammaPtBinsStr[gammaPtBinsStr.size()-1]] = prettyString(gammaPtBins[0], 1, false) + " < p_{T,#gamma} < " + prettyString(gammaPtBins[nGammaPtBins], 1, false);
   //Also set the fine grain photon bins right now
-
   
   const Int_t nGammaFinePtBins = (gammaPtBins[nGammaPtBins-1] - gammaPtBins[0])/5 + 1;
   if(!goodBinning(inConfigFileName, nMaxPtBins, nGammaFinePtBins, "NGAMMAFINEPTBINS")) return 1;
@@ -702,6 +795,45 @@ int gdjNTupleToHist(std::string inConfigFileName)
   
   const Double_t gammaJtDPhiCut = mathStringToNum(config_p->GetValue("GAMMAJTDPHI", ""), doGlobalDebug);  
   const Double_t gammaMultiJtDPhiCut = mathStringToNum(config_p->GetValue("GAMMAMULTIJTDPHI", ""), doGlobalDebug);  
+
+
+  const Int_t nDRBins = config_p->GetValue("NDRBINS", 10);
+  if(!goodBinning(inConfigFileName, nMaxPtBins, nDRBins, "NDRBINS")) return 1;
+  const Float_t drBinsLow = config_p->GetValue("DRBINSLOW", 80.0);
+  const Float_t drBinsHigh = config_p->GetValue("DRBINSHIGH", 280.0);
+  const Bool_t drBinsDoLog = (bool)config_p->GetValue("DRBINSDOLOG", 1);
+  const Bool_t drBinsDoCustom = (bool)config_p->GetValue("DRBINSDOCUSTOM", 0);
+  Double_t drBins[nMaxPtBins+1];
+  if(drBinsDoLog) getLogBins(drBinsLow, drBinsHigh, nDRBins, drBins);
+  else if(drBinsDoCustom){
+    std::string drBinsStr = config_p->GetValue("DRBINSCUSTOM", "");
+    if(drBinsStr.size() == 0){
+      std::cout << "CUSTOM DR BINS REQUESTED, BUT \'DRBINSCUSTOM\' not defined in config \'" << inConfigFileName << "\'. return 1" << std::endl;
+    }
+    std::vector<float> drBinsCustom = strToVectF(drBinsStr);
+    Int_t nDRBinsTemp = ((Int_t)drBinsCustom.size()) - 1;
+    if(nDRBinsTemp != nDRBins){
+      std::cout << "REQUESTED CUSTON BINS \'" << drBinsStr << "\' HAS SIZE \'" << nDRBinsTemp << "\' does not match given nDRBins \'" << nDRBins << "\'. return 1" << std::endl;
+      return 1;
+    }
+
+    for(unsigned int gI = 0; gI < drBinsCustom.size(); ++gI){
+      drBins[gI] = drBinsCustom[gI];
+    }
+  }
+  else getLinBins(drBinsLow, drBinsHigh, nDRBins, drBins);
+
+  std::string drBinsStrForConfig;
+  for(Int_t jI = 0; jI < nDRBins; ++jI){
+    drBinsStrForConfig = drBinsStrForConfig + prettyString(drBins[jI],8,false) + ",";      
+  }  
+  drBinsStrForConfig = drBinsStrForConfig + prettyString(drBins[nDRBins],8,false);
+
+  //Gotta do this because otherwise the bin limits are slightly off
+  std::vector<float> drBinsStrForConfigVect = strToVectF(drBinsStrForConfig);
+  for(unsigned int i = 0; i < drBinsStrForConfigVect.size(); ++i){
+    drBins[i] = drBinsStrForConfigVect[i];
+  }
 
   /*
   std::cout << "CHECK GAMMA JTDPHI, MULTIJTDPHI:" << std::endl;
@@ -1033,8 +1165,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
   TEnv photonPtJtDRJJVCent_Config;
   photonPtJtDRJJVCent_Config.SetValue("IS2DUNFOLD", true);
   photonPtJtDRJJVCent_Config.SetValue("ISMC", isMC);
-  photonPtJtDRJJVCent_Config.SetValue("NBINSX", nDPhiBins);
-  photonPtJtDRJJVCent_Config.SetValue("BINSX", dphiBinsStrForConfig.c_str());
+  photonPtJtDRJJVCent_Config.SetValue("NBINSX", nDRBins);
+  photonPtJtDRJJVCent_Config.SetValue("BINSX", drBinsStrForConfig.c_str());
   photonPtJtDRJJVCent_Config.SetValue("TITLEX", "Jet #DeltaR_{JJ}");  
   photonPtJtDRJJVCent_Config.SetValue("NBINSY", nGammaPtBins);
   photonPtJtDRJJVCent_Config.SetValue("BINSY", gammaPtBinsStrForConfig.c_str());
@@ -1063,6 +1195,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
  
   //";Reco. Jet p_{T};Reco. Photon p_{T}", nJtPtBins, jtPtBins, nGammaPtBins, gammaPtBins
 
+  mixMachine* photonPtJtPtVCent_MixMachine_Fine_p[nMaxCentBins][nBarrelAndEC];
+
   mixMachine* photonPtJtPtVCent_MixMachine_p[nMaxCentBins][nBarrelAndEC];
   mixMachine* photonPtJtXJVCent_MixMachine_p[nMaxCentBins][nBarrelAndEC];
   mixMachine* photonPtJtDPhiVCent_MixMachine_p[nMaxCentBins][nBarrelAndEC];
@@ -1076,6 +1210,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
   //we will unfold in leading jet pt and azimuthal angle (between vector jets and photon and between jets themselves)
   mixMachine* leadingJtPtJtDPhiJJGVCent_MixMachine_p[nMaxCentBins][nBarrelAndEC];
   mixMachine* leadingJtPtJtDPhiJJVCent_MixMachine_p[nMaxCentBins][nBarrelAndEC];
+
+  mixMachine* photonPtJtPtVCent_MixMachine_Sideband_Fine_p[nMaxCentBins][nBarrelAndEC];
 
   mixMachine* photonPtJtPtVCent_MixMachine_Sideband_p[nMaxCentBins][nBarrelAndEC];
   mixMachine* photonPtJtXJVCent_MixMachine_Sideband_p[nMaxCentBins][nBarrelAndEC];
@@ -1832,6 +1968,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
   std::vector<float>* aktRhi_insitu_jet_eta_p=nullptr;
   std::vector<float>* aktRhi_insitu_jet_phi_p=nullptr;
   std::vector<int>* aktRhi_truthpos_p=nullptr;
+
+  std::vector<std::vector<float> >* aktRhi_jetconstit_pt_p=nullptr;
+  std::vector<std::vector<float> >* aktRhi_jetconstit_eta_p=nullptr;
+  std::vector<std::vector<float> >* aktRhi_jetconstit_phi_p=nullptr;
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
@@ -2942,15 +3082,22 @@ int gdjNTupleToHist(std::string inConfigFileName)
       }
     }  
     //end older truth processing
-    
+      
     if(!isSideband){
       fillTH1(photonJtMultVCentPt_p[centPos][ptPos], multCounter, fullWeight);
       fillTH1(photonJtMultVCentPt_p[centPos][nGammaPtBins], multCounter, fullWeight);	
     }
-  
+    
+    //2021.08.24: We are first going to sort our goodJets collections since they are not auto-sorted
+    sortJetVectAndTruthPos(&goodJets, &goodJetsTPos);
+    sortJetVectAndTruthPos(&goodJetsDPhi, &goodJetsDPhiTPos);
+      
     //Processing goodJets collection to construct multijet observables    
     //Since this is the collection without a phi cut between individual jets and the photon
     //This should be purely angular constructs
+  
+    bool drJJVCentFilledRaw = false;
+    bool drJJVCentFilledTruth = false;
     if(goodJets.size() >= 2){
       for(unsigned int jI = 0; jI < goodJets.size(); ++jI){
 	TLorentzVector jet1 = goodJets[jI];
@@ -2959,12 +3106,21 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	for(unsigned int jI2 = jI+1; jI2 < goodJets.size(); ++jI2){
 	  TLorentzVector jet2 = goodJets[jI2];
 	  
-	  if(jet1.Pt() < jet2.Pt()) std::cout << "BIG WARNING JET COLLECTION IS NOT SORTED" << std::endl;
+	  if(jet1.Pt() < jet2.Pt()){
+	    std::cout << "BIG WARNING JET COLLECTION IS NOT SORTED" << std::endl;
+	    std::cout << " TTree Entry: " << entry << std::endl;
+	    std::cout << " Jet 1: " << jet1.Pt() << ", " << jet1.Eta() << ", " << jet1.Phi() << std::endl;
+	    std::cout << " Jet 2: " << jet2.Pt() << ", " << jet2.Eta() << ", " << jet2.Phi() << std::endl;	    
+	  }
 	  
 	  Float_t dR = getDR(jet1.Eta(), jet1.Phi(), jet2.Eta(), jet2.Phi());
-	  if(!isSideband) photonPtJtDRJJVCent_MixMachine_p[centPos][barrelOrECPos]->FillXYRaw(dR, photon_pt_p->at(phoPos), fullWeight);	  
+	  if(!isSideband){
+	    photonPtJtDRJJVCent_MixMachine_p[centPos][barrelOrECPos]->FillXYRaw(dR, photon_pt_p->at(phoPos), fullWeight);	  
+
+	    if(dR > 0.2 && dR < 0.4) drJJVCentFilledRaw = true;
+	  }
 	  else photonPtJtDRJJVCent_MixMachine_Sideband_p[centPos][barrelOrECPos]->FillXYRaw(dR, photon_pt_p->at(phoPos), fullWeight);	  
-	  
+
 	  //DeltaPhi between jets not in the exclusion dR ring around the photon
 	  Float_t interJtDPhi = TMath::Abs(getDPHI(jet2.Phi(), jet1.Phi()));    
 	  jet2 += jet1;
@@ -3020,6 +3176,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		if(!isSideband){
 		  photonPtJtDRJJVCent_MixMachine_p[centPos][barrelOrECPos]->FillXYTruthMatchedReco(dR, photon_pt_p->at(phoPos), fullWeight);
 		  photonPtJtDRJJVCent_MixMachine_p[centPos][barrelOrECPos]->FillXYTruth(truthDR, truthPhotonPt, fullWeight);
+
+		  if(dR > 0.2 && dR < 0.4) drJJVCentFilledTruth = true;
 		}
 		
 		if(dR >= mixJetExclusionDR){
@@ -3259,9 +3417,43 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	fillTH1(photonGenMatchedJtMultVCentPt_p[centPos][nGammaPtBins], multCounterGenMatched, fullWeight);
       }
     }
+  
+    if(!drJJVCentFilledTruth && drJJVCentFilledRaw){
+      std::cout << "Event w/o truth: " << entry << std::endl;
+      
+      std::cout << " Centrality: " << cent << std::endl;
+      std::cout << " Reco Jets in event saved (pt, eta. phi, tpos): " << std::endl;
+      for(unsigned int i = 0; i < goodJets.size(); ++i){
+	std::cout << "  " << i << ": " << goodJets[i].Pt() << ", " << goodJets[i].Eta() << ", " << goodJets[i].Phi() << ", " << goodJetsTPos[i] << std::endl;
+      }	
+      
+      std::cout << " Reco Jets in event all (pt, eta, phi):" << std::endl;
+      for(unsigned int jI = 0; jI < aktRhi_insitu_jet_pt_p->size(); ++jI){
+	Float_t ptToUse = aktRhi_insitu_jet_pt_p->at(jI);
+	Float_t etaToUse = aktRhi_insitu_jet_eta_p->at(jI);
+	Float_t phiToUse = aktRhi_insitu_jet_phi_p->at(jI);
+	
+	if(isMC){
+	  if(aktRhi_truthpos_p->at(jI) >= 0){
+	    ptToUse = aktRhi_etajes_jet_pt_p->at(jI);
+	    etaToUse = aktRhi_etajes_jet_eta_p->at(jI);
+	    phiToUse = aktRhi_etajes_jet_phi_p->at(jI);
+	  }
+	}	  
+	
+	std::cout << "  " << jI << ": " << ptToUse << ", " << etaToUse << ", " << phiToUse << std::endl;
+      }
+      
+      std::cout << " Truth Jets in event all (pt, eta, phi, recopos):" << std::endl;
+      for(unsigned int jI = 0; jI < aktR_truth_jet_pt_p->size(); ++jI){
+	std::cout << "  " << jI << ": " << aktR_truth_jet_pt_p->at(jI) << ", " << aktR_truth_jet_eta_p->at(jI) << ", " << aktR_truth_jet_phi_p->at(jI) << ", " << aktR_truth_jet_recopos_p->at(jI) << std::endl;
+      }
+      
+      std::cout << " Photon pt, eta phi: " << photon_pt_p->at(phoPos) << ", " << photon_eta_p->at(phoPos) << ", " << photon_phi_p->at(phoPos) << std::endl;
+            //      if(entry > 30000) return 1;
+    }
     
-    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-    
+        
     if(doMix){
       unsigned long long mixCentPos = 0;
       unsigned long long mixPsi2Pos = 0;
@@ -3395,9 +3587,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  if(dPhi >= gammaJtDPhiCut){
 	    goodJetsDPhiMix[1].push_back(jets2[jI]);
 	  }	    
-	}
-	
-      
+	}      
+     
 	//	if(goodJetsDPhiMix[0].size() >= 2){
 	for(auto const & jet : goodJetsDPhiMix[0]){
 	  if(!isSideband){
