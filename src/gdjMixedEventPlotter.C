@@ -24,6 +24,7 @@
 #include "TStyle.h"
 
 //Local
+#include "include/binUtils.h"
 #include "include/checkMakeDir.h"
 #include "include/configParser.h"
 #include "include/envUtil.h"
@@ -57,6 +58,19 @@ void fillYJHist(TH1F* inHist_p)
   
   return;
 }
+
+bool strReplace(std::string* inStr, std::string strToRep, std::string repStr)
+{
+  bool goodReplace = true;
+  if(inStr->find(strToRep) != std::string::npos) inStr->replace(inStr->find(strToRep), strToRep.size(), repStr);
+  else{
+    std::cout << "STRREPLACE ERROR: String '" << *inStr << "' does not contain '" << strToRep << "' requested for replacement. return false" << std::endl;
+    goodReplace = false;
+  }
+  
+  return goodReplace;
+}
+
 
 /*
 std::vector<std::string> getLabels(TEnv* plotConfig_p, TH1F* histForLabels_p, std::map<std::string, std::string>* labelMap, std::vector<std::string>* labelsForSaveStr = nullptr)
@@ -850,7 +864,7 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
     nCentBins = centBins.size()-1;
   }
 
-  std::vector<std::string> observables1 = {"JtXJ", "JtXJJ", "JtAJJ", "JtDPhiJJG", "JtDPhiJJ", "JtDRJJ", "JtPt", "JtDPhi"};
+  //  std::vector<std::string> observables1 = {"JtXJ", "JtXJJ", "JtAJJ", "JtDPhiJJG", "JtDPhiJJ", "JtDRJJ", "JtPt", "JtDPhi"};
   std::vector<std::string> mixStrings = {"MIX", "MIXCORRECTED", "MIXCORRECTED", "MIXCORRECTED", "MIXCORRECTED", "MIXCORRECTED", "MIX", "MIX"};
   std::vector<std::string> barrelECStr = {"Barrel", "EC", "BarrelAndEC"};
 
@@ -863,7 +877,7 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 					     "#frac{1}{N_{#gamma}}#frac{dN_{J#gamma}}{dp_{T,J#gamma}}",
 					     "#frac{1}{N_{#gamma}}#frac{dN_{J#gamma}}{d#Delta#phi_{J#gamma}}"};
 
-  //  std::vector<std::string> observables1 = {"JtPt"};
+  std::vector<std::string> observables1 = {"JtPt"};
   //  std::vector<std::string> barrelECStr = {"Barrel"};
 
   std::vector<std::vector<std::string> > globalLabels;
@@ -906,23 +920,23 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
       TH1F* photonHistMCEC_p = nullptr;
       
       if(isBarrelAndEC){
-	phoName.replace(phoName.find("Barrel"), 6, "EC");
+	if(!strReplace(&phoName, "Barrel", "EC")) return 1;
+	//	phoName.replace(phoName.find("Barrel"), 6, "EC");
         photonHistEC_p = (TH1F*)inFile_p->Get(phoName.c_str());
-
 	photonHist_p->Add(photonHistEC_p);
 
 	if(mcFileName.size() != 0){
 	  photonHistMCEC_p = (TH1F*)mcFile_p->Get(phoName.c_str());
-
 	  photonHistMC_p->Add(photonHistMCEC_p);
 	}	
       }      
 
       //Start grabbing histograms for plots
       for(unsigned int oI = 0; oI < observables1.size(); ++oI){     
-	std::string rebinStr = "MIXEDEVTPLOT." + observables1[oI];
-	bool doRebin = (bool)config_p->GetValue((rebinStr + "DOREBIN").c_str(), 0);
-	  
+	std::string rebinStr = strLowerToUpper("MIXEDEVTPLOT." + observables1[oI]);
+
+	bool doRebin = (bool)plotConfig_p->GetValue((rebinStr + "DOREBIN").c_str(), 0);
+	
 	bool isMultijet = isStrSame(observables1[oI], "JtXJJ") || isStrSame(observables1[oI], "JtAJJ") || isStrSame(observables1[oI], "JtDPhiJJG") || isStrSame(observables1[oI], "JtDPhiJJ") || isStrSame(observables1[oI], "JtDRJJ");
 
 	std::string mixMode = "MIXMODE1";
@@ -931,25 +945,25 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	std::string rawName = centStr + "/photonPt" + observables1[oI] + "VCent_" + centStr + "_" + mainBarrelECStr + "_DPhi0_" + mixMode + "_RAW_h";
 	
 	std::string mixName = rawName;
-	mixName.replace(mixName.find("RAW"), 3, mixStrings[oI]);
+	if(!strReplace(&mixName, "RAW", mixStrings[oI])) return 1;
 	std::string subName = rawName;
-	subName.replace(subName.find("RAW"), 3, "SUB");
+	if(!strReplace(&subName, "RAW", "SUB")) return 1;
 	
 	std::string rawNameEC = rawName;
 	std::string mixNameEC = mixName;
 	std::string subNameEC = subName;
 
 	if(isBarrelAndEC){
-	  rawNameEC.replace(rawNameEC.find("Barrel"), 6, "EC");
-	  mixNameEC.replace(mixNameEC.find("Barrel"), 6, "EC");
-	  subNameEC.replace(subNameEC.find("Barrel"), 6, "EC");
+	  if(!strReplace(&rawNameEC, "Barrel", "EC")) return 1;
+	  if(!strReplace(&mixNameEC, "Barrel", "EC")) return 1;
+	  if(!strReplace(&subNameEC, "Barrel", "EC")) return 1;
 	}
 	
 	//Big block declaring all histograms
 	TH2F* raw_p = nullptr;
 	TH2F* mix_p = nullptr;
 	TH2F* sub_p = nullptr;
-
+      
 	/*
 	TH2F* raw_p = (TH2F*)inFile_p->Get(rawName.c_str());
 	TH2F* mix_p = (TH2F*)inFile_p->Get(mixName.c_str());
@@ -975,9 +989,156 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	TH2F* subMC_p = nullptr;
 	TH2F* subMCEC_p = nullptr;
 
-	//Check the rebin
-	if(doRebin){
+	std::string mixUncorrectedName = mixName;
+	std::string mixCorrectionName = mixName;
+	std::string pureBkgdName = mixName;
+	std::string pureBkgdMCName = mixName;
+	std::string mixBkgdName = mixName;
+	std::string mixBkgdUncorrName = mixName;
+	std::string mixBkgdMCName = mixName;
 
+	std::string mcName = rawName;
+	std::string mcNameEC;
+	if(isMC){
+	  if(!strReplace(&mcName, "RAW", "TRUTHMATCHEDRECO")) return 1;
+	  mcNameEC = mcName;
+
+	  if(isBarrelAndEC){
+	    if(!strReplace(&mcNameEC, "Barrel", "EC")) return 1;
+	  }
+	}
+
+	if(isMultijet){
+	  if(!strReplace(&mixUncorrectedName, "MIXCORRECTED", "MIX")) return 1;
+	  if(!strReplace(&mixCorrectionName, "MIXCORRECTED", "MIXCORRECTION")) return 1;
+	  if(!strReplace(&pureBkgdName, "MIXCORRECTED", "MIXPURE")) return 1;
+	  if(!strReplace(&pureBkgdMCName, "MIXCORRECTED", "PUREBKGD")) return 1;
+	  if(!strReplace(&mixBkgdName, "MIXCORRECTED", "MIXMIXCORRECTED")) return 1;
+	  if(!strReplace(&mixBkgdUncorrName, "MIXCORRECTED", "MIXMIX")) return 1;
+	  if(!strReplace(&mixBkgdMCName, "MIXCORRECTED", "MIXBKGD")) return 1;
+	}
+
+	//Declare an array and a maxbins value for rebinning purposes
+	const Int_t nMaxBins = 1000;
+	Int_t nBinsX, nBinsY;
+	Double_t newBinsX[nMaxBins+1], newBinsY[nMaxBins+1];
+	
+	//Check the rebin
+	std::cout << "DO REBIN: " << doRebin << std::endl;
+	std::cout << "REBINSTR: " <<  rebinStr + "DOREBIN" << std::endl;
+
+	if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
+	if(doRebin){
+	  std::string rebinXStr = plotConfig_p->GetValue((rebinStr + "REBINX").c_str(), "");
+	  std::string rebinYStr = plotConfig_p->GetValue((rebinStr + "REBINY").c_str(), "");
+
+	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+	  
+	  if(rebinXStr.size() == 0){
+	    std::cout << "ERROR: '" << rebinStr << "DOREBIN' is " << doRebin << ", but rebinXStr is empty. return 1" << std::endl;
+	    return 1;
+	  }
+	  if(rebinYStr.size() == 0){
+	    std::cout << "ERROR: '" << rebinStr << "DOREBIN' is " << doRebin << ", but rebinYStr is empty. return 1" << std::endl;
+	    return 1;
+	  }
+
+	  //Grab a histogram for bin checks 
+	  TH2F* temp_p = (TH2F*)inFile_p->Get(rawName.c_str());
+	  std::vector<float> rebinXVect = strToVectF(rebinXStr);
+	  std::vector<float> rebinYVect = strToVectF(rebinYStr);
+	  Float_t deltaValue = 0.001;
+
+	  //Pre-check the bins requested are unique at the level of 2xDeltaValue
+	  if(!checkMinBinWidth(rebinXVect, 2*deltaValue)) return 1;
+	  if(!checkMinBinWidth(rebinYVect, 2*deltaValue)) return 1;
+
+	  //Check that the macro histogram bins align with requested new binning
+	  if(!checkHistContainsBins(rebinXVect, temp_p, deltaValue, false)) return 1;
+	  if(!checkHistContainsBins(rebinYVect, temp_p, deltaValue, true)) return 1;
+
+	  nBinsX = rebinXVect.size() - 1;
+	  for(Int_t bIX = 0; bIX < nBinsX+1; ++bIX){
+	    newBinsX[bIX] = rebinXVect[bIX];
+	  }
+	  nBinsY = rebinYVect.size() - 1;
+	  for(Int_t bIY = 0; bIY < nBinsY+1; ++bIY){
+	    newBinsY[bIY] = rebinYVect[bIY];
+	  }
+
+	  //CFM EDITING HERE 2021.11.04
+	  //Double pointer since we are newing in the loop
+	  std::vector<TH2F**> histsToRebin_p = {&raw_p, &mix_p, &sub_p};	  
+	  std::vector<std::string> rebinHistsName = {rawName, mixName, subName};
+
+	  if(mcFileName.size() != 0){
+	    histsToRebin_p.push_back(&subMC_p);
+	    rebinHistsName.push_back(subName);
+	  }
+
+	  if(isBarrelAndEC){
+	    histsToRebin_p.push_back(&rawEC_p);
+	    histsToRebin_p.push_back(&mixEC_p);
+	    histsToRebin_p.push_back(&subEC_p);
+
+	    rebinHistsName.push_back(rawNameEC);
+	    rebinHistsName.push_back(mixNameEC);
+	    rebinHistsName.push_back(subNameEC);
+
+	    if(mcFileName.size() != 0){
+	      histsToRebin_p.push_back(&subMCEC_p);
+	      rebinHistsName.push_back(subNameEC);
+	    }
+	  }
+
+	  if(isMC){
+	    histsToRebin_p.push_back(&mc_p);
+	    rebinHistsName.push_back(mcName);
+
+	    if(isBarrelAndEC){
+	      histsToRebin_p.push_back(&mcEC_p);
+	      rebinHistsName.push_back(mcNameEC);
+	    }
+	  }
+	  
+	  if(isMultijet){
+	    histsToRebin_p.push_back(&mixUncorrected_p);
+	    histsToRebin_p.push_back(&mixCorrection_p);
+	    histsToRebin_p.push_back(&pureBkgd_p);
+	    histsToRebin_p.push_back(&mixBkgd_p);
+	    histsToRebin_p.push_back(&mixBkgdUncorr_p);
+
+	    rebinHistsName.push_back(mixUncorrectedName);
+	    rebinHistsName.push_back(mixCorrectionName);
+	    rebinHistsName.push_back(pureBkgdName);
+	    rebinHistsName.push_back(mixBkgdName);
+	    rebinHistsName.push_back(mixBkgdUncorrName);
+	    
+	    if(isMC){
+	      histsToRebin_p.push_back(&pureBkgdMC_p);
+	      histsToRebin_p.push_back(&mixBkgdMC_p);
+
+	      rebinHistsName.push_back(pureBkgdMCName);
+	      rebinHistsName.push_back(mixBkgdMCName);
+	    }
+	  }
+
+	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+	      
+	  for(unsigned int i = 0; i < histsToRebin_p.size(); ++i){
+	    std::string tempName = rebinHistsName[i];
+	    TH2F* temp2_p = (TH2F*)inFile_p->Get(tempName.c_str());
+	    if(!strReplace(&tempName, "_h", "_Rebin_h")) return 1;
+	    while(tempName.find("/") != std::string::npos){tempName.replace(0, tempName.find("/")+1, "");}
+	    std::string xTitle = temp2_p->GetXaxis()->GetTitle();
+	    std::string yTitle = temp2_p->GetYaxis()->GetTitle();
+	    std::string titleStr = ";" + xTitle + ";" + yTitle;
+	    
+	    (*histsToRebin_p[i]) = new TH2F(tempName.c_str(), titleStr.c_str(), nBinsX, newBinsX, nBinsY, newBinsY);	    
+
+	    fineHistToCoarseHist(temp2_p, *(histsToRebin_p[i]));  
+	  }
 	}
 	else{
 	  raw_p = (TH2F*)inFile_p->Get(rawName.c_str());
@@ -994,14 +1155,23 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	  }
 
 	  if(isMC){
-	    std::string mcName = rawName;
-	    mcName.replace(mcName.find("RAW"), 3, "TRUTHMATCHEDRECO");
 	    mc_p = (TH2F*)inFile_p->Get(mcName.c_str());
-
-	    if(isBarrelAndEC){
-	      
-	    }
+	    if(isBarrelAndEC) mcEC_p = (TH2F*)inFile_p->Get(mcNameEC.c_str());	      
 	  }
+
+	  if(isMultijet){	  
+	    mixUncorrected_p = (TH2F*)inFile_p->Get(mixUncorrectedName.c_str());
+	    mixCorrection_p = (TH2F*)inFile_p->Get(mixCorrectionName.c_str());
+	    
+	    pureBkgd_p = (TH2F*)inFile_p->Get(pureBkgdName.c_str());
+	    mixBkgd_p = (TH2F*)inFile_p->Get(mixBkgdName.c_str());
+	    mixBkgdUncorr_p = (TH2F*)inFile_p->Get(mixBkgdUncorrName.c_str());
+	    
+	    if(isMC){
+	      pureBkgdMC_p = (TH2F*)inFile_p->Get(pureBkgdMCName.c_str());	  
+	      mixBkgdMC_p = (TH2F*)inFile_p->Get(mixBkgdMCName.c_str());
+	    }
+	  }	  
 	}
 	
 	if(isBarrelAndEC){
@@ -1010,54 +1180,9 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	  sub_p->Add(subEC_p);
 	  
 	  if(mcFileName.size() != 0) subMC_p->Add(subMCEC_p);
+	  if(isMC) mc_p->Add(mcEC_p);
 	}
 		
-	if(isMC){
-	  std::string mcName = rawName;
-	  mcName.replace(mcName.find("RAW"), 3, "TRUTHMATCHEDRECO");
-	  mc_p = (TH2F*)inFile_p->Get(mcName.c_str());	  
-
-	  if(isBarrelAndEC){
-	    mcName.replace(mcName.find("Barrel"), 6, "EC");
-	    mcEC_p = (TH2F*)inFile_p->Get(mcName.c_str());
-
-	    mc_p->Add(mcEC_p);
-	  }
-	}
-
-	std::string mixUncorrectedName = mixName;
-	std::string mixCorrectionName = mixName;
-	std::string pureBkgdName = mixName;
-	std::string pureBkgdMCName = mixName;
-	std::string mixBkgdName = mixName;
-	std::string mixBkgdUncorrName = mixName;
-	std::string mixBkgdMCName = mixName;
-
-	if(isMultijet){
-	  mixUncorrectedName.replace(mixUncorrectedName.find("MIXCORRECTED"), std::string("MIXCORRECTED").size(), "MIX");
-
-	  mixCorrectionName.replace(mixCorrectionName.find("MIXCORRECTED"), std::string("MIXCORRECTED").size(), "MIXCORRECTION");
-
-	  pureBkgdName.replace(mixBkgdName.find("MIXCORRECTED"), std::string("MIXCORRECTED").size(), "MIXPURE");
-	  pureBkgdMCName.replace(mixBkgdMCName.find("MIXCORRECTED"), std::string("MIXCORRECTED").size(), "PUREBKGD");
-
-	  mixBkgdName.replace(mixBkgdName.find("MIXCORRECTED"), std::string("MIXCORRECTED").size(), "MIXMIXCORRECTED");
-	  mixBkgdUncorrName.replace(mixBkgdUncorrName.find("MIXCORRECTED"), std::string("MIXCORRECTED").size(), "MIXMIX");
-	  mixBkgdMCName.replace(mixBkgdMCName.find("MIXCORRECTED"), std::string("MIXCORRECTED").size(), "MIXBKGD");
-	  
-	  mixUncorrected_p = (TH2F*)inFile_p->Get(mixUncorrectedName.c_str());
-	  mixCorrection_p = (TH2F*)inFile_p->Get(mixCorrectionName.c_str());
-
-	  pureBkgd_p = (TH2F*)inFile_p->Get(pureBkgdName.c_str());
-	  mixBkgd_p = (TH2F*)inFile_p->Get(mixBkgdName.c_str());
-	  mixBkgdUncorr_p = (TH2F*)inFile_p->Get(mixBkgdUncorrName.c_str());
-	  
-	  if(isMC){
-	    pureBkgdMC_p = (TH2F*)inFile_p->Get(pureBkgdMCName.c_str());	  
-	    mixBkgdMC_p = (TH2F*)inFile_p->Get(mixBkgdMCName.c_str());
-	  }
-	}
-
 	if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
     	
        
@@ -1135,18 +1260,17 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	    mixUncorrectedTemp_p = new TH1F(newName.c_str(), axisStr.c_str(), nBinsTemp, binsTemp);
  	    mixCorrectionTemp_p = new TH1F("mixCorrectionTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
 
-	    newName.replace(newName.find("Alt"), 3, "Alt2");
+	    if(!strReplace(&newName, "Alt", "Alt2")) return 1;
 	    pureBkgdTemp_p = new TH1F(newName.c_str(), axisStr.c_str(), nBinsTemp, binsTemp);
 
-	    newName.replace(newName.find("Alt2"), 4, "Alt3");
+	    if(!strReplace(&newName, "Alt2", "Alt3")) return 1;
 	    mixBkgdTemp_p = new TH1F(newName.c_str(), axisStr.c_str(), nBinsTemp, binsTemp);
 	    mixBkgdUncorrTemp_p = new TH1F("mixBkgdUncorrTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
 
 	    if(isMC){
 	      mixBkgdMCTemp_p = new TH1F("mixBkgdMCTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
 	      pureBkgdMCTemp_p = new TH1F("pureBkgdMCTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
-	    }
-	    
+	    }	    
 	  }
 
 	  for(Int_t bIX = 0; bIX < raw_p->GetXaxis()->GetNbins(); ++bIX){	
@@ -1161,15 +1285,21 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	    
 	    if(isMC){
+	      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	      mcTemp_p->SetBinContent(bIX+1, mc_p->GetBinContent(bIX+1, bIY+1));
 	      mcTemp_p->SetBinError(bIX+1, mc_p->GetBinError(bIX+1, bIY+1));
+	      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	    }
 
 	    if(mcFileName.size() != 0){	
+	      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	      subMCTemp_p->SetBinContent(bIX+1, subMC_p->GetBinContent(bIX+1, bIY+1));
 	      subMCTemp_p->SetBinError(bIX+1, subMC_p->GetBinError(bIX+1, bIY+1));      
+	      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	    }
 	    
+	    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
 	    //	    if(isStrSame(observables1[oI], "JtXJJ") || isStrSame(observables1[oI], "JtDPhiJJG")){
 	    if(isMultijet && false){
 	      mixUncorrectedTemp_p->SetBinContent(bIX+1, mixUncorrected_p->GetBinContent(bIX+1, bIY+1));
@@ -1207,9 +1337,11 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 		if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;		
 	      }
 	    }
+
+	    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	  }
 
-	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+       	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	  
 	  std::vector<TH1F*> hists_p = {rawTemp_p, subTemp_p};
 	  std::vector<std::string> legStrs = {"Raw", "Raw - Mixed"};
@@ -1308,7 +1440,7 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	    }
 	    */
 	  }
-	  
+		  
 
 	  for(unsigned int hI = 0; hI < refHists_p.size(); ++hI){
 	    for(int bIX = 0; bIX < refHists_p[hI]->GetXaxis()->GetNbins(); ++bIX){
@@ -1535,7 +1667,7 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	      }
 	    }
 	  }
-	    	  
+		    	  
 	  delete rawTemp_p;
 	  delete mixTemp_p;
 	  delete subTemp_p;	  
@@ -1554,8 +1686,44 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	      delete mixBkgdMCTemp_p;
 	      delete pureBkgdMCTemp_p;
 	    }
+	  }	
+	}
+
+	//If we did a rebin we new'd and therefore need to delete
+	if(doRebin){
+	  delete raw_p;
+	  delete mix_p;
+	  delete sub_p;
+
+	  if(mcFileName.size() != 0) delete subMC_p;
+
+	  if(isBarrelAndEC){
+	    delete rawEC_p;
+	    delete mixEC_p;
+	    delete subEC_p;
+
+	    if(mcFileName.size() != 0) delete subMCEC_p;	   
+	  }
+
+	  if(isMC){
+	    delete mc_p;
+	    if(isBarrelAndEC) delete mcEC_p;	    
+	  }
+
+	  if(isMultijet){
+	    delete mixUncorrected_p;
+	    delete mixCorrection_p;
+	    delete pureBkgd_p;
+	    delete mixBkgd_p;
+	    delete mixBkgdUncorr_p;
+
+	    if(isMC){
+	      delete pureBkgdMC_p;
+	      delete mixBkgdMC_p;
+	    }
 	  }
 	}
+	
       }
     }
   }
