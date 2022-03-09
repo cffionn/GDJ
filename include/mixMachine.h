@@ -29,12 +29,16 @@ class mixMachine{
   bool FillXYMixCorrection(Float_t fillX, Float_t fillY, Float_t fillWeight);
   bool FillXYTruth(Float_t fillX, Float_t fillY, Float_t fillWeight);
   bool FillXYTruthMatchedReco(Float_t fillX, Float_t fillY, Float_t fillWeight);
+  bool FillXYSingleTruthToMultiFake(Float_t fillX, Float_t fillY, Float_t fillWeight);
+  bool FillXYSingleTruthToMultiFakeMix(Float_t fillX, Float_t fillY, Float_t fillWeight);
   bool FillX(Float_t fillX, Float_t fillWeight, std::string mixName);
   bool FillXRaw(Float_t fillX, Float_t fillWeight);
   bool FillXMix(Float_t fillX, Float_t fillWeight);
   bool FillXMixCorrection(Float_t fillX, Float_t fillWeight);
   bool FillXTruth(Float_t fillX, Float_t fillWeight);
   bool FillXTruthMatchedReco(Float_t fillX, Float_t fillWeight);
+  bool FillXSingleTruthToMultiFake(Float_t fillX, Float_t fillWeight);
+  bool FillXSingleTruthToMultiFakeMix(Float_t fillX, Float_t fillWeight);
 
   bool CheckMachinesMatchMode(mixMachine* machineToCheck);
   bool CheckMachinesMatchMC(mixMachine* machineToCheck);
@@ -72,7 +76,7 @@ class mixMachine{
   mixMachine::mixMode m_mixMode;
   std::vector<std::string> m_noneMixNames = {"RAW", "SUB", "TRUTH", "TRUTHMATCHEDRECO"};
   std::vector<std::string> m_inclusiveMixNames = {"RAW", "MIX", "SUB", "TRUTH", "TRUTHMATCHEDRECO"};
-  std::vector<std::string> m_multiMixNames = {"RAW", "MIX", "MIXCORRECTION", "MIXCORRECTED", "SUB", "TRUTH", "TRUTHMATCHEDRECO"};
+  std::vector<std::string> m_multiMixNames = {"RAW", "MIX", "MIXCORRECTION", "MIXCORRECTED", "SUB", "TRUTH", "TRUTHMATCHEDRECO", "SINGLETRUTHTOMULTIFAKE", "SINGLETRUTHTOMULTIFAKEMIX"};
 
   std::vector<TH1F*> m_hists1D;
   std::vector<TH2F*> m_hists2D;
@@ -80,7 +84,7 @@ class mixMachine{
   bool m_is2DUnfold;
   bool m_isMC;
 
-  const static Int_t nMaxBins = 200;
+  const static Int_t nMaxBins = 2000;
   Int_t m_nBinsX;
   Double_t m_binsX[nMaxBins+1];
   std::vector<double> m_binsXVect;

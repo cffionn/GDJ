@@ -11,7 +11,7 @@
 
 mixMachine::mixMachine(std::string inMixMachineName, mixMachine::mixMode inMixMode, TEnv* inParams_p)
 {
-  if(!Init(inMixMachineName, inMixMode, inParams_p)) std::cout << "MIXMACHINE: Initialization failure. return" << std::endl;
+  if(!Init(inMixMachineName, inMixMode, inParams_p)) std::cout << "MIXMACHINE: Initialization failure for machine \'" << inMixMachineName << "\'. return" << std::endl;
   return;
 }
 
@@ -24,14 +24,12 @@ bool mixMachine::Init(std::string inMixMachineName, mixMachine::mixMode inMixMod
   if(m_mixMode == NONE) mixNames = m_noneMixNames;
   else if(m_mixMode == INCLUSIVE) mixNames = m_inclusiveMixNames;
   else if(m_mixMode == MULTI) mixNames = m_multiMixNames;
-  
+
   THashList* paramList_p = (THashList*)inParams_p->GetTable();
   for(Int_t entry = 0; entry < paramList_p->GetEntries(); ++entry){
     std::string name = paramList_p->At(entry)->GetName();
-
     m_env.SetValue(name.c_str(), inParams_p->GetValue(name.c_str(), ""));
   }
-  
 
   std::vector<std::string> reqParamsGlobal = {"IS2DUNFOLD",
 					      "ISMC",
@@ -52,13 +50,14 @@ bool mixMachine::Init(std::string inMixMachineName, mixMachine::mixMode inMixMod
   m_isMC = m_env.GetValue("ISMC", 0);
   m_nBinsX = m_env.GetValue("NBINSX", -1);
   m_binsXVect.clear();
-  std::vector<Float_t> tempBins = strToVectF(m_env.GetValue("BINSX", ""));
+  std::string tempStr = m_env.GetValue("BINSX", "");
+  std::vector<Float_t> tempBins = strToVectF(tempStr);
+
   for(unsigned int tI = 0; tI < tempBins.size(); ++tI){
     m_binsX[tI] = tempBins[tI];
     m_binsXVect.push_back(tempBins[tI]);
   }
   m_titleX = m_env.GetValue("TITLEX", "");  
-
   if(m_is2DUnfold){
     if(!checkEnvForParams(&m_env, reqParams2DUnfold)){
       Clean();
@@ -169,6 +168,16 @@ bool mixMachine::FillXYTruthMatchedReco(Float_t fillX, Float_t fillY, Float_t fi
   return FillXY(fillX, fillY, fillWeight, "TRUTHMATCHEDRECO");
 }
 
+bool mixMachine::FillXYSingleTruthToMultiFake(Float_t fillX, Float_t fillY, Float_t fillWeight)
+{
+  return FillXY(fillX, fillY, fillWeight, "SINGLETRUTHTOMULTIFAKE");
+}
+
+bool mixMachine::FillXYSingleTruthToMultiFakeMix(Float_t fillX, Float_t fillY, Float_t fillWeight)
+{
+  return FillXY(fillX, fillY, fillWeight, "SINGLETRUTHTOMULTIFAKEMIX");
+}
+
 bool mixMachine::FillX(Float_t fillX, Float_t fillWeight, std::string mixName)
 {
   if(m_is2DUnfold){
@@ -202,6 +211,16 @@ bool mixMachine::FillXTruth(Float_t fillX, Float_t fillWeight)
 bool mixMachine::FillXTruthMatchedReco(Float_t fillX, Float_t fillWeight)
 {
   return FillX(fillX, fillWeight, "TRUTHMATCHEDRECO");
+}
+
+bool mixMachine::FillXSingleTruthToMultiFake(Float_t fillX, Float_t fillWeight)
+{
+  return FillX(fillX, fillWeight, "SINGLETRUTHTOMULTIFAKE");
+}
+
+bool mixMachine::FillXSingleTruthToMultiFakeMix(Float_t fillX, Float_t fillWeight)
+{
+  return FillX(fillX, fillWeight, "SINGLETRUTHTOMULTIFAKEMIX");
 }
 
 
@@ -414,10 +433,42 @@ bool mixMachine::Add(mixMachine *machineToAdd, double precision)
   if(!(this->CheckMachinesMatch2D(machineToAdd))) return false;
   if(!(this->CheckMachinesMatchBins(machineToAdd, precision))) return false;
 
+  //  std::cout << "FILE, LINE: " << __FILE__ << ", L" << __LINE__ << std::endl;
+
   if(m_is2DUnfold){
     std::vector<TH2F*> tempHists = machineToAdd->GetTH2F();
+
+    //    std::cout << "SIZES of mixMachine '" << m_mixMachineName << "': " << m_hists2D.size() << ", " << tempHists.size() << std::endl;
+
     for(unsigned int i = 0; i < tempHists.size(); ++i){
+      //      std::cout << " Attempting add: " << m_hists2D[i]->GetName() << ", " << tempHists[i]->GetName() << std::endl;
+      std::string binsX1 = "";
+      std::string binsX2 = "";
+      std::string binsY1 = "";
+      std::string binsY2 = "";
+      for(Int_t bIX = 0; bIX < tempHists[i]->GetXaxis()->GetNbins()+1; ++bIX){
+	binsX1 = binsX1 + std::to_string(tempHists[i]->GetXaxis()->GetBinLowEdge(bIX+1)) + ",";
+      }
+      for(Int_t bIX = 0; bIX < m_hists2D[i]->GetXaxis()->GetNbins()+1; ++bIX){
+	binsX2 = binsX2 + std::to_string(m_hists2D[i]->GetXaxis()->GetBinLowEdge(bIX+1)) + ",";
+      }
+
+      for(Int_t bIY = 0; bIY < tempHists[i]->GetYaxis()->GetNbins()+1; ++bIY){
+	binsY1 = binsY1 + std::to_string(tempHists[i]->GetYaxis()->GetBinLowEdge(bIY+1)) + ",";
+      }
+      for(Int_t bIY = 0; bIY < m_hists2D[i]->GetYaxis()->GetNbins()+1; ++bIY){
+	binsY2 = binsY2 + std::to_string(m_hists2D[i]->GetYaxis()->GetBinLowEdge(bIY+1)) + ",";
+      }
+
+      /*
+      std::cout << "  binsX1: " << binsX1 << std::endl;
+      std::cout << "  binsX2: " << binsX2 << std::endl;
+      std::cout << "  binsY1: " << binsY1 << std::endl;
+      std::cout << "  binsY2: " << binsY2 << std::endl;
+      */
       m_hists2D[i]->Add(tempHists[i]);
+
+
     }
   }
   else{
@@ -426,6 +477,8 @@ bool mixMachine::Add(mixMachine *machineToAdd, double precision)
       m_hists1D[i]->Add(tempHists[i]);
     }
   }
+
+  //  std::cout << "FILE, LINE: " << __FILE__ << ", L" << __LINE__ << std::endl;
 
   return true;
 }
@@ -510,19 +563,20 @@ void mixMachine::ComputeSub()
     else m_hists1D[subPos]->Add(m_hists1D[rawPos], m_hists1D[mixPos], 1.0, -1.0);
   }
   else if(m_mixMode == MULTI){
-    std::cout << " MIXMODE IS MULTI" << std::endl;
+    //    std::cout << " MIXMODE IS MULTI" << std::endl;
 
     int rawPos = vectContainsStrPos("RAW", &m_multiMixNames);
     int mixPos = vectContainsStrPos("MIX", &m_multiMixNames);
     int mixCorrectionPos = vectContainsStrPos("MIXCORRECTION", &m_multiMixNames);
     int mixCorrectedPos = vectContainsStrPos("MIXCORRECTED", &m_multiMixNames);
     int subPos = vectContainsStrPos("SUB", &m_multiMixNames);
+    /*
     std::cout << " RAW POS: "<< rawPos << std::endl;
     std::cout << " MIX POS: "<< mixPos << std::endl;
     std::cout << " MIXCORRECTION POS: "<< mixCorrectionPos << std::endl;
     std::cout << " MIXCORRECTED POS: "<< mixCorrectedPos << std::endl;
     std::cout << " SUB POS: "<< subPos << std::endl;
-
+    */
     if(m_is2DUnfold){
       m_hists2D[mixCorrectedPos]->Add(m_hists2D[mixPos], m_hists2D[mixCorrectionPos], 1.0, -1.0);
       m_hists2D[subPos]->Add(m_hists2D[rawPos], m_hists2D[mixCorrectedPos], 1.0, -1.0);
