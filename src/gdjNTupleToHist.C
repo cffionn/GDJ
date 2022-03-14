@@ -109,7 +109,7 @@ void createMixMachineTEnv(TEnv* inEnv_p, bool is2DUnfoldValue, bool isMCValue, i
 }
 
 
-bool readBins(TEnv* config_p, std::string varStr, Int_t nMaxBins, Int_t* nBins, Float_t* low, Float_t* high, Bool_t* doLog, Bool_t* doCustom, Bool_t* doAbs, Double_t bins[], std::string* binsStrForConfig)
+bool readBins(TEnv* config_p, std::string varStr, Int_t nMaxBins, Int_t* nBins, Float_t* low, Float_t* high, Bool_t* doLog, Bool_t* doCustom, Bool_t* doAbs, Double_t bins[], std::string* binsStrForConfig, Float_t* lowReco = nullptr, Float_t* highReco = nullptr) //Last two args are optional
 {
   std::string inConfigFileName = config_p->GetValue("CONFIGFILENAME", "");
   (*nBins) = config_p->GetValue(("N" + varStr + "BINS").c_str(), nMaxBins+1);
@@ -120,6 +120,17 @@ bool readBins(TEnv* config_p, std::string varStr, Int_t nMaxBins, Int_t* nBins, 
   if(doLog != nullptr) (*doLog) = (bool)config_p->GetValue((varStr + "BINSDOLOG").c_str(), 0);
   if(doCustom != nullptr) (*doCustom) = (bool)config_p->GetValue((varStr + "BINSDOCUSTOM").c_str(), 0);
   if(doAbs != nullptr) (*doAbs) = (bool)config_p->GetValue((varStr + "BINSDOABS").c_str(), 0);
+
+  if(lowReco != nullptr && highReco != nullptr){
+    const int defaultVal = -1000;
+    const int defaultValTest = -999;
+
+    (*lowReco) = config_p->GetValue((varStr + "BINSLOWRECO").c_str(), defaultVal);
+    (*highReco) = config_p->GetValue((varStr + "BINSHIGHRECO").c_str(), defaultVal);
+
+    if(*lowReco < defaultValTest) (*lowReco) = (*low);
+    if(*highReco < defaultValTest) (*highReco) = (*high);
+  }
 
   Float_t tempLow = (*low);
   //Handle absolute bins
@@ -222,6 +233,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 					      "GAMMAPTBINSDOLOG",
 					      "GAMMAPTBINSDOCUSTOM",
 					      "GAMMAPTBINSCUSTOM",
+					      "GAMMAPTBINSLOWRECO",
+					      "GAMMAPTBINSHIGHRECO",
 					      "NGAMMAPTFINEBINS",
 					      "GAMMAPTFINEBINSLOW",
 					      "GAMMAPTFINEBINSHIGH",
@@ -581,7 +594,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
   Double_t gammaPtBins[nMaxPtBins+1], gammaPtFineBins[nMaxPtFineBins+1], jtPtBins[nMaxPtBins+1], jtPtFineBins[nMaxPtFineBins+1], xjBins[nMaxPtBins+1], xjFineBins[nMaxPtFineBins+1], dPhiBins[nMaxPtBins+1], dPhiFineBins[nMaxPtFineBins+1], ajBins[nMaxPtBins+1], ajFineBins[nMaxPtFineBins+1], drBins[nMaxPtBins+1], drFineBins[nMaxPtFineBins+1];
   std::string gammaPtBinsStrForConfig, gammaPtFineBinsStrForConfig, jtPtBinsStrForConfig, jtPtFineBinsStrForConfig, xjBinsStrForConfig, xjFineBinsStrForConfig, dPhiBinsStrForConfig, dPhiFineBinsStrForConfig, ajBinsStrForConfig, ajFineBinsStrForConfig, drBinsStrForConfig, drFineBinsStrForConfig;
 
-  readBins(config_p, "GAMMAPT", nMaxPtBins, &nGammaPtBins, &gammaPtBinsLow, &gammaPtBinsHigh, &gammaPtBinsDoLog, &gammaPtBinsDoCustom, nullptr, gammaPtBins, &gammaPtBinsStrForConfig);
+  Float_t gammaPtBinsLowReco, gammaPtBinsHighReco;
+
+  readBins(config_p, "GAMMAPT", nMaxPtBins, &nGammaPtBins, &gammaPtBinsLow, &gammaPtBinsHigh, &gammaPtBinsDoLog, &gammaPtBinsDoCustom, nullptr, gammaPtBins, &gammaPtBinsStrForConfig, &gammaPtBinsLowReco, &gammaPtBinsHighReco);
   readBins(config_p, "GAMMAPTFINE", nMaxPtFineBins, &nGammaPtFineBins, &gammaPtFineBinsLow, &gammaPtFineBinsHigh, &gammaPtFineBinsDoLog, &gammaPtFineBinsDoCustom, nullptr, gammaPtFineBins, &gammaPtFineBinsStrForConfig);
 
   readBins(config_p, "JTPT", nMaxPtBins, &nJtPtBins, &jtPtBinsLow, &jtPtBinsHigh, &jtPtBinsDoLog, &jtPtBinsDoCustom, nullptr, jtPtBins, &jtPtBinsStrForConfig);
@@ -1079,9 +1094,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
     unfoldTree_p->Branch("recoJtPhi", recoJtPhi_, "recoJtPhi[nRecoJt]/F"); 
     unfoldTree_p->Branch("recoJtEta", recoJtEta_, "recoJtEta[nRecoJt]/F"); 
 
-    unfoldTree_p->Branch("truthJtPt", &truthJtPt_, "truthJtPt[nRecoJt]/F"); 
-    unfoldTree_p->Branch("truthJtPhi", &truthJtPhi_, "truthJtPhi[nRecoJt]/F"); 
-    unfoldTree_p->Branch("truthJtEta", &truthJtEta_, "truthJtEta[nRecoJt]/F"); 
+    unfoldTree_p->Branch("truthJtPt", truthJtPt_, "truthJtPt[nRecoJt]/F"); 
+    unfoldTree_p->Branch("truthJtPhi", truthJtPhi_, "truthJtPhi[nRecoJt]/F"); 
+    unfoldTree_p->Branch("truthJtEta", truthJtEta_, "truthJtEta[nRecoJt]/F"); 
 
     unfoldTree_p->Branch("nTruthJtUnmatched", &nTruthJtUnmatched_, "nTruthJtUnmatched/I");
     unfoldTree_p->Branch("truthJtUnmatchedPt", truthJtUnmatchedPt_, "truthJtUnmatchedPt[nTruthJtUnmatched]/F"); 
@@ -1639,7 +1654,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       leadingJtPtJtDPhiJJVCent_MixMachine_p[cI][eI] = new mixMachine("leadingJtPtJtDPhiJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr, multiFlag, &leadingJtPtJtDPhiJJVCent_Config);
 
       photonPtJtPtVCent_Config.SetValue("ISMC", 0);
-      photonPtJtXJVCent_Config.SetValue("ISMC", 0);
+        photonPtJtXJVCent_Config.SetValue("ISMC", 0);
       photonPtJtDPhiVCent_Config.SetValue("ISMC", 0);
       photonPtJtDPhiJJGVCent_Config.SetValue("ISMC", 0);
       photonPtJtDPhiJJVCent_Config.SetValue("ISMC", 0);
@@ -1964,6 +1979,17 @@ int gdjNTupleToHist(std::string inConfigFileName)
   
   inFile_p->cd();
   
+  //define the trigger names we will restrict data samples to
+  const std::string hltNamePbPb = "HLT_g20_loose_ion";
+  const std::string hltNamePP = "HLT_g35_loose_L1EM15";
+
+  std::string hltName = "";
+  int hltPos = -1;
+  if(!isMC){
+    if(isPP) hltName = hltNamePP;
+    else hltName = hltNamePbPb;
+  }
+
   //Grab the hltbranches for some basic prescale checks
   std::vector<std::string> listOfBranches = getVectBranchList(inTree_p);
   std::vector<std::string> hltList;
@@ -1978,6 +2004,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
     if(branchStr.find(prescaleStr) != std::string::npos) hltListPres.push_back(branchStr);
     else hltList.push_back(branchStr);
+
+    if(isStrSame(branchStr, hltName)){
+      hltPos = hltList.size()-1;
+    }
   }
 
   bool allHLTPrescalesFound = true;
@@ -2021,7 +2051,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
   std::vector<float>* photon_phi_p=nullptr;
   std::vector<bool>* photon_tight_p=nullptr;  
   std::vector<float>* photon_etcone_p=nullptr;
-
+  std::vector<float>* photon_correctedIso_p=nullptr;
+  
   std::vector<float>* aktRhi_etajes_jet_pt_p=nullptr;
   std::vector<float>* aktRhi_etajes_jet_eta_p=nullptr;
   std::vector<float>* aktRhi_etajes_jet_phi_p=nullptr;
@@ -2447,12 +2478,18 @@ int gdjNTupleToHist(std::string inConfigFileName)
   std::vector<int> skippedCent;
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 
+
+  std::vector<std::string> eventCutStr = {"v_{z} Cut",
+					  "HLT req. (Data Only)",
+					  "Centrality in Range (Pb+Pb Only)",
+					  "Truth photon p_{T} in MC range"};  
+  
   std::map<int, int> eventCounter;
-  for(int i = 0; i < 10; ++i){
+  for(int i = 0; i < 100; ++i){
     eventCounter[i] = 0;
   }
 
-
+  //Main signal processing loop
   for(ULong64_t entry = 0; entry < nEntries; ++entry){
     if(entry%nDiv == 0) std::cout << " Entry " << entry << "/" << nEntries << "..." << std::endl;
     inTree_p->GetEntry(entry);
@@ -2464,25 +2501,30 @@ int gdjNTupleToHist(std::string inConfigFileName)
     if(vert_z <= -15. || vert_z >= 15.) continue;      
 
     vzPassing_p->Fill(vert_z);
-
     ++(eventCounter[0]);
-
-    if(!didOneFireMiss && !isMC){//only check this once per input
-      //check at least one of the purported selection triggers fired
-      bool oneFire = false;
-      for(unsigned int hI = 0; hI < hltVect.size(); ++hI){
-	if(*(hltVect[hI])){
-	  oneFire = true;
-	  break;
-	}
-      }
-
-      if(!oneFire){
-	std::cout << "WARNING - YOU HAVE EVENTS w/ NO TRIGGERS!!!" << std::endl;
-	didOneFireMiss = true;
-      }
-    }
     
+    if(!isMC){
+      if(!didOneFireMiss){//only check this once per input
+	//check at least one of the purported selection triggers fired
+	bool oneFire = false;
+	for(unsigned int hI = 0; hI < hltVect.size(); ++hI){
+	  if(*(hltVect[hI])){
+	    oneFire = true;
+	    break;
+	  }
+	}
+	
+	if(!oneFire){
+	  std::cout << "WARNING - YOU HAVE EVENTS w/ NO TRIGGERS!!!" << std::endl;
+	  didOneFireMiss = true;
+	}
+      }    
+
+      //Cut 2: data only require single trigger fire
+      if(!(*(hltVect[hltPos]))) continue;
+    }
+    ++(eventCounter[1]);
+
     Float_t minPthat = -1.0;
     Float_t maxPthat = -1.0;
    
@@ -2520,29 +2562,24 @@ int gdjNTupleToHist(std::string inConfigFileName)
     }
     else centPos = 0;
 
-    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-
-    //Cut 2: Centrality within selected range
+    //Cut 3: Centrality within selected range
     if(centPos < 0){
       bool vectContainsCent = vectContainsInt((Int_t)cent, &skippedCent);
-
       if(!vectContainsCent){
 	std::cout << "gdjNTupleToHist Warning - Skipping centrality \'" << (Int_t)cent << "\' as given centrality binning is \'" << centBins[0] << "-" << centBins[centBins.size()-1] << "\'. if this is incorrect please fix." << std::endl;
 	skippedCent.push_back((Int_t)cent);
-      }
-      
+      }     
       continue;
     }
-
     centPassing_p->Fill(cent);
-
-    ++(eventCounter[1]);
+    ++(eventCounter[2]);
 
     //In data, since we deal in unprescaled data, the event-by-event weights should always be 1
     if(!isMC) fullWeight = 1.0;
 
     //2021.08.12:  
     //Cut 3: MC only cut on is there a good truth photon
+    //If isMC, truthPhoton mus be in pthat range (example 35-50 truth photon must come from 35-50 sample
     // CFM NOTE YOU NEED TO FIX THIS W/ YEONJU'S CODE:
     // https://github.com/YeonjuGo/GDJ/blob/master/src/gdjNtuplePreProc_phoTaggedJetRaa.C#L1362-L1375
     // We need to veto on events w/ undressed background photons sneaking thru - we cannot handle them in MC w/ purity correction as in data
@@ -2571,11 +2608,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
       truPhoPtPassing_p->Fill(truthPhotonPt);
     }
-
-
-    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-
-    ++(eventCounter[2]);
+    ++(eventCounter[3]);
   
     Float_t mixWeight = fullWeight/(double)nMixEvents;
     unsigned long long tempKey = runLumiKey.GetKey({(unsigned long long)runNumber, (unsigned long long)lumiBlock});    
@@ -2592,86 +2625,105 @@ int gdjNTupleToHist(std::string inConfigFileName)
       pthat_Unweighted_p->Fill(pthat);
     }
   
-    //Check for good photon
+    //Check for good photons + calc correctedIdo
     Float_t leadingPhoPt = -1.0;
     Int_t leadingPhoPos = -1;
 
+    Float_t truthPhoRecoDR = 1.0;
+    Int_t truthPhoRecoPos = -1;
+
+    if(photon_correctedIso_p != nullptr){
+      photon_correctedIso_p->clear();
+      delete photon_correctedIso_p;
+    }
+    photon_correctedIso_p = new std::vector<float>;
+                   
     for(unsigned int pI = 0; pI < photon_pt_p->size(); ++pI){
+      Float_t correctedIso = photon_etcone_p->at(pI);
+      if(doPtIsoCorrection){
+	if(doCentIsoCorrection) correctedIso = getCorrectedPhotonIsolation(isPP, correctedIso, photon_pt_p->at(pI), photon_eta_p->at(pI), cent);
+	else correctedIso = getPtCorrectedPhotonIsolation(correctedIso, photon_pt_p->at(pI), photon_eta_p->at(pI));
+      }       
+      
+      photon_correctedIso_p->push_back(correctedIso);
+
       if(leadingPhoPt < photon_pt_p->at(pI)){
 	leadingPhoPt = photon_pt_p->at(pI);
 	leadingPhoPos = pI;
       }
+
+      Float_t tempDR = getDR(truthPhotonEta, truthPhotonPhi, photon_pt_p->at(pI), photon_phi_p->at(pI));
+      if(tempDR < truthPhoRecoDR){
+	truthPhoRecoDR = tempDR;
+	truthPhoRecoPos = pI
+      }
     }
-
-    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << entry << std::endl; 
-
+  
     //Cut 4: Is there at least one photon candidate within acceptance 
-    if(leadingPhoPos < 0) continue; // is there at least one possible photon
+    //2022.03.11: We can't actually have this cut acting on reco to reject events because we need misses - adjust    
+    //^ As result, comment out below
+    //    if(leadingPhoPos < 0) continue; // is there at least one possible photon
 
-    ++(eventCounter[3]);
-
-    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << entry << std::endl; 
+    //    ++(eventCounter[3]);
 
     //Get rid of this - Messing w/ under and overflow handling
-
     //Cut 5: Does leading photon pass pT cuts
-    if(photon_pt_p->at(leadingPhoPos) < gammaPtBins[0]) continue;
-    if(photon_pt_p->at(leadingPhoPos) >= gammaPtBins[nGammaPtBins]) continue;
-
-    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << entry << std::endl; 
+    //2022.03.11 - we cant keep this cut either
+    //    if(photon_pt_p->at(leadingPhoPos) < gammaPtBins[0]) continue;
+    //    if(photon_pt_p->at(leadingPhoPos) >= gammaPtBins[nGammaPtBins]) continue;
 
     //We need to correct the photon isolation according to functions in photonUtil.h
-    Float_t correctedIso = photon_etcone_p->at(leadingPhoPos);
-    if(doPtIsoCorrection){
-      if(doCentIsoCorrection) correctedIso = getCorrectedPhotonIsolation(isPP, correctedIso, photon_pt_p->at(leadingPhoPos), photon_eta_p->at(leadingPhoPos), cent);
-      else correctedIso = getPtCorrectedPhotonIsolation(correctedIso, photon_pt_p->at(leadingPhoPos), photon_eta_p->at(leadingPhoPos));
-    }
-
-    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << entry << std::endl; 
-
+    Float_t correctedIso = photon_correctedIso_p->at(leadingPhoPos);
     
     //Cut 6: Leading reco photon passes full photon selection
     //Isolation (corrected), either in sideband or 'good' region, in good eta
-    if(!isGoodPhoton(isPP, doPtIsoCorrection, sidebandType, photon_tight_p->at(leadingPhoPos), correctedIso, photon_eta_p->at(leadingPhoPos))) continue;
+    //2022.03.11 - we cant keep this cut either
+    //    if(!isGoodPhoton(isPP, doPtIsoCorrection, sidebandType, photon_tight_p->at(leadingPhoPos), correctedIso, photon_eta_p->at(leadingPhoPos))) continue;
 
-    ++(eventCounter[4]);
-
-    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+    //    ++(eventCounter[4]);
 
     //Cut 7: isMC we must make sure the leading reco photon matches a valid truth
-    if(isMC){
-      if(getDR(truthPhotonEta, truthPhotonPhi, photon_eta_p->at(leadingPhoPos), photon_phi_p->at(leadingPhoPos)) > 0.2) continue;
+    //2022.03.11 - we cant keep this cut either
+    //    if(isMC){
+    //      if(getDR(truthPhotonEta, truthPhotonPhi, photon_eta_p->at(leadingPhoPos), photon_phi_p->at(leadingPhoPos)) > 0.2) continue;
+    //    }
+
+    Float_t etaValMain = -9999;
+    Float_t etaValSub = etaValMain;
+    bool isSideband = false;
+    const Int_t phoPos = leadingPhoPos;
+  
+    if(leadingPhoPos >= 0){
+      leadingPhoPtPassing_p->Fill(photon_pt_p->at(leadingPhoPos));
+      leadingPhoEtaPassing_p->Fill(photon_eta_p->at(leadingPhoPos));
+      leadingPhoIsoPassing_p->Fill(correctedIso);
+      leadingPhoTightPassing_p->Fill(photon_tight_p->at(leadingPhoPos));    
+
+      isSideband = isSidebandPhoton(isPP, doPtIsoCorrection, sidebandType, photon_tight_p->at(leadingPhoPos), correctedIso);
+      
+      etaValMain = photon_eta_p->at(phoPos);
+      etaValSub = etaValMain;
+      if(gammaEtaBinsDoAbs) etaValMain = TMath::Abs(etaValMain);
+      if(gammaEtaBinsSubDoAbs) etaValSub = TMath::Abs(etaValSub);
     }
     
-
-    leadingPhoPtPassing_p->Fill(photon_pt_p->at(leadingPhoPos));
-    leadingPhoEtaPassing_p->Fill(photon_eta_p->at(leadingPhoPos));
-    leadingPhoIsoPassing_p->Fill(correctedIso);
-    leadingPhoTightPassing_p->Fill(photon_tight_p->at(leadingPhoPos));
-
-    bool isSideband = isSidebandPhoton(isPP, doPtIsoCorrection, sidebandType, photon_tight_p->at(leadingPhoPos), correctedIso);
-    const Int_t phoPos = leadingPhoPos;
-     
-    Float_t etaValMain = photon_eta_p->at(phoPos);
-    Float_t etaValSub = etaValMain;
-    if(gammaEtaBinsDoAbs) etaValMain = TMath::Abs(etaValMain);
-    if(gammaEtaBinsSubDoAbs) etaValSub = TMath::Abs(etaValSub);
-
     //Cut 8: Redundant cut on gamma eta position
-    if(etaValMain <= gammaEtaBins[0]) continue;
-    if(etaValMain >= gammaEtaBins[nGammaEtaBins]) continue;
-
-    ++(eventCounter[5]);  //Reject outside of eta bounds
+      //    if(etaValMain <= gammaEtaBins[0]) continue;
+      //    if(etaValMain >= gammaEtaBins[nGammaEtaBins]) continue;
+    
+    //    ++(eventCounter[5]);  //Reject outside of eta bounds
 
     //Position of the photon in barrel or endcap - some corrections were originally formulated with these two regions separate so they are handled separately at this stage
     Int_t barrelOrECPos = 0;
     if(TMath::Abs(etaValMain) > 1.52) barrelOrECPos = 1;
       
-    //Position of the photon in histogram pT,Eta arrays
+    //Position of the photon in histogram pT,Eta arrays 
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
     Int_t ptPos = ghostPos(nGammaPtBins, gammaPtBins, photon_pt_p->at(phoPos), true, doGlobalDebug);
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
     Int_t etaPos = ghostPos(nGammaEtaBinsSub, gammaEtaBinsSub, etaValSub, true, doGlobalDebug);
-
-  
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+    
     if(etaPos >= 0){
       if(!isSideband){
 	fillTH1(photonPtVCentEta_p[centPos][etaPos], photon_pt_p->at(phoPos), fullWeight);
@@ -2685,6 +2737,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	}
       }
     }
+
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
     
     if(!isMC){
       ++(gammaCountsPerPtCent[ptPos][centPos]);
@@ -2695,6 +2749,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
       gammaCountsPerPtCent[nGammaPtBins][centPos] += fullWeight;
     }
       
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+
     if(!isSideband){
       fillTH1(photonEtaVCentPt_p[centPos][ptPos], etaValMain, fullWeight);
       fillTH1(photonPhiVCentPt_p[centPos][ptPos], photon_phi_p->at(phoPos), fullWeight);
@@ -2706,7 +2762,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
     }
 
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-    
+        
     int multCounter = 0;
     int multCounterGen = 0;
     int multCounterGenMatched = 0;	
@@ -2770,8 +2826,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	unfoldTree_p->Fill();
       }
     }
- 
-
+    
+    
     //Fill for photons
     if(!isSideband){
       if(isMC){
@@ -2803,7 +2859,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       fillTH1(photonPtVCent_RAWSideband_p[centPos][barrelOrECPos], photon_pt_p->at(phoPos), fullWeight);
       fillTH1(photonPtVCent_RAWSideband_Fine_p[centPos][barrelOrECPos], photon_pt_p->at(phoPos), fullWeight);
     }
-
+    
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 
     //Now go thru reco jets 
@@ -2890,8 +2946,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	}
       }
 
-
-    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+    
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
             
       //Fill for the inclusive DPhi
       if(!isSideband){
@@ -2932,7 +2988,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  }
 	}
       }
-
+    
            
      //Require jets be 'back-to-back' w/ the photon     
       if(dPhi >= gammaJtDPhiCut){
@@ -3112,6 +3168,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	}
       }
     }    
+    
     //Finished the end of the jet loop, with our 'good-jets' i.e. jets passing cuts collection saved for the event - we will use these collections in our construction of the multijet observables
 
     //Some older truth processing; irrelevant to mixmachine
@@ -3179,7 +3236,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       fillTH1(photonJtMultVCentPt_p[centPos][ptPos], multCounter, fullWeight);
       fillTH1(photonJtMultVCentPt_p[centPos][nGammaPtBins], multCounter, fullWeight);	
     }
-    
+        
     //2021.08.24: We are first going to sort our goodJets collections since they are not auto-sorted
     sortJetVectAndTruthPos(&goodJets, {&goodJetsTPos, &goodJetsRPos});
     sortJetVectAndTruthPos(&goodJetsDPhi, {&goodJetsDPhiTPos, &goodJetsDPhiRPos});
@@ -3361,7 +3418,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		    }
 		  }
 		}
-	      		
+       	      		
 		//this section is an attempt to decompose the different components of the multijet backgrounds
 		if(!isSideband){
 		  if(truthJt2Pt > assocGenMinPt){
@@ -3415,7 +3472,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	}
       }
     }
-   
+    
     
     if(goodJetsDPhi.size() >= 2){
       for(auto const & jet : goodJetsDPhi){
@@ -3579,7 +3636,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       }
     }
     
-    if(drJJRawFillWithNoTruth && photon_pt_p->at(phoPos) > 130.0 && cent < 10){
+    if(drJJRawFillWithNoTruth && photon_pt_p->at(phoPos) > 130.0 && cent < 10 && false){
       outFileTxt << "Event w/o truth: " << entry << std::endl;
       
       outFileTxt << " Centrality: " << cent << std::endl;
@@ -3604,7 +3661,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	
 	outFileTxt << "  " << jI << ": " << ptToUse << ", " << etaToUse << ", " << phiToUse << std::endl;
       }
-
+    
       if(isMC){
 	outFileTxt << " Truth Jets in event all (pt, eta, phi, recopos):" << std::endl;
 	for(unsigned int jI = 0; jI < aktR_truth_jet_pt_p->size(); ++jI){
@@ -3764,7 +3821,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    goodJetsDPhiMix[1].push_back(jets2[jI]);
 	  }	    
 	}      
-     
+       
 	//	if(goodJetsDPhiMix[0].size() >= 2){
 	for(auto const & jet : goodJetsDPhiMix[0]){
 	  if(!isSideband){
@@ -3868,7 +3925,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
 	      fillTH2(photonPtJtAJJVCent_MIX_p[centPos][barrelOrECPos], multiJtAJ/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), mixWeight);	
 	      fillTH2(photonPtJtAJJVCent_MIXPURE_p[centPos][barrelOrECPos], multiJtAJ/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), mixWeight);	
-
 	    }	  
 	    else{
 	      photonPtJtXJJVCent_MixMachine_Sideband_p[centPos][barrelOrECPos]->FillXYMix(jet2.Pt()/photon_pt_p->at(phoPos), photon_pt_p->at(phoPos), mixWeight);
@@ -4115,10 +4171,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	fillTH1(photonSubJtMultModVCentPt_p[centPos][nGammaPtBins], TMath::Max(0, multCounter), fullWeight);
       }    
     }
-  
+    
     if(!isSideband) fillTH2(photonEtaPt_p[centPos], etaValMain, photon_pt_p->at(phoPos), fullWeight);
-  }  
-
+  }    
+    
   if(doMix){
     //Dump info on the mixing
     unsigned long long maxRatioKey = 0;
@@ -4178,7 +4234,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   delete inFile_p;
 
   outFile_p->cd();
-
+  
   if(isMC && keepResponseTree){
     unfoldTree_p->Write("", TObject::kOverwrite);
     delete unfoldTree_p;
@@ -4576,7 +4632,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       }
       else{
 	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-	for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
+ 	for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
 	  if(isStrSame(barrelAndECStr[eI], "BarrelAndEC")) continue;
 
 	  std::string purityFitStr = "fit_purity_" + centBinsStr[cI] + "_" + barrelAndECFitStr[eI];
@@ -5021,20 +5077,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    }
 	  }
 	}
-
-	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
       }
-
-      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
     }
-
-    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
   }
-
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   purityFile_p->Close();
   delete purityFile_p;
@@ -5218,7 +5263,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	photonJtFakeVCentPt_p[cI][pI]->Write("", TObject::kOverwrite);	
       }
     }
-
+  
     if(isMC){
       drJJ_OneJetNoTruth_p[cI]->Write("", TObject::kOverwrite);
     }
@@ -5539,8 +5584,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       for(Int_t gI = 0; gI < nJtPtBins; ++gI){
         photonJtRecoOverGenVCentJtPt_p[cI][gI]->Write("", TObject::kOverwrite);
       }
-    }
-    
+    }      
 
     photonEtaPt_p[cI]->Write("", TObject::kOverwrite);
 
@@ -5658,7 +5702,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   }
   
   delete runNumber_p;
-
+  
   if(isMC){
     delete pthat_p;
     delete pthat_Unweighted_p;
@@ -6028,7 +6072,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   outFile_p->Close();
   delete outFile_p;
 
-  outFileTxt.close();
+    outFileTxt.close();
 
   delete randGen_p;
 
