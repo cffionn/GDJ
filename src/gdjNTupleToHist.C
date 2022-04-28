@@ -2649,6 +2649,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  }
        
 	  bool isGoodRecoJet = jtPtToUse >= jtPtBinsLowReco && jtPtToUse < jtPtBinsHighReco;
+	  Float_t dRRecoGammaJet = ;
 	  Float_t dPhiRecoGammaJet = TMath::Abs(getDPHI(jtPhiToUse, photon_phi_p->at(pI)));
 	  if(dPhiRecoGammaJet < gammaJtDPhiCut) isGoodRecoJet = false;
 
@@ -2678,6 +2679,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		}
 	      }
 	    }//End barrelECFfillTruth loop for truth w/ good reco match
+
 	  }
 	}//End reco jet loop
       }//End fills for pure photon good reco   
