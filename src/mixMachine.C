@@ -51,12 +51,13 @@ bool mixMachine::Init(std::string inMixMachineName, mixMachine::mixMode inMixMod
   m_nBinsX = m_env.GetValue("NBINSX", -1);
   m_binsXVect.clear();
   std::string tempStr = m_env.GetValue("BINSX", "");
-  std::vector<Float_t> tempBins = strToVectF(tempStr);
+  std::vector<Double_t> tempBins = strToVectD(tempStr);
 
   for(unsigned int tI = 0; tI < tempBins.size(); ++tI){
     m_binsX[tI] = tempBins[tI];
     m_binsXVect.push_back(tempBins[tI]);
   }
+
   m_titleX = m_env.GetValue("TITLEX", "");  
   if(m_is2DUnfold){
     if(!checkEnvForParams(&m_env, reqParams2DUnfold)){
@@ -66,7 +67,7 @@ bool mixMachine::Init(std::string inMixMachineName, mixMachine::mixMode inMixMod
 
     m_nBinsY = m_env.GetValue("NBINSY", -1);
     m_binsYVect.clear();
-    std::vector<Float_t> tempBins = strToVectF(m_env.GetValue("BINSY", ""));
+    std::vector<Double_t> tempBins = strToVectD(m_env.GetValue("BINSY", ""));
     for(unsigned int tI = 0; tI < tempBins.size(); ++tI){
       m_binsY[tI] = tempBins[tI];
       m_binsYVect.push_back(tempBins[tI]);
@@ -80,7 +81,7 @@ bool mixMachine::Init(std::string inMixMachineName, mixMachine::mixMode inMixMod
 
       std::string name = m_mixMachineName + "_MIXMODE" + std::to_string((int)m_mixMode) + "_" + mixNames[mI] + "_h";
       std::string title = ";" + m_titleX + ";" + m_titleY;      
-      m_hists2D[mI] = new TH2F(name.c_str(), title.c_str(), m_nBinsX, m_binsX, m_nBinsY, m_binsY);
+      m_hists2D[mI] = new TH2D(name.c_str(), title.c_str(), m_nBinsX, m_binsX, m_nBinsY, m_binsY);
       m_hists2D[mI]->Sumw2();
     }
   }
@@ -92,7 +93,7 @@ bool mixMachine::Init(std::string inMixMachineName, mixMachine::mixMode inMixMod
 
       std::string name = m_mixMachineName + "_MIXMODE" + std::to_string((int)m_mixMode) + "_" + mixNames[mI] + "_h";
       std::string title = ";" + m_titleX + ";Counts (Weighted)";      
-      m_hists1D[mI] = new TH1F(name.c_str(), title.c_str(), m_nBinsX, m_binsX);
+      m_hists1D[mI] = new TH1D(name.c_str(), title.c_str(), m_nBinsX, m_binsX);
       m_hists1D[mI]->Sumw2();
     }    
   }
@@ -101,7 +102,8 @@ bool mixMachine::Init(std::string inMixMachineName, mixMachine::mixMode inMixMod
   return m_isInit;
 }
 
-bool mixMachine::FillXY(Float_t fillX, Float_t fillY, Float_t fillWeight, std::string mixName)
+
+bool mixMachine::FillXY(Double_t fillX, Double_t fillY, Double_t fillWeight, std::string mixName)
 {
   if(!m_isInit){
     std::cout << "mixMachine::FillXY(): mixMachine is not initialized. return false" << std::endl;
@@ -135,50 +137,63 @@ bool mixMachine::FillXY(Float_t fillX, Float_t fillY, Float_t fillWeight, std::s
     return false;
   }  
 
-  if(m_is2DUnfold){
-    m_hists2D[histPos]->Fill(fillX, fillY, fillWeight);
-  }
+  if(m_is2DUnfold) m_hists2D[histPos]->Fill(fillX, fillY, fillWeight);
   else m_hists1D[histPos]->Fill(fillX, fillWeight);
 
   return true;
 }
 
-bool mixMachine::FillXYRaw(Float_t fillX, Float_t fillY, Float_t fillWeight)
+bool mixMachine::FillXYRaw(Double_t fillX, Double_t fillY, Double_t fillWeight)
 {
   return FillXY(fillX, fillY, fillWeight, "RAW");
 }
 
-bool mixMachine::FillXYMix(Float_t fillX, Float_t fillY, Float_t fillWeight)
+bool mixMachine::FillXYMix(Double_t fillX, Double_t fillY, Double_t fillWeight)
 {
   return FillXY(fillX, fillY, fillWeight, "MIX");
 }
 
-bool mixMachine::FillXYMixCorrection(Float_t fillX, Float_t fillY, Float_t fillWeight)
+bool mixMachine::FillXYMixCorrection(Double_t fillX, Double_t fillY, Double_t fillWeight)
 {
   return FillXY(fillX, fillY, fillWeight, "MIXCORRECTION");
 }
 
-bool mixMachine::FillXYTruth(Float_t fillX, Float_t fillY, Float_t fillWeight)
+bool mixMachine::FillXYTruth(Double_t fillX, Double_t fillY, Double_t fillWeight)
 {
   return FillXY(fillX, fillY, fillWeight, "TRUTH");
 }
 
-bool mixMachine::FillXYTruthMatchedReco(Float_t fillX, Float_t fillY, Float_t fillWeight)
+bool mixMachine::FillXYTruthWithRecoMatch(Double_t fillX, Double_t fillY, Double_t fillWeight)
 {
-  return FillXY(fillX, fillY, fillWeight, "TRUTHMATCHEDRECO");
+  return FillXY(fillX, fillY, fillWeight, "TRUTHWITHRECOMATCH");
 }
 
-bool mixMachine::FillXYSingleTruthToMultiFake(Float_t fillX, Float_t fillY, Float_t fillWeight)
+bool mixMachine::FillXYTruthNoRecoMatch(Double_t fillX, Double_t fillY, Double_t fillWeight)
+{
+  return FillXY(fillX, fillY, fillWeight, "TRUTHNORECOMATCH");
+}
+
+bool mixMachine::FillXYRawWithTruthMatch(Double_t fillX, Double_t fillY, Double_t fillWeight)
+{
+  return FillXY(fillX, fillY, fillWeight, "RAWWITHTRUTHMATCH");
+}
+
+bool mixMachine::FillXYRawNoTruthMatch(Double_t fillX, Double_t fillY, Double_t fillWeight)
+{
+  return FillXY(fillX, fillY, fillWeight, "RAWNOTRUTHMATCH");
+}
+
+bool mixMachine::FillXYSingleTruthToMultiFake(Double_t fillX, Double_t fillY, Double_t fillWeight)
 {
   return FillXY(fillX, fillY, fillWeight, "SINGLETRUTHTOMULTIFAKE");
 }
 
-bool mixMachine::FillXYSingleTruthToMultiFakeMix(Float_t fillX, Float_t fillY, Float_t fillWeight)
+bool mixMachine::FillXYSingleTruthToMultiFakeMix(Double_t fillX, Double_t fillY, Double_t fillWeight)
 {
   return FillXY(fillX, fillY, fillWeight, "SINGLETRUTHTOMULTIFAKEMIX");
 }
 
-bool mixMachine::FillX(Float_t fillX, Float_t fillWeight, std::string mixName)
+bool mixMachine::FillX(Double_t fillX, Double_t fillWeight, std::string mixName)
 {
   if(m_is2DUnfold){
     std::cout << "mixMachine::FillX(): Called despited m_is2DUnfold being true. return false" << std::endl;
@@ -188,37 +203,37 @@ bool mixMachine::FillX(Float_t fillX, Float_t fillWeight, std::string mixName)
   return FillXY(fillX, -1, fillWeight, mixName);
 }
 
-bool mixMachine::FillXRaw(Float_t fillX, Float_t fillWeight)
+bool mixMachine::FillXRaw(Double_t fillX, Double_t fillWeight)
 {
   return FillX(fillX, fillWeight, "RAW");
 }
 
-bool mixMachine::FillXMix(Float_t fillX, Float_t fillWeight)
+bool mixMachine::FillXMix(Double_t fillX, Double_t fillWeight)
 {
   return FillX(fillX, fillWeight, "MIX");
 }
 
-bool mixMachine::FillXMixCorrection(Float_t fillX, Float_t fillWeight)
+bool mixMachine::FillXMixCorrection(Double_t fillX, Double_t fillWeight)
 {
   return FillX(fillX, fillWeight, "MIXCORRECTION");
 }
 
-bool mixMachine::FillXTruth(Float_t fillX, Float_t fillWeight)
+bool mixMachine::FillXTruth(Double_t fillX, Double_t fillWeight)
 {
   return FillX(fillX, fillWeight, "TRUTH");
 }
 
-bool mixMachine::FillXTruthMatchedReco(Float_t fillX, Float_t fillWeight)
+bool mixMachine::FillXTruthMatchedReco(Double_t fillX, Double_t fillWeight)
 {
   return FillX(fillX, fillWeight, "TRUTHMATCHEDRECO");
 }
 
-bool mixMachine::FillXSingleTruthToMultiFake(Float_t fillX, Float_t fillWeight)
+bool mixMachine::FillXSingleTruthToMultiFake(Double_t fillX, Double_t fillWeight)
 {
   return FillX(fillX, fillWeight, "SINGLETRUTHTOMULTIFAKE");
 }
 
-bool mixMachine::FillXSingleTruthToMultiFakeMix(Float_t fillX, Float_t fillWeight)
+bool mixMachine::FillXSingleTruthToMultiFakeMix(Double_t fillX, Double_t fillWeight)
 {
   return FillX(fillX, fillWeight, "SINGLETRUTHTOMULTIFAKEMIX");
 }
@@ -384,10 +399,10 @@ bool mixMachine::CheckMachinesMatchBins(mixMachine* machineToCheck, double preci
   return true;
 }
 
-TH1F* mixMachine::GetTH1FPtr(std::string histType)
+TH1D* mixMachine::GetTH1DPtr(std::string histType)
 {
   if(m_is2DUnfold){
-    std::cout << "ERROR IN MIXMACHINE::GetTH1FPtr(): Unfold is 2-D; Calling GetTH1FPtr is invalid. return nullptr" << std::endl;
+    std::cout << "ERROR IN MIXMACHINE::GetTH1DPtr(): Unfold is 2-D; Calling GetTH1DPtr is invalid. return nullptr" << std::endl;
     return nullptr;
   }
 
@@ -397,17 +412,17 @@ TH1F* mixMachine::GetTH1FPtr(std::string histType)
 
   int histPos = vectContainsStrPos(histType, &mixNames);
   if(histPos < 0){
-    std::cout << "ERROR IN MIXMACHINE::GetTH1FPtr(): Requested hist \'" << histType << "\' is not found in MixMode \'" << m_mixMode << ". return nullptr" << std::endl;
+    std::cout << "ERROR IN MIXMACHINE::GetTH1DPtr(): Requested hist \'" << histType << "\' is not found in MixMode \'" << m_mixMode << ". return nullptr" << std::endl;
     return nullptr;
   }
   
   return m_hists1D[histPos];
 }
 
-TH2F* mixMachine::GetTH2FPtr(std::string histType)
+TH2D* mixMachine::GetTH2DPtr(std::string histType)
 {
   if(!m_is2DUnfold){
-    std::cout << "ERROR IN MIXMACHINE::GetTH2FPtr(): Unfold is 1-D; Calling GetTH2FPtr is invalid. return nullptr" << std::endl;
+    std::cout << "ERROR IN MIXMACHINE::GetTH2DPtr(): Unfold is 1-D; Calling GetTH2DPtr is invalid. return nullptr" << std::endl;
     return nullptr;
   }
 
@@ -418,7 +433,7 @@ TH2F* mixMachine::GetTH2FPtr(std::string histType)
   int histPos = vectContainsStrPos(histType, &mixNames);
 
   if(histPos < 0){
-    std::cout << "ERROR IN MIXMACHINE::GetTH2FPtr(): Requested hist \'" << histType << "\' is not found in MixMode \'" << m_mixMode << ". return nullptr" << std::endl;
+    std::cout << "ERROR IN MIXMACHINE::GetTH2DPtr(): Requested hist \'" << histType << "\' is not found in MixMode \'" << m_mixMode << ". return nullptr" << std::endl;
     return nullptr;
   }
   
@@ -436,7 +451,7 @@ bool mixMachine::Add(mixMachine *machineToAdd, double precision)
   //  std::cout << "FILE, LINE: " << __FILE__ << ", L" << __LINE__ << std::endl;
 
   if(m_is2DUnfold){
-    std::vector<TH2F*> tempHists = machineToAdd->GetTH2F();
+    std::vector<TH2D*> tempHists = machineToAdd->GetTH2D();
 
     //    std::cout << "SIZES of mixMachine '" << m_mixMachineName << "': " << m_hists2D.size() << ", " << tempHists.size() << std::endl;
 
@@ -472,7 +487,7 @@ bool mixMachine::Add(mixMachine *machineToAdd, double precision)
     }
   }
   else{
-    std::vector<TH1F*> tempHists = machineToAdd->GetTH1F();
+    std::vector<TH1D*> tempHists = machineToAdd->GetTH1D();
     for(unsigned int i = 0; i < tempHists.size(); ++i){
       m_hists1D[i]->Add(tempHists[i]);
     }

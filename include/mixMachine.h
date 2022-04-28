@@ -8,8 +8,8 @@
 //ROOT dependencies
 #include "TEnv.h"
 #include "TFile.h"
-#include "TH1F.h"
-#include "TH2F.h"
+#include "TH1D.h"
+#include "TH2D.h"
 
 class mixMachine{
  public:
@@ -23,22 +23,25 @@ class mixMachine{
 
   mixMachine(std::string inMixMachineName, mixMachine::mixMode inMixMode, TEnv* inParams_p);
   bool Init(std::string inMixMachineName, mixMachine::mixMode inMixMode, TEnv* inParams_p);
-  bool FillXY(Float_t fillX, Float_t fillY, Float_t fillWeight, std::string mixName);  
-  bool FillXYRaw(Float_t fillX, Float_t fillY, Float_t fillWeight);
-  bool FillXYMix(Float_t fillX, Float_t fillY, Float_t fillWeight);
-  bool FillXYMixCorrection(Float_t fillX, Float_t fillY, Float_t fillWeight);
-  bool FillXYTruth(Float_t fillX, Float_t fillY, Float_t fillWeight);
-  bool FillXYTruthMatchedReco(Float_t fillX, Float_t fillY, Float_t fillWeight);
-  bool FillXYSingleTruthToMultiFake(Float_t fillX, Float_t fillY, Float_t fillWeight);
-  bool FillXYSingleTruthToMultiFakeMix(Float_t fillX, Float_t fillY, Float_t fillWeight);
-  bool FillX(Float_t fillX, Float_t fillWeight, std::string mixName);
-  bool FillXRaw(Float_t fillX, Float_t fillWeight);
-  bool FillXMix(Float_t fillX, Float_t fillWeight);
-  bool FillXMixCorrection(Float_t fillX, Float_t fillWeight);
-  bool FillXTruth(Float_t fillX, Float_t fillWeight);
-  bool FillXTruthMatchedReco(Float_t fillX, Float_t fillWeight);
-  bool FillXSingleTruthToMultiFake(Float_t fillX, Float_t fillWeight);
-  bool FillXSingleTruthToMultiFakeMix(Float_t fillX, Float_t fillWeight);
+  bool FillXY(Double_t fillX, Double_t fillY, Double_t fillWeight, std::string mixName);  
+  bool FillXYRaw(Double_t fillX, Double_t fillY, Double_t fillWeight);
+  bool FillXYMix(Double_t fillX, Double_t fillY, Double_t fillWeight);
+  bool FillXYMixCorrection(Double_t fillX, Double_t fillY, Double_t fillWeight);
+  bool FillXYTruth(Double_t fillX, Double_t fillY, Double_t fillWeight);
+  bool FillXYTruthWithRecoMatch(Double_t fillX, Double_t fillY, Double_t fillWeight);
+  bool FillXYTruthNoRecoMatch(Double_t fillX, Double_t fillY, Double_t fillWeight);
+  bool FillXYRawWithTruthMatch(Double_t fillX, Double_t fillY, Double_t fillWeight);
+  bool FillXYRawNoTruthMatch(Double_t fillX, Double_t fillY, Double_t fillWeight);
+  bool FillXYSingleTruthToMultiFake(Double_t fillX, Double_t fillY, Double_t fillWeight);
+  bool FillXYSingleTruthToMultiFakeMix(Double_t fillX, Double_t fillY, Double_t fillWeight);
+  bool FillX(Double_t fillX, Double_t fillWeight, std::string mixName);
+  bool FillXRaw(Double_t fillX, Double_t fillWeight);
+  bool FillXMix(Double_t fillX, Double_t fillWeight);
+  bool FillXMixCorrection(Double_t fillX, Double_t fillWeight);
+  bool FillXTruth(Double_t fillX, Double_t fillWeight);
+  bool FillXTruthMatchedReco(Double_t fillX, Double_t fillWeight);
+  bool FillXSingleTruthToMultiFake(Double_t fillX, Double_t fillWeight);
+  bool FillXSingleTruthToMultiFakeMix(Double_t fillX, Double_t fillWeight);
 
   bool CheckMachinesMatchMode(mixMachine* machineToCheck);
   bool CheckMachinesMatchMC(mixMachine* machineToCheck);
@@ -50,16 +53,16 @@ class mixMachine{
   bool GetIs2DUnfold(){return m_is2DUnfold;}
   std::string GetMixMachineName(){return m_mixMachineName;}
 
-  TH1F* GetTH1FPtr(std::string histType);
-  TH2F* GetTH2FPtr(std::string histType);
+  TH1D* GetTH1DPtr(std::string histType);
+  TH2D* GetTH2DPtr(std::string histType);
 
   Int_t GetNBinsX(){return m_nBinsX;}
   std::vector<double> GetBinsX(){return m_binsXVect;}
   Int_t GetNBinsY(){return m_nBinsY;}
   std::vector<double> GetBinsY(){return m_binsYVect;}
 
-  std::vector<TH1F*> GetTH1F(){return m_hists1D;}
-  std::vector<TH2F*> GetTH2F(){return m_hists2D;}
+  std::vector<TH1D*> GetTH1D(){return m_hists1D;}
+  std::vector<TH2D*> GetTH2D(){return m_hists2D;}
 
   bool Add(mixMachine* machineToAdd, double precision = 0.0001);
   bool Add(mixMachine* machineToAdd1, mixMachine* machineToAdd2, double precision = 0.0001);
@@ -74,12 +77,12 @@ class mixMachine{
   bool m_isInit;
   std::string m_mixMachineName;
   mixMachine::mixMode m_mixMode;
-  std::vector<std::string> m_noneMixNames = {"RAW", "SUB", "TRUTH", "TRUTHMATCHEDRECO"};
-  std::vector<std::string> m_inclusiveMixNames = {"RAW", "MIX", "SUB", "TRUTH", "TRUTHMATCHEDRECO"};
+  std::vector<std::string> m_noneMixNames = {"RAW", "SUB", "TRUTH", "TRUTHWITHRECOMATCH", "TRUTHNORECOMATCH", "RAWWITHTRUTHMATCH", "RAWNOTRUTHMATCH"};
+  std::vector<std::string> m_inclusiveMixNames = {"RAW", "MIX", "SUB", "TRUTH", "TRUTHWITHRECOMATCH", "TRUTHNORECOMATCH", "RAWWITHTRUTHMATCH", "RAWNOTRUTHMATCH"};
   std::vector<std::string> m_multiMixNames = {"RAW", "MIX", "MIXCORRECTION", "MIXCORRECTED", "SUB", "TRUTH", "TRUTHMATCHEDRECO", "SINGLETRUTHTOMULTIFAKE", "SINGLETRUTHTOMULTIFAKEMIX"};
 
-  std::vector<TH1F*> m_hists1D;
-  std::vector<TH2F*> m_hists2D;
+  std::vector<TH1D*> m_hists1D;
+  std::vector<TH2D*> m_hists2D;
   TEnv m_env;
   bool m_is2DUnfold;
   bool m_isMC;

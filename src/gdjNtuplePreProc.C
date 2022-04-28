@@ -1388,14 +1388,28 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       subTimer2.start();
 
       if(doMinGammaPt){
-	bool isGoodGamma = false;
+	bool isGoodGammaReco = false;
+	bool isGoodGammaTruth = false;
 	for(unsigned int pI = 0; pI < photon_pt_p->size(); ++pI){
-	  if(photon_pt_p->at(pI) > minGammaPt){
-	    isGoodGamma = true;
+	  if(photon_pt_p->at(pI) >= minGammaPt){
+	    isGoodGammaReco = true;
 	    break;
 	  }
 	}
-	if(!isGoodGamma){
+
+	if(isMC){
+	  for(unsigned int tI = 0; tI < truth_pt_p->size(); ++tI){
+	    if(truth_status_p->at(tI) != 1) continue;	
+	    if(truth_pdg_p->at(tI) != 22) continue;	
+
+	    if(truth_pt_p->at(tI) >= minGammaPt){
+	      isGoodGammaTruth = true;
+	      break;
+	    }
+	  }
+	}      
+
+	if(!isGoodGammaReco && !isGoodGammaTruth){
 	  ++currTotalEntries;
 	  continue;
 	}
@@ -1738,6 +1752,12 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	  for(unsigned int tI2 = 0; tI2 <truth_pt_p->size() ; ++tI2){
 	    if( tI2==tI) continue;
 	    if( truth_status_p->at(tI2) != 1) continue;
+
+	    //Truth isolation must exclude muons and neutrinos in its definition
+	    if(TMath::Abs(truth_pdg_p->at(tI2)) == 13) continue;//muon
+	    if(TMath::Abs(truth_pdg_p->at(tI2)) == 12) continue;//electron neu
+	    if(TMath::Abs(truth_pdg_p->at(tI2)) == 14) continue;//muon neu
+	    if(TMath::Abs(truth_pdg_p->at(tI2)) == 16) continue;//tau neu
 
 	    //	    if( (truth_type_p->at(tI2) == 14 && truth_origin_p->at(tI2)==37 && truth_pdg_p->at(tI2) == 22)) continue;
 

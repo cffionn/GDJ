@@ -235,6 +235,16 @@ inline std::vector<int> strToVectI(std::string inStr)
   return retVect;
 }
 
+inline std::vector<double> strToVectD(std::string inStr)
+{
+  std::vector<double> retVect;
+  std::vector<std::string> strVect = strToVect(inStr);
+  for(auto const & iter : strVect){
+    retVect.push_back(std::stod(iter));
+  }
+  return retVect;
+}
+
 inline std::string getDateStr()
 {
   std::time_t now = time(0);

@@ -6,12 +6,19 @@
 #include <iostream>
 #include <string>
 
+//ROOT
+#include "TH1D.h"
+#include "TH2D.h"
+#include "TH1F.h"
+#include "TH2F.h"
+
 //Local
 #include "include/stringUtil.h"
 
 #define _USE_MATH_DEFINES
 
-inline void fillTH1(TH1F* inHist_p, Float_t fillVal, Float_t weight = -1.0)
+template <typename T>
+inline void fillTH1(T* inHist_p, Float_t fillVal, Float_t weight = -1.0)
 {
   if(weight < 0) inHist_p->Fill(fillVal);
   else{
@@ -21,7 +28,8 @@ inline void fillTH1(TH1F* inHist_p, Float_t fillVal, Float_t weight = -1.0)
   return;
 }
 
-inline void fillTH2(TH2F* inHist_p, Float_t fillVal1, Float_t fillVal2, Float_t weight = -1.0)
+template <typename T>
+inline void fillTH2(T* inHist_p, Float_t fillVal1, Float_t fillVal2, Float_t weight = -1.0)
 {
   if(weight < 0) inHist_p->Fill(fillVal1, fillVal2);
   else{
