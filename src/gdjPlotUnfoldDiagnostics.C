@@ -48,28 +48,247 @@
 #include "include/unfoldingUtil.h"
 // #include "include/treeUtil.h"
 
+template <typename T>
+bool axisFix(T* input)
+{
+  if(input == nullptr){
+    std::cout << "AXISFIX ERROR: Pad is nullptr, return false" << std::endl;
+    return false;      
+  }
+
+  input->RedrawAxis();
+  input->SetTicks();
+  
+  return true;
+}
+
+bool tpadsAxisFix(std::vector<TPad*> pads_p)
+{
+  for(unsigned int pI = 0; pI < pads_p.size(); ++pI){
+    if(!axisFix(pads_p[pI])) return false;
+  }
+  
+  return true;
+}
+
+template <typename T>
+void setMargins(T* input, Float_t marginL, Float_t marginT, Float_t marginR, Float_t marginB)
+{
+  input->SetLeftMargin(marginL);
+  input->SetTopMargin(marginT);
+  input->SetRightMargin(marginR);
+  input->SetBottomMargin(marginB);
+  
+  return;
+}
+
+void initLabel(TLatex* label_p, int font, float size, bool alignR)
+{
+  label_p->SetNDC();
+  label_p->SetTextFont(font);
+  label_p->SetTextSize(size);
+  label_p->SetTextColor(1);
+  if(alignR) label_p->SetTextAlign(31);
+  
+  return;
+}
+
+//Switch from void to bool because there are failure conditions to setup
+//Needs to be a pointer to a vector of pointers
+template <typename T>
+bool setupLegends(int font, float size, std::vector<TLegend*>* leg_p, std::vector<T*> histsForLeg_p, std::vector<std::string> strForLeg, std::vector<std::string> legFillStr, std::vector<Int_t>* legN, std::vector<Float_t> legX, std::vector<Float_t> legY)
+{
+  Int_t nHistsForLeg = histsForLeg_p.size();
+  if(nHistsForLeg != strForLeg.size()){
+    std::cout << "Number of histrograms \'" << nHistsForLeg << "\' does not match number of stringsForLegend provided, \'" << strForLeg.size() << "\'. setupLegends() return false" << std::endl;
+    return false;
+  }
+
+  if(legFillStr.size() != histsForLeg_p.size()){
+    legFillStr.clear();
+    for(unsigned int hI = 0; hI < histsForLeg_p.size(); ++hI){
+      legFillStr.push_back("P L");
+    }
+  }
+  
+  //Float just for future multiplication
+  Float_t maxLegXChar = -1;
+  for(unsigned int i = 0; i < strForLeg.size(); ++i){
+    if(strForLeg[i].size() > maxLegXChar) maxLegXChar = strForLeg[i].size();
+  }
+
+  //Define the number of histograms that will go to each legend
+  Int_t numberHists = histsForLeg_p.size();
+  Int_t histsPerLeg = 0;
+
+  Int_t totalCustom = 0;
+  for(unsigned int hI = 0; hI < legN->size(); ++hI){
+    totalCustom += legN->at(hI);
+  }
+
+  if(totalCustom < numberHists){
+    if(totalCustom != 0) std::cout << "Number of histograms per legend requested custom \'" << totalCustom << "\' totals to less than required, \'" << numberHists << "\'. Reverting to equal splits." << std::endl;
+    legN->clear();
+  }
+  if(legN->size() == 0){
+    while(histsPerLeg*(Int_t)legX.size() < numberHists){
+      ++histsPerLeg;
+    }
+    for(Int_t dI = 0; dI < legX.size(); ++dI){
+      legN->push_back(histsPerLeg);
+    }
+  }
+
+  for(unsigned int lI = 0; lI < legX.size(); ++lI){
+    leg_p->push_back(nullptr);
+    leg_p->at(lI) = new TLegend(legX[lI], legY[lI] - ((Float_t)legN->at(lI))*0.0475, legX[lI] + maxLegXChar*0.02, legY[lI]);
+  
+    leg_p->at(lI)->SetTextFont(font);
+    leg_p->at(lI)->SetTextSize(size);
+    leg_p->at(lI)->SetBorderSize(0);
+    leg_p->at(lI)->SetFillColor(0);
+    leg_p->at(lI)->SetFillStyle(0);
+  }
+
+  unsigned int legCounter = 0;
+  for(unsigned int lI = 0; lI < legN->size(); ++lI){
+    for(unsigned int dI = 0; dI < legN->at(lI); ++dI){
+      leg_p->at(lI)->AddEntry(histsForLeg_p[legCounter], strForLeg[legCounter].c_str(), legFillStr[legCounter].c_str());
+      ++legCounter;
+
+      if(legCounter == histsForLeg_p.size()) break;
+    }    
+    if(legCounter == histsForLeg_p.size()) break;
+  }
+
+  return true;
+}
+
+bool prepTH1(TH1* hist_p, int font, float titleSize, float labelSize, int color, int style, float size, int width, float xOffset, float yOffset)
+{
+  hist_p->GetXaxis()->SetTitleFont(font);
+  hist_p->GetXaxis()->SetTitleSize(titleSize);
+  hist_p->GetYaxis()->SetTitleFont(font);
+  hist_p->GetYaxis()->SetTitleSize(titleSize);
+
+  hist_p->GetXaxis()->SetLabelFont(font);
+  hist_p->GetXaxis()->SetLabelSize(labelSize);
+  hist_p->GetYaxis()->SetLabelFont(font);
+  hist_p->GetYaxis()->SetLabelSize(labelSize);
+
+  hist_p->SetLineColor(color);
+  hist_p->SetLineWidth(width);
+
+  hist_p->SetMarkerColor(color);
+  hist_p->SetMarkerSize(size);
+  hist_p->SetMarkerStyle(style);
+
+  hist_p->GetXaxis()->SetTitleOffset(xOffset);
+  hist_p->GetYaxis()->SetTitleOffset(yOffset);
+  
+  return true;
+}
+
+//Middle hist in vector should be nominal - others are adjacent iterations
+bool drawBoxAdjacentIter(TPad* pad_p, std::vector<TH1*> hists_p, Float_t opacity, std::vector<double>* deltaVals)
+{
+  if(pad_p == nullptr){
+    std::cout << "drawBoxAdjacentIter ERROR: TPad ptr given is nullptr. return false" << std::endl;
+    return false;
+  }		    
+
+  pad_p->cd();
+  
+  //Has to be 3, nominal + 2 adjacent iterations
+  if(hists_p.size() != 3){
+    std::cout << "drawBoxAdjacentIter ERROR: Number of hists must be three; given \'" << hists_p.size() << "\'. return false" << std::endl;
+    return false;
+  }  
+  Int_t color = hists_p[0]->GetMarkerColor();
+
+  TBox* box_p = new TBox();
+  box_p->SetFillColorAlpha(color, opacity);
+  for(Int_t bIX = 0; bIX < hists_p[0]->GetNbinsX(); ++bIX){
+    Double_t x1 = hists_p[0]->GetBinLowEdge(bIX+1);
+    Double_t x2 = hists_p[0]->GetBinLowEdge(bIX+2);
+
+    Double_t yDelta1 = TMath::Abs(hists_p[0]->GetBinContent(bIX+1) - hists_p[1]->GetBinContent(bIX+1));
+    Double_t yDelta2 = TMath::Abs(hists_p[1]->GetBinContent(bIX+1) - hists_p[2]->GetBinContent(bIX+1));
+    Double_t yDelta = TMath::Max(yDelta1, yDelta2);
+    
+    Double_t yLow = hists_p[1]->GetBinContent(bIX+1) - yDelta;
+    Double_t yHigh = hists_p[1]->GetBinContent(bIX+1) + yDelta;
+
+    if(deltaVals != nullptr){
+      if(hists_p[1]->GetBinContent(bIX+1) < TMath::Power(10,-50)) deltaVals->push_back(0.0);
+      else deltaVals->push_back(yDelta/(double)hists_p[1]->GetBinContent(bIX+1));
+    }
+   
+    box_p->DrawBox(x1, yLow, x2, yHigh);
+  }
+  
+  delete box_p;
+  
+  return true;
+}
+
+bool drawBoxAdjacentIterRel(TPad* pad_p, TH1* hist_p, Float_t opacity, std::vector<double>* deltaVals)
+{
+  if(pad_p == nullptr){
+    std::cout << "drawBoxAdjacentIterRel ERROR: TPad ptr given is nullptr. return false" << std::endl;
+    return false;
+  }		    
+
+  if(hist_p == nullptr){
+    std::cout << "drawBoxAdjacentIterRel ERROR: THist ptr given is nullptr. return false" << std::endl;
+    return false;
+  }		    
+  
+  pad_p->cd();
+
+  Int_t color = hist_p->GetMarkerColor();
+  
+  TBox* box_p = new TBox();
+  box_p->SetFillColorAlpha(color, opacity);
+  for(Int_t bIX = 0; bIX < hist_p->GetNbinsX(); ++bIX){
+    Double_t x1 = hist_p->GetBinLowEdge(bIX+1);
+    Double_t x2 = hist_p->GetBinLowEdge(bIX+2);
+ 
+    box_p->DrawBox(x1, 1.0 - deltaVals->at(bIX), x2, 1.0 + deltaVals->at(bIX));
+  }
+  delete box_p;
+  
+  return true;
+}
+
 int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 {
+  //Hard-code some latex/legend parameters
   const int titleFont = 42;
-  const double titleSize = 0.035;
+  const double titleSize = 0.03;
   const double labelSize = titleSize*0.9;
-  const double yOffset = 1.2;
-  
+  const double yOffset = 0.9;
+
+  //Internal stopwatch for code timing tests
   cppWatch globalTimer;
   globalTimer.start();
 
+  //Check config exists
   checkMakeDir check;
   if(!check.checkFileExt(inConfigFileName, ".config")) return 1;
 
+  //Create date-stamped output and pdf dir
   const std::string dateStr = getDateStr();
   check.doCheckMakeDir("pdfDir");
   check.doCheckMakeDir("pdfDir/" + dateStr);
   check.doCheckMakeDir("output");
   check.doCheckMakeDir("output/" + dateStr);
-  
+
+  //Global debug handler - do 'export DOGLOBALDEBUGROOT=1' to turn on debug output
   globalDebugHandler gDebug;
   const bool doGlobalDebug = gDebug.GetDoGlobalDebug();
-  
+
+  //Grab our input config, define necessary internal params
   TEnv* config_p = new TEnv(inConfigFileName.c_str());
   std::vector<std::string> necessaryParams = {"INUNFOLDFILENAME",
 					      "OUTUNFOLDCONFIG",
@@ -82,28 +301,32 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 					      "SAVEEXT",
 					      "DOLOGX",
 					      "DOLOGY",
-					      "XJMIN.GLOBAL",
-					      "XJMAX.GLOBAL",
-					      "XJLEGX.GLOBAL.0",
-					      "XJLEGY.GLOBAL.0",
-					      "XJLABELX.GLOBAL",
-					      "XJLABELY.GLOBAL",
-					      "XJLABELALIGNRIGHT.GLOBAL",
+					      "JETVARMIN.GLOBAL",
+					      "JETVARMAX.GLOBAL",
+					      "JETVARLEGX.GLOBAL.0",
+					      "JETVARLEGY.GLOBAL.0",
+					      "JETVARLABELX.GLOBAL",
+					      "JETVARLABELY.GLOBAL",
+					      "JETVARLABELALIGNRIGHT.GLOBAL",
 					      "DIAGLEGX.GLOBAL.0",
 					      "DIAGLEGY.GLOBAL.0",
 					      "DIAGLABELX.GLOBAL",
 					      "DIAGLABELY.GLOBAL",
 					      "DIAGLABELALIGNRIGHT.GLOBAL"};
 
-  
+  //Check that the required parameters exist
   if(!checkEnvForParams(config_p, necessaryParams)) return 1;
+
+  //Start grabbing parameters from config file
   std::string inUnfoldFileName = config_p->GetValue("INUNFOLDFILENAME", "");
   std::string outUnfoldConfigName = config_p->GetValue("OUTUNFOLDCONFIG", "");
   TEnv* outUnfoldConfig_p = new TEnv();
 
+  //Threshold by which we terminate the unfolding - deltaStat contribution to quad sum exceeds this value, term
   const double termThresh = config_p->GetValue("TERMTHRESH", -1.0);
   outUnfoldConfig_p->SetValue("TERMTHRESH", config_p->GetValue("TERMTHRESH", termThresh));
 
+  //Do we terminate each 1D distribution separately or the whole 2D simultaneously - 2D approach is the correct one, but we leave 1D for debug purposes + possible systematic
   const bool term1D = (bool)config_p->GetValue("TERM1D", 0);
   outUnfoldConfig_p->SetValue("TERM1D", config_p->GetValue("TERM1D", term1D));
   const bool term2D = (bool)config_p->GetValue("TERM2D", 0);
@@ -111,6 +334,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   const bool termBoth = (bool)config_p->GetValue("TERMBoth", 0);
   outUnfoldConfig_p->SetValue("TERMBoth", config_p->GetValue("TERMBoth", termBoth));
 
+  //Make sure we have only picked an appropriate singular version of above
   if(term1D){
     if(term2D || termBoth){
       std::cout << "TERM1D \'" << term1D << "\' and 1 of TERM2D (" << term2D << ") or TERMBOTH (" << termBoth << ") selected. please pick 1. return 1" << std::endl;
@@ -127,14 +351,14 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
     std::cout << "All termination for best iterations 'TERM1D', 'TERM2D', 'TERMBOTH' are false. Please set one to true. Return 1" << std::endl;
     return 1;
   }
-  
+
+  //Continue grabbing parameters from config file
   const std::string saveTag = config_p->GetValue("SAVETAG", "");
   const std::string saveExt = config_p->GetValue("SAVEEXT", "");
   const bool doRelativeTerm = config_p->GetValue("DORELATIVETERM",  0);
   std::string deltaStr = "Rel";
   if(!doRelativeTerm) deltaStr = "Abs";
 
-  
   const bool doLogX = config_p->GetValue("DOLOGX", 0);
   const bool doLogY = config_p->GetValue("DOLOGY", 0);
   
@@ -147,40 +371,47 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
     
   const Int_t nIterCap = config_p->GetValue("NITERPLOTCAP", 100000);
   
-  const Float_t xjMinGlobal = config_p->GetValue("XJMIN.GLOBAL", -1000.);
-  const Float_t xjMaxGlobal = config_p->GetValue("XJMAX.GLOBAL", 1000.);
+  const Float_t jetVarMinGlobal = config_p->GetValue("JETVARMIN.GLOBAL", -1000.);
+  const Float_t jetVarMaxGlobal = config_p->GetValue("JETVARMAX.GLOBAL", 1000.);
 
-  const Float_t xjRatMinGlobal = config_p->GetValue("XJRATMIN.GLOBAL", -1000.);
-  const Float_t xjRatMaxGlobal = config_p->GetValue("XJRATMAX.GLOBAL", 1000.);
+  
+  const Float_t jetVarRatMinGlobal = config_p->GetValue("JETVARRATMIN.GLOBAL", -1000.);
+  const Float_t jetVarRatMaxGlobal = config_p->GetValue("JETVARRATMAX.GLOBAL", 1000.);
   
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-  
-  std::vector<Float_t> xjLegXGlobal, xjLegYGlobal, xjLegNGlobal;
+
+  //We define possibly multiple legends in the config file that we have complete control over
+  //Gotta grab them all here
+  std::vector<Float_t> jetVarLegXGlobal, jetVarLegYGlobal;
+  std::vector<Int_t> jetVarLegNGlobal;
   for(Int_t i = 0; i < 100; ++i){
-    Float_t tempLegX = config_p->GetValue(("XJLEGX.GLOBAL." + std::to_string(i)).c_str(), -1000.);
-    Float_t tempLegY = config_p->GetValue(("XJLEGY.GLOBAL." + std::to_string(i)).c_str(), -1000.);
-    Float_t tempLegN = config_p->GetValue(("XJLEGN.GLOBAL." + std::to_string(i)).c_str(), -1000.);
+    Float_t tempLegX = config_p->GetValue(("JETVARLEGX.GLOBAL." + std::to_string(i)).c_str(), -1000.);
+    Float_t tempLegY = config_p->GetValue(("JETVARLEGY.GLOBAL." + std::to_string(i)).c_str(), -1000.);
+    Float_t tempLegN = config_p->GetValue(("JETVARLEGN.GLOBAL." + std::to_string(i)).c_str(), -1000.);
 
     if(tempLegX >= 0){
-      xjLegXGlobal.push_back(tempLegX);
-      xjLegYGlobal.push_back(tempLegY);
-      if(tempLegN >= 0) xjLegNGlobal.push_back(tempLegN);
+      jetVarLegXGlobal.push_back(tempLegX);
+      jetVarLegYGlobal.push_back(tempLegY);
+      if(tempLegN >= 0) jetVarLegNGlobal.push_back(tempLegN);
     }
   }
-  if(xjLegNGlobal.size() != xjLegXGlobal.size()){
+  if(jetVarLegNGlobal.size() != jetVarLegXGlobal.size()){
     std::cout << "Number of histograms per legend not specified manually for all legends - reverting to equal split" << std::endl;
-    xjLegNGlobal.clear();
+    jetVarLegNGlobal.clear();
   }
-  
-  const Float_t xjLabelXGlobal = config_p->GetValue("XJLABELX.GLOBAL", -1000.);
-  const Float_t xjLabelYGlobal = config_p->GetValue("XJLABELY.GLOBAL", -1000.);
-  const Bool_t xjLabelAlignRightGlobal = config_p->GetValue("XJLABELALIGNRIGHT.GLOBAL", 0);
 
-  std::vector<Float_t> diagLegXGlobal, diagLegYGlobal, diagLegNGlobal;
+  //Define label positions
+  const Float_t jetVarLabelXGlobal = config_p->GetValue("JETVARLABELX.GLOBAL", -1000.);
+  const Float_t jetVarLabelYGlobal = config_p->GetValue("JETVARLABELY.GLOBAL", -1000.);
+  const Bool_t jetVarLabelAlignRightGlobal = config_p->GetValue("JETVARLABELALIGNRIGHT.GLOBAL", 0);
+  
+  //diag == diagnostic - we have an unfolding diagnostic plot that has similarly defined label and legend positionsing
+  std::vector<Float_t> diagLegXGlobal, diagLegYGlobal;
+  std::vector<Int_t> diagLegNGlobal;
   for(Int_t i = 0; i < 100; ++i){
     Float_t tempLegX = config_p->GetValue(("DIAGLEGX.GLOBAL." + std::to_string(i)).c_str(), -1000.);
     Float_t tempLegY = config_p->GetValue(("DIAGLEGY.GLOBAL." + std::to_string(i)).c_str(), -1000.);
-    Float_t tempLegN = config_p->GetValue(("DIAGLEGN.GLOBAL." + std::to_string(i)).c_str(), -1000.);
+    Int_t tempLegN = config_p->GetValue(("DIAGLEGN.GLOBAL." + std::to_string(i)).c_str(), -1000);
 
     if(tempLegX >= 0){
       diagLegXGlobal.push_back(tempLegX);
@@ -196,8 +427,6 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   const Float_t diagLabelXGlobal = config_p->GetValue("DIAGLABELX.GLOBAL", -1000.);
   const Float_t diagLabelYGlobal = config_p->GetValue("DIAGLABELY.GLOBAL", -1000.);
   const Bool_t diagLabelAlignRightGlobal = config_p->GetValue("DIAGLABELALIGNRIGHT.GLOBAL", 0);
-
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   //Get global labels
   std::vector<std::string> globalLabels;
@@ -216,22 +445,12 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       else globalLabelsMCOverrides.push_back(globalLabels[globalLabels.size()-1]);
     }
   }
-
-  std::cout << "DEFAULT: " << std::endl;
-  for(unsigned int gI = 0; gI < globalLabels.size(); ++gI){
-    std::cout << " " << gI << "/" << globalLabels.size() << ": " << globalLabels[gI] << std::endl;
-  }
-
-  std::cout << "DEFAULT: " << std::endl;
-  for(unsigned int gI = 0; gI < globalLabelsMCOverrides.size(); ++gI){
-    std::cout << " " << gI << "/" << globalLabelsMCOverrides.size() << ": " << globalLabelsMCOverrides[gI] << std::endl;
-  }
+  //Grabbing parameters from input config file complete
   
-
-
   //check that our given input files exist
   if(!check.checkFileExt(inUnfoldFileName, ".root")) return 1;
-  
+
+  //Grab our input unfolded histogram file, and internal configs + check for req. params
   TFile* inUnfoldFile_p = new TFile(inUnfoldFileName.c_str(), "READ");
   TEnv* inUnfoldFileConfig_p = (TEnv*)inUnfoldFile_p->Get("config");    
   TEnv* inUnfoldFileLabel_p = (TEnv*)inUnfoldFile_p->Get("label");    
@@ -242,18 +461,25 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 							"GAMMAPTBINSHIGH",
 							"GAMMAPTBINSDOLOG",
 							"GAMMAPTBINSDOCUSTOM",
+							"NJTPTBINS",
+							"JTPTBINSLOW",
+							"JTPTBINSHIGH",
+							"JTPTBINSDOLOG",
+							"JTPTBINSDOCUSTOM",
 							"ISPP",
 							"NITER",
 							"JETR",
 							"VARNAME",
 							"ASSOCGENMINPT"};
   
+  //Global cut referential labels (dphi0 is the gamma+jet dphi cut)
   const std::string gammaJtDPhiStr = "DPhi0";
   //  const std::string multiJtCutGlobalStr = "MultiJt0";
   const std::string jtPtBinsGlobalStr = "GlobalJtPt0";
 
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
+  //Additional params are required if it is Pb+Pb
   std::vector<std::string> pbpbParams = {"CENTBINS"};
   if(!checkEnvForParams(inUnfoldFileConfig_p, necessaryUnfoldFileParams)) return 1;
 
@@ -267,7 +493,6 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   std::map<std::string, std::string> varNameLowerToLabel;
   varNameLowerToLabel["xj"] = "x_{J#gamma}";
   varNameLowerToLabel["xjj"] = "#vec{x}_{JJ#gamma}";
-
   if(varNameLowerToLabel.count(varNameLabel) != 0) varNameLabel = varNameLowerToLabel[varNameLabel];
   
   //Add to global labels
@@ -277,6 +502,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   else{
     jetRStr = jetRStr + prettyString(((double)jetR)/10., 1, false) + " jets";
   }
+
+  //Add to the global labels
   globalLabels.push_back(jetRStr);
   globalLabels.push_back(jtPtBinsGlobalStr);
   globalLabels.push_back(gammaJtDPhiStr);
@@ -339,30 +566,30 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   }
 
   const Int_t nIterForLoop = TMath::Min(nIter, nIterCap);
-
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
   //Define a bunch of parameters for the TCanvas
   const Int_t nPad = 3;
-  Double_t padSplit1 = 0.43;
-  Double_t padSplit2 = 0.27976;
-  Double_t height = 900.0;
-  //  height = 1200.0;
-  //  padSplit1 = 0.45;
-  //  padSplit2 = 0.29976;
 
-
+  Double_t height = 1200.0;
+  Double_t width = 942.831;
   const Double_t leftMargin = 0.16;
-  const Double_t bottomMargin = 0.125/padSplit2;
-  const Double_t topMargin = 0.01;
-  const Double_t rightMargin = 0.01;
-  const Double_t noMargin = 0.001;
+  const Double_t bottomAbsFracOfLeft = 0.8;
 
-  Double_t width = height*(1.0 - topMargin*(1.0 - padSplit1) - bottomMargin*padSplit2)/(1.0 - leftMargin - rightMargin);
+  const Double_t bottomMarginFracHeight = bottomAbsFracOfLeft*leftMargin*width/height;
+    
+  const Double_t topPanelFrac = 0.48;
+  const Double_t bottomPanelFrac = 0.39;
+  const Double_t padSplit1 = 1.0 - topPanelFrac;
+  //  const Double_t padSplit2 = padSplit1 - (padSplit1 - bottomMarginFracHeight)/2.0; 
+  const Double_t padSplit2 = bottomPanelFrac;
+  
+  const Double_t bottomMargin = bottomMarginFracHeight/padSplit2;
+  const Double_t topMargin = 0.02;
+  const Double_t rightMargin = 0.02;
+  const Double_t noMargin = 0.001;
   
   const Double_t leftMargin2D = 0.12;
   const Double_t bottomMargin2D = leftMargin2D;
-  const Double_t topMargin2D = 0.01;
+  const Double_t topMargin2D = 0.02;
   const Double_t rightMargin2D = 0.12;
   Double_t height2D = 900.0;
   Double_t width2D = height2D*(1.0 - topMargin2D* - bottomMargin2D)/(1.0 - leftMargin2D - rightMargin2D);
@@ -375,7 +602,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   const Bool_t gammaPtBinsDoCustom = (bool)inUnfoldFileConfig_p->GetValue("GAMMAPTBINSDOCUSTOM", 1);
   Double_t gammaPtBins[nMaxPtBins+1];
 
-  std::vector<Float_t> xJMax, xJMin;
+  std::vector<Float_t> jetVarMax, jetVarMin;
   
   if(gammaPtBinsDoLog) getLogBins(gammaPtBinsLow, gammaPtBinsHigh, nGammaPtBins, gammaPtBins);
   else if(gammaPtBinsDoCustom){
@@ -398,1988 +625,764 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 
   gStyle->SetOptStat(0);
 
-  //Photon-pt only; double vector for centrality, iterations
+  std::string jtVar = inUnfoldFileConfig_p->GetValue("VARNAME", "");
+  if(jtVar.size() == 0){
+    std::cout << "Varname: \'" << jtVar << "\' is invalid. return 1" << std::endl;
+    return 1;
+  }
+  std::string jtVarLower = returnAllLowercaseString(varName);
+  std::string jtVarUpper = returnAllCapsString(varName);
+  
+  Int_t nVarBins = inUnfoldFileConfig_p->GetValue(("NJT" + jtVarUpper + "BINS").c_str(), -1);
+  Float_t varBinsLow = inUnfoldFileConfig_p->GetValue(("JT" + jtVarUpper + "BINSLOW").c_str(), -1);
+  Float_t varBinsHigh = inUnfoldFileConfig_p->GetValue(("JT" + jtVarUpper + "BINSHIGH").c_str(), -1);
+  Bool_t varBinsDoLog = inUnfoldFileConfig_p->GetValue(("JT" + jtVarUpper + "BINSDOLOG").c_str(), 0);
+  Bool_t varBinsDoCustom = inUnfoldFileConfig_p->GetValue(("JT" + jtVarUpper + "BINSDOCUSTOM").c_str(), 0);
+  Double_t varBins[nMaxPtBins+1];
 
+  if(varBinsDoLog) getLogBins(varBinsLow, varBinsHigh, nVarBins, varBins);
+  else if(varBinsDoCustom){
+    std::string varBinsStr = inUnfoldFileConfig_p->GetValue(("JT" + jtVarUpper + "BINSCUSTOM").c_str(), "");
+    if(varBinsStr.size() == 0){
+      std::cout << "No custom bins given. return 1" << std::endl;
+      return 1;
+    }
+    std::vector<float> varBinsTemp = strToVectF(varBinsStr);
+    Int_t nVarBinsTemp = ((Int_t)varBinsTemp.size()) - 1;
+    if(nVarBins != nVarBinsTemp){
+      return 1;
+    }
+
+    for(unsigned int gI = 0; gI < varBinsTemp.size(); ++gI){
+      varBins[gI] = varBinsTemp[gI];
+    }
+  }
+  else getLinBins(varBinsLow, varBinsHigh, nVarBins, varBins);
+
+  //Photon-pt only; double vector for centrality, iterations
   std::vector<std::string> statsDeltaPhoPtNames, iterDeltaPhoPtNames, totalDeltaPhoPtNames;
   std::vector<std::string> recoHistPhoPtNames, truthHistPhoPtNames;
   std::vector<std::vector<std::string> > unfoldNamesPhoPt, refoldNamesPhoPt;
-  //Names for the split 50-50 MC unfold test
+
+  //Photon-pt + Jet-var unfold
+  std::vector<std::string> statsDeltaPhoPtJetVarNames, iterDeltaPhoPtJetVarNames, totalDeltaPhoPtJetVarNames;
+  std::vector<std::string> recoHistPhoPtJetVarNames, truthHistPhoPtJetVarNames;
+  std::vector<std::vector<std::string> > unfoldNamesPhoPtJetVar, refoldNamesPhoPtJetVar;
+ 
+  //Fill out the name vectors
   for(unsigned int cI = 0; cI < centBinsStr.size(); ++cI){
-    //CFM EDIT 2021.06.17
-    recoHistPhoPtNames.push_back("photonPtReco_HalfToUnfold_" + centBinsStr[cI] + "_h");
-    truthHistPhoPtNames.push_back("photonPtTruth_HalfToUnfold_" + centBinsStr[cI] + "_h");
-
-    statsDeltaPhoPtNames.push_back("statsDelta_PhoPt_" + centBinsStr[cI] + "_h");
-    iterDeltaPhoPtNames.push_back("iterDelta_PhoPt_" + centBinsStr[cI] + "_h");
-    totalDeltaPhoPtNames.push_back("totalDelta_PhoPt_" + centBinsStr[cI] + "_h");
-
     unfoldNamesPhoPt.push_back({});
     refoldNamesPhoPt.push_back({});
 
-    for(Int_t uI = 0; uI < nIter; ++uI){
-      unfoldNamesPhoPt[cI].push_back("photonPtReco_HalfToUnfold_Iter" + std::to_string(uI) + "_" + centBinsStr[cI] + "_h");
-      refoldNamesPhoPt[cI].push_back("photonPtReco_HalfToUnfold_Iter" + std::to_string(uI) + "_" + centBinsStr[cI] + "_Refolded_h");
-    }
-  }
-
-  //Now do the full unfold
-  for(unsigned int cI = 0; cI < centBinsStr.size(); ++cI){
-    Int_t cI2 = cI + centBinsStr.size();
-    unfoldNamesPhoPt.push_back({});
-    refoldNamesPhoPt.push_back({});
-
-    recoHistPhoPtNames.push_back("photonPtReco_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
-    truthHistPhoPtNames.push_back("photonPtReco_" + centBinsStr[cI] + "_TRUTH_COMBINED_h");
-
+    unfoldNamesPhoPtJetVar.push_back({});
+    refoldNamesPhoPtJetVar.push_back({});
+    
+    recoHistPhoPtNames.push_back("photonPtReco_PreUnfold_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
+    truthHistPhoPtNames.push_back("photonPtTruth_PreUnfold_" + centBinsStr[cI] + "_TRUTH_COMBINED_h");
     statsDeltaPhoPtNames.push_back("statsDelta_PhoPt_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
     iterDeltaPhoPtNames.push_back("iterDelta_PhoPt_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
     totalDeltaPhoPtNames.push_back("totalDelta_PhoPt_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
+
+    recoHistPhoPtJetVarNames.push_back("photonPtJet" + jtVar + "Reco_PreUnfold_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
+    truthHistPhoPtJetVarNames.push_back("photonPtJet" + jtVar + "Truth_PreUnfold_" + centBinsStr[cI] + "_TRUTH_COMBINED_h");
+    statsDeltaPhoPtJetVarNames.push_back("statsDelta_PhoPtJet" + jtVar + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
+    iterDeltaPhoPtJetVarNames.push_back("iterDelta_PhoPtJet" + jtVar + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
+    totalDeltaPhoPtJetVarNames.push_back("totalDelta_PhoPtJet" + jtVar + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
     
-    for(Int_t uI = 0; uI < nIter; ++uI){
-      unfoldNamesPhoPt[cI2].push_back("photonPtReco_Iter" + std::to_string(uI) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
-      refoldNamesPhoPt[cI2].push_back("photonPtReco_Iter" + std::to_string(uI) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_Refolded_h");
-    }
-  }
-  
-  //Photon-pt + var for unfolding
-  std::vector<std::string> recoMatrixNames, truthMatrixNames;
-  std::vector<std::vector<std::string> > recoHistNames, truthHistNames, statsDeltaNames, iterDeltaNames, totalDeltaNames;
-  std::vector<std::vector<std::vector<std::string> > > unfoldNames, refoldNames;
+    for(Int_t uI = 0; uI < nIter+1; ++uI){
+      unfoldNamesPhoPt[cI].push_back("photonPtReco_Iter" + std::to_string(uI) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
+      refoldNamesPhoPt[cI].push_back("photonPtReco_Iter" + std::to_string(uI) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_Refolded_h");
 
-  std::vector<std::string> statsDeltaNames2D, iterDeltaNames2D, totalDeltaNames2D;
-  std::vector<std::vector<std::string> > unfoldNames2D;
-
-  for(unsigned int cI = 0; cI < centBinsStr.size(); ++cI){
-    statsDeltaNames2D.push_back("statsDelta_GammaPtAll_" + centBinsStr[cI] + "_h");
-    iterDeltaNames2D.push_back("iterDelta_GammaPtAll_" + centBinsStr[cI] + "_h");
-    totalDeltaNames2D.push_back("totalDelta_GammaPtAll_" + centBinsStr[cI] + "_h");
-    
-    unfoldNames2D.push_back({});
-
-    for(Int_t i = 0; i < nIter; ++i){
-      unfoldNames2D[cI].push_back(("photonPtJet" + varName + "Reco_HalfToUnfold_Iter" + std::to_string(i) + "_" +centBinsStr[cI] + "_h").c_str());
+      unfoldNamesPhoPtJetVar[cI].push_back("photonPtJet" + jtVar + "Reco_Iter" + std::to_string(uI) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
+      refoldNamesPhoPtJetVar[cI].push_back("photonPtJet" + jtVar + "Reco_Iter" + std::to_string(uI) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_Refolded_h");
     }
   }
 
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-  
-  for(unsigned int cI = 0; cI < centBinsStr.size(); ++cI){
-    statsDeltaNames2D.push_back("statsDelta_GammaPtAll_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
-    iterDeltaNames2D.push_back("iterDelta_GammaPtAll_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
-    totalDeltaNames2D.push_back("totalDelta_GammaPtAll_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
-
-    unfoldNames2D.push_back({});
-    for(Int_t i = 0; i < nIter; ++i){
-      unfoldNames2D[cI + centBinsStr.size()].push_back(("photonPtJet" + varName + "Reco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h").c_str());
-    }
-  }
-  
-  for(unsigned int cI = 0; cI < centBinsStr.size(); ++cI){
-    recoMatrixNames.push_back("photonPtJet" + varName + "Reco_HalfResponse_" + centBinsStr[cI] + "_h");
-    truthMatrixNames.push_back("photonPtJet" + varName + "Truth_HalfResponse_" + centBinsStr[cI] + "_h");
-
-    recoHistNames.push_back({});
-    truthHistNames.push_back({});
-    statsDeltaNames.push_back({});
-    iterDeltaNames.push_back({});
-    totalDeltaNames.push_back({});
-    unfoldNames.push_back({});
-    refoldNames.push_back({});
+  //two iterations of processing - one is pure photon, other is photon+jet 2d
+  const Int_t nProc = 2;
     
-    for(Int_t gI = 0; gI < nGammaPtBins; ++gI){    
-      recoHistNames[cI].push_back(varNameLower + "Reco_HalfToUnfold_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_h");
-      truthHistNames[cI].push_back(varNameLower + "Truth_HalfToUnfold_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_h");
+  for(Int_t pI = 0; pI < nProc; ++pI){
+    //pI = 0; Photon-pt processing
+    //pI = 1; Photon+Jet Var processing
 
-      statsDeltaNames[cI].push_back("statsDelta_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_h");
-      iterDeltaNames[cI].push_back("iterDelta_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_h");
-      totalDeltaNames[cI].push_back("totalDelta_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_h");
+    std::vector<std::string> statsDeltaNames = statsDeltaPhoPtNames;
+    std::vector<std::string> iterDeltaNames = iterDeltaPhoPtNames;
+    std::vector<std::string> totalDeltaNames = totalDeltaPhoPtNames;
 
-      unfoldNames[cI].push_back({});
-      refoldNames[cI].push_back({});
-      for(Int_t uI = 0; uI < nIter; ++uI){
-	unfoldNames[cI][gI].push_back(varNameLower + "Reco_HalfToUnfold_Iter" + std::to_string(uI) + "_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_h");
-	refoldNames[cI][gI].push_back(varNameLower + "Reco_HalfToUnfold_Iter" + std::to_string(uI) + "_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_Refolded_h");
-      }
-    }    
-  }   
-
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
-  for(unsigned int cI = 0; cI < centBinsStr.size(); ++cI){
-    Int_t cI2 = cI + centBinsStr.size();
-    recoMatrixNames.push_back("photonPtJet" + varName + "Reco_" + centBinsStr[cI] + "_h");
-    truthMatrixNames.push_back("photonPtJet" + varName + "Truth_" + centBinsStr[cI] + "_h");
-
-    recoHistNames.push_back({});
-    truthHistNames.push_back({});
-    statsDeltaNames.push_back({});
-    iterDeltaNames.push_back({});
-    totalDeltaNames.push_back({});
-    unfoldNames.push_back({});
-    refoldNames.push_back({});
+    std::vector<std::string> recoHistNames = recoHistPhoPtNames;
+    std::vector<std::string> truthHistNames = truthHistPhoPtNames;
     
-    for(Int_t gI = 0; gI < nGammaPtBins; ++gI){    
-      recoHistNames[cI2].push_back(varNameLower + "Reco_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
-      truthHistNames[cI2].push_back(varNameLower + "Reco_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_TRUTH_COMBINED_h");
+    std::vector<std::vector<std::string> > unfoldNames = unfoldNamesPhoPt;
+    std::vector<std::vector<std::string> > refoldNames = refoldNamesPhoPt;
 
-      statsDeltaNames[cI2].push_back("statsDelta_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
-      iterDeltaNames[cI2].push_back("iterDelta_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
-      totalDeltaNames[cI2].push_back("totalDelta_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
+    if(pI == 1){
+      statsDeltaNames = statsDeltaPhoPtJetVarNames;
+      iterDeltaNames = iterDeltaPhoPtJetVarNames;
+      totalDeltaNames = totalDeltaPhoPtJetVarNames;
 
-      unfoldNames[cI2].push_back({});
-      refoldNames[cI2].push_back({});
-
-      for(Int_t uI = 0; uI < nIter; ++uI){
-	unfoldNames[cI2][gI].push_back(varNameLower + "Reco_Iter" + std::to_string(uI) + "_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
-	refoldNames[cI2][gI].push_back(varNameLower + "Reco_Iter" + std::to_string(uI) + "_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_Refolded_h");
-      }
-    }
-  }
-
-  for(unsigned int cI = 0; cI < recoMatrixNames.size(); ++cI){    
-    TH2F* recoMatrix_p = (TH2F*)inUnfoldFile_p->Get(recoMatrixNames[cI].c_str());
-    TH2F* truthMatrix_p = (TH2F*)inUnfoldFile_p->Get(truthMatrixNames[cI].c_str());
-
-    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-    
-    std::string saveNameTag = dateStr;
-    if(recoMatrixNames[cI].find("_Half") != std::string::npos) saveNameTag = "HalfTest_" + saveTag + "_" + saveNameTag;
-    else saveNameTag = "PURCORR_" + saveTag + "_" + saveNameTag;
-
-    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-    
-    std::vector<TH2F*> matrices_p = {recoMatrix_p, truthMatrix_p};
-    for(unsigned int mI = 0; mI < matrices_p.size(); ++mI){
-      TCanvas* canv_p = new TCanvas("canv_p", "", width2D, height2D);
-      canv_p->SetTopMargin(topMargin2D);
-      canv_p->SetBottomMargin(bottomMargin2D);
-      canv_p->SetLeftMargin(leftMargin2D);
-      canv_p->SetRightMargin(rightMargin2D);
+      recoHistNames = recoHistPhoPtJetVarNames;
+      truthHistNames = truthHistPhoPtJetVarNames;
       
-      canv_p->cd();
-
-      matrices_p[mI]->DrawCopy("COLZ");
-      gPad->SetLogz();
-      
-      std::string saveName = matrices_p[mI]->GetName();
-      saveName.replace(saveName.rfind("_h"), 2, "");
-      saveName = "pdfDir/" + dateStr + "/" + saveName + "_Delta" + deltaStr + "_" + saveNameTag + "." + saveExt;
-      quietSaveAs(canv_p, saveName);    
-      delete canv_p;
-    }
-
-    //photon pt alone unfolding result eval
-    TH1F* statsDeltaPhoPt_p = new TH1F(statsDeltaPhoPtNames[cI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIter - 1, 1.5, ((double)nIter)+0.5);
-    TH1F* iterDeltaPhoPt_p = new TH1F(iterDeltaPhoPtNames[cI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIter - 1, 1.5, ((double)nIter)+0.5);
-    TH1F* totalDeltaPhoPt_p = new TH1F(totalDeltaPhoPtNames[cI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIter - 1, 1.5, ((double)nIter)+0.5);
-    TH1F* unfoldPhoPt_p[nIterMax];
-    TH1F* refoldPhoPt_p[nIterMax];
-
-    for(int i = 0; i < nIterMax; ++i){
-      unfoldPhoPt_p[i] = nullptr;
-      refoldPhoPt_p[i] = nullptr;
+      unfoldNames = unfoldNamesPhoPtJetVar;
+      refoldNames = refoldNamesPhoPtJetVar;
     }
     
-    {
+    for(unsigned int cI = 0; cI < statsDeltaNames.size(); ++cI){
+      //photon pt alone unfolding result eval
+      //Declare both new histograms and define/initialize null histograms we will grab from file
+      TH1F* statsDelta_p = new TH1F(statsDeltaNames[cI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIter, 0.5, ((double)nIter)+0.5);
+      TH1F* iterDelta_p = new TH1F(iterDeltaNames[cI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIter, 0.5, ((double)nIter)+0.5);
+      TH1F* totalDelta_p = new TH1F(totalDeltaNames[cI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIter, 0.5, ((double)nIter)+0.5);
+      TH1F* unfold1D_p[nIterMax];
+      TH1F* refold1D_p[nIterMax];
+      TH2F* unfold2D_p[nIterMax];
+      TH2F* refold2D_p[nIterMax];
+      
+      for(int i = 0; i < nIterMax; ++i){
+	unfold1D_p[i] = nullptr;
+	refold1D_p[i] = nullptr;
+	unfold2D_p[i] = nullptr;
+	refold2D_p[i] = nullptr;
+      }
+      
+      //Global labels -> tempLabels in case I need to make variable specific alterations
       std::vector<std::string> tempLabels = globalLabels;
-      if(!isMC && truthHistNames[cI][0].find("PURCORR") != std::string::npos){
-	tempLabels = globalLabelsDataOverrides;
-      }
-      else if(!isMC && truthHistNames[cI][0].find("HalfTo") != std::string::npos){
-	tempLabels = globalLabelsMCOverrides;
-      }
+      if(!isMC && truthHistNames[cI].find("PURCORR") != std::string::npos) tempLabels = globalLabelsDataOverrides;
+      else if(!isMC && truthHistNames[cI].find("HalfTo") != std::string::npos) tempLabels = globalLabelsMCOverrides;
       tempLabels.push_back("#bf{" + prettyString(gammaPtBins[0], 1, false) + " < p_{T,#gamma} < " + prettyString(gammaPtBins[nGammaPtBins], 1, false) + "}");
       if(!isPP) tempLabels.push_back(centBinsLabel[cI%centBinsLabel.size()]);
       tempLabels.push_back("Observable: #gamma p_{T}");
-      
+      //EndLabelMods
+
+      //Define tlatex label object 
       TLatex* label_p = new TLatex();
-      label_p->SetNDC();
-      label_p->SetTextFont(titleFont);
-      label_p->SetTextSize(titleSize);
-      label_p->SetTextColor(1);
-      if(diagLabelAlignRightGlobal) label_p->SetTextAlign(31);    
+      initLabel(label_p, titleFont, titleSize, diagLabelAlignRightGlobal);
+      
+      //Define leg var
+      std::vector<TLegend*> leg_p, legBest_p;
+      std::vector<TH1F*> histsForLeg_p = {iterDelta_p, statsDelta_p, totalDelta_p};
+      std::vector<std::string> stringsForLeg_p = {"Iter. Change", "Statistical Unc.", "Quad. Sum"};    
+      if(!setupLegends(titleFont, titleSize, &leg_p, histsForLeg_p, stringsForLeg_p, {}, &diagLegNGlobal, diagLegXGlobal, diagLegYGlobal)) return 1;
     
-      Int_t maxLegX = -1;
-      std::vector<TLegend*> leg_p;
-      std::vector<TH1F*> histsForLeg_p = {iterDeltaPhoPt_p, statsDeltaPhoPt_p, totalDeltaPhoPt_p};
-      std::vector<std::string> stringsForLeg_p = {"Iter. Change", "Statistical Unc.", "Quad. Sum"};
-      for(unsigned int lI = 0; lI < stringsForLeg_p.size(); ++lI){
-	if(maxLegX < (Int_t)stringsForLeg_p[lI].size()) maxLegX = (Int_t)stringsForLeg_p[lI].size();  
-      }
-      
-      Int_t numberHists = histsForLeg_p.size();
-      Int_t histsPerLeg = 0;
-      
-      Int_t totalCustom = 0;
-      for(unsigned int hI = 0; hI < diagLegNGlobal.size(); ++hI){
-	totalCustom += diagLegNGlobal[hI];
-      }
-      if(totalCustom < numberHists){
-	if(totalCustom != 0) std::cout << "Number of histograms per legend requested custom \'" << totalCustom << "\' totals to less than required, \'" << numberHists << "\'. Reverting to equal splits." << std::endl;
-	diagLegNGlobal.clear();
-      }
-      
-      if(diagLegNGlobal.size() == 0){
-	while(histsPerLeg*(Int_t)diagLegXGlobal.size() < numberHists){
-	  ++histsPerLeg;
+      std::vector<TH1F*> unfoldedHists1D_p, refoldedHists1D_p;
+      std::vector<TH2F*> unfoldedHists2D_p, refoldedHists2D_p;
+      unfoldedHists1D_p.reserve(nIter);
+      refoldedHists1D_p.reserve(nIter);
+      unfoldedHists2D_p.reserve(nIter);
+      refoldedHists2D_p.reserve(nIter);
+    
+      std::cout << "Check unfold/refold" << std::endl;
+      for(Int_t i = 1; i < nIter+1; ++i){
+	if(pI == 0){
+	  unfold1D_p[i] = (TH1F*)inUnfoldFile_p->Get(unfoldNames[cI][i].c_str());  
+	  unfoldedHists1D_p.push_back(unfold1D_p[i]);
+	  
+	  refold1D_p[i] = (TH1F*)inUnfoldFile_p->Get(refoldNames[cI][i].c_str());  
+	  refoldedHists1D_p.push_back(refold1D_p[i]);
+	}
+	else if(pI == 1){
+	  unfold2D_p[i] = (TH2F*)inUnfoldFile_p->Get(unfoldNames[cI][i].c_str());  
+	  unfoldedHists2D_p.push_back(unfold2D_p[i]);
+
+	  std::cout << "UNFOLD: " << unfoldNames[cI][i] << std::endl;
+	  std::cout << "REFOLD: " << refoldNames[cI][i] << std::endl;
+	  
+	  refold2D_p[i] = (TH2F*)inUnfoldFile_p->Get(refoldNames[cI][i].c_str());  
+	  refoldedHists2D_p.push_back(refold2D_p[i]);
 	}
       }
       
       if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-      
-      for(unsigned int lI = 0; lI < diagLegXGlobal.size(); ++lI){
-	leg_p.push_back(nullptr);
-	
-	if(diagLegNGlobal.size() == 0){
-	  if(lI+1 < diagLegXGlobal.size()) leg_p[lI] = new TLegend(diagLegXGlobal[lI], diagLegYGlobal[lI] - histsPerLeg*0.04, diagLegXGlobal[lI] + maxLegX*0.02, diagLegYGlobal[lI]);
-	  else{
-	    if(numberHists%histsPerLeg == 0) leg_p[lI] = new TLegend(diagLegXGlobal[lI], diagLegYGlobal[lI] - histsPerLeg*0.04, diagLegXGlobal[lI] + maxLegX*0.02, diagLegYGlobal[lI]);
-	    else leg_p[lI] = new TLegend(diagLegXGlobal[lI], diagLegYGlobal[lI] - (numberHists%histsPerLeg)*0.04, diagLegXGlobal[lI] + maxLegX*0.02, diagLegYGlobal[lI]);
-	  }	
-	}
-	else{
-	  leg_p[lI] = new TLegend(diagLegXGlobal[lI], diagLegYGlobal[lI] - diagLegNGlobal[lI]*0.04, diagLegXGlobal[lI] + maxLegX*0.02, diagLegYGlobal[lI]);
-	}
-	
-	leg_p[lI]->SetTextFont(titleFont);
-	leg_p[lI]->SetTextSize(titleSize);
-	leg_p[lI]->SetBorderSize(0);
-	leg_p[lI]->SetFillColor(0);
-	leg_p[lI]->SetFillStyle(0);
-      }
-    
-      std::vector<TH1F*> unfoldedHistsPhoPt_p, refoldedHistsPhoPt_p;
-      unfoldedHistsPhoPt_p.reserve(nIter);
-      refoldedHistsPhoPt_p.reserve(nIter);
-      for(Int_t i = 1; i < nIter; ++i){
-     	unfoldPhoPt_p[i] = (TH1F*)inUnfoldFile_p->Get(unfoldNamesPhoPt[cI][i].c_str());  
-	unfoldedHistsPhoPt_p.push_back(unfoldPhoPt_p[i]);
-	
-	refoldPhoPt_p[i] = (TH1F*)inUnfoldFile_p->Get(refoldNamesPhoPt[cI][i].c_str());  
-	refoldedHistsPhoPt_p.push_back(refoldPhoPt_p[i]);
-      }
-      
-      getIterativeHists(unfoldedHistsPhoPt_p, statsDeltaPhoPt_p, iterDeltaPhoPt_p, totalDeltaPhoPt_p, doRelativeTerm);
 
+      TH1F* reco1D_p = nullptr;
+      TH2F* reco2D_p = nullptr;
+      if(pI == 0){
+	reco1D_p = (TH1F*)inUnfoldFile_p->Get(recoHistNames[cI].c_str());
+	getIterativeHists(reco1D_p, unfoldedHists1D_p, statsDelta_p, iterDelta_p, totalDelta_p, doRelativeTerm);
+      }
+      else if(pI == 1){
+	std::cout << "RECOHISTNAME: " << recoHistNames[cI] << std::endl;
+	reco2D_p = (TH2F*)inUnfoldFile_p->Get(recoHistNames[cI].c_str());
+ 	getIterativeHists2D(reco2D_p, unfoldedHists2D_p, statsDelta_p, iterDelta_p, totalDelta_p, doRelativeTerm);
+
+	//	reco2D_p->Print("ALL");
+	//	return 1;
+      }
+ 
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+     
       TCanvas* canv_p = new TCanvas("canv_p", "", width, height);
-      canv_p->SetTopMargin(topMargin);
-      canv_p->SetRightMargin(rightMargin);
-      canv_p->SetLeftMargin(leftMargin);
-      canv_p->SetBottomMargin(leftMargin); //Because of the padsplit adjustment
+      setMargins(canv_p, leftMargin, topMargin, rightMargin, leftMargin); //intentionally settng bottom to left margin value
       canv_p->cd();
       
-      HIJet::Style::EquipHistogram(iterDeltaPhoPt_p, 0);
-      HIJet::Style::EquipHistogram(statsDeltaPhoPt_p, 1);
-      HIJet::Style::EquipHistogram(totalDeltaPhoPt_p, 2);
-      totalDeltaPhoPt_p->DrawCopy("HIST E1 P");
-      statsDeltaPhoPt_p->DrawCopy("HIST E1 P SAME");
-      iterDeltaPhoPt_p->DrawCopy("HIST E1 P SAME");
-      totalDeltaPhoPt_p->DrawCopy("HIST E1 P SAME");    
+      HIJet::Style::EquipHistogram(iterDelta_p, 2);
+      HIJet::Style::EquipHistogram(statsDelta_p, 1);
+      HIJet::Style::EquipHistogram(totalDelta_p, 0);
+      
+      totalDelta_p->SetMinimum(0.0);
+      
+      totalDelta_p->DrawCopy("HIST E1 P");
+      statsDelta_p->DrawCopy("HIST E1 P SAME");
+      iterDelta_p->DrawCopy("HIST E1 P SAME");
+      totalDelta_p->DrawCopy("HIST E1 P SAME");    
 
-      
-      if(diagLegNGlobal.size() == 0){
-	for(unsigned int lI = 0; lI < histsForLeg_p.size(); ++lI){      
-	  leg_p[lI/histsPerLeg]->AddEntry(histsForLeg_p[lI], stringsForLeg_p[lI].c_str(), "P");
-	}
-      }
-      else{
-	Int_t legCounter = 0;
-	for(unsigned int lI = 0; lI < diagLegNGlobal.size(); ++lI){
-	  for(unsigned int dI = 0; dI < diagLegNGlobal[lI]; ++dI){	
-	    leg_p[lI]->AddEntry(histsForLeg_p[legCounter], stringsForLeg_p[legCounter].c_str(), "P");
-	    ++legCounter;
-	  }
-	}
-      }
-      
-          
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
+      //Draw Legends
       for(unsigned int lI = 0; lI < leg_p.size(); ++lI){leg_p[lI]->Draw("SAME");}
+      
+      //Draw labels
       int labelPos = 0;
       for(unsigned int tI = 0; tI < tempLabels.size(); ++tI){
 	if(tempLabels[tI].find("jet") != std::string::npos) continue;
 	label_p->DrawLatex(diagLabelXGlobal, diagLabelYGlobal - labelPos*0.06, tempLabels[tI].c_str());
 	++labelPos;
       }
-      quietSaveAs(canv_p, "pdfDir/" + dateStr + "/diagPhoPt_" + centBinsStr[cI%centBinsStr.size()] + "_Delta" + deltaStr + "_" + saveNameTag +  "." + saveExt);
+      axisFix(canv_p);
+      std::string saveName = "pdfDir/" + dateStr + "/diag";
+      if(pI == 0) saveName = saveName + "PhoPt";
+      else if(pI == 1) saveName = saveName + "PhoPtJet" + varName;
+      saveName = saveName + "_" + centBinsStr[cI%centBinsStr.size()] + "_Delta" + deltaStr + "_" + saveTag +  "." + saveExt;
+      
+      quietSaveAs(canv_p, saveName);
       delete canv_p;
       delete label_p;
-
+      
       for(unsigned int lI = 0; lI < leg_p.size(); ++lI){
 	if(leg_p[lI] == nullptr) continue;
 	delete leg_p[lI];
       }
-       
+      leg_p.clear();
+
+      //      if(pI == 1) continue;
       
-     //Write photon pt termination point to our config file
+
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+      //Complete photon-pt processing
+      
+      //Write photon pt termination point to our config file
       std::string configStr = "GAMMAPT_" + centBinsStr[cI%centBinsStr.size()];
       int termPos = -1;
-      for(Int_t i = 1; i < nIter; ++i){
-        Double_t totalDelta = totalDeltaPhoPt_p->GetBinContent(i);
-        Double_t statsDelta = statsDeltaPhoPt_p->GetBinContent(i);
-	
-        if(statsDelta/totalDelta  >= termThresh){
-          termPos = i+1;
-          break;
-        }
-      }
-      outUnfoldConfig_p->SetValue(configStr.c_str(), termPos);
-    
-      TH1F* truth_p = nullptr;
-      if(truthHistPhoPtNames[cI].find("TRUTH_COMBINED") == std::string::npos || isMC){	
-	std::cout << truthHistPhoPtNames[cI] << std::endl;
-        truth_p = (TH1F*)inUnfoldFile_p->Get(truthHistPhoPtNames[cI].c_str());
-      }
-      else if(!isMC){
-	std::cout << truthHistPhoPtNames[cI] << std::endl;
-        truth_p = (TH1F*)inUnfoldFile_p->Get(truthHistPhoPtNames[cI].c_str());
-      }
-      TH1F* reco_p = (TH1F*)inUnfoldFile_p->Get(recoHistPhoPtNames[cI].c_str());
-      
-      canv_p = new TCanvas("canv_p", "", width, height);
-      TCanvas* canvBest_p = new TCanvas("canvBest_p", "", width, height);
-      TPad* pads_p[nPad];
-      TPad* padsBest_p[nPad];
-      canv_p->SetTopMargin(noMargin);
-      canv_p->SetRightMargin(noMargin);
-      canv_p->SetLeftMargin(noMargin);
-      canv_p->SetBottomMargin(noMargin);
-      canv_p->cd();
-
-      canvBest_p->SetTopMargin(noMargin);
-      canvBest_p->SetRightMargin(noMargin);
-      canvBest_p->SetLeftMargin(noMargin);
-      canvBest_p->SetBottomMargin(noMargin);
-      canvBest_p->cd();
-
-      pads_p[0] = new TPad("pad0", "", 0.0, padSplit1, 1.0, 1.0);
-      pads_p[0]->SetTopMargin(topMargin);
-      pads_p[0]->SetRightMargin(rightMargin);
-      pads_p[0]->SetLeftMargin(leftMargin);
-      pads_p[0]->SetBottomMargin(noMargin);
-
-      canv_p->cd();
-      pads_p[0]->Draw("SAME");
-      pads_p[0]->cd();
-      canv_p->cd();
-
-      padsBest_p[0] = new TPad("padBest0", "", 0.0, padSplit1, 1.0, 1.0);
-      padsBest_p[0]->SetTopMargin(topMargin);
-      padsBest_p[0]->SetRightMargin(rightMargin);
-      padsBest_p[0]->SetLeftMargin(leftMargin);
-      padsBest_p[0]->SetBottomMargin(noMargin);
-
-      canvBest_p->cd();
-      padsBest_p[0]->Draw("SAME");
-      padsBest_p[0]->cd();
-      canvBest_p->cd();
-
-      canv_p->cd();
-      pads_p[1] = new TPad("pad1", "", 0.0, padSplit2, 1.0, padSplit1);
-      pads_p[1]->SetTopMargin(noMargin);
-      pads_p[1]->SetRightMargin(rightMargin);
-      pads_p[1]->SetLeftMargin(leftMargin);
-      pads_p[1]->SetBottomMargin(noMargin);
-
-      canv_p->cd();
-      pads_p[1]->Draw("SAME");
-      pads_p[1]->cd();
-      canv_p->cd();
-
-      canvBest_p->cd();
-      padsBest_p[1] = new TPad("padBest1", "", 0.0, padSplit2, 1.0, padSplit1);
-      padsBest_p[1]->SetTopMargin(noMargin);
-      padsBest_p[1]->SetRightMargin(rightMargin);
-      padsBest_p[1]->SetLeftMargin(leftMargin);
-      padsBest_p[1]->SetBottomMargin(noMargin);
-
-      canvBest_p->cd();
-      padsBest_p[1]->Draw("SAME");
-      padsBest_p[1]->cd();
-      canvBest_p->cd();
-
-      canv_p->cd();
-      pads_p[2] = new TPad("pad2", "", 0.0, 0.0, 1.0, padSplit2);
-      pads_p[2]->SetTopMargin(noMargin);
-      pads_p[2]->SetRightMargin(rightMargin);
-      pads_p[2]->SetLeftMargin(leftMargin);
-      pads_p[2]->SetBottomMargin(bottomMargin);
-
-      canv_p->cd();
-      pads_p[2]->Draw("SAME");
-      pads_p[2]->cd();
-      canv_p->cd();      
-      
-      canvBest_p->cd();
-      padsBest_p[2] = new TPad("padBest2", "", 0.0, 0.0, 1.0, padSplit2);
-      padsBest_p[2]->SetTopMargin(noMargin);
-      padsBest_p[2]->SetRightMargin(rightMargin);
-      padsBest_p[2]->SetLeftMargin(leftMargin);
-      padsBest_p[2]->SetBottomMargin(bottomMargin);
-
-      canvBest_p->cd();
-      padsBest_p[2]->Draw("SAME");
-      padsBest_p[2]->cd();
-      canvBest_p->cd();
-
-      canv_p->cd();
-      pads_p[0]->cd();
-
-      if(truth_p != nullptr) HIJet::Style::EquipHistogram(truth_p, 2); //TRUTH IS kAzure-3 lines (atlas style picked up here)                                                                                        HIJet::Style::EquipHistogram(reco_p, 1); //RECO IS kRed-4 lines (atlas style picked up here)      
-      reco_p->SetMarkerSize(0.00001);
-      if(truth_p != nullptr) truth_p->SetMarkerSize(0.00001);
-
-      maxLegX = -1;
-
-      label_p = new TLatex();
-      label_p->SetNDC();
-      label_p->SetTextFont(titleFont);
-      label_p->SetTextSize(titleSize/(1.0 - padSplit1));
-      label_p->SetTextColor(1);
-      if(xjLabelAlignRightGlobal) label_p->SetTextAlign(31);
-
-      std::vector<std::string> legFillStr;
-      if(truth_p != nullptr){
-	if(isMC) stringsForLeg_p = {"Truth", "Reco."};
-        else stringsForLeg_p = {"Truth PYTHIA", "Reco. Data"};
-        histsForLeg_p = {truth_p, reco_p};
-        legFillStr = {"L", "L"};
-      }
-      else{
-        stringsForLeg_p = {"Reco."};
-        histsForLeg_p = {reco_p};
-        legFillStr = {"L"};
-      }
-
-      for(Int_t i = 1; i < nIterForLoop; ++i){
-        stringsForLeg_p.push_back("Unfolded, " + std::to_string(i));
-        histsForLeg_p.push_back(unfoldPhoPt_p[i]);
-        legFillStr.push_back("P L");
-      }
-
-      for(unsigned int lI = 0; lI < stringsForLeg_p.size(); ++lI){
-        if(maxLegX < (Int_t)stringsForLeg_p[lI].size()) maxLegX = (Int_t)stringsForLeg_p[lI].size();
-      }
-
-      numberHists = histsForLeg_p.size();
-      histsPerLeg = 0;
-
-      totalCustom = 0;
-      for(unsigned int hI = 0; hI < xjLegNGlobal.size(); ++hI){
-        totalCustom += xjLegNGlobal[hI];
-      }
-      if(totalCustom < numberHists){
-        if(totalCustom != 0) std::cout << "Number of histograms per legend requested custom \'" << totalCustom << "\' totals to less than required, \'" << numberHists << "\'. Reverting to equal splits." <<  std::endl;
-        xjLegNGlobal.clear();
-      }
-
-      if(xjLegNGlobal.size() == 0){
-        while(histsPerLeg*(Int_t)xjLegXGlobal.size() < numberHists){
-          ++histsPerLeg;
-        }
-      }
-      
-      for(unsigned int lI = 0; lI < xjLegXGlobal.size(); ++lI){
-        leg_p.push_back(nullptr);
-        if(xjLegNGlobal.size() == 0){
-          if(lI+1 < xjLegXGlobal.size()) leg_p[lI] = new TLegend(xjLegXGlobal[lI], xjLegYGlobal[lI] - histsPerLeg*0.05, xjLegXGlobal[lI] + maxLegX*0.02, xjLegYGlobal[lI]);
-          else{
-            if(numberHists%histsPerLeg == 0) leg_p[lI] = new TLegend(xjLegXGlobal[lI], xjLegYGlobal[lI] - histsPerLeg*0.05, xjLegXGlobal[lI] + maxLegX*0.02, xjLegYGlobal[lI]);
-            else leg_p[lI] = new TLegend(xjLegXGlobal[lI], xjLegYGlobal[lI] - (numberHists%histsPerLeg)*0.05, xjLegXGlobal[lI] + maxLegX*0.02, xjLegYGlobal[lI]);
-          }
-        }
-        else{
-          double nVert = xjLegNGlobal[lI];
-          if(truth_p == nullptr && lI == xjLegXGlobal.size()-1) nVert -= 1.0;
-          leg_p[lI] = new TLegend(xjLegXGlobal[lI], xjLegYGlobal[lI] - nVert*0.05, xjLegXGlobal[lI] + maxLegX*0.02, xjLegYGlobal[lI]);
-        }
-
-        leg_p[lI]->SetTextFont(titleFont);
-        leg_p[lI]->SetTextSize(titleSize/(1.0 - padSplit1));
-        leg_p[lI]->SetBorderSize(0);
-        leg_p[lI]->SetFillColor(0);
-        leg_p[lI]->SetFillStyle(0);
-      }
-
-      binWidthAndSelfNorm(reco_p);
-
-      //      reco_p->SetMinimum(xjMinTemp);
-      //      reco_p->SetMaximum(xjMaxTemp);
-
-      reco_p->GetXaxis()->SetTitleFont(titleFont);
-      reco_p->GetYaxis()->SetTitleFont(titleFont);
-      reco_p->GetXaxis()->SetTitleSize(0.00001);
-      reco_p->GetYaxis()->SetTitleSize(titleSize/(1.0-padSplit1));
-
-      reco_p->GetXaxis()->SetLabelFont(titleFont);
-      reco_p->GetYaxis()->SetLabelFont(titleFont);
-      reco_p->GetXaxis()->SetLabelSize(0.00001);
-      reco_p->GetYaxis()->SetLabelSize(labelSize/(1.0-padSplit1));
-
-      reco_p->GetYaxis()->SetTitleOffset(yOffset);
-
-      reco_p->GetYaxis()->SetNdivisions(505);
-      reco_p->GetXaxis()->SetNdivisions(505);
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
-      reco_p->GetYaxis()->SetTitle("#frac{1}{N_{#gamma}} #frac{dN_{#gamma}}{dp_{T}}");
-      reco_p->DrawCopy("HIST E1");
-      gPad->SetLogx();
-      gPad->SetLogy();
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-      
-      if(truth_p != nullptr){
-        binWidthAndSelfNorm(truth_p);
-        truth_p->DrawCopy("HIST E1 SAME");
-      }
-
-
-      for(Int_t i = 1; i < nIter; ++i){
-	if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
-        HIJet::Style::EquipHistogram(unfoldPhoPt_p[i], i-1);
-        binWidthAndSelfNorm(unfoldPhoPt_p[i]);
-	
-	if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-	HIJet::Style::EquipHistogram(refoldPhoPt_p[i], i-1);
-        binWidthAndSelfNorm(refoldPhoPt_p[i]);
-	
-        refoldPhoPt_p[i]->SetMarkerSize(0.00001);
-        refoldPhoPt_p[i]->SetLineStyle(2);
-      }
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
-      for(Int_t i = 1; i < nIterForLoop; ++i){
-        unfoldPhoPt_p[i]->DrawCopy("HIST E1 P SAME");
-      }
-
-      gPad->SetTicks();
-
-      canvBest_p->cd();
-      padsBest_p[0]->cd();
-
-      gPad->SetTicks();
-      reco_p->DrawCopy("HIST E1");
-      if(truth_p != nullptr) truth_p->DrawCopy("HIST E1 SAME");
-
-      gPad->SetLogx();
-      gPad->SetLogy();
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
-      std::vector<double> deltaVals;
-      for(Int_t i = 1; i < nIter; ++i){
-        bool isGood = false;
-	if(i+1 == termPos) isGood = true;
-
-        if(!isGood) continue;
-
-	HIJet::Style::EquipHistogram(unfoldPhoPt_p[i], i-1);
-        HIJet::Style::EquipHistogram(refoldPhoPt_p[i], i-1);
-        refoldPhoPt_p[i]->SetMarkerSize(0.00001);
-        refoldPhoPt_p[i]->SetLineStyle(2);
-
-	gPad->SetTicks();
-	unfoldPhoPt_p[i]->DrawCopy("HIST E1 P SAME");
-	refoldPhoPt_p[i]->DrawCopy("HIST E1 SAME");
-	
-	if(termPos == i+1){
-	  Int_t tempColor = HIJet::Style::GetColor(i-1);
-	  Float_t tempOpacity = HIJet::Style::GetOpacity(i-1);
-	  
-	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << i << "/" << nIter << std::endl;
-	  
-	  TBox* box_p = new TBox();
-	  box_p->SetFillColorAlpha(tempColor, tempOpacity);
-	  for(Int_t bIX = 0; bIX < unfoldPhoPt_p[i]->GetNbinsX(); ++bIX){
-	    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << i << "/" << nIter << ", " << bIX << "/" << unfoldPhoPt_p[i]->GetNbinsX() << std::endl;
-	    
-	    Double_t x1 = unfoldPhoPt_p[i]->GetBinLowEdge(bIX+1);
-	    Double_t x2 = unfoldPhoPt_p[i]->GetBinLowEdge(bIX+2);
-	    
-	    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-	    
-	    Double_t yDelta1 = TMath::Abs(unfoldPhoPt_p[i+1]->GetBinContent(bIX+1) - unfoldPhoPt_p[i]->GetBinContent(bIX+1));
-	    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-	    Double_t yDelta2 = 0.0;
-	    if(i > 1) yDelta2 = TMath::Abs(unfoldPhoPt_p[i-1]->GetBinContent(bIX+1) - unfoldPhoPt_p[i]->GetBinContent(bIX+1));
-
-
-	    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-	    Double_t yLow = unfoldPhoPt_p[i]->GetBinContent(bIX+1) - TMath::Max(yDelta1, yDelta2);
-	    Double_t yHigh = unfoldPhoPt_p[i]->GetBinContent(bIX+1) + TMath::Max(yDelta1, yDelta2);
-
-
-	    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-	    if(unfoldPhoPt_p[i]->GetBinContent(bIX+1) < TMath::Power(10,-50)) deltaVals.push_back(0.0);
-	    else deltaVals.push_back(TMath::Max(yDelta1, yDelta2)/(double)unfoldPhoPt_p[i]->GetBinContent(bIX+1));	    
-
-	    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-	    box_p->DrawBox(x1, yLow, x2, yHigh);
-	    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-	  }
-
-	    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-	  
-	  delete box_p;
-	}
-      }
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-      
-      canv_p->cd();
-      pads_p[0]->cd();
-
-      canv_p->cd();
-      pads_p[1]->cd();
-
-
-      gPad->SetTicks();
-
-      for(Int_t i = 1; i < nIterForLoop; ++i){
-        TH1F* unfoldClone_p = (TH1F*)unfoldPhoPt_p[i]->Clone("tempClone");
-        unfoldClone_p->Divide(reco_p);
-	unfoldClone_p->SetTitle("");
-	
-        if(i == 1){
-          unfoldClone_p->GetYaxis()->SetTitle("#frac{Unfolded}{Reco.}");
-	  
-          unfoldClone_p->GetXaxis()->SetTitleOffset(1.2);
-          unfoldClone_p->GetYaxis()->SetTitleOffset(yOffset*(padSplit1 - padSplit2)/(1.0-padSplit1));
-	  
-          unfoldClone_p->GetXaxis()->SetTitleFont(titleFont);
-          unfoldClone_p->GetYaxis()->SetTitleFont(titleFont);
-          unfoldClone_p->GetXaxis()->SetTitleSize(titleSize/(padSplit1 - padSplit2));
-          unfoldClone_p->GetYaxis()->SetTitleSize(titleSize/(padSplit1 - padSplit2));
-	  
-          unfoldClone_p->GetXaxis()->SetLabelFont(titleFont);
-          unfoldClone_p->GetYaxis()->SetLabelFont(titleFont);
-          unfoldClone_p->GetXaxis()->SetLabelSize(labelSize/(padSplit1 - padSplit2));
-          unfoldClone_p->GetYaxis()->SetLabelSize(labelSize/(padSplit1 - padSplit2));
-
-          unfoldClone_p->GetYaxis()->SetNdivisions(404);
-
-	  unfoldClone_p->SetMaximum(1.25);
-	  unfoldClone_p->SetMinimum(0.75);
-	  
-	  unfoldClone_p->DrawCopy("HIST E1 P");
-          if(doLogX) gPad->SetLogx();
-        }
-        else unfoldClone_p->DrawCopy("HIST E1 P SAME");
-	
-        delete unfoldClone_p;
-      }
-
-      gPad->SetLogx();
-      
-      canvBest_p->cd();
-      padsBest_p[1]->cd();
-
-      gPad->SetTicks();
-      bool hasDrawn = false;
-      for(Int_t i = 1; i < nIter; ++i){
-        bool isGood = false;
-	if(i+1 == termPos) isGood = true;
-        if(!isGood) continue;
-
-        TH1F* unfoldClone_p = (TH1F*)unfoldPhoPt_p[i]->Clone("tempClone");
-        unfoldClone_p->Divide(reco_p);
-
-        TH1F* refoldClone_p = (TH1F*)refoldPhoPt_p[i]->Clone("tempClone2");
-        refoldClone_p->Divide(reco_p);
-
-	unfoldClone_p->SetTitle("");
-	refoldClone_p->SetTitle("");
-	
-        if(!hasDrawn){
-          refoldClone_p->GetYaxis()->SetTitle("#frac{Refold}{Reco.}");
-
-          refoldClone_p->GetXaxis()->SetTitleOffset(1.2);
-          refoldClone_p->GetYaxis()->SetTitleOffset(yOffset*(padSplit1 - padSplit2)/(1.0-padSplit1));
-
-          refoldClone_p->GetXaxis()->SetTitleFont(titleFont);
-          refoldClone_p->GetYaxis()->SetTitleFont(titleFont);
-          refoldClone_p->GetXaxis()->SetTitleSize(titleSize/(padSplit1 - padSplit2));
-          refoldClone_p->GetYaxis()->SetTitleSize(titleSize/(padSplit1 - padSplit2));
-
-          refoldClone_p->GetXaxis()->SetLabelFont(titleFont);
-          refoldClone_p->GetYaxis()->SetLabelFont(titleFont);
-          refoldClone_p->GetXaxis()->SetLabelSize(labelSize/(padSplit1 - padSplit2));
-          refoldClone_p->GetYaxis()->SetLabelSize(labelSize/(padSplit1 - padSplit2));
-
-          refoldClone_p->GetYaxis()->SetNdivisions(404);
-
-	  refoldClone_p->SetMaximum(1.25);
-	  refoldClone_p->SetMinimum(0.75);
-	  
-          refoldClone_p->DrawCopy("HIST E1 P");
-          if(doLogX) gPad->SetLogx();
-          hasDrawn = true;
-        }
-        else refoldClone_p->DrawCopy("HIST E1 P SAME");
-	
-        if(i+1 == termPos){
-          Int_t tempColor = HIJet::Style::GetColor(i-1);
-          Float_t tempOpacity = HIJet::Style::GetOpacity(i-1);
-
-          TBox* box_p = new TBox();
-          box_p->SetFillColorAlpha(tempColor, tempOpacity);
-
-          for(Int_t bIX = 0; bIX < unfoldClone_p->GetXaxis()->GetNbins(); ++bIX){
-            Double_t x1 = unfoldClone_p->GetBinLowEdge(bIX+1);
-            Double_t x2 = unfoldClone_p->GetBinLowEdge(bIX+2);
-
-            box_p->DrawBox(x1, 1.0 - deltaVals[bIX], x2, 1.0 + deltaVals[bIX]);
-          }
-
-          delete box_p;
-	}
-
-        delete refoldClone_p;
-	delete unfoldClone_p;
-      }
-
-      gPad->SetLogx();
-      
-      //Third panel, divide by truth
-      canv_p->cd();
-      pads_p[2]->cd();
-
-            gPad->SetTicks();
-      for(Int_t i = 1; i < nIterForLoop; ++i){
-        TH1F* unfoldClone_p = (TH1F*)unfoldPhoPt_p[i]->Clone("tempClone");
-        unfoldClone_p->Divide(truth_p);
-
-	unfoldClone_p->SetTitle("");
-	
-	if(i == 1){
-          if(isMC) unfoldClone_p->GetYaxis()->SetTitle("#frac{Unfolded}{Truth}");
-          else unfoldClone_p->GetYaxis()->SetTitle("#frac{Unfolded Data}{Truth PYTHIA}");
-
-          unfoldClone_p->GetXaxis()->SetTitleOffset(1.2);
-          unfoldClone_p->GetYaxis()->SetTitleOffset(yOffset*(padSplit2)/(1.0-padSplit1));
-
-          unfoldClone_p->GetXaxis()->SetTitleFont(titleFont);
-          unfoldClone_p->GetYaxis()->SetTitleFont(titleFont);
-          unfoldClone_p->GetXaxis()->SetTitleSize(titleSize/(padSplit2));
-          unfoldClone_p->GetYaxis()->SetTitleSize(titleSize/(padSplit2));
-
-          unfoldClone_p->GetXaxis()->SetLabelFont(titleFont);
-          unfoldClone_p->GetYaxis()->SetLabelFont(titleFont);
-          unfoldClone_p->GetXaxis()->SetLabelSize(labelSize/(padSplit2));
-          unfoldClone_p->GetYaxis()->SetLabelSize(labelSize/(padSplit2));
-
-          unfoldClone_p->GetYaxis()->SetNdivisions(404);
-
-	  unfoldClone_p->SetMaximum(1.25);
-	  unfoldClone_p->SetMinimum(0.75);
-          unfoldClone_p->DrawCopy("HIST E1 P");
-          if(doLogX) gPad->SetLogx();
-        }
-        else unfoldClone_p->DrawCopy("HIST E1 P SAME");
-
-	delete unfoldClone_p;
-      }
-
-      gPad->SetLogx();
-      
-      canvBest_p->cd();
-      padsBest_p[2]->cd();
-
-      hasDrawn = false;
-      for(Int_t i = 1; i < nIter; ++i){
-        bool isGood = false;
-        if(i+1 == termPos) isGood = true;
-        if(!isGood) continue;
-
-        TH1F* unfoldClone_p = (TH1F*)unfoldPhoPt_p[i]->Clone("tempClone");
-        unfoldClone_p->Divide(truth_p);
-
-        gPad->SetTicks();
-        if(!hasDrawn){
-          if(isMC) unfoldClone_p->GetYaxis()->SetTitle("#frac{Unfolded}{Truth}");
-          else unfoldClone_p->GetYaxis()->SetTitle("#frac{Unfolded Data}{Truth PYTHIA}");
-
-          unfoldClone_p->GetXaxis()->SetTitleOffset(1.2);
-          unfoldClone_p->GetYaxis()->SetTitleOffset(yOffset*(padSplit2)/(1.0-padSplit1));
-
-          unfoldClone_p->GetXaxis()->SetTitleFont(titleFont);
-          unfoldClone_p->GetYaxis()->SetTitleFont(titleFont);
-          unfoldClone_p->GetXaxis()->SetTitleSize(titleSize/(padSplit2));
-          unfoldClone_p->GetYaxis()->SetTitleSize(titleSize/(padSplit2));
-
-          unfoldClone_p->GetXaxis()->SetLabelFont(titleFont);
-          unfoldClone_p->GetYaxis()->SetLabelFont(titleFont);
-          unfoldClone_p->GetXaxis()->SetLabelSize(labelSize/(padSplit2));
-          unfoldClone_p->GetYaxis()->SetLabelSize(labelSize/(padSplit2));
-
-          unfoldClone_p->GetYaxis()->SetNdivisions(404);
-
-	  unfoldClone_p->SetMaximum(1.25);
-	  unfoldClone_p->SetMinimum(0.75);
-	  
-          unfoldClone_p->DrawCopy("HIST E1 P");
-
-          if(doLogX) gPad->SetLogx();
-          hasDrawn = true;
-        }
-        else unfoldClone_p->DrawCopy("HIST E1 P SAME");
-
-        if(i+1 == termPos){
-          Int_t tempColor = HIJet::Style::GetColor(i-1);
-          Float_t tempOpacity = HIJet::Style::GetOpacity(i-1);
-
-          TBox* box_p = new TBox();
-          box_p->SetFillColorAlpha(tempColor, tempOpacity);
-
-          for(Int_t bIX = 0; bIX < unfoldClone_p->GetXaxis()->GetNbins(); ++bIX){
-            Double_t x1 = unfoldClone_p->GetBinLowEdge(bIX+1);
-            Double_t x2 = unfoldClone_p->GetBinLowEdge(bIX+2);
-
-            box_p->DrawBox(x1, 1.0 - deltaVals[bIX], x2, 1.0 + deltaVals[bIX]);
-          }
-
-          delete box_p;
-        }
-
-        delete unfoldClone_p;
-      }
-	
-
-      gPad->SetLogx();
-     quietSaveAs(canv_p, "pdfDir/" + dateStr + "/unfoldPhoPt_" + centBinsStr[cI%centBinsStr.size()] + "_Delta" + deltaStr + "_" + saveNameTag + "." + saveExt);
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-      for(Int_t i = 0; i < nPad; ++i){
-        delete pads_p[i];
-      }      
-      delete canv_p;
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
-      quietSaveAs(canvBest_p, "pdfDir/" + dateStr + "/unfoldPhoPt_BESTIterations_" + centBinsStr[cI%centBinsStr.size()] + "_Delta" + deltaStr + "_" + saveNameTag + "." + saveExt);
-      
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-      
-      for(Int_t i = 0; i < nPad; ++i){
-        delete padsBest_p[i];
-      }      
-      delete canvBest_p;
-    }
-    
-    //2-D analysis of the unfolding results - this should be the overriding result - the 1-D analysis is cross-check + possible systematic
-    //    for(int yExclude = -1; yExclude < nGammaPtBins; ++yExclude){
-    TH1F* statsDelta2D_p = new TH1F(statsDeltaNames2D[cI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIter-1, 1.5, nIter+0.5);
-    TH1F* iterDelta2D_p = new TH1F(iterDeltaNames2D[cI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIter-1, 1.5, ((double)nIter)+0.5);
-    TH1F* totalDelta2D_p = new TH1F(totalDeltaNames2D[cI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" +deltaStr + "}}").c_str(), nIter-1, 1.5, ((double)nIter)+0.5);
-    TH2F* unfold2D_p[nIterMax];
-
-    //If its sub data lets save a nice 2-D version of the input before unfolding
-    if(unfoldNames2D[cI][0].find("PURCORR") != std::string::npos){// && yExclude < 0){
-      std::string inputName = unfoldNames2D[cI][0];
-
-      std::string preName = inputName.substr(0, inputName.find("_Iter"));
-      std::string postName = inputName;
-      while(postName.find("Iter") != std::string::npos){
-        postName.replace(0, postName.find("_")+1, "");
-      }
-
-      inputName = preName + "_PreUnfold_" + postName;
-
-      TH2F* preUnfold_p = (TH2F*)inUnfoldFile_p->Get(inputName.c_str());
-
-      TCanvas* canv_p = new TCanvas("canv_p", "", width2D, height2D);
-      canv_p->SetTopMargin(topMargin2D);
-      canv_p->SetBottomMargin(bottomMargin2D);
-      canv_p->SetLeftMargin(leftMargin2D);
-      canv_p->SetRightMargin(rightMargin2D);
-
-      canv_p->cd();
-
-      preUnfold_p->DrawCopy("COLZ");
-      gPad->SetLogz();
-
-      std::string saveName = inputName;
-      saveName.replace(saveName.rfind("_h"), 2, "");
-      saveName = "pdfDir/" + dateStr + "/" + saveName + "_Delta" + deltaStr + "_" + saveNameTag + "." + saveExt;
-      quietSaveAs(canv_p, saveName);
-      delete canv_p;
-    }
-
-
-    
-    std::vector<TH2F*> unfoldedHists2D_p;
-    for(Int_t i = 1; i < nIter; ++i){
-      unfold2D_p[i] = (TH2F*)inUnfoldFile_p->Get(unfoldNames2D[cI][i].c_str());      
-      
-      TCanvas* canv_p = new TCanvas("canv_p", "", width2D, height2D);
-      canv_p->SetTopMargin(topMargin2D);
-      canv_p->SetBottomMargin(bottomMargin2D);
-      canv_p->SetLeftMargin(leftMargin2D);
-      canv_p->SetRightMargin(rightMargin2D);
-      
-      canv_p->cd();
-      
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-      unfold2D_p[i]->DrawCopy("COLZ");
-      gPad->SetLogz();
-      
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-      
-      std::string saveName = unfoldNames2D[cI][i];
-      saveName.replace(saveName.rfind("_h"), 2, "");
-      saveName = "pdfDir/" + dateStr + "/" + saveName + "_Delta" + deltaStr + "_" + saveNameTag + "." + saveExt;
-      quietSaveAs(canv_p, saveName);    
-      delete canv_p;
-      
-      unfoldedHists2D_p.push_back(unfold2D_p[i]);
-    }
-    
-    getIterativeHists2D(unfoldedHists2D_p, statsDelta2D_p, iterDelta2D_p, totalDelta2D_p, doRelativeTerm);
-    
-    std::vector<std::string> tempLabels = globalLabels;
-    if(!isMC && truthHistNames[cI][0].find("PURCORR") != std::string::npos){
-      tempLabels = globalLabelsDataOverrides;
-    }
-    else if(!isMC && truthHistNames[cI][0].find("HalfTo") != std::string::npos){
-      tempLabels = globalLabelsMCOverrides;
-    }
-    tempLabels.push_back("#bf{" + prettyString(gammaPtBins[0], 1, false) + " < p_{T,#gamma} < " + prettyString(gammaPtBins[nGammaPtBins], 1, false) + "}");
-    if(!isPP) tempLabels.push_back(centBinsLabel[cI%centBinsLabel.size()]);
-    tempLabels.push_back(("Observable: " + varNameLabel).c_str());
-
-    TLatex* label_p = new TLatex();
-    label_p->SetNDC();
-    label_p->SetTextFont(titleFont);
-    label_p->SetTextSize(titleSize);
-    label_p->SetTextColor(1);
-    if(diagLabelAlignRightGlobal) label_p->SetTextAlign(31);    
-    
-    Int_t maxLegX = -1;
-    std::vector<TLegend*> leg_p;
-    std::vector<TH1F*> histsForLeg_p = {iterDelta2D_p, statsDelta2D_p, totalDelta2D_p};
-    std::vector<std::string> stringsForLeg_p = {"Iter. Change", "Statistical Unc.", "Quad. Sum"};
-    for(unsigned int lI = 0; lI < stringsForLeg_p.size(); ++lI){
-      if(maxLegX < (Int_t)stringsForLeg_p[lI].size()) maxLegX = (Int_t)stringsForLeg_p[lI].size();  
-    }
-    
-    Int_t numberHists = histsForLeg_p.size();
-    Int_t histsPerLeg = 0;
-    
-    Int_t totalCustom = 0;
-    for(unsigned int hI = 0; hI < diagLegNGlobal.size(); ++hI){
-      totalCustom += diagLegNGlobal[hI];
-    }
-    if(totalCustom < numberHists){
-      if(totalCustom != 0) std::cout << "Number of histograms per legend requested custom \'" << totalCustom << "\' totals to less than required, \'" << numberHists << "\'. Reverting to equal splits." << std::endl;
-      diagLegNGlobal.clear();
-    }
-    
-    if(diagLegNGlobal.size() == 0){
-      while(histsPerLeg*(Int_t)diagLegXGlobal.size() < numberHists){
-	++histsPerLeg;
-      }
-    }
-    
-    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-    
-    for(unsigned int lI = 0; lI < diagLegXGlobal.size(); ++lI){
-      leg_p.push_back(nullptr);
-      
-      if(diagLegNGlobal.size() == 0){
-	if(lI+1 < diagLegXGlobal.size()) leg_p[lI] = new TLegend(diagLegXGlobal[lI], diagLegYGlobal[lI] - histsPerLeg*0.04, diagLegXGlobal[lI] + maxLegX*0.02, diagLegYGlobal[lI]);
-	else{
-	  if(numberHists%histsPerLeg == 0) leg_p[lI] = new TLegend(diagLegXGlobal[lI], diagLegYGlobal[lI] - histsPerLeg*0.04, diagLegXGlobal[lI] + maxLegX*0.02, diagLegYGlobal[lI]);
-	  else leg_p[lI] = new TLegend(diagLegXGlobal[lI], diagLegYGlobal[lI] - (numberHists%histsPerLeg)*0.04, diagLegXGlobal[lI] + maxLegX*0.02, diagLegYGlobal[lI]);
-	}	
-      }
-      else{
-	leg_p[lI] = new TLegend(diagLegXGlobal[lI], diagLegYGlobal[lI] - diagLegNGlobal[lI]*0.04, diagLegXGlobal[lI] + maxLegX*0.02, diagLegYGlobal[lI]);
-      }
-	
-      leg_p[lI]->SetTextFont(titleFont);
-      leg_p[lI]->SetTextSize(titleSize);
-      leg_p[lI]->SetBorderSize(0);
-      leg_p[lI]->SetFillColor(0);
-      leg_p[lI]->SetFillStyle(0);
-    }
-    
-    TCanvas* canv_p = new TCanvas("canv_p", "", width, height);
-    canv_p->SetTopMargin(topMargin);
-    canv_p->SetRightMargin(rightMargin);
-    canv_p->SetLeftMargin(leftMargin);
-    canv_p->SetBottomMargin(leftMargin); //Because of the padsplit adjustment
-    canv_p->cd();
-    
-    HIJet::Style::EquipHistogram(iterDelta2D_p, 0);
-    HIJet::Style::EquipHistogram(statsDelta2D_p, 1);
-    HIJet::Style::EquipHistogram(totalDelta2D_p, 2);
-    totalDelta2D_p->DrawCopy("HIST E1 P");
-    statsDelta2D_p->DrawCopy("HIST E1 P SAME");
-    iterDelta2D_p->DrawCopy("HIST E1 P SAME");
-    totalDelta2D_p->DrawCopy("HIST E1 P SAME");    
-    
-    if(diagLegNGlobal.size() == 0){
-      for(unsigned int lI = 0; lI < histsForLeg_p.size(); ++lI){      
-	leg_p[lI/histsPerLeg]->AddEntry(histsForLeg_p[lI], stringsForLeg_p[lI].c_str(), "P");
-      }
-    }
-    else{
-      Int_t legCounter = 0;
-      for(unsigned int lI = 0; lI < diagLegNGlobal.size(); ++lI){
-	for(unsigned int dI = 0; dI < diagLegNGlobal[lI]; ++dI){	
-	  leg_p[lI]->AddEntry(histsForLeg_p[legCounter], stringsForLeg_p[legCounter].c_str(), "P");
-	  ++legCounter;
-	}
-      }
-    }
-    
-    for(unsigned int lI = 0; lI < leg_p.size(); ++lI){leg_p[lI]->Draw("SAME");}
-    for(unsigned int tI = 0; tI < tempLabels.size(); ++tI){label_p->DrawLatex(diagLabelXGlobal, diagLabelYGlobal - tI*0.06, tempLabels[tI].c_str());}
-    quietSaveAs(canv_p, "pdfDir/" + dateStr + "/diag" + varName + "_GammaPtAll_" + centBinsStr[cI%centBinsStr.size()] + "_Delta" + deltaStr + "_" + saveNameTag +  "." + saveExt);
-    delete canv_p;
-    delete label_p;
-    
-    std::string configStr2D = varNameUpper + "_GAMMAPTALL_" + centBinsStr[cI%centBinsStr.size()];
-    int termPos2D = -1;
-    for(Int_t i = 1; i < nIter; ++i){
-      Double_t totalDelta = totalDelta2D_p->GetBinContent(i);
-      Double_t statsDelta = statsDelta2D_p->GetBinContent(i);      
-      if(statsDelta/totalDelta  >= termThresh){
-	termPos2D = i+1;
-	break;
-      }
-    }
-    outUnfoldConfig_p->SetValue(configStr2D.c_str(), termPos2D);
-    
-    for(unsigned int lI = 0; lI < leg_p.size(); ++lI){     
-      delete leg_p[lI];
-    }
-    leg_p.clear();
-    
-    delete statsDelta2D_p;
-    delete iterDelta2D_p;
-    delete totalDelta2D_p;
-  
-    
-       
-    //1-D analysis of the unfolding results
-    for(Int_t gI = 0; gI < nGammaPtBins; ++gI){    
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;    
-      TH1F* truth_p = nullptr;
-      if(truthHistNames[cI][gI].find("TRUTH_COMBINED") == std::string::npos || isMC){
-	truth_p = (TH1F*)inUnfoldFile_p->Get(truthHistNames[cI][gI].c_str());
-      }
-      else if(!isMC){
-	truth_p = (TH1F*)inUnfoldFile_p->Get(truthHistNames[cI][gI].c_str());
-      }
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;    
-      TH1F* reco_p = (TH1F*)inUnfoldFile_p->Get(recoHistNames[cI][gI].c_str());
-      TH1F* unfold_p[nIterMax];
-      TH1F* refold_p[nIterMax];
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;    
-
-      TH1F* statsDelta_p = new TH1F(statsDeltaNames[cI][gI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIter-1, 1.5, nIter+0.5);
-      TH1F* iterDelta_p = new TH1F(iterDeltaNames[cI][gI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIter-1, 1.5, ((double)nIter)+0.5);
-      TH1F* totalDelta_p = new TH1F(totalDeltaNames[cI][gI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIter-1, 1.5, ((double)nIter)+0.5);
-
-      std::vector<TH1F*> unfoldedHists_p, refoldedHists_p;
-      for(Int_t i = 1; i < nIter; ++i){
-	unfold_p[i] = (TH1F*)inUnfoldFile_p->Get(unfoldNames[cI][gI][i].c_str());
-	unfoldedHists_p.push_back(unfold_p[i]);
-
-	refold_p[i] = (TH1F*)inUnfoldFile_p->Get(refoldNames[cI][gI][i].c_str());
-	refoldedHists_p.push_back(refold_p[i]);
-      }
-    
-      getIterativeHists(unfoldedHists_p, statsDelta_p, iterDelta_p, totalDelta_p, doRelativeTerm);
-      
-      tempLabels = globalLabels;
-      if(!isMC && truthHistNames[cI][gI].find("PURCORR") != std::string::npos){
-	tempLabels = globalLabelsDataOverrides;
-      }
-      else if(!isMC && truthHistNames[cI][0].find("HalfTo") != std::string::npos){
-	tempLabels = globalLabelsMCOverrides;
-      }
-      
-      tempLabels.push_back("#bf{" + prettyString(gammaPtBins[gI], 1, false) + " < p_{T,#gamma} < " + prettyString(gammaPtBins[gI+1], 1, false) + "}");
-      if(!isPP) tempLabels.push_back(centBinsLabel[cI%centBinsLabel.size()]);
-    tempLabels.push_back(("Observable: " + varNameLabel).c_str());
-    
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;    
-      
-      label_p = new TLatex();
-      label_p->SetNDC();
-      label_p->SetTextFont(titleFont);
-      label_p->SetTextSize(titleSize);
-      label_p->SetTextColor(1);
-      if(diagLabelAlignRightGlobal) label_p->SetTextAlign(31);
-      
-      Int_t maxLegX = -1;
-      histsForLeg_p = {iterDelta_p, statsDelta_p, totalDelta_p};
-      stringsForLeg_p = {"Iter. Change", "Statistical Unc.", "Quad. Sum"};
-      for(unsigned int lI = 0; lI < stringsForLeg_p.size(); ++lI){
-	if(maxLegX < (Int_t)stringsForLeg_p[lI].size()) maxLegX = (Int_t)stringsForLeg_p[lI].size();
-      }
-      numberHists = histsForLeg_p.size();
-      histsPerLeg = 0;
-
-      totalCustom = 0;
-      for(unsigned int hI = 0; hI < diagLegNGlobal.size(); ++hI){
-	totalCustom += diagLegNGlobal[hI];
-      }
-      if(totalCustom < numberHists){
-	if(totalCustom != 0) std::cout << "Number of histograms per legend requested custom \'" << totalCustom << "\' totals to less than required, \'" << numberHists << "\'. Reverting to equal splits." << std::endl;
-	diagLegNGlobal.clear();
-      }
-      
-      if(diagLegNGlobal.size() == 0){
-	while(histsPerLeg*(Int_t)diagLegXGlobal.size() < numberHists){
-	  ++histsPerLeg;
-	}
-      }
-
-      for(unsigned int lI = 0; lI < diagLegXGlobal.size(); ++lI){
-	leg_p.push_back(nullptr);
-	
-	if(diagLegNGlobal.size() == 0){
-	  if(lI+1 < diagLegXGlobal.size()) leg_p[lI] = new TLegend(diagLegXGlobal[lI], diagLegYGlobal[lI] - histsPerLeg*0.04, diagLegXGlobal[lI] + maxLegX*0.02, diagLegYGlobal[lI]);
-	  else{
-	    if(numberHists%histsPerLeg == 0) leg_p[lI] = new TLegend(diagLegXGlobal[lI], diagLegYGlobal[lI] - histsPerLeg*0.04, diagLegXGlobal[lI] + maxLegX*0.02, diagLegYGlobal[lI]);
-	    else leg_p[lI] = new TLegend(diagLegXGlobal[lI], diagLegYGlobal[lI] - (numberHists%histsPerLeg)*0.04, diagLegXGlobal[lI] + maxLegX*0.02, diagLegYGlobal[lI]);
-	  }	
-	}
-	else{
-	  leg_p[lI] = new TLegend(diagLegXGlobal[lI], diagLegYGlobal[lI] - diagLegNGlobal[lI]*0.04, diagLegXGlobal[lI] + maxLegX*0.02, diagLegYGlobal[lI]);
-	}
-      
-	leg_p[lI]->SetTextFont(titleFont);
-	leg_p[lI]->SetTextSize(titleSize);
-	leg_p[lI]->SetBorderSize(0);
-	leg_p[lI]->SetFillColor(0);
-	leg_p[lI]->SetFillStyle(0);
-      }
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;    
-      
-      TCanvas* canv_p = new TCanvas("canv_p", "", width, height);
-      canv_p->SetTopMargin(topMargin);
-      canv_p->SetRightMargin(rightMargin);
-      canv_p->SetLeftMargin(leftMargin);
-      canv_p->SetBottomMargin(leftMargin); //Because of the padsplit adjustment
-      canv_p->cd();
-
-      HIJet::Style::EquipHistogram(iterDelta_p, 0);
-      HIJet::Style::EquipHistogram(statsDelta_p, 1);
-      HIJet::Style::EquipHistogram(totalDelta_p, 2);
-      totalDelta_p->DrawCopy("HIST E1 P");
-      statsDelta_p->DrawCopy("HIST E1 P SAME");
-      iterDelta_p->DrawCopy("HIST E1 P SAME");
-      totalDelta_p->DrawCopy("HIST E1 P SAME");    
-      
-      if(diagLegNGlobal.size() == 0){
-	for(unsigned int lI = 0; lI < histsForLeg_p.size(); ++lI){      
-	  leg_p[lI/histsPerLeg]->AddEntry(histsForLeg_p[lI], stringsForLeg_p[lI].c_str(), "P");
-	}
-      }
-      else{
-	Int_t legCounter = 0;
-	for(unsigned int lI = 0; lI < diagLegNGlobal.size(); ++lI){
-	  for(unsigned int dI = 0; dI < diagLegNGlobal[lI]; ++dI){	
-	    leg_p[lI]->AddEntry(histsForLeg_p[legCounter], stringsForLeg_p[legCounter].c_str(), "P");
-	    ++legCounter;
-	  }
-	}
-      }
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;    
-      
-      for(unsigned int lI = 0; lI < leg_p.size(); ++lI){
-	leg_p[lI]->Draw("SAME");
-      }
-      
-      for(unsigned int tI = 0; tI < tempLabels.size(); ++tI){
-	label_p->DrawLatex(diagLabelXGlobal, diagLabelYGlobal - tI*0.06, tempLabels[tI].c_str());
-      }
-
-      quietSaveAs(canv_p, "pdfDir/" + dateStr + "/diag" + varName + "_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI%centBinsStr.size()] + "_Delta" + deltaStr + "_" + saveNameTag +  "." + saveExt);
-      delete canv_p;
-
-      //Write termination to a config
-      std::string configStr = varNameUpper + "_GAMMAPT" + std::to_string(gI) + "_" + centBinsStr[cI%centBinsStr.size()];
-      int termPos = -1;
-      for(Int_t i = 1; i < nIter; ++i){
+      for(Int_t i = 1; i < nIter+1; ++i){
 	Double_t totalDelta = totalDelta_p->GetBinContent(i);
 	Double_t statsDelta = statsDelta_p->GetBinContent(i);
-	  
+	
 	if(statsDelta/totalDelta  >= termThresh){
 	  termPos = i+1;
 	  break;
 	}
-      }      
+      }
       outUnfoldConfig_p->SetValue(configStr.c_str(), termPos);
-          
-      for(unsigned int lI = 0; lI < leg_p.size(); ++lI){
-	delete leg_p[lI];
+      
+      TH1F* truth1D_p = nullptr;
+      TH2F* truth2D_p = nullptr;
+
+      if(pI == 0){
+	if(truthHistNames[cI].find("TRUTH_COMBINED") == std::string::npos || isMC) truth1D_p = (TH1F*)inUnfoldFile_p->Get(truthHistNames[cI].c_str());
+	else if(!isMC) truth1D_p = (TH1F*)inUnfoldFile_p->Get(truthHistNames[cI].c_str());
       }
-      leg_p.clear();
-      
-      Float_t xjMinTemp = config_p->GetValue(("XJMIN." + std::to_string(gI)).c_str(), -1000.);
-      Float_t xjMaxTemp = config_p->GetValue(("XJMAX." + std::to_string(gI)).c_str(), -1000.);
-      if(truth_p == nullptr){
-	Float_t xjMinTemp2 = config_p->GetValue(("XJMIN." + std::to_string(gI) + ".DATAOVERRIDE").c_str(), -1000.);
-	Float_t xjMaxTemp2 = config_p->GetValue(("XJMAX." + std::to_string(gI) + ".DATAOVERRIDE").c_str(), -1000.);
-	if(xjMinTemp2 > 0) xjMinTemp = xjMinTemp2;
-	if(xjMaxTemp2 > 0) xjMaxTemp = xjMaxTemp2;
+      else if(pI == 1){
+	std::cout << "TRUTHHISTNAME: " << truthHistNames[cI] << std::endl;
+
+	if(truthHistNames[cI].find("TRUTH_COMBINED") == std::string::npos || isMC) truth2D_p = (TH2F*)inUnfoldFile_p->Get(truthHistNames[cI].c_str());
+	else if(!isMC) truth2D_p = (TH2F*)inUnfoldFile_p->Get(truthHistNames[cI].c_str());
+
+	std::cout << "TRUTH 2D A: " << truthHistNames[cI] << std::endl;
       }
-
-      if(xjMaxTemp < 0){
-	xjMinTemp = xjMinGlobal;
-	xjMaxTemp = xjMaxGlobal;	
-      }
-            
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
       
-      canv_p = new TCanvas("canv_p", "", width, height);
-      TCanvas* canvBest_p = new TCanvas("canvBest_p", "", width, height);
-      TPad* pads_p[nPad];
-      TPad* padsBest_p[nPad];
-      canv_p->SetTopMargin(noMargin);
-      canv_p->SetRightMargin(noMargin);
-      canv_p->SetLeftMargin(noMargin);
-      canv_p->SetBottomMargin(noMargin);
-      canv_p->cd();
-      
-      canvBest_p->SetTopMargin(noMargin);
-      canvBest_p->SetRightMargin(noMargin);
-      canvBest_p->SetLeftMargin(noMargin);
-      canvBest_p->SetBottomMargin(noMargin);
-      canvBest_p->cd();
-      
-      pads_p[0] = new TPad("pad0", "", 0.0, padSplit1, 1.0, 1.0);
-      pads_p[0]->SetTopMargin(topMargin);
-      pads_p[0]->SetRightMargin(rightMargin);
-      pads_p[0]->SetLeftMargin(leftMargin);
-      pads_p[0]->SetBottomMargin(noMargin);
-      
-      canv_p->cd();
-      pads_p[0]->Draw("SAME");
-      pads_p[0]->cd();
-      canv_p->cd();
-
-      padsBest_p[0] = new TPad("padBest0", "", 0.0, padSplit1, 1.0, 1.0);
-      padsBest_p[0]->SetTopMargin(topMargin);
-      padsBest_p[0]->SetRightMargin(rightMargin);
-      padsBest_p[0]->SetLeftMargin(leftMargin);
-      padsBest_p[0]->SetBottomMargin(noMargin);
-      
-      canvBest_p->cd();
-      padsBest_p[0]->Draw("SAME");
-      padsBest_p[0]->cd();
-      canvBest_p->cd();
-
-      canv_p->cd();
-      pads_p[1] = new TPad("pad1", "", 0.0, padSplit2, 1.0, padSplit1);
-      pads_p[1]->SetTopMargin(noMargin);
-      pads_p[1]->SetRightMargin(rightMargin);
-      pads_p[1]->SetLeftMargin(leftMargin);
-      pads_p[1]->SetBottomMargin(noMargin);
-      
-      canv_p->cd();
-      pads_p[1]->Draw("SAME");
-      pads_p[1]->cd(); 
-      canv_p->cd();
-
-      canvBest_p->cd();
-      padsBest_p[1] = new TPad("padBest1", "", 0.0, padSplit2, 1.0, padSplit1);
-      padsBest_p[1]->SetTopMargin(noMargin);
-      padsBest_p[1]->SetRightMargin(rightMargin);
-      padsBest_p[1]->SetLeftMargin(leftMargin);
-      padsBest_p[1]->SetBottomMargin(noMargin);
-      
-      canvBest_p->cd();
-      padsBest_p[1]->Draw("SAME");
-      padsBest_p[1]->cd();
-      canvBest_p->cd();
-
-      
-      canv_p->cd();
-      pads_p[2] = new TPad("pad2", "", 0.0, 0.0, 1.0, padSplit2);      
-      pads_p[2]->SetTopMargin(noMargin);
-      pads_p[2]->SetRightMargin(rightMargin);
-      pads_p[2]->SetLeftMargin(leftMargin);
-      pads_p[2]->SetBottomMargin(bottomMargin);
-      
-      canv_p->cd();
-      pads_p[2]->Draw("SAME");
-      pads_p[2]->cd(); 
-      canv_p->cd();
-            
-      canvBest_p->cd();
-      padsBest_p[2] = new TPad("padBest2", "", 0.0, 0.0, 1.0, padSplit2);      
-      padsBest_p[2]->SetTopMargin(noMargin);
-      padsBest_p[2]->SetRightMargin(rightMargin);
-      padsBest_p[2]->SetLeftMargin(leftMargin);
-      padsBest_p[2]->SetBottomMargin(bottomMargin);
-      
-      canvBest_p->cd();
-      padsBest_p[2]->Draw("SAME");
-      padsBest_p[2]->cd();
-      canvBest_p->cd();
-      
-      canv_p->cd();
-      pads_p[0]->cd();
+      int nGammaPtBinsForUnfold = 1;
+      if(pI == 1) nGammaPtBinsForUnfold = nGammaPtBins;
 
       if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
       
-      if(truth_p != nullptr) HIJet::Style::EquipHistogram(truth_p, 2); //TRUTH IS kAzure-3 lines (atlas style picked up here)
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-      HIJet::Style::EquipHistogram(reco_p, 1); //RECO IS kRed-4 lines (atlas style picked up here)
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-      reco_p->SetMarkerSize(0.00001);
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-      if(truth_p != nullptr) truth_p->SetMarkerSize(0.00001);    
+      std::vector<TH1F*> reco_p = {reco1D_p};
+      std::vector<TH1F*> truth_p = {truth1D_p};
+      std::vector<std::vector<TH1F*> > unfold_p;
+      std::vector<std::vector<TH1F*> > refold_p;
       
-      maxLegX = -1;
-      //    Int_t nLeg = nIterForLoop + 2 - 1;
+      
+      //1D unfold still has to convert the unfold1d and refold1d to vector
+      if(pI == 0){
+	unfold_p.push_back({});
+	refold_p.push_back({});
 
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
-      label_p = new TLatex();
-      label_p->SetNDC();
-      label_p->SetTextFont(titleFont);
-      label_p->SetTextSize(titleSize/(1.0 - padSplit1));
-      label_p->SetTextColor(1);
-      if(xjLabelAlignRightGlobal) label_p->SetTextAlign(31);
-
-      std::vector<std::string> legFillStr;
-      if(truth_p != nullptr){
-	if(isMC) stringsForLeg_p = {"Truth", "Reco."};
-	else stringsForLeg_p = {"Truth PYTHIA", "Reco. Data"};
-	histsForLeg_p = {truth_p, reco_p};    
-	legFillStr = {"L", "L"};
-      }
-      else{
-	stringsForLeg_p = {"Reco."};
-	histsForLeg_p = {reco_p};    
-	legFillStr = {"L"};
-      }
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;    
-      
-      for(Int_t i = 1; i < nIterForLoop; ++i){
-	stringsForLeg_p.push_back("Unfolded, " + std::to_string(i));
-	histsForLeg_p.push_back(unfold_p[i]);
-	legFillStr.push_back("P L");
-      }
-      
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-      
-      for(unsigned int lI = 0; lI < stringsForLeg_p.size(); ++lI){
-	if(maxLegX < (Int_t)stringsForLeg_p[lI].size()) maxLegX = (Int_t)stringsForLeg_p[lI].size();      
-      }
-      numberHists = histsForLeg_p.size();
-      histsPerLeg = 0;
-      
-      totalCustom = 0;
-      for(unsigned int hI = 0; hI < xjLegNGlobal.size(); ++hI){
-	totalCustom += xjLegNGlobal[hI];
-      }
-      if(totalCustom < numberHists){
-	if(totalCustom != 0) std::cout << "Number of histograms per legend requested custom \'" << totalCustom << "\' totals to less than required, \'" << numberHists << "\'. Reverting to equal splits." << std::endl;
-	xjLegNGlobal.clear();
-      }
-      
-      if(xjLegNGlobal.size() == 0){
-	while(histsPerLeg*(Int_t)xjLegXGlobal.size() < numberHists){
-	  ++histsPerLeg;
+	unfold_p[0].push_back(nullptr);
+	refold_p[0].push_back(nullptr);
+	
+	for(int i = 1; i < nIter+1; ++i){
+	  unfold_p[0].push_back(unfold1D_p[i]);
+	  refold_p[0].push_back(refold1D_p[i]);
 	}
       }
-      
-      for(unsigned int lI = 0; lI < xjLegXGlobal.size(); ++lI){
-	leg_p.push_back(nullptr);
-	if(xjLegNGlobal.size() == 0){
-	  if(lI+1 < xjLegXGlobal.size()) leg_p[lI] = new TLegend(xjLegXGlobal[lI], xjLegYGlobal[lI] - histsPerLeg*0.05, xjLegXGlobal[lI] + maxLegX*0.02, xjLegYGlobal[lI]);
-	  else{
-	    if(numberHists%histsPerLeg == 0) leg_p[lI] = new TLegend(xjLegXGlobal[lI], xjLegYGlobal[lI] - histsPerLeg*0.05, xjLegXGlobal[lI] + maxLegX*0.02, xjLegYGlobal[lI]);
-	    else leg_p[lI] = new TLegend(xjLegXGlobal[lI], xjLegYGlobal[lI] - (numberHists%histsPerLeg)*0.05, xjLegXGlobal[lI] + maxLegX*0.02, xjLegYGlobal[lI]);
+      else{
+	reco_p.clear();
+	truth_p.clear();
+
+	std::cout << "TRUTH 2D: " << truth2D_p->GetName() << std::endl;
+	
+	for(Int_t gI = 0; gI < nGammaPtBinsForUnfold; ++gI){
+	  reco_p.push_back(new TH1F(("reco_GammaPt" + std::to_string(gI) + "_h").c_str(), ";;", nVarBins, varBins));
+	  truth_p.push_back(new TH1F(("truth_GammaPt" + std::to_string(gI) + "_h").c_str(), ";;", nVarBins, varBins));
+
+	  //	  reco2D_p->Print("ALL");
+	  //	  return 1;
+	    	  
+	  for(Int_t bIX = 0; bIX < reco2D_p->GetXaxis()->GetNbins(); ++bIX){
+	    reco_p[gI]->SetBinContent(bIX+1, reco2D_p->GetBinContent(bIX+1, gI+1));
+	    reco_p[gI]->SetBinError(bIX+1, reco2D_p->GetBinError(bIX+1, gI+1));
 	  }
+
+	  for(Int_t bIX = 0; bIX < truth2D_p->GetXaxis()->GetNbins(); ++bIX){
+	    truth_p[gI]->SetBinContent(bIX+1, truth2D_p->GetBinContent(bIX+1, gI+1));
+	    truth_p[gI]->SetBinError(bIX+1, truth2D_p->GetBinError(bIX+1, gI+1));
+	  }
+	  
+	  unfold_p.push_back({});
+	  refold_p.push_back({});
+	  
+	  unfold_p[gI].push_back(nullptr);
+	  refold_p[gI].push_back(nullptr);
+	
+	  for(int i = 1; i < nIter+1; ++i){
+	    unfold_p[gI].push_back(new TH1F(("unfold_GammaPt" + std::to_string(gI) + "_Iter" + std::to_string(i) + "_h").c_str(), "", nVarBins, varBins));
+	    refold_p[gI].push_back(new TH1F(("refold_GammaPt" + std::to_string(gI) + "_Iter" + std::to_string(i) + "_h").c_str(), "", nVarBins, varBins));
+	  
+	    for(Int_t bIX = 0; bIX < unfold2D_p[i]->GetXaxis()->GetNbins(); ++bIX){
+	      unfold_p[gI][i]->SetBinContent(bIX+1, unfold2D_p[i]->GetBinContent(bIX+1, gI+1));
+	      unfold_p[gI][i]->SetBinError(bIX+1, unfold2D_p[i]->GetBinError(bIX+1, gI+1));
+	    }
+
+	    for(Int_t bIX = 0; bIX < refold2D_p[i]->GetXaxis()->GetNbins(); ++bIX){
+	      refold_p[gI][i]->SetBinContent(bIX+1, refold2D_p[i]->GetBinContent(bIX+1, gI+1));
+	      refold_p[gI][i]->SetBinError(bIX+1, refold2D_p[i]->GetBinError(bIX+1, gI+1));
+	    }
+	  }
+	}
+      }
+         
+      for(Int_t gI = 0; gI < nGammaPtBinsForUnfold; ++gI){      
+	//First bin is left intentionally empty on the reco side so just skip it
+	if(pI == 1 && gI == 0) continue;
+	if(pI == 1 && gI == nGammaPtBinsForUnfold-1) continue;
+
+	
+	//New TCanvs, set of pads, and set margins
+	canv_p = new TCanvas("canv_p", "", width, height);
+	TCanvas* canvBest_p = new TCanvas("canvBest_p", "", width, height);
+	TPad* pads_p[nPad];
+	TPad* padsBest_p[nPad];
+	setMargins(canv_p, noMargin, noMargin, noMargin, noMargin);
+	setMargins(canvBest_p, noMargin, noMargin, noMargin, noMargin);
+
+	if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
+	
+	pads_p[0] = new TPad("pad0", "", 0.0, padSplit1, 1.0, 1.0);	       
+	padsBest_p[0] = new TPad("padBest0", "", 0.0, padSplit1, 1.0, 1.0);
+	setMargins(pads_p[0], leftMargin, topMargin, rightMargin, noMargin);
+	setMargins(padsBest_p[0], leftMargin, topMargin, rightMargin, noMargin);
+
+	if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
+	
+	pads_p[1] = new TPad("pad1", "", 0.0, padSplit2, 1.0, padSplit1);
+	padsBest_p[1] = new TPad("padBest1", "", 0.0, padSplit2, 1.0, padSplit1);
+	setMargins(pads_p[1], leftMargin, noMargin, rightMargin, noMargin);
+	setMargins(padsBest_p[1], leftMargin, noMargin, rightMargin, noMargin);
+
+	if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
+	
+	pads_p[2] = new TPad("pad2", "", 0.0, 0.0, 1.0, padSplit2);
+	padsBest_p[2] = new TPad("padBest2", "", 0.0, 0.0, 1.0, padSplit2);
+	setMargins(pads_p[2], leftMargin, noMargin, rightMargin, bottomMargin);
+	setMargins(padsBest_p[2], leftMargin, noMargin, rightMargin, bottomMargin);
+
+	if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
+	
+	std::vector<TPad*> padsVect = {pads_p[0], pads_p[1], pads_p[2]};
+	std::vector<TPad*> padsBestVect = {padsBest_p[0], padsBest_p[1], padsBest_p[2]};
+
+	//Draw pads to canvas
+	canv_p->cd();
+	for(Int_t pI = 0; pI < nPad; ++pI){pads_p[pI]->Draw("SAME");}	
+
+	canvBest_p->cd();
+	for(Int_t pI = 0; pI < nPad; ++pI){padsBest_p[pI]->Draw("SAME");}
+
+	canv_p->cd();
+	pads_p[0]->cd();
+
+	if(truth_p[gI] != nullptr){
+	  HIJet::Style::EquipHistogram(truth_p[gI], 2); //TRUTH IS kAzure-3 lines (atlas style picked up here)
+	  truth_p[gI]->SetMarkerSize(0.00001);
+	}
+
+	reco_p[gI]->SetMarkerSize(0.00001);
+
+	label_p = new TLatex();
+	initLabel(label_p, titleFont, titleSize/(1.0 - padSplit1), jetVarLabelAlignRightGlobal);
+
+	std::vector<TH1F*> histsForLegBest_p;
+	std::vector<std::string> legFillStr, legFillStrBest, stringsForLegBest_p;
+	if(truth_p[gI] != nullptr){
+	  if(isMC) stringsForLeg_p = {"Truth", "Reco."};
+	  else stringsForLeg_p = {"Truth PYTHIA", "Reco. Data"};
+	  histsForLeg_p = {truth_p[gI], reco_p[gI]};
+	  legFillStr = {"L", "L"};
 	}
 	else{
-	  double nVert = xjLegNGlobal[lI];
-	  if(truth_p == nullptr && lI == xjLegXGlobal.size()-1) nVert -= 1.0;
-
-	  leg_p[lI] = new TLegend(xjLegXGlobal[lI], xjLegYGlobal[lI] - nVert*0.05, xjLegXGlobal[lI] + maxLegX*0.02, xjLegYGlobal[lI]);	
+	  stringsForLeg_p = {"Reco."};
+	  histsForLeg_p = {reco_p[gI]};
+	  legFillStr = {"L"};
 	}
+	if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
+
+	histsForLegBest_p = histsForLeg_p;
+	stringsForLegBest_p = stringsForLeg_p;
+	legFillStrBest = legFillStr;
+
+	if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
 	
-	leg_p[lI]->SetTextFont(titleFont);
-	leg_p[lI]->SetTextSize(titleSize/(1.0 - padSplit1));
-	leg_p[lI]->SetBorderSize(0);
-	leg_p[lI]->SetFillColor(0);
-	leg_p[lI]->SetFillStyle(0);
-      }
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;    
-      
-      binWidthAndSelfNorm(reco_p);
-
-      reco_p->SetMinimum(xjMinTemp);
-      reco_p->SetMaximum(xjMaxTemp);
-
-      reco_p->GetXaxis()->SetTitleFont(titleFont);
-      reco_p->GetYaxis()->SetTitleFont(titleFont);
-      reco_p->GetXaxis()->SetTitleSize(0.00001);
-      reco_p->GetYaxis()->SetTitleSize(titleSize/(1.0-padSplit1));
-      
-      reco_p->GetXaxis()->SetLabelFont(titleFont);
-      reco_p->GetYaxis()->SetLabelFont(titleFont);
-      reco_p->GetXaxis()->SetLabelSize(0.00001);
-      reco_p->GetYaxis()->SetLabelSize(labelSize/(1.0-padSplit1));
-      
-      reco_p->GetYaxis()->SetTitleOffset(yOffset);
-      
-      reco_p->GetYaxis()->SetNdivisions(505);
-      reco_p->GetXaxis()->SetNdivisions(505);
-      
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
-      reco_p->GetYaxis()->SetTitle(("#frac{1}{N_{" + varNameLabel + "}} #frac{dN}{d" + varNameLabel + "}").c_str());
-      reco_p->DrawCopy("HIST E1");
-      if(doLogX) gPad->SetLogx();
-      if(doLogY) gPad->SetLogy();
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-      
-      if(truth_p != nullptr){
-	binWidthAndSelfNorm(truth_p);      
-	truth_p->DrawCopy("HIST E1 SAME");
-      }
-
-      for(Int_t i = 1; i < nIter; ++i){
-	HIJet::Style::EquipHistogram(unfold_p[i], i-1);
-	binWidthAndSelfNorm(unfold_p[i]);
-
-	HIJet::Style::EquipHistogram(refold_p[i], i-1);
-	binWidthAndSelfNorm(refold_p[i]);
-
-	refold_p[i]->SetMarkerSize(0.00001);
-	refold_p[i]->SetLineStyle(2);
-      }
-      
-      for(Int_t i = 1; i < nIterForLoop; ++i){
-	unfold_p[i]->DrawCopy("HIST E1 P SAME");
-      }
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
-      canvBest_p->cd();
-      padsBest_p[0]->cd();
-
-      gPad->SetTicks();
-      reco_p->DrawCopy("HIST E1");
-      if(truth_p != nullptr) truth_p->DrawCopy("HIST E1 SAME");
-
-      if(doLogX) gPad->SetLogx();
-      if(doLogY) gPad->SetLogy();
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-      
-      std::vector<double> deltaVals;
-      for(Int_t i = 1; i < nIter; ++i){
-	bool isGood = false;
-	if(i+1 == termPos && (term1D || termBoth)) isGood = true;
-	else if(i+1 == termPos2D && (term2D || termBoth)) isGood = true;
-
-	if(!isGood) continue;
-
-
-	HIJet::Style::EquipHistogram(unfold_p[i], i-1);
-	HIJet::Style::EquipHistogram(refold_p[i], i-1);
-	refold_p[i]->SetMarkerSize(0.00001);
-	refold_p[i]->SetLineStyle(2);
-
-	if(termPos2D == i+1 || termPos == i+1){
-	  gPad->SetTicks();
-	  unfold_p[i]->DrawCopy("HIST E1 P SAME");
-	  refold_p[i]->DrawCopy("HIST E1 SAME");
+	for(Int_t i = 1; i < nIterForLoop; ++i){
+	  stringsForLeg_p.push_back("Unfolded, " + std::to_string(i));
+	  histsForLeg_p.push_back(unfold_p[gI][i]);
+	  legFillStr.push_back("P L");
 	  
-	  if(termPos2D == i+1){
-	    Int_t tempColor = HIJet::Style::GetColor(i-1);
-	    Float_t tempOpacity = HIJet::Style::GetOpacity(i-1);	                
+	  if(i+1 == termPos){
+	    stringsForLegBest_p.push_back("Unfolded, " + std::to_string(i));
+	    histsForLegBest_p.push_back(unfold_p[gI][i]);
+	    legFillStrBest.push_back("P L");
+	  }
+	}
+	pads_p[0]->cd();    
 
-	    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << i << "/" << nIter << std::endl;
+	if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
+
+	if(!setupLegends(titleFont, titleSize/(1.0 - padSplit1), &leg_p, histsForLeg_p, stringsForLeg_p, legFillStr, &jetVarLegNGlobal, jetVarLegXGlobal, jetVarLegYGlobal)) return 1;
+
+	if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
+	
+	padsBest_p[0]->cd();
+	if(!setupLegends(titleFont, titleSize/(1.0 - padSplit1), &legBest_p, histsForLegBest_p, stringsForLegBest_p, legFillStrBest, &jetVarLegNGlobal, jetVarLegXGlobal, jetVarLegYGlobal)) return 1;
+	
+	pads_p[0]->cd();
+
+	if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
+	
+	binWidthAndSelfNorm(reco_p[gI]);
+	prepTH1(reco_p[gI], titleFont, titleSize/(1.0-padSplit1), labelSize/(1.0 - padSplit1), 1, reco_p[gI]->GetMarkerStyle(), reco_p[gI]->GetMarkerSize(), 2, reco_p[gI]->GetXaxis()->GetTitleOffset(), yOffset);
+
+	if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
+	
+	reco_p[gI]->GetXaxis()->SetTitleSize(0.00001);    
+	reco_p[gI]->GetXaxis()->SetLabelSize(0.00001);
+	reco_p[gI]->GetYaxis()->SetNdivisions(505);
+	reco_p[gI]->GetXaxis()->SetNdivisions(505);
+	
+	Float_t recoMin = getMinGTZero(reco_p[gI]);
+	if(truth_p[gI] != nullptr){
+	  binWidthAndSelfNorm(truth_p[gI]);
+	  
+	  Float_t tempMin = getMinGTZero(truth_p[gI]);
+	  if(tempMin < recoMin) recoMin = tempMin;
+	}
+
+	if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
+
+	reco_p[gI]->SetMinimum(jetVarMinGlobal);
+	reco_p[gI]->SetMaximum(jetVarMaxGlobal);
+	//	reco_p[gI]->SetMinimum(recoMin/2.0);
+    	
+	reco_p[gI]->GetYaxis()->SetTitle("#frac{1}{N_{#gamma}} #frac{dN_{#gamma}}{dp_{T}}");	
+	reco_p[gI]->DrawCopy("HIST E1");
+
+	std::cout << "DRAWING: " << reco_p[gI]->GetName() << std::endl;
+	reco_p[gI]->Print("ALL");
+	
+	if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
+	
+	if(doLogX) gPad->SetLogx();
+	if(doLogY) gPad->SetLogy();
+
+	std::cout << "LOG SCALES SET" << std::endl;
+	
+	if(truth_p[gI] != nullptr) truth_p[gI]->DrawCopy("HIST E1 SAME");
+
+	if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
+	
+	for(Int_t i = 1; i < nIter+1; ++i){
+	  HIJet::Style::EquipHistogram(unfold_p[gI][i], i-1);
+	  binWidthAndSelfNorm(unfold_p[gI][i]);
+	  
+	  HIJet::Style::EquipHistogram(refold_p[gI][i], i-1);
+	  binWidthAndSelfNorm(refold_p[gI][i]);
+	  
+	  refold_p[gI][i]->SetMarkerSize(0.00001);
+	  refold_p[gI][i]->SetLineStyle(2);
+	}
+
+	if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
+	
+	for(Int_t i = 1; i < nIterForLoop; ++i){
+	  unfold_p[gI][i]->DrawCopy("HIST E1 P SAME");
+	}
+
+	if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
+	
+	canvBest_p->cd();
+	padsBest_p[0]->cd();
+	
+	reco_p[gI]->DrawCopy("HIST E1");
+	if(truth_p[gI] != nullptr) truth_p[gI]->DrawCopy("HIST E1 SAME");
+	
+	if(doLogX) gPad->SetLogx();
+	if(doLogY) gPad->SetLogy();
+
+	std::cout << "TERMPOS: " << termPos << std::endl;
+	
+	std::vector<double> deltaVals;
+	for(Int_t i = 1; i < nIter; ++i){
+	  if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold, i/nIter: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIter << std::endl;
+
+
+	  bool isGood = false;
+	  if(i+1 == termPos) isGood = true;
+	  
+	  if(!isGood) continue;
+
+	  if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold, i/nIter: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIter << std::endl;
+	  
+	  HIJet::Style::EquipHistogram(unfold_p[gI][i], i-1);
+	  HIJet::Style::EquipHistogram(refold_p[gI][i], i-1);
+	  refold_p[gI][i]->SetMarkerSize(0.00001);
+	  refold_p[gI][i]->SetLineStyle(2);
+
+	  if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold, i/nIter: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIter << std::endl;
+	  
+	  unfold_p[gI][i]->DrawCopy("HIST E1 P SAME");
+	  refold_p[gI][i]->DrawCopy("HIST E1 SAME");
+
+	  if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold, i/nIter: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIter << std::endl;
+	  
+	  if(termPos == i+1){
+	    Float_t tempOpacity = HIJet::Style::GetOpacity(i-1);	  
+
+	    //Just give it the same thing if there is no lower iteration
+	    if(i == 1) drawBoxAdjacentIter(padsBest_p[0], {unfold_p[gI][i], unfold_p[gI][i], unfold_p[gI][i+1]}, tempOpacity, &deltaVals);
+	    else drawBoxAdjacentIter(padsBest_p[0], {unfold_p[gI][i-1], unfold_p[gI][i], unfold_p[gI][i+1]}, tempOpacity, &deltaVals);
+	  }
+
+	  if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold, i/nIter: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIter << std::endl;
+	}
+
+	if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
+	
+	canv_p->cd();
+	pads_p[1]->cd();    
+	
+	for(Int_t i = 1; i < nIterForLoop; ++i){
+	  TH1F* unfoldClone_p = (TH1F*)unfold_p[gI][i]->Clone("tempClone");
+	  
+	  unfoldClone_p->Divide(reco_p[gI]);
+	  unfoldClone_p->SetTitle("");
+	  
+	  if(i == 1){
+	    unfoldClone_p->GetYaxis()->SetTitle("#frac{Unfolded}{Reco.}");
+	    prepTH1(unfoldClone_p, titleFont, titleSize/(padSplit1 - padSplit2), labelSize/(padSplit1 - padSplit2), unfoldClone_p->GetMarkerColor(), unfoldClone_p->GetMarkerStyle(), unfoldClone_p->GetMarkerSize(), unfoldClone_p->GetLineWidth(), 1.2, yOffset*(padSplit1 - padSplit2)/(1.0-padSplit1));
 	    
-	    TBox* box_p = new TBox();
-	    box_p->SetFillColorAlpha(tempColor, tempOpacity);
-	    for(Int_t bIX = 0; bIX < unfold_p[i]->GetNbinsX(); ++bIX){
-	      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << i << "/" << nIter << ", " << bIX << "/" << unfold_p[i]->GetNbinsX() << std::endl;
-	    	      
-	      Double_t x1 = unfold_p[i]->GetBinLowEdge(bIX+1);
-	      Double_t x2 = unfold_p[i]->GetBinLowEdge(bIX+2);
+	    unfoldClone_p->GetYaxis()->SetNdivisions(404);	
+	    unfoldClone_p->SetMaximum(1.25);
+	    unfoldClone_p->SetMinimum(0.75);	
+	    unfoldClone_p->DrawCopy("HIST E1 P");
+	  }
+	  else unfoldClone_p->DrawCopy("HIST E1 P SAME");
+	  
+	  delete unfoldClone_p;
+	}    
+	if(doLogX) gPad->SetLogx();
 
-	      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-	      
-	      Double_t yDelta1 = TMath::Abs(unfold_p[i+1]->GetBinContent(bIX+1) - unfold_p[i]->GetBinContent(bIX+1));
-	      Double_t yDelta2 = 0.0;
-	      if(i > 1) yDelta2 = TMath::Abs(unfold_p[i-1]->GetBinContent(bIX+1) - unfold_p[i]->GetBinContent(bIX+1));
-
-	      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-	      	      
-	      Double_t yLow = unfold_p[i]->GetBinContent(bIX+1) - TMath::Max(yDelta1, yDelta2);
-	      Double_t yHigh = unfold_p[i]->GetBinContent(bIX+1) + TMath::Max(yDelta1, yDelta2);
-
-	      if(unfold_p[i]->GetBinContent(bIX+1) < TMath::Power(10,-50)) deltaVals.push_back(0.0);
-	      else deltaVals.push_back(TMath::Max(yDelta1, yDelta2)/(double)unfold_p[i]->GetBinContent(bIX+1));
-
-	      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-	      
-	      box_p->DrawBox(x1, yLow, x2, yHigh);
-	    }
+	std::cout << "OUT OF UNFOLD DRAW INTO LOGX" << std::endl;
+	
+	canvBest_p->cd();
+	padsBest_p[1]->cd();
+	
+	bool hasDrawn = false;
+	for(Int_t i = 1; i < nIter+1; ++i){
+	  bool isGood = false;
+	  if(i+1 == termPos) isGood = true;
+	  if(!isGood) continue;
+	  
+	  TH1F* unfoldClone_p = (TH1F*)unfold_p[gI][i]->Clone("tempClone");
+	  unfoldClone_p->Divide(reco_p[gI]);
+	  
+	  TH1F* refoldClone_p = (TH1F*)refold_p[gI][i]->Clone("tempClone2");
+	  refoldClone_p->Divide(reco_p[gI]);
+	  
+	  unfoldClone_p->SetTitle("");
+	  refoldClone_p->SetTitle("");
+	  
+	  if(!hasDrawn){
+	    refoldClone_p->GetYaxis()->SetTitle("#frac{Refold}{Reco.}");
 	    
-	    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+	    prepTH1(refoldClone_p, titleFont, titleSize/(padSplit1 - padSplit2), labelSize/(padSplit1 - padSplit2), refoldClone_p->GetMarkerColor(), refoldClone_p->GetMarkerStyle(), refoldClone_p->GetMarkerSize(), refoldClone_p->GetLineWidth(), 1.2, yOffset*(padSplit1 - padSplit2)/(1.0-padSplit1));
 	    
-	    delete box_p;
+	    refoldClone_p->GetYaxis()->SetNdivisions(404);
+	    
+	    refoldClone_p->SetMaximum(1.05);
+	    refoldClone_p->SetMinimum(0.95);
+	    
+	    refoldClone_p->DrawCopy("HIST E1 P");
+	    hasDrawn = true;
 	  }
-	}
-      }
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-      
-      canv_p->cd();
-      pads_p[0]->cd();
-      
-      if(xjLegNGlobal.size() == 0){
-	if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-	for(unsigned int lI = 0; lI < histsForLeg_p.size(); ++lI){
-	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << lI << ", " << stringsForLeg_p[lI] << std::endl;
-
-	  leg_p[lI/histsPerLeg]->AddEntry(histsForLeg_p[lI], stringsForLeg_p[lI].c_str(), legFillStr[lI].c_str());
-	}
-      }
-      else{
-	unsigned int legCounter = 0;
-	for(unsigned int lI = 0; lI < xjLegNGlobal.size(); ++lI){
-	  for(unsigned int dI = 0; dI < xjLegNGlobal[lI]; ++dI){	
-	    if(histsForLeg_p.size() == legCounter) break;
-	    leg_p[lI]->AddEntry(histsForLeg_p[legCounter], stringsForLeg_p[legCounter].c_str(), legFillStr[legCounter].c_str());
-	    ++legCounter;
+	  else refoldClone_p->DrawCopy("HIST E1 P SAME");
+	  
+	  if(i+1 == termPos){
+	    Float_t tempOpacity = HIJet::Style::GetOpacity(i-1);
+	    drawBoxAdjacentIterRel(padsBest_p[1], unfoldClone_p, tempOpacity, &deltaVals);
 	  }
-	}
-      }
-      
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;    
-      
-      for(unsigned int lI = 0; lI < leg_p.size(); ++lI){
-	leg_p[lI]->Draw("SAME");
-      }
-      
-      for(unsigned int tI = 0; tI < tempLabels.size(); ++tI){
-	label_p->DrawLatex(xjLabelXGlobal, xjLabelYGlobal - tI*0.083, tempLabels[tI].c_str());
-      }    
-
-      canvBest_p->cd();
-      padsBest_p[0]->cd();
-
-      for(unsigned int tI = 0; tI < tempLabels.size(); ++tI){
-	label_p->DrawLatex(xjLabelXGlobal, xjLabelYGlobal - tI*0.083, tempLabels[tI].c_str());
-      }    
-      
-      canv_p->cd();
-      pads_p[1]->cd();
-      
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-      Float_t xjRatMinTemp = config_p->GetValue(("XJRATMIN." + std::to_string(gI)).c_str(), -1000.);
-      Float_t xjRatMaxTemp = config_p->GetValue(("XJRATMAX." + std::to_string(gI)).c_str(), -1000.);
-      if(xjRatMaxTemp < 0){
-	xjRatMinTemp = xjRatMinGlobal;
-	xjRatMaxTemp = xjRatMaxGlobal;	
-      }
-      
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-      gPad->SetTicks();
-
-      for(Int_t i = 1; i < nIterForLoop; ++i){
-	TH1F* unfoldClone_p = (TH1F*)unfold_p[i]->Clone("tempClone");	
-	unfoldClone_p->Divide(reco_p);
-	
-	if(i == 1){
-	  unfoldClone_p->GetYaxis()->SetTitle("#frac{Unfolded}{Reco.}");
-	  unfoldClone_p->SetMinimum(xjRatMinTemp);
-	  unfoldClone_p->SetMaximum(xjRatMaxTemp);
 	  
-	  unfoldClone_p->GetXaxis()->SetTitleOffset(1.2);
-	  unfoldClone_p->GetYaxis()->SetTitleOffset(yOffset*(padSplit1 - padSplit2)/(1.0-padSplit1));
-	  
-	  unfoldClone_p->GetXaxis()->SetTitleFont(titleFont);
-	  unfoldClone_p->GetYaxis()->SetTitleFont(titleFont);
-	  unfoldClone_p->GetXaxis()->SetTitleSize(titleSize/(padSplit1 - padSplit2));
-	  unfoldClone_p->GetYaxis()->SetTitleSize(titleSize/(padSplit1 - padSplit2));
-	  
-	  unfoldClone_p->GetXaxis()->SetLabelFont(titleFont);
-	  unfoldClone_p->GetYaxis()->SetLabelFont(titleFont);
-	  unfoldClone_p->GetXaxis()->SetLabelSize(labelSize/(padSplit1 - padSplit2));
-	  unfoldClone_p->GetYaxis()->SetLabelSize(labelSize/(padSplit1 - padSplit2));
-	  
-	  unfoldClone_p->GetYaxis()->SetNdivisions(404);	
-	  
-	  unfoldClone_p->DrawCopy("HIST E1 P");
-	  if(doLogX) gPad->SetLogx();
-	}
-	else unfoldClone_p->DrawCopy("HIST E1 P SAME");
-
-	delete unfoldClone_p;
-      }
-    
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", gI: " << gI << "/" << nGammaPtBins << std::endl;
-      canvBest_p->cd();
-      padsBest_p[1]->cd();
-    
-      gPad->SetTicks();
-      bool hasDrawn = false;
-      for(Int_t i = 1; i < nIter; ++i){
-	bool isGood = false;
-	if(i+1 == termPos && (term1D || termBoth)) isGood = true;
-	else if(i+1 == termPos2D && (term2D || termBoth)) isGood = true;
-
-	if(!isGood) continue;
-
-	TH1F* unfoldClone_p = (TH1F*)unfold_p[i]->Clone("tempClone");    
-	unfoldClone_p->Divide(reco_p);
-
-	TH1F* refoldClone_p = (TH1F*)refold_p[i]->Clone("tempClone2");	
-	refoldClone_p->Divide(reco_p);	
-	
-	if(!hasDrawn){
-	  refoldClone_p->GetYaxis()->SetTitle("#frac{Refold}{Reco.}");
-	  refoldClone_p->SetMinimum(xjRatMinTemp);
-	  refoldClone_p->SetMaximum(xjRatMaxTemp);
-	  
-	  refoldClone_p->GetXaxis()->SetTitleOffset(1.2);
-	  refoldClone_p->GetYaxis()->SetTitleOffset(yOffset*(padSplit1 - padSplit2)/(1.0-padSplit1));
-	  
-	  refoldClone_p->GetXaxis()->SetTitleFont(titleFont);
-	  refoldClone_p->GetYaxis()->SetTitleFont(titleFont);
-	  refoldClone_p->GetXaxis()->SetTitleSize(titleSize/(padSplit1 - padSplit2));
-	  refoldClone_p->GetYaxis()->SetTitleSize(titleSize/(padSplit1 - padSplit2));
-	  
-	  refoldClone_p->GetXaxis()->SetLabelFont(titleFont);
-	  refoldClone_p->GetYaxis()->SetLabelFont(titleFont);
-	  refoldClone_p->GetXaxis()->SetLabelSize(labelSize/(padSplit1 - padSplit2));
-	  refoldClone_p->GetYaxis()->SetLabelSize(labelSize/(padSplit1 - padSplit2));
-	  
-	  refoldClone_p->GetYaxis()->SetNdivisions(404);	
-	  
-	  refoldClone_p->DrawCopy("HIST E1 P");	 
-	  if(doLogX) gPad->SetLogx();
-	  hasDrawn = true;
-	}
-	else refoldClone_p->DrawCopy("HIST E1 P SAME");
-
-	/*
-	refoldClone_p->DrawCopy("HIST E1 P SAME");
-	delete refoldClone_p;
-	*/
-	if(i+1 == termPos2D){
-	  Int_t tempColor = HIJet::Style::GetColor(i-1);
-	  Float_t tempOpacity = HIJet::Style::GetOpacity(i-1);
-	  
-	  TBox* box_p = new TBox();
-	  box_p->SetFillColorAlpha(tempColor, tempOpacity);
-
-	  for(Int_t bIX = 0; bIX < unfoldClone_p->GetXaxis()->GetNbins(); ++bIX){
-	    Double_t x1 = unfoldClone_p->GetBinLowEdge(bIX+1);
-	    Double_t x2 = unfoldClone_p->GetBinLowEdge(bIX+2);
-
-	    box_p->DrawBox(x1, 1.0 - deltaVals[bIX], x2, 1.0 + deltaVals[bIX]);
-	  }
-
-	  delete box_p;
-	}
-
-	delete refoldClone_p;
-	delete unfoldClone_p;
-      }
-
-      //Third panel, divide by truth
-      canv_p->cd();
-      pads_p[2]->cd();
-      
-      gPad->SetTicks();
-      for(Int_t i = 1; i < nIterForLoop; ++i){
-	TH1F* unfoldClone_p = (TH1F*)unfold_p[i]->Clone("tempClone");	
-	unfoldClone_p->Divide(truth_p);
-	
-	if(i == 1){
-	  if(isMC) unfoldClone_p->GetYaxis()->SetTitle("#frac{Unfolded}{Truth}");
-	  else unfoldClone_p->GetYaxis()->SetTitle("#frac{Unfolded Data}{Truth PYTHIA}");
-	  unfoldClone_p->SetMinimum(xjRatMinTemp);
-	  unfoldClone_p->SetMaximum(xjRatMaxTemp);
-	  
-	  unfoldClone_p->GetXaxis()->SetTitleOffset(1.2);
-	  unfoldClone_p->GetYaxis()->SetTitleOffset(yOffset*(padSplit2)/(1.0-padSplit1));
-	  
-	  unfoldClone_p->GetXaxis()->SetTitleFont(titleFont);
-	  unfoldClone_p->GetYaxis()->SetTitleFont(titleFont);
-	  unfoldClone_p->GetXaxis()->SetTitleSize(titleSize/(padSplit2));
-	  unfoldClone_p->GetYaxis()->SetTitleSize(titleSize/(padSplit2));
-	  
-	  unfoldClone_p->GetXaxis()->SetLabelFont(titleFont);
-	  unfoldClone_p->GetYaxis()->SetLabelFont(titleFont);
-	  unfoldClone_p->GetXaxis()->SetLabelSize(labelSize/(padSplit2));
-	  unfoldClone_p->GetYaxis()->SetLabelSize(labelSize/(padSplit2));
-	  
-	  unfoldClone_p->GetYaxis()->SetNdivisions(404);	
-	  
-	  unfoldClone_p->DrawCopy("HIST E1 P");
-	  if(doLogX) gPad->SetLogx();
-	}
-	else unfoldClone_p->DrawCopy("HIST E1 P SAME");
-
-	delete unfoldClone_p;
-      }
-    
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", gI: " << gI << "/" << nGammaPtBins << std::endl;
-      canvBest_p->cd();
-      padsBest_p[2]->cd();
-    
-      hasDrawn = false;
-      for(Int_t i = 1; i < nIter; ++i){       
-	bool isGood = false;
-	if(i+1 == termPos && (term1D || termBoth)) isGood = true;
-	else if(i+1 == termPos2D && (term2D || termBoth)) isGood = true;
-
-	if(!isGood) continue;
-
-	TH1F* unfoldClone_p = (TH1F*)unfold_p[i]->Clone("tempClone");    
-	unfoldClone_p->Divide(truth_p);
-	
-	gPad->SetTicks();
-	if(!hasDrawn){
-	  if(isMC) unfoldClone_p->GetYaxis()->SetTitle("#frac{Unfolded}{Truth}");
-	  else unfoldClone_p->GetYaxis()->SetTitle("#frac{Unfolded Data}{Truth PYTHIA}");
-
-	  unfoldClone_p->SetMinimum(xjRatMinTemp);
-	  unfoldClone_p->SetMaximum(xjRatMaxTemp);
-	  
-	  unfoldClone_p->GetXaxis()->SetTitleOffset(1.2);
-	  unfoldClone_p->GetYaxis()->SetTitleOffset(yOffset*(padSplit2)/(1.0-padSplit1));
-	  
-	  unfoldClone_p->GetXaxis()->SetTitleFont(titleFont);
-	  unfoldClone_p->GetYaxis()->SetTitleFont(titleFont);
-	  unfoldClone_p->GetXaxis()->SetTitleSize(titleSize/(padSplit2));
-	  unfoldClone_p->GetYaxis()->SetTitleSize(titleSize/(padSplit2));
-	  
-	  unfoldClone_p->GetXaxis()->SetLabelFont(titleFont);
-	  unfoldClone_p->GetYaxis()->SetLabelFont(titleFont);
-	  unfoldClone_p->GetXaxis()->SetLabelSize(labelSize/(padSplit2));
-	  unfoldClone_p->GetYaxis()->SetLabelSize(labelSize/(padSplit2));
-	  
-	  unfoldClone_p->GetYaxis()->SetNdivisions(404);	
-
-	  unfoldClone_p->DrawCopy("HIST E1 P");	 
-	  
-	  if(doLogX) gPad->SetLogx();
-	  hasDrawn = true;
-	}
-	else unfoldClone_p->DrawCopy("HIST E1 P SAME");
-
-	if(i+1 == termPos2D){
-	  Int_t tempColor = HIJet::Style::GetColor(i-1);
-	  Float_t tempOpacity = HIJet::Style::GetOpacity(i-1);
-	  
-	  TBox* box_p = new TBox();
-	  box_p->SetFillColorAlpha(tempColor, tempOpacity);
-
-	  for(Int_t bIX = 0; bIX < unfoldClone_p->GetXaxis()->GetNbins(); ++bIX){
-	    Double_t x1 = unfoldClone_p->GetBinLowEdge(bIX+1);
-	    Double_t x2 = unfoldClone_p->GetBinLowEdge(bIX+2);
-
-	    box_p->DrawBox(x1, 1.0 - deltaVals[bIX], x2, 1.0 + deltaVals[bIX]);
-	  }
-
-	  delete box_p;
-	}
-
-	delete unfoldClone_p;
-      }
-      
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", gI: " << gI << "/" << nGammaPtBins << std::endl;      
-          
-      TLine* line_p = new TLine();
-      line_p->SetLineStyle(2);
-      line_p->DrawLine(reco_p->GetXaxis()->GetBinLowEdge(1), 1.0, reco_p->GetXaxis()->GetBinLowEdge(reco_p->GetXaxis()->GetNbins()+1), 1.0);
-
-      canv_p->cd();
-      pads_p[2]->cd();
-      line_p->DrawLine(reco_p->GetXaxis()->GetBinLowEdge(1), 1.0, reco_p->GetXaxis()->GetBinLowEdge(reco_p->GetXaxis()->GetNbins()+1), 1.0);      
-      pads_p[1]->cd();
-      line_p->DrawLine(reco_p->GetXaxis()->GetBinLowEdge(1), 1.0, reco_p->GetXaxis()->GetBinLowEdge(reco_p->GetXaxis()->GetNbins()+1), 1.0);      
-      padsBest_p[1]->cd();
-      line_p->DrawLine(reco_p->GetXaxis()->GetBinLowEdge(1), 1.0, reco_p->GetXaxis()->GetBinLowEdge(reco_p->GetXaxis()->GetNbins()+1), 1.0);      
-
-
-      delete line_p;
-      delete label_p;
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", gI: " << gI << "/" << nGammaPtBins << std::endl;      
-    
-      quietSaveAs(canv_p, "pdfDir/" + dateStr + "/unfold" + varName + "_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI%centBinsStr.size()] + "_Delta" + deltaStr + "_" + saveNameTag + "." + saveExt);
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", gI: " << gI << "/" << nGammaPtBins << std::endl;
-      
-      for(Int_t i = 0; i < nPad; ++i){
-	delete pads_p[i];
-      }
-      delete canv_p;
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", gI: " << gI << "/" << nGammaPtBins << std::endl;
-      
-      for(unsigned int lI = 0; lI < leg_p.size(); ++lI){
-	delete leg_p[lI];      
-      }
-      leg_p.clear();      
-
-      Int_t nBestHist = 4;
-      if(truth_p == nullptr) nBestHist -= 1.0;
-      if(termPos2D < 0 && termPos < 0) nBestHist -= 2.0;
-      else if(termPos2D < 0 || termPos < 0) nBestHist -= 1.0;
-      else if(termPos2D == termPos) nBestHist -= 1.0;      
-
-      Int_t lastLegPos = -1;
-      Int_t totalHist = 0;
-      for(unsigned int lI = 0; lI < xjLegXGlobal.size(); ++lI){
-	leg_p.push_back(nullptr);
-	if(xjLegNGlobal.size() == 0){
-	  int newHistsPerLeg = histsPerLeg;
-	  if(newHistsPerLeg > nBestHist - totalHist) newHistsPerLeg = nBestHist - totalHist;
-
-	  leg_p[lI] = new TLegend(xjLegXGlobal[lI], xjLegYGlobal[lI] - newHistsPerLeg*0.05, xjLegXGlobal[lI] + maxLegX*0.02, xjLegYGlobal[lI]);
-
-	  totalHist += newHistsPerLeg;
-	}
-	else{ 
-	  double nVert = xjLegNGlobal[lI];
-	  if(nVert > nBestHist - totalHist) nVert = nBestHist - totalHist;
-	  
-	  leg_p[lI] = new TLegend(xjLegXGlobal[lI], xjLegYGlobal[lI] - nVert*0.05, xjLegXGlobal[lI] + maxLegX*0.02, xjLegYGlobal[lI]);
-
-	  totalHist += nVert;
+	  delete refoldClone_p;
+	  delete unfoldClone_p;
 	}
 	
-	leg_p[lI]->SetTextFont(titleFont);
-	leg_p[lI]->SetTextSize(titleSize/(1.0 - padSplit1));
-	leg_p[lI]->SetBorderSize(0);
-	leg_p[lI]->SetFillColor(0);
-	leg_p[lI]->SetFillStyle(0);	
+	if(doLogX) gPad->SetLogx();
+	
+	//Third panel, divide by truth
+	canv_p->cd();
+	pads_p[2]->cd();
+	
+	for(Int_t i = 1; i < nIterForLoop; ++i){
+	  TH1F* unfoldClone_p = (TH1F*)unfold_p[gI][i]->Clone("tempClone");
 
-	lastLegPos = lI;
-	if(nBestHist == totalHist) break;
-      }
-
-      histsForLeg_p.clear();
-      stringsForLeg_p.clear();
-      legFillStr.clear();
-      if(truth_p != nullptr){
-	histsForLeg_p.push_back(truth_p);
-	if(isMC) stringsForLeg_p.push_back("Truth");
-	else stringsForLeg_p.push_back("Truth PYTHIA");
-	legFillStr.push_back("L");
-      }
-      histsForLeg_p.push_back(reco_p);
-      if(isMC) stringsForLeg_p.push_back("Reco.");
-      else stringsForLeg_p.push_back("Reco. Data");
-      legFillStr.push_back("L");
-
-      for(Int_t i = 1; i < nIter; ++i){
-	bool isGood = false;
-	if(i+1 == termPos && (term1D || termBoth)) isGood = true;
-	else if(i+1 == termPos2D && (term2D || termBoth)) isGood = true;
-
-	if(!isGood) continue;
-
-	if(i+1 == termPos2D){
-	  histsForLeg_p.push_back(unfold_p[i]);
-	  if(i+1 == termPos) stringsForLeg_p.push_back("Unfold Iter. " + std::to_string(termPos2D) + ", Best 1 and 2D");
-	  else stringsForLeg_p.push_back("Unfold Iter. " + std::to_string(termPos2D) + ", Best 2D");
+	  unfoldClone_p->Divide(truth_p[gI]);	
+	  unfoldClone_p->SetTitle("");
 	  
-	  legFillStr.push_back("L P");
-
-	  histsForLeg_p.push_back(refold_p[i]);
-	  stringsForLeg_p.push_back("Unfold Iter. " + std::to_string(termPos2D) + " Refold");
-	  legFillStr.push_back("L P");
-	}
-	else if(i+1 == termPos){
-	  histsForLeg_p.push_back(unfold_p[i]);
-	  stringsForLeg_p.push_back("Unfold Iter. " + std::to_string(termPos) + ", Best 1D");
-	  legFillStr.push_back("L P");
-
-	  histsForLeg_p.push_back(refold_p[i]);
-	  stringsForLeg_p.push_back("Unfold Iter. " + std::to_string(termPos) + " Refold");
-	  legFillStr.push_back("L P");
-	}
-      }
-
-      if(xjLegNGlobal.size() == 0){
-	for(unsigned int lI = 0; lI < histsForLeg_p.size(); ++lI){
-	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << lI << ", " << stringsForLeg_p[lI] << std::endl;
-
-	  leg_p[lI/histsPerLeg]->AddEntry(histsForLeg_p[lI], stringsForLeg_p[lI].c_str(), legFillStr[lI].c_str());
-	}
-      }
-      else{
-	unsigned int legCounter = 0;
-	for(unsigned int lI = 0; lI < xjLegNGlobal.size(); ++lI){
-	  for(unsigned int dI = 0; dI < xjLegNGlobal[lI]; ++dI){	
-	    if(histsForLeg_p.size() == legCounter) break;
-	    leg_p[lI]->AddEntry(histsForLeg_p[legCounter], stringsForLeg_p[legCounter].c_str(), legFillStr[legCounter].c_str());
-	    ++legCounter;
+	  if(i == 1){
+	    if(isMC) unfoldClone_p->GetYaxis()->SetTitle("#frac{Unfolded}{Truth}");
+	    else unfoldClone_p->GetYaxis()->SetTitle("#frac{Unfolded Data}{Truth PYTHIA}");
+	    
+	    prepTH1(unfoldClone_p, titleFont, titleSize/(padSplit2), labelSize/(padSplit2), unfoldClone_p->GetMarkerColor(), unfoldClone_p->GetMarkerStyle(), unfoldClone_p->GetMarkerSize(), unfoldClone_p->GetLineWidth(), 1.2, yOffset*(padSplit2)/(1.0-padSplit1));
+	  
+	    unfoldClone_p->GetYaxis()->SetNdivisions(404);	
+	    unfoldClone_p->SetMaximum(1.25);
+	    unfoldClone_p->SetMinimum(0.75);
+	    unfoldClone_p->DrawCopy("HIST E1 P");
 	  }
-
-	  if(((int)lI) == lastLegPos) break;
+	  else unfoldClone_p->DrawCopy("HIST E1 P SAME");
+	
+	  delete unfoldClone_p;
 	}
-      }
-      
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;    
+	if(doLogX) gPad->SetLogx();
+	
+	canvBest_p->cd();
+	padsBest_p[2]->cd();
+	
+	hasDrawn = false;
+	for(Int_t i = 1; i < nIter+1; ++i){
+	  bool isGood = false;
+	  if(i+1 == termPos) isGood = true;
+	  if(!isGood) continue;
+	  
+	  TH1F* unfoldClone_p = (TH1F*)unfold_p[gI][i]->Clone("tempClone");
+	  unfoldClone_p->Divide(truth_p[gI]);
+	  
+	  if(!hasDrawn){
+	    if(isMC) unfoldClone_p->GetYaxis()->SetTitle("#frac{Unfolded}{Truth}");
+	    else unfoldClone_p->GetYaxis()->SetTitle("#frac{Unfolded Data}{Truth PYTHIA}");
+	    
+	    prepTH1(unfoldClone_p, titleFont, titleSize/(padSplit2), labelSize/(padSplit2), unfoldClone_p->GetMarkerColor(), unfoldClone_p->GetMarkerStyle(), unfoldClone_p->GetMarkerSize(), unfoldClone_p->GetLineWidth(), 1.2, yOffset*(padSplit2)/(1.0-padSplit1));
 
-      canvBest_p->cd();
-      padsBest_p[0]->cd();
-      for(unsigned int lI = 0; lI < leg_p.size(); ++lI){
-	leg_p[lI]->Draw("SAME");
-      }      
+	    unfoldClone_p->GetYaxis()->SetNdivisions(404);
+	  
+	    unfoldClone_p->SetMaximum(1.05);
+	    unfoldClone_p->SetMinimum(0.95);
+	 
+	    unfoldClone_p->DrawCopy("HIST E1 P");
+	  
+	    hasDrawn = true;
+	  }
+	  else unfoldClone_p->DrawCopy("HIST E1 P SAME");
+	  
+	  if(i+1 == termPos){
+	    Float_t tempOpacity = HIJet::Style::GetOpacity(i-1);
+	    drawBoxAdjacentIterRel(padsBest_p[2], unfoldClone_p, tempOpacity, &deltaVals);
+	  }
+	  
+	  delete unfoldClone_p;
+	}
+	if(doLogX) gPad->SetLogx();    
+	
+	canv_p->cd();
+	pads_p[0]->cd();
+	for(unsigned int i = 0; i < leg_p.size(); ++i){
+	  if(leg_p[i] != nullptr){
+	    leg_p[i]->Draw("SAME");
+	  }
+	}
+	
+	int pos = 0;
+	for(unsigned int tI = 0; tI < tempLabels.size(); ++tI){
+	  if(tempLabels[tI].find("jet") != std::string::npos) continue;
+	  if(tempLabels[tI].find("Jet") != std::string::npos) continue;
+	  label_p->DrawLatex(jetVarLabelXGlobal, jetVarLabelYGlobal - pos*0.083*0.55/topPanelFrac, tempLabels[tI].c_str());
+	  ++pos;
+	}
       
-      quietSaveAs(canvBest_p, "pdfDir/" + dateStr + "/unfold" + varName + "_BESTIterations_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI%centBinsStr.size()] + "_Delta" + deltaStr + "_" + saveNameTag + "." + saveExt);
+	canvBest_p->cd();
+	padsBest_p[0]->cd();
+	for(unsigned int i = 0; i < legBest_p.size(); ++i){
+	  if(legBest_p[i] != nullptr) legBest_p[i]->Draw("SAME");
+	}
+	
+	pos = 0;
+	for(unsigned int tI = 0; tI < tempLabels.size(); ++tI){
+	  if(tempLabels[tI].find("jet") != std::string::npos) continue;
+	  if(tempLabels[tI].find("Jet") != std::string::npos) continue;
+	  label_p->DrawLatex(jetVarLabelXGlobal, jetVarLabelYGlobal - pos*0.083*0.55/topPanelFrac, tempLabels[tI].c_str());
+	  
+	  ++pos;
+	}
+	
+	tpadsAxisFix(padsVect);
+	std::string saveName = "pdfDir/" + dateStr + "/unfold";
+	if(pI == 0) saveName = saveName + "PhoPt";
+	else if(pI == 1) saveName = saveName + "PhoPtJet" + varName + "_GammaPt" + std::to_string(gI);
+	saveName = saveName + "_" + centBinsStr[cI%centBinsStr.size()] + "_Delta" + deltaStr + "_" + saveTag +  "." + saveExt;
+	quietSaveAs(canv_p, saveName);    
+	for(Int_t i = 0; i < nPad; ++i){delete pads_p[i];}      
+	delete canv_p;
+	
+	tpadsAxisFix(padsBestVect);
 
-      for(Int_t i = 0; i < nPad; ++i){
-	delete padsBest_p[i];
+	saveName = "pdfDir/" + dateStr + "/unfold";
+	if(pI == 0) saveName = saveName + "PhoPt";
+	else if(pI == 1) saveName = saveName + "PhoPtJet" + varName + "_GammaPt" + std::to_string(gI);
+	saveName = saveName + "_BESTIterations_" + centBinsStr[cI%centBinsStr.size()] + "_Delta" + deltaStr + "_" + saveTag +  "." + saveExt;
+
+	quietSaveAs(canvBest_p, saveName);
+	for(Int_t i = 0; i < nPad; ++i){delete padsBest_p[i];}      
+	delete canvBest_p;
       }
-      delete canvBest_p;
-      
-      for(unsigned int lI = 0; lI < leg_p.size(); ++lI){
-	delete leg_p[lI];      
-      }
-      leg_p.clear();            
+
+      delete statsDelta_p;
+      delete iterDelta_p;
+      delete totalDelta_p;
     }
-  }  
-
+    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+  }
+  
   inUnfoldFile_p->Close();
   delete inUnfoldFile_p;
 
   if(outUnfoldConfigName.find(".config") != std::string::npos){
     outUnfoldConfigName.replace(outUnfoldConfigName.rfind(".config"), 7, "");
-  }
-  
+  }  
   outUnfoldConfigName = outUnfoldConfigName + "_" + varName + ".config";
   
   if(outUnfoldConfigName.find("/") == std::string::npos){//means no path is supplied
     outUnfoldConfigName = "output/" + dateStr + "/" + outUnfoldConfigName;    
   }
   
-  outUnfoldConfig_p->SetValue("UNFOLDFILENAME", inUnfoldFileName.c_str());
-  
+  outUnfoldConfig_p->SetValue("UNFOLDFILENAME", inUnfoldFileName.c_str());  
   outUnfoldConfig_p->WriteFile(outUnfoldConfigName.c_str());
-  
-  
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
   std::cout << "GDJPLOTUNFOLDDIAGNOSTICS COMPLETE. return 0." << std::endl;
   return 0;

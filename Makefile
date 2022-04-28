@@ -39,7 +39,7 @@ MKDIR_OBJ=mkdir -p $(GDJDIR)/obj
 MKDIR_OUTPUT=mkdir -p $(GDJDIR)/output
 MKDIR_PDF=mkdir -p $(GDJDIR)/pdfDir
 
-all: mkdirBin mkdirLib mkdirObj mkdirOutput mkdirPdf obj/centralityFromInput.o obj/checkMakeDir.o obj/configParser.o obj/globalDebugHandler.o obj/keyHandler.o obj/sampleHandler.o obj/mixMachine.o lib/libATLASGDJ.so bin/gdjNtuplePreProc.exe bin/gdjNTupleToHist.exe bin/gdjNTupleToMBHist.exe bin/gdjHistDumper.exe bin/gdjGammaJetResponsePlot.exe bin/gdjMixedEventPlotter.exe bin/gdjControlPlotter.exe bin/gdjResponsePlotter.exe bin/gdjDataMCRawPlotter.exe bin/grlToTex.exe bin/testKeyHandler.exe bin/testSampleHandler.exe bin/gdjPlotMBHist.exe bin/gdjHistToUnfold.exe bin/gdjPlotUnfoldDiagnostics.exe bin/gdjPlotResults.exe bin/gdjHistDQM.exe
+all: mkdirBin mkdirLib mkdirObj mkdirOutput mkdirPdf obj/centralityFromInput.o obj/checkMakeDir.o obj/configParser.o obj/globalDebugHandler.o obj/keyHandler.o obj/sampleHandler.o obj/mixMachine.o lib/libATLASGDJ.so bin/gdjNtuplePreProc.exe bin/gdjAnalyzeTxtOut.exe bin/gdjNTupleToHist.exe bin/gdjNTupleToMBHist.exe bin/gdjHistDumper.exe bin/gdjGammaJetResponsePlot.exe bin/gdjMixedEventPlotter.exe bin/gdjControlPlotter.exe bin/gdjResponsePlotter.exe bin/gdjDataMCRawPlotter.exe bin/gdjPbPbOverPPRawPlotter.exe bin/gdjRCPRawPlotter.exe bin/gdjR4OverR2RawPlotter.exe bin/grlToTex.exe bin/testKeyHandler.exe bin/testSampleHandler.exe bin/gdjPlotMBHist.exe bin/gdjHistToUnfold.exe bin/gdjPlotUnfoldDiagnostics.exe #bin/gdjPlotResults.exe bin/gdjHistDQM.exe
 #bin/gdjNTupleToSignalHist.exe bin/gdjPlotSignalHist.exe bin/gdjToyMultiMix.exe bin/gdjPlotToy.exe
 
 mkdirBin:
@@ -84,6 +84,9 @@ lib/libATLASGDJ.so:
 bin/gdjNtuplePreProc.exe: src/gdjNtuplePreProc.C
 	$(CXX) $(CXXFLAGS) src/gdjNtuplePreProc.C -o bin/gdjNtuplePreProc.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
 
+bin/gdjAnalyzeTxtOut.exe: src/gdjAnalyzeTxtOut.C
+	$(CXX) $(CXXFLAGS) src/gdjAnalyzeTxtOut.C -o bin/gdjAnalyzeTxtOut.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
+
 bin/gdjNTupleToHist.exe: src/gdjNTupleToHist.C
 	$(CXX) $(CXXFLAGS) src/gdjNTupleToHist.C -o bin/gdjNTupleToHist.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
 
@@ -122,6 +125,15 @@ bin/gdjResponsePlotter.exe: src/gdjResponsePlotter.C
 
 bin/gdjDataMCRawPlotter.exe: src/gdjDataMCRawPlotter.C
 	$(CXX) $(CXXFLAGS) src/gdjDataMCRawPlotter.C -o bin/gdjDataMCRawPlotter.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
+
+bin/gdjPbPbOverPPRawPlotter.exe: src/gdjPbPbOverPPRawPlotter.C
+	$(CXX) $(CXXFLAGS) src/gdjPbPbOverPPRawPlotter.C -o bin/gdjPbPbOverPPRawPlotter.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
+
+bin/gdjRCPRawPlotter.exe: src/gdjRCPRawPlotter.C
+	$(CXX) $(CXXFLAGS) src/gdjRCPRawPlotter.C -o bin/gdjRCPRawPlotter.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
+
+bin/gdjR4OverR2RawPlotter.exe: src/gdjR4OverR2RawPlotter.C
+	$(CXX) $(CXXFLAGS) src/gdjR4OverR2RawPlotter.C -o bin/gdjR4OverR2RawPlotter.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
 
 bin/grlToTex.exe: src/grlToTex.C
 	$(CXX) $(CXXFLAGS) src/grlToTex.C -o bin/grlToTex.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ

@@ -179,7 +179,6 @@ int gdjPlotResults(std::string inConfigFileName)
     return 1;
   }
 
-
   const std::string varNameUpper = strLowerToUpper(varName);
 
   float minVal = config_p->GetValue((varNameUpper + "MIN").c_str(), 0.0);

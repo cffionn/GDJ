@@ -389,4 +389,16 @@ inline std::vector<std::string> getLabels(TEnv* plotConfig_p, TH1F* histForLabel
 
 }
 
+inline bool strReplace(std::string* inStr, std::string strToRep, std::string repStr)
+{
+  bool goodReplace = true;
+  if(inStr->find(strToRep) != std::string::npos) inStr->replace(inStr->find(strToRep), strToRep.size(), repStr);
+  else{
+    std::cout << "STRREPLACE ERROR: String '" << *inStr << "' does not contain '" << strToRep << "' requested for replacement. return false" << std::endl;
+    goodReplace = false;
+  }
+
+  return goodReplace;
+}
+
 #endif

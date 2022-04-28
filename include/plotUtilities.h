@@ -132,8 +132,8 @@ inline double getNearestFactor10Up(double inVal, UInt_t steps = 0)
     else val *= 10;
   }
 
-  for(UInt_t i = 0; i < steps; ++i){
-    val *= 10;
+  for(UInt_t i = 0; i < steps; ++i){ 
+   val *= 10;
   }
   
   return val;

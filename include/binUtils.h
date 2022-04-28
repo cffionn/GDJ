@@ -107,10 +107,18 @@ void fineHistToCoarseHist(TH2F* fineHist_p, TH2F* coarseHist_p)
     Float_t binCenterFine = fineHist_p->GetXaxis()->GetBinCenter(bIX+1);
     Int_t fineToCoarseXPos = -1;
 
+    bool belowCoarse = binCenterFine < coarseHist_p->GetXaxis()->GetBinLowEdge(1);
+    bool aboveCoarse = binCenterFine >= coarseHist_p->GetXaxis()->GetBinLowEdge(coarseHist_p->GetXaxis()->GetNbins()+1);
+
+    if(belowCoarse || aboveCoarse){
+      fineToCoarseXs[bIX] = -1;
+      continue;
+    }
+    
     for(Int_t bIX2 = 0; bIX2 < coarseHist_p->GetXaxis()->GetNbins(); ++bIX2){
       Float_t binLowCoarse = coarseHist_p->GetXaxis()->GetBinLowEdge(bIX2+1);
-      Float_t binHighCoarse = coarseHist_p->GetXaxis()->GetBinLowEdge(bIX2+2);
-
+      Float_t binHighCoarse = coarseHist_p->GetXaxis()->GetBinLowEdge(bIX2+2);      
+      
       if(binCenterFine >= binLowCoarse && binCenterFine < binHighCoarse){
         fineToCoarseXPos = bIX2;
         break;
@@ -131,6 +139,13 @@ h in coarser binning. returning"  << std::endl;
     Float_t binCenterFine = fineHist_p->GetYaxis()->GetBinCenter(bIY+1);
     Int_t fineToCoarseYPos = -1;
 
+    bool belowCoarse = binCenterFine < coarseHist_p->GetYaxis()->GetBinLowEdge(1);
+    bool aboveCoarse = binCenterFine >= coarseHist_p->GetYaxis()->GetBinLowEdge(coarseHist_p->GetYaxis()->GetNbins()+1);
+    if(belowCoarse || aboveCoarse){
+      fineToCoarseYs[bIY] = -1;
+      continue;
+    }
+    
     for(Int_t bIY2 = 0; bIY2 < coarseHist_p->GetYaxis()->GetNbins(); ++bIY2){
       Float_t binLowCoarse = coarseHist_p->GetYaxis()->GetBinLowEdge(bIY2+1);
       Float_t binHighCoarse = coarseHist_p->GetYaxis()->GetBinLowEdge(bIY2+2);
@@ -154,9 +169,13 @@ h in coarser binning. returning"  << std::endl;
   for(Int_t bIX = 0; bIX < fineHist_p->GetXaxis()->GetNbins(); ++bIX){
     Int_t coarsePosX = fineToCoarseXs[bIX];
 
+    if(coarsePosX < 0) continue;
+    
     for(Int_t bIY = 0; bIY < fineHist_p->GetYaxis()->GetNbins(); ++bIY){
       Int_t coarsePosY = fineToCoarseYs[bIY];
 
+      if(coarsePosY < 0) continue;
+      
       Float_t newValue = coarseHist_p->GetBinContent(coarsePosX+1, coarsePosY+1) + fineHist_p->GetBinContent(bIX+1, bIY+1);
 
       Float_t newError = coarseHist_p->GetBinError(coarsePosX+1, coarsePosY+1);
@@ -166,7 +185,18 @@ h in coarser binning. returning"  << std::endl;
       coarseHist_p->SetBinError(coarsePosX+1, coarsePosY+1, newError);
     }
   }
+  /*
+  std::cout << "CHECKING COARSE HIST: " << std::endl;
 
+  for(Int_t bIY = 0; bIY < coarseHist_p->GetYaxis()->GetNbins(); ++bIY){
+    std::cout << "Y" << bIY << ": ";
+    for(Int_t bIX = 0; bIX < coarseHist_p->GetXaxis()->GetNbins(); ++bIX){
+      std::cout << coarseHist_p->GetBinContent(bIX+1, bIY+1) << ",";
+    }
+    std::cout << std::endl;
+  }
+  */
+  
   return;
 }
 
@@ -218,18 +248,100 @@ bool checkHistContainsBins(std::vector<float> bins, TH2F* hist_p, float deltaVal
     }
     reqBinsStr = reqBinsStr + bins[bins.size()-1] + ".";
     std::cout << "  " << reqBinsStr << std::endl;
+
     std::cout << " Hist bins:" << std::endl;
     reqBinsStr = "";
-    for(unsigned int bI = 0; bI < axis_p->GetNbins(); ++bI){
-      reqBinsStr = reqBinsStr + bins[bI] + ", ";
+    for(Int_t bI = 0; bI < axis_p->GetNbins(); ++bI){
+      reqBinsStr = reqBinsStr + std::to_string(axis_p->GetBinLowEdge(bI+1)) + ", ";
     }
-    reqBinsStr = reqBinsStr + bins[axis_p->GetNbins()] + ".";
+    reqBinsStr = reqBinsStr + axis_p->GetBinLowEdge(axis_p->GetNbins()+1) + ".";
     std::cout << "  " << reqBinsStr << std::endl;
 
     std::cout << "return false" << std::endl;
   }
 
   return allBinsFound;
+}
+
+bool checkHistContainsBins(std::vector<float> bins, TH1F* hist_p, float deltaValue)
+{
+  bool allBinsFound = true;
+  std::string xyStr = "X";
+  TAxis* axis_p = (TAxis*)hist_p->GetXaxis();
+
+  for(unsigned int xI = 0; xI < bins.size(); ++xI){
+    bool binFound = false;
+    for(Int_t bIX = 0; bIX < axis_p->GetNbins()+1; ++bIX){
+      Float_t binLowEdge = axis_p->GetBinLowEdge(bIX+1);
+
+      if(TMath::Abs(binLowEdge - bins[xI]) < deltaValue){
+        binFound = true;
+        break;
+      }
+    }
+
+    if(!binFound){
+      std::cout << "CHECKHISTCONTAINSBINS ERROR: Requested bin '" << bins[xI] << "' is not found in histogram, " << hist_p->GetName() << ", " << xyStr << "-axis. return false" << std::endl;
+      allBinsFound = false;
+    }
+  }
+
+  if(!allBinsFound){
+    std::cout << "CHECKHISTCONTAINSBINS ERROR: Bin not found" << std::endl;
+    std::cout << " Bins requested:" << std::endl;
+    std::string reqBinsStr = "";
+    for(unsigned int bI = 0; bI < bins.size()-1; ++bI){
+      reqBinsStr = reqBinsStr + bins[bI] + ", ";
+    }
+    reqBinsStr = reqBinsStr + bins[bins.size()-1] + ".";
+    std::cout << "  " << reqBinsStr << std::endl;
+
+    std::cout << " Hist bins:" << std::endl;
+    reqBinsStr = "";
+    for(Int_t bI = 0; bI < axis_p->GetNbins(); ++bI){
+      reqBinsStr = reqBinsStr + std::to_string(axis_p->GetBinLowEdge(bI+1)) + ", ";
+    }
+    reqBinsStr = reqBinsStr + axis_p->GetBinLowEdge(axis_p->GetNbins()) + ".";
+    std::cout << "  " << reqBinsStr << std::endl;
+
+    std::cout << "return false" << std::endl;
+  }
+
+  return allBinsFound;
+}
+
+
+int hist1BinToHist2(TH2F* inHist_p, bool isX, Int_t inBinPos, Float_t deltaVal, TH1F* outHist_p)
+{
+  int binPos = -1;
+
+  TAxis* axis_p = nullptr;
+  if(isX) axis_p = (TAxis*)inHist_p->GetXaxis();
+  else axis_p = (TAxis*)inHist_p->GetYaxis();
+
+  Float_t lowEdgeIn = axis_p->GetBinLowEdge(inBinPos + 1);
+  Float_t highEdgeIn = axis_p->GetBinLowEdge(inBinPos + 2);
+
+
+  for(Int_t bI = 0; bI < outHist_p->GetXaxis()->GetNbins(); ++bI){
+    Float_t lowEdgeOut = outHist_p->GetXaxis()->GetBinLowEdge(bI+1);
+    Float_t highEdgeOut = outHist_p->GetXaxis()->GetBinLowEdge(bI+2);
+
+    //First check if the bin is fully contained
+    if(lowEdgeIn >= lowEdgeOut && highEdgeIn < highEdgeOut){
+      binPos = bI;
+      break;
+    }
+
+    //Next check if its just the same bin w/in deltaVal
+    if(TMath::Abs(lowEdgeOut - lowEdgeIn) > deltaVal) continue;
+    if(TMath::Abs(highEdgeOut - highEdgeIn) > deltaVal) continue;
+
+    binPos = bI;
+    break;
+  }
+  
+  return binPos;
 }
 
 
