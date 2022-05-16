@@ -490,9 +490,14 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   std::string varNameLower = returnAllLowercaseString(varName);
   std::string varNameLabel = varNameLower;
 
+  const Float_t jtPtBinsLow = inUnfoldFileConfig_p->GetValue("JTPTBINSLOW", -999.0);
+  const Float_t jtPtBinsHigh = inUnfoldFileConfig_p->GetValue("JTPTBINSHIGH", -999.0);
+  
   std::map<std::string, std::string> varNameLowerToLabel;
   varNameLowerToLabel["xj"] = "x_{J#gamma}";
   varNameLowerToLabel["xjj"] = "#vec{x}_{JJ#gamma}";
+  varNameLowerToLabel["pt"] = "p_{T}";
+  varNameLowerToLabel["dphi"] = "#Delta#phi_{J#gamma}";
   if(varNameLowerToLabel.count(varNameLabel) != 0) varNameLabel = varNameLowerToLabel[varNameLabel];
   
   //Add to global labels
@@ -503,6 +508,13 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
     jetRStr = jetRStr + prettyString(((double)jetR)/10., 1, false) + " jets";
   }
 
+  std::string gammaJtDPhiCutLabel = inUnfoldFileConfig_p->GetValue("GAMMAJTDPHI", "");
+  if(gammaJtDPhiCutLabel.size() == 0){
+    std::cout << "GammaJtDPhi not found, check line L" << __LINE__ << ". return 1" << std::endl;
+    return 1;
+  }
+  if(gammaJtDPhiCutLabel.find("pi") != std::string::npos) gammaJtDPhiCutLabel.replace(gammaJtDPhiCutLabel.find("pi"), 2, "#pi");
+  
   //Add to the global labels
   globalLabels.push_back(jetRStr);
   globalLabels.push_back(jtPtBinsGlobalStr);
@@ -630,19 +642,26 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
     std::cout << "Varname: \'" << jtVar << "\' is invalid. return 1" << std::endl;
     return 1;
   }
-  std::string jtVarLower = returnAllLowercaseString(varName);
-  std::string jtVarUpper = returnAllCapsString(varName);
+  std::string jtVarLower = returnAllLowercaseString(jtVar);
+  std::string jtVarUpper = returnAllCapsString(jtVar);
+
+  std::string varPrefix = "";
+  if(isStrSame(jtVarUpper, "PT")) varPrefix = "JT";
+
+  std::string binVarStr = varPrefix;
+  if(isStrSame(jtVarUpper, "XJJ")) binVarStr = binVarStr + "XJ";
+  else binVarStr = binVarStr + jtVarUpper;
   
-  Int_t nVarBins = inUnfoldFileConfig_p->GetValue(("NJT" + jtVarUpper + "BINS").c_str(), -1);
-  Float_t varBinsLow = inUnfoldFileConfig_p->GetValue(("JT" + jtVarUpper + "BINSLOW").c_str(), -1);
-  Float_t varBinsHigh = inUnfoldFileConfig_p->GetValue(("JT" + jtVarUpper + "BINSHIGH").c_str(), -1);
-  Bool_t varBinsDoLog = inUnfoldFileConfig_p->GetValue(("JT" + jtVarUpper + "BINSDOLOG").c_str(), 0);
-  Bool_t varBinsDoCustom = inUnfoldFileConfig_p->GetValue(("JT" + jtVarUpper + "BINSDOCUSTOM").c_str(), 0);
+  Int_t nVarBins = inUnfoldFileConfig_p->GetValue(("N" + binVarStr + "BINS").c_str(), -1);
+  Float_t varBinsLow = inUnfoldFileConfig_p->GetValue((binVarStr + "BINSLOW").c_str(), -1);
+  Float_t varBinsHigh = inUnfoldFileConfig_p->GetValue((binVarStr + "BINSHIGH").c_str(), -1);
+  Bool_t varBinsDoLog = inUnfoldFileConfig_p->GetValue((binVarStr + "BINSDOLOG").c_str(), 0);
+  Bool_t varBinsDoCustom = inUnfoldFileConfig_p->GetValue((binVarStr + "BINSDOCUSTOM").c_str(), 0);
   Double_t varBins[nMaxPtBins+1];
 
   if(varBinsDoLog) getLogBins(varBinsLow, varBinsHigh, nVarBins, varBins);
   else if(varBinsDoCustom){
-    std::string varBinsStr = inUnfoldFileConfig_p->GetValue(("JT" + jtVarUpper + "BINSCUSTOM").c_str(), "");
+    std::string varBinsStr = inUnfoldFileConfig_p->GetValue((binVarStr + "BINSCUSTOM").c_str(), "");
     if(varBinsStr.size() == 0){
       std::cout << "No custom bins given. return 1" << std::endl;
       return 1;
@@ -750,11 +769,22 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       if(!isMC && truthHistNames[cI].find("PURCORR") != std::string::npos) tempLabels = globalLabelsDataOverrides;
       else if(!isMC && truthHistNames[cI].find("HalfTo") != std::string::npos) tempLabels = globalLabelsMCOverrides;
       tempLabels.push_back("#bf{" + prettyString(gammaPtBins[0], 1, false) + " < p_{T,#gamma} < " + prettyString(gammaPtBins[nGammaPtBins], 1, false) + "}");
-      if(!isPP) tempLabels.push_back(centBinsLabel[cI%centBinsLabel.size()]);
-      tempLabels.push_back("Observable: #gamma p_{T}");
-      //EndLabelMods
 
+      if(!isPP) tempLabels.push_back(centBinsLabel[cI%centBinsLabel.size()]);
+      else tempLabels.push_back("p+p");
+
+      if(pI != 0){
+	//	tempLabels.push_back("#Delta#phi_{J#gamma} > " + gammaJtDPhiCutLabel);
+      }
+      
+      //      tempLabels.push_back("Observable: #gamma p_{T}");
+      //EndLabelMods
+    
       //Define tlatex label object 
+      TLine* line_p = new TLine();
+      line_p->SetLineStyle(2);
+      line_p->SetLineColor(1);
+      
       TLatex* label_p = new TLatex();
       initLabel(label_p, titleFont, titleSize, diagLabelAlignRightGlobal);
       
@@ -834,7 +864,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       //Draw labels
       int labelPos = 0;
       for(unsigned int tI = 0; tI < tempLabels.size(); ++tI){
-	if(tempLabels[tI].find("jet") != std::string::npos) continue;
+	if(pI == 0 && tempLabels[tI].find("jet") != std::string::npos) continue;
+
 	label_p->DrawLatex(diagLabelXGlobal, diagLabelYGlobal - labelPos*0.06, tempLabels[tI].c_str());
 	++labelPos;
       }
@@ -917,13 +948,14 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       else{
 	reco_p.clear();
 	truth_p.clear();
-
-	std::cout << "TRUTH 2D: " << truth2D_p->GetName() << std::endl;
 	
 	for(Int_t gI = 0; gI < nGammaPtBinsForUnfold; ++gI){
 	  reco_p.push_back(new TH1F(("reco_GammaPt" + std::to_string(gI) + "_h").c_str(), ";;", nVarBins, varBins));
 	  truth_p.push_back(new TH1F(("truth_GammaPt" + std::to_string(gI) + "_h").c_str(), ";;", nVarBins, varBins));
 
+	  std::cout << reco2D_p->GetXaxis()->GetTitle() << std::endl;
+	  reco_p[gI]->GetXaxis()->SetTitle(reco2D_p->GetXaxis()->GetTitle());
+	  
 	  //	  reco2D_p->Print("ALL");
 	  //	  return 1;
 	    	  
@@ -1087,20 +1119,24 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 
 	if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
 
-	reco_p[gI]->SetMinimum(jetVarMinGlobal);
-	reco_p[gI]->SetMaximum(jetVarMaxGlobal);
-	//	reco_p[gI]->SetMinimum(recoMin/2.0);
-    	
-	reco_p[gI]->GetYaxis()->SetTitle("#frac{1}{N_{#gamma}} #frac{dN_{#gamma}}{dp_{T}}");	
+	if(pI == 1){
+	  reco_p[gI]->SetMinimum(jetVarMinGlobal);
+	  reco_p[gI]->SetMaximum(jetVarMaxGlobal);
+	}
+	else{
+	  reco_p[gI]->SetMinimum(recoMin/2.0);
+	}
+	
+	if(pI == 0) reco_p[gI]->GetYaxis()->SetTitle("#frac{1}{N_{#gamma}} #frac{dN_{#gamma}}{dp_{T}}");
+	else reco_p[gI]->GetYaxis()->SetTitle(("#frac{1}{N_{JJ#gamma}} #frac{dN_{J#gamma}}{d" + varNameLabel + "}").c_str());	
 	reco_p[gI]->DrawCopy("HIST E1");
 
 	std::cout << "DRAWING: " << reco_p[gI]->GetName() << std::endl;
-	reco_p[gI]->Print("ALL");
 	
 	if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
 	
-	if(doLogX) gPad->SetLogx();
-	if(doLogY) gPad->SetLogy();
+	if(doLogX || pI == 0) gPad->SetLogx();
+	if(doLogY || pI == 0) gPad->SetLogy();
 
 	std::cout << "LOG SCALES SET" << std::endl;
 	
@@ -1133,8 +1169,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	reco_p[gI]->DrawCopy("HIST E1");
 	if(truth_p[gI] != nullptr) truth_p[gI]->DrawCopy("HIST E1 SAME");
 	
-	if(doLogX) gPad->SetLogx();
-	if(doLogY) gPad->SetLogy();
+	if(doLogX || pI == 0) gPad->SetLogx();
+	if(doLogY || pI == 0) gPad->SetLogy();
 
 	std::cout << "TERMPOS: " << termPos << std::endl;
 	
@@ -1197,7 +1233,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  
 	  delete unfoldClone_p;
 	}    
-	if(doLogX) gPad->SetLogx();
+	if(doLogX || pI == 0) gPad->SetLogx();
 
 	std::cout << "OUT OF UNFOLD DRAW INTO LOGX" << std::endl;
 	
@@ -1226,8 +1262,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	    
 	    refoldClone_p->GetYaxis()->SetNdivisions(404);
 	    
-	    refoldClone_p->SetMaximum(1.05);
-	    refoldClone_p->SetMinimum(0.95);
+	    refoldClone_p->SetMaximum(1.06);
+	    refoldClone_p->SetMinimum(0.94);
 	    
 	    refoldClone_p->DrawCopy("HIST E1 P");
 	    hasDrawn = true;
@@ -1243,7 +1279,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  delete unfoldClone_p;
 	}
 	
-	if(doLogX) gPad->SetLogx();
+	if(doLogX || pI == 0) gPad->SetLogx();
 	
 	//Third panel, divide by truth
 	canv_p->cd();
@@ -1258,19 +1294,26 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  if(i == 1){
 	    if(isMC) unfoldClone_p->GetYaxis()->SetTitle("#frac{Unfolded}{Truth}");
 	    else unfoldClone_p->GetYaxis()->SetTitle("#frac{Unfolded Data}{Truth PYTHIA}");
+
+	    std::string xTitle = reco_p[gI]->GetXaxis()->GetTitle();
+	    if(xTitle.find("Reco. ") != std::string::npos) xTitle.replace(xTitle.find("Reco. "), 6, "");
+	    unfoldClone_p->GetXaxis()->SetTitle(xTitle.c_str());
 	    
 	    prepTH1(unfoldClone_p, titleFont, titleSize/(padSplit2), labelSize/(padSplit2), unfoldClone_p->GetMarkerColor(), unfoldClone_p->GetMarkerStyle(), unfoldClone_p->GetMarkerSize(), unfoldClone_p->GetLineWidth(), 1.2, yOffset*(padSplit2)/(1.0-padSplit1));
 	  
 	    unfoldClone_p->GetYaxis()->SetNdivisions(404);	
-	    unfoldClone_p->SetMaximum(1.25);
-	    unfoldClone_p->SetMinimum(0.75);
+	    unfoldClone_p->SetMaximum(1.06);
+	    unfoldClone_p->SetMinimum(0.94);
 	    unfoldClone_p->DrawCopy("HIST E1 P");
 	  }
 	  else unfoldClone_p->DrawCopy("HIST E1 P SAME");
 	
 	  delete unfoldClone_p;
 	}
-	if(doLogX) gPad->SetLogx();
+	if(doLogX || pI == 0) gPad->SetLogx();
+
+	if(pI == 1) line_p->DrawLine(varBins[0], 1.0, varBins[nVarBins], 1.0);
+	else line_p->DrawLine(gammaPtBins[0], 1.0, gammaPtBins[nGammaPtBins], 1.0);
 	
 	canvBest_p->cd();
 	padsBest_p[2]->cd();
@@ -1292,8 +1335,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 
 	    unfoldClone_p->GetYaxis()->SetNdivisions(404);
 	  
-	    unfoldClone_p->SetMaximum(1.05);
-	    unfoldClone_p->SetMinimum(0.95);
+	    unfoldClone_p->SetMaximum(1.06);
+	    unfoldClone_p->SetMinimum(0.94);
 	 
 	    unfoldClone_p->DrawCopy("HIST E1 P");
 	  
@@ -1308,7 +1351,10 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  
 	  delete unfoldClone_p;
 	}
-	if(doLogX) gPad->SetLogx();    
+	if(doLogX || pI == 0) gPad->SetLogx();    
+
+	if(pI == 1) line_p->DrawLine(varBins[0], 1.0, varBins[nVarBins], 1.0);
+	else line_p->DrawLine(gammaPtBins[0], 1.0, gammaPtBins[nGammaPtBins], 1.0);
 	
 	canv_p->cd();
 	pads_p[0]->cd();
@@ -1317,12 +1363,22 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	    leg_p[i]->Draw("SAME");
 	  }
 	}
-	
+      
 	int pos = 0;
 	for(unsigned int tI = 0; tI < tempLabels.size(); ++tI){
-	  if(tempLabels[tI].find("jet") != std::string::npos) continue;
-	  if(tempLabels[tI].find("Jet") != std::string::npos) continue;
-	  label_p->DrawLatex(jetVarLabelXGlobal, jetVarLabelYGlobal - pos*0.083*0.55/topPanelFrac, tempLabels[tI].c_str());
+	  if(pI == 0 && tempLabels[tI].find("jet") != std::string::npos) continue;
+
+	  if(tempLabels[tI].find("Observable") != std::string::npos) continue;
+
+	  if(tempLabels[tI].find("< p_{T,#gamma} <") != std::string::npos && pI == 1){
+	    tempLabels[tI].replace(0, tempLabels[tI].find("<")+1, "");
+	    tempLabels[tI].replace(tempLabels[tI].find("<"), tempLabels[tI].size(), "");
+
+	    tempLabels[tI] = prettyString(gammaPtBins[gI], 1, false) + " <" + tempLabels[tI] + "< " + prettyString(gammaPtBins[gI+1], 1, false);
+	  }
+
+	  
+	  label_p->DrawLatex(jetVarLabelXGlobal, jetVarLabelYGlobal - pos*0.077*0.55/topPanelFrac, tempLabels[tI].c_str());
 	  ++pos;
 	}
       
@@ -1334,8 +1390,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	
 	pos = 0;
 	for(unsigned int tI = 0; tI < tempLabels.size(); ++tI){
-	  if(tempLabels[tI].find("jet") != std::string::npos) continue;
-	  if(tempLabels[tI].find("Jet") != std::string::npos) continue;
+	  if(pI == 0 && tempLabels[tI].find("jet") != std::string::npos) continue;
+
 	  label_p->DrawLatex(jetVarLabelXGlobal, jetVarLabelYGlobal - pos*0.083*0.55/topPanelFrac, tempLabels[tI].c_str());
 	  
 	  ++pos;

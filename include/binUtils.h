@@ -89,7 +89,8 @@ inline void binWidthAndSelfNorm(TH1* inHist_p)
   return;
 }
 
-void fineHistToCoarseHist(TH2F* fineHist_p, TH2F* coarseHist_p)
+template <typename T>
+void fineHistToCoarseHist(T* fineHist_p, T* coarseHist_p)
 {
   //Initialize coarse histogram to 0                                                                  
   for(Int_t bIX = 0; bIX < coarseHist_p->GetXaxis()->GetNbins(); ++bIX){
@@ -212,7 +213,8 @@ bool checkMinBinWidth(std::vector<float> bins, float minBinWidth)
   return allBinsGood;
 }
 
-bool checkHistContainsBins(std::vector<float> bins, TH2F* hist_p, float deltaValue, bool isYAxis)
+template <typename T>
+bool checkHistContainsBins(std::vector<float> bins, T* hist_p, float deltaValue, bool isYAxis)
 {
   bool allBinsFound = true;
   std::string xyStr = "X";
@@ -311,7 +313,8 @@ bool checkHistContainsBins(std::vector<float> bins, TH1F* hist_p, float deltaVal
 }
 
 
-int hist1BinToHist2(TH2F* inHist_p, bool isX, Int_t inBinPos, Float_t deltaVal, TH1F* outHist_p)
+template <typename T>
+int hist1BinToHist2(T* inHist_p, bool isX, Int_t inBinPos, Float_t deltaVal, TH1F* outHist_p)
 {
   int binPos = -1;
 
