@@ -43,7 +43,8 @@ mixJtDRR4=(0.8)
 
 dPhi=("pi/2")
 #multiJtDPhi=("pi/2" "7pi/8")
-multiJtDPhi=("7pi/8")
+#multiJtDPhi=("7pi/8")
+multiJtDPhi=("pi/2")
 
 for i in ${rs[@]}
 do

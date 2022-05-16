@@ -124,8 +124,8 @@ bool readBins(TEnv* config_p, std::string varStr, Int_t nMaxBins, Int_t* nBins, 
   if(doAbs != nullptr) (*doAbs) = (bool)config_p->GetValue((varStr + "BINSDOABS").c_str(), 0);
 
   if(lowReco != nullptr && highReco != nullptr){
-    const int defaultVal = -1000;
-    const int defaultValTest = -999;
+    const float defaultVal = -1000.0;
+    const float defaultValTest = -999.0;
 
     (*lowReco) = config_p->GetValue((varStr + "BINSLOWRECO").c_str(), defaultVal);
     (*highReco) = config_p->GetValue((varStr + "BINSHIGHRECO").c_str(), defaultVal);
@@ -288,6 +288,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 					      "XJBINSHIGH",
 					      "XJBINSDOCUSTOM",
 					      "XJBINSCUSTOM",
+					      "XJBINSLOWRECO",
+					      "XJBINSHIGHRECO",
 					      "NAJBINS",
 					      "AJBINSLOW",
 					      "AJBINSHIGH",
@@ -603,7 +605,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   Double_t gammaPtBins[nMaxPtBins+1], gammaPtFineBins[nMaxPtFineBins+1], jtPtBins[nMaxPtBins+1], jtPtFineBins[nMaxPtFineBins+1], xjBins[nMaxPtBins+1], xjFineBins[nMaxPtFineBins+1], dPhiBins[nMaxPtBins+1], dPhiFineBins[nMaxPtFineBins+1], ajBins[nMaxPtBins+1], ajFineBins[nMaxPtFineBins+1], drBins[nMaxPtBins+1], drFineBins[nMaxPtFineBins+1];
   std::string gammaPtBinsStrForConfig, gammaPtFineBinsStrForConfig, jtPtBinsStrForConfig, jtPtFineBinsStrForConfig, xjBinsStrForConfig, xjFineBinsStrForConfig, dPhiBinsStrForConfig, dPhiFineBinsStrForConfig, ajBinsStrForConfig, ajFineBinsStrForConfig, drBinsStrForConfig, drFineBinsStrForConfig;
 
-  Float_t gammaPtBinsLowReco, gammaPtBinsHighReco, jtPtBinsLowReco, jtPtBinsHighReco;
+  Float_t gammaPtBinsLowReco, gammaPtBinsHighReco, jtPtBinsLowReco, jtPtBinsHighReco, xjBinsLowReco, xjBinsHighReco;
 
   readBins(config_p, "GAMMAPT", nMaxPtBins, &nGammaPtBins, &gammaPtBinsLow, &gammaPtBinsHigh, &gammaPtBinsDoLog, &gammaPtBinsDoCustom, nullptr, gammaPtBins, &gammaPtBinsStrForConfig, &gammaPtBinsLowReco, &gammaPtBinsHighReco);
   readBins(config_p, "GAMMAPTFINE", nMaxPtFineBins, &nGammaPtFineBins, &gammaPtFineBinsLow, &gammaPtFineBinsHigh, &gammaPtFineBinsDoLog, &gammaPtFineBinsDoCustom, nullptr, gammaPtFineBins, &gammaPtFineBinsStrForConfig);
@@ -611,7 +613,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   readBins(config_p, "JTPT", nMaxPtBins, &nJtPtBins, &jtPtBinsLow, &jtPtBinsHigh, &jtPtBinsDoLog, &jtPtBinsDoCustom, nullptr, jtPtBins, &jtPtBinsStrForConfig, &jtPtBinsLowReco, &jtPtBinsHighReco);
   readBins(config_p, "JTPTFINE", nMaxPtFineBins, &nJtPtFineBins, &jtPtFineBinsLow, &jtPtFineBinsHigh, &jtPtFineBinsDoLog, &jtPtFineBinsDoCustom, nullptr, jtPtFineBins, &jtPtFineBinsStrForConfig);
 
-  readBins(config_p, "XJ", nMaxPtBins, &nXJBins, &xjBinsLow, &xjBinsHigh, &xjBinsDoLog, &xjBinsDoCustom, nullptr, xjBins, &xjBinsStrForConfig);
+  readBins(config_p, "XJ", nMaxPtBins, &nXJBins, &xjBinsLow, &xjBinsHigh, &xjBinsDoLog, &xjBinsDoCustom, nullptr, xjBins, &xjBinsStrForConfig, &xjBinsLowReco, &xjBinsHighReco);
   readBins(config_p, "XJFINE", nMaxPtFineBins, &nXJFineBins, &xjFineBinsLow, &xjFineBinsHigh, &xjFineBinsDoLog, &xjFineBinsDoCustom, nullptr, xjFineBins, &xjFineBinsStrForConfig);
 
    readBins(config_p, "DPHI", nMaxPtBins, &nDPhiBins, &dPhiBinsLow, &dPhiBinsHigh, &dPhiBinsDoLog, &dPhiBinsDoCustom, nullptr, dPhiBins, &dPhiBinsStrForConfig);
@@ -1079,6 +1081,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
   Float_t truthGammaPt_;
   Float_t truthGammaPhi_;
+  Float_t truthGammaEta_;
 
   Int_t nRecoJt_;
   Float_t recoJtPt_[nMaxJets][nJetSysAndNom];
@@ -1094,7 +1097,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   Float_t truthJtUnmatchedPhi_[nMaxJets];
   Float_t truthJtUnmatchedEta_[nMaxJets];
 
-  Float_t unfoldWeight_;
+  Double_t unfoldWeight_;
   Float_t unfoldCent_;
   
   TTree* unfoldTree_p = nullptr;
@@ -1110,8 +1113,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
     unfoldTree_p->Branch("recoGammaPt", &recoGammaPt_, "recoGammaPt/F"); 
     unfoldTree_p->Branch("recoGammaPhi", &recoGammaPhi_, "recoGammaPhi/F"); 
+    unfoldTree_p->Branch("recoGammaEta", &recoGammaEta_, "recoGammaEta/F"); 
     unfoldTree_p->Branch("truthGammaPt", &truthGammaPt_, "truthGammaPt/F"); 
     unfoldTree_p->Branch("truthGammaPhi", &truthGammaPhi_, "truthGammaPhi/F"); 
+    unfoldTree_p->Branch("truthGammaEta", &truthGammaEta_, "truthGammaEta/F"); 
 
     unfoldTree_p->Branch("nRecoJt", &nRecoJt_, "nRecoJt/I");     
     unfoldTree_p->Branch("recoJtPt", recoJtPt_, ("recoJtPt[nRecoJt][" + std::to_string(nJetSysAndNom) + "]/F").c_str()); 
@@ -1127,7 +1132,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
     unfoldTree_p->Branch("truthJtUnmatchedPhi", truthJtUnmatchedPhi_, "truthJtUnmatchedPhi[nTruthJtUnmatched]/F"); 
     unfoldTree_p->Branch("truthJtUnmatchedEta", truthJtUnmatchedEta_, "truthJtUnmatchedEta[nTruthJtUnmatched]/F"); 
 
-    unfoldTree_p->Branch("unfoldWeight", &unfoldWeight_, "unfoldWeight/F"); 
+    unfoldTree_p->Branch("unfoldWeight", &unfoldWeight_, "unfoldWeight/D"); 
     unfoldTree_p->Branch("unfoldCent", &unfoldCent_, "unfoldCent/F"); 
   }
   
@@ -2507,12 +2512,15 @@ int gdjNTupleToHist(std::string inConfigFileName)
       if(keepResponseTree){
 	recoGammaPt_ = -999;//photon_pt_p->at(phoPos);
 	recoGammaPhi_ = -999;//photon_phi_p->at(phoPos);
+	recoGammaEta_ = -999;//photon_phi_p->at(phoPos);
 	truthGammaPt_ = truthPhotonPt;	
 	truthGammaPhi_ = truthPhotonPhi;
+	truthGammaEta_ = truthPhotonEta;
 
 	if(truthPhoRecoPos >= 0 && truthPhoHasGoodReco && isSignal){	  	  
 	  recoGammaPt_ = photon_pt_p->at(truthPhoRecoPos);
 	  recoGammaPhi_ = photon_phi_p->at(truthPhoRecoPos);
+	  recoGammaEta_ = photon_eta_p->at(truthPhoRecoPos);
 	}
       
 	unfoldWeight_ = fullWeight;
@@ -2619,7 +2627,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  }
 	  else if(isGoodRecoSideband) fillTH1(photonPtVCent_RAWSideband_p[centPos][barrelEC], photon_pt_p->at(pI), fullWeight);
 	}
-
+      
 	//We will keep collections of jets passing cuts for multijet observable construction
 	std::vector<TLorentzVector> goodRecoJets;
 	std::vector<int> goodRecoJetsPos, goodRecoJetsTruthPos;
@@ -2643,30 +2651,94 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    if(aktR_truth_jet_pt_p->at(truthPos) < jtPtBinsLow || aktR_truth_jet_pt_p->at(truthPos) > jtPtBinsHigh) truthPos = -1;
 	    else isGoodTruthJet = true;
 
+	    //Add eta cut
 	    if(isGoodTruthJet){
-	      Float_t dPhiTruthGammaJet = TMath::Abs(getDPHI(aktR_truth_jet_phi_p->at(truthPos), truthPhotonPhi));
-	      if(dPhiTruthGammaJet < gammaJtDPhiCut){
+	      if(aktR_truth_jet_eta_p->at(truthPos) < jtEtaBinsLow || aktR_truth_jet_eta_p->at(truthPos) > jtEtaBinsHigh){
+		truthPos = -1;
+		isGoodTruthJet = false;
+	      }
+	    }
+
+	    //Add dR Cut
+	    if(isGoodTruthJet){
+	      Float_t dRTruthGammaJet = getDR(aktR_truth_jet_eta_p->at(truthPos), aktR_truth_jet_phi_p->at(truthPos), truthPhotonEta, truthPhotonPhi);
+
+	      if(dRTruthGammaJet < gammaExclusionDR){
 		isGoodTruthJet = false;
 		truthPos = -1;
 	      }
 	    }
 	  }
        
+	  //Good reco jet requirements - pass eta cuts, pass pt cuts, pass dr cut and (later) pass dphi w/ gamma cut
+	  
 	  bool isGoodRecoJet = jtPtToUse >= jtPtBinsLowReco && jtPtToUse < jtPtBinsHighReco;
+	  isGoodRecoJet = isGoodRecoJet && jtEtaToUse >= jtEtaBinsLow && jtEtaToUse <= jtEtaBinsHigh;
 	  Float_t dPhiRecoGammaJet = TMath::Abs(getDPHI(jtPhiToUse, photon_phi_p->at(pI)));
 	  Float_t dRRecoGammaJet = getDR(jtEtaToUse, jtPhiToUse, photon_eta_p->at(pI), photon_phi_p->at(pI));
-	  
+       	  
+	  //First do dphi - just copy the shit below
 	  //Exclude any jet around the photon candidate
 	  if(dRRecoGammaJet < gammaExclusionDR) isGoodRecoJet = false;
-	  
+	  if(isGoodRecoJet){	    
+	    for(auto const barrelEC : barrelECFill){
+	      if(isGoodRecoSignal){
+		photonPtJtDPhiVCent_MixMachine_p[centPos][barrelEC]->FillXYRaw(dPhiRecoGammaJet, photon_pt_p->at(pI), fullWeight);
+		
+		if(isTruthPhotonMatched && isGoodTruthJet){
+		  photonPtJtDPhiVCent_MixMachine_p[centPos][barrelEC]->FillXYRawWithTruthMatch(dPhiRecoGammaJet, photon_pt_p->at(pI), fullWeight);
+		}
+		else{
+		  photonPtJtDPhiVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(dPhiRecoGammaJet, photon_pt_p->at(pI), fullWeight);		  
+		}		
+	      }//end if(isGoodRecoSignal)
+	      else if(isGoodRecoSideband){
+		photonPtJtDPhiVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYRaw(dPhiRecoGammaJet, photon_pt_p->at(pI), fullWeight);
+	      }
+	    }//End reco barrelECFill
 
+	    if(isMC){
+	      if(isTruthPhotonMatched && isGoodTruthJet){
+		Float_t gammaJtDPhiTruth = TMath::Abs(getDPHI(truthPhotonPhi, aktR_truth_jet_phi_p->at(truthPos)));
+		for(auto const barrelECTruth : barrelECFillTruth){
+		  if(isGoodRecoSignal){
+		    photonPtJtDPhiVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthWithRecoMatch(gammaJtDPhiTruth, truthPhotonPt, fullWeight);
+		  }
 
+		  photonPtJtDPhiVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(gammaJtDPhiTruth, truthPhotonPt, fullWeight);
+		}
+	      }//End barrelECFfillTruth loop for truth w/ good reco match
+	    }//End if(isMC)
+	  }//end if(isGoodRecoJet)
+
+	  if(isMC && isGoodTruthJet){
+	    //DPhi truth Cut only
+	    Float_t dPhiTruthGammaJet = TMath::Abs(getDPHI(aktR_truth_jet_phi_p->at(truthPos), truthPhotonPhi));
+	    
+	    if(dPhiTruthGammaJet < gammaJtDPhiCut){
+	      isGoodTruthJet = false;
+	      truthPos = -1;
+	    }	  
+	  }
+	
 	  //Now construct non-dphi based observables by enforcing the dPhi gamma-jet cut
 	  if(dPhiRecoGammaJet < gammaJtDPhiCut) isGoodRecoJet = false;
-
+	
 	  if(isGoodRecoJet){
 	    Float_t xJValue = jtPtToUse / photon_pt_p->at(pI);
+	    Bool_t xJValueGood = xJValue >= xjBinsLowReco && xJValue < xjBinsHighReco;
+	    Float_t xJValueTruth = -999;
+	    Bool_t xJValueTruthGood = false;
 
+	    if(isGoodTruthJet && isTruthPhotonMatched){
+	      xJValueTruth = aktR_truth_jet_pt_p->at(truthPos) / truthPhotonPt;
+	      xJValueTruthGood = xJValueTruth > xjBinsLow && xJValueTruth < xjBinsHigh;
+	    }
+	    /*	
+	    std::cout << "JtPt, JtXJ: " << jtPtToUse << ", " << xJValue << std::endl;
+	    std::cout << " xJValueGood: " << xJValueGood << std::endl;
+	    std::cout << " xjBinsLowReco, xjBinsHighReco: " << xjBinsLowReco << "-" << xjBinsHighReco << std::endl;
+	    */
 	    TLorentzVector tL;
 	    tL.SetPtEtaPhiM(jtPtToUse, jtEtaToUse, jtPhiToUse, 0.0);
 	    goodRecoJets.push_back(tL);
@@ -2676,29 +2748,36 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    for(auto const barrelEC : barrelECFill){
 	      if(isGoodRecoSignal){
 		photonPtJtPtVCent_MixMachine_p[centPos][barrelEC]->FillXYRaw(jtPtToUse, photon_pt_p->at(pI), fullWeight);
-		photonPtJtXJVCent_MixMachine_p[centPos][barrelEC]->FillXYRaw(xJValue, photon_pt_p->at(pI), fullWeight);
-
+		if(xJValueGood){
+		  photonPtJtXJVCent_MixMachine_p[centPos][barrelEC]->FillXYRaw(xJValue, photon_pt_p->at(pI), fullWeight);
+		  //		  std::cout << " Is filling xj hist!" << std::endl;
+		}
+		
 		if(isTruthPhotonMatched && isGoodTruthJet){
 		  photonPtJtPtVCent_MixMachine_p[centPos][barrelEC]->FillXYRawWithTruthMatch(jtPtToUse, photon_pt_p->at(pI), fullWeight);
-		  photonPtJtXJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawWithTruthMatch(xJValue, photon_pt_p->at(pI), fullWeight);
+		  if(xJValueGood){
+		    if(xJValueTruthGood) photonPtJtXJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawWithTruthMatch(xJValue, photon_pt_p->at(pI), fullWeight);
+		    else photonPtJtXJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(xJValue, photon_pt_p->at(pI), fullWeight);
+		  }
 		}
 		else{
 		  photonPtJtPtVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(jtPtToUse, photon_pt_p->at(pI), fullWeight);
-		  photonPtJtXJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(xJValue, photon_pt_p->at(pI), fullWeight);
+		  if(xJValueGood) photonPtJtXJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(xJValue, photon_pt_p->at(pI), fullWeight);
 		}
 	      }
 	      else if(isGoodRecoSideband){
 		photonPtJtPtVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYRaw(jtPtToUse, photon_pt_p->at(pI), fullWeight);
-		photonPtJtXJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYRaw(xJValue, photon_pt_p->at(pI), fullWeight);
+		if(xJValueGood) photonPtJtXJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYRaw(xJValue, photon_pt_p->at(pI), fullWeight);
 	      }
 	    }//End barrelECFill loop for reco
-	  
+	  	  
 	    if(isMC){
 	      if(isTruthPhotonMatched && isGoodTruthJet){
 		for(auto const barrelECTruth : barrelECFillTruth){
 		  if(isGoodRecoSignal){
 		    photonPtJtPtVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthWithRecoMatch(aktR_truth_jet_pt_p->at(truthPos), truthPhotonPt, fullWeight);
-		    photonPtJtXJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthWithRecoMatch(aktR_truth_jet_pt_p->at(truthPos)/truthPhotonPt, truthPhotonPt, fullWeight);
+		    
+		    if(xJValueGood && xJValueTruthGood) photonPtJtXJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthWithRecoMatch(xJValueTruth, truthPhotonPt, fullWeight);
 		  }
 
 		  /*
@@ -2708,19 +2787,19 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		  */
 
 		  photonPtJtPtVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(aktR_truth_jet_pt_p->at(truthPos), truthPhotonPt, fullWeight);
-		  photonPtJtXJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(aktR_truth_jet_pt_p->at(truthPos)/truthPhotonPt, truthPhotonPt, fullWeight);
+
+		  if(xJValueTruthGood) photonPtJtXJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(xJValueTruth, truthPhotonPt, fullWeight);
 		}
-	      }
-	    }//End barrelECFfillTruth loop for truth w/ good reco match
+	      }//End barrelECFfillTruth loop for truth w/ good reco match
+	    }//End if(isMC)
 	  }
 	}//End reco jet loop
 
-	
 	//Now we start another loop but one for multijet events
 	for(unsigned int gI = 0; gI < goodRecoJets.size(); ++gI){
 	  TLorentzVector goodRecoJet1 = goodRecoJets[gI];
 	  int truthPos1 = goodRecoJetsTruthPos[gI];
-	  bool isTruthMatched1 = truthPos1 >= 0;
+	  bool isTruthMatched1 = truthPos1 >= 0;	  
 
 	  for(unsigned int gI2 = gI+1; gI2 < goodRecoJets.size(); ++gI2){
 	    TLorentzVector goodRecoJet2 = goodRecoJets[gI2];
@@ -2728,31 +2807,76 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    bool isTruthMatched2 = truthPos2 >= 0;
 
 	    bool isTruthMatched = isTruthMatched1 && isTruthMatched2;
-		  
+
+	    Float_t aJJValue = TMath::Abs(goodRecoJet1.Pt() - goodRecoJet2.Pt())/photon_pt_p->at(pI);
 	    goodRecoJet2 += goodRecoJet1;
 
-	    //Does the multijet pass multijtdphi cut?
-	    Float_t multiJtDPhi = TMath::Abs(getDPHI(photon_phi_p->at(pI), goodRecoJet2.Phi()));
+	    //Does the multijet pass multijtdphi cut at truth level?	    
+	    Float_t multiJtDPhiTruth = -999.0;
+	    Float_t aJJValueTruth = -999.0;
+	    Float_t xJJValueTruth = -999.0;
+
+	    bool isTruthMatchedDPhi = isTruthMatched;
+	    Bool_t xJJValueTruthGood = false;
+
+	    if(isTruthMatchedDPhi){
+	      TLorentzVector goodTruthJet1;
+	      goodTruthJet1.SetPtEtaPhiM(aktR_truth_jet_pt_p->at(truthPos1), aktR_truth_jet_eta_p->at(truthPos1), aktR_truth_jet_phi_p->at(truthPos1), 0.0);
+
+	      TLorentzVector goodTruthJet2;
+	      goodTruthJet2.SetPtEtaPhiM(aktR_truth_jet_pt_p->at(truthPos2), aktR_truth_jet_eta_p->at(truthPos2), aktR_truth_jet_phi_p->at(truthPos2), 0.0);
+
+	      aJJValueTruth = TMath::Abs(goodTruthJet1.Pt() - goodTruthJet2.Pt())/truthPhotonPt;
+
+	      goodTruthJet2 += goodTruthJet1;
+
+	      xJJValueTruth = goodTruthJet2.Pt()/truthPhotonPt;
+	      xJJValueTruthGood = xJJValueTruth >= xjBinsLow && xJJValueTruth < xjBinsHigh;
+
+	      multiJtDPhiTruth = TMath::Abs(getDPHI(truthPhotonPhi, goodTruthJet2.Phi()));
+	      if(multiJtDPhiTruth < gammaMultiJtDPhiCut) isTruthMatchedDPhi = false;	     
+	    }
+
+	    Float_t multiJtDPhiReco = TMath::Abs(getDPHI(photon_phi_p->at(pI), goodRecoJet2.Phi()));
 	    Float_t xJJValue = goodRecoJet2.Pt() / photon_pt_p->at(pI);
+	    Bool_t xJJValueGood = xJJValue >= xjBinsLowReco && xJJValue < xjBinsHighReco;
 
             for(auto const barrelEC : barrelECFill){	    
-
-	      if(multiJtDPhi < gammaMultiJtDPhiCut) continue;	    
 	      if(isGoodRecoSignal){
-		photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRaw(xJJValue, photon_pt_p->at(pI), fullWeight);
+		photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRaw(multiJtDPhiReco, photon_pt_p->at(pI), fullWeight);
+
+		if(isTruthPhotonMatched && isTruthMatched) photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawWithTruthMatch(multiJtDPhiReco, photon_pt_p->at(pI), fullWeight);
+		else photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(multiJtDPhiReco, photon_pt_p->at(pI), fullWeight);
 		
-		if(isTruthPhotonMatched && isTruthMatched){
-		  photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawWithTruthMatch(xJJValue, photon_pt_p->at(pI), fullWeight);		  
+	      }
+	      else if(isGoodRecoSideband) photonPtJtDPhiJJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYRaw(multiJtDPhiReco, photon_pt_p->at(pI), fullWeight);
+
+	      //If it fails the reco cut we do not fill
+ 	      if(multiJtDPhiReco < gammaMultiJtDPhiCut) continue;	    
+
+	      if(isGoodRecoSignal){
+		//		std::cout << "Fill at Entry, evt: " << entry << ", " << eventNumber << std::endl;
+
+		if(isTruthMatchedDPhi && isTruthPhotonMatched && xJJValueGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRaw(xJJValue, photon_pt_p->at(pI), fullWeight);
+		photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRaw(aJJValue, photon_pt_p->at(pI), fullWeight);
+		
+		if(isTruthPhotonMatched && isTruthMatchedDPhi && xJJValueTruthGood){
+		  if(xJJValueGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawWithTruthMatch(xJJValue, photon_pt_p->at(pI), fullWeight);		  
+		  photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawWithTruthMatch(aJJValue, photon_pt_p->at(pI), fullWeight);		  
 		}
 		else{
-		  photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(xJJValue, photon_pt_p->at(pI), fullWeight);		  
+		  if(xJJValueGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(xJJValue, photon_pt_p->at(pI), fullWeight);
+		  photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(aJJValue, photon_pt_p->at(pI), fullWeight);		  
 		}
 	      }//isGoodRecoSignal if statement ends
-	      else if(isGoodRecoSideband) photonPtJtXJJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYRaw(xJJValue, photon_pt_p->at(pI), fullWeight);
+	      else if(isGoodRecoSideband){
+		if(xJJValueGood) photonPtJtXJJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYRaw(xJJValue, photon_pt_p->at(pI), fullWeight);
+		photonPtJtAJJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYRaw(aJJValue, photon_pt_p->at(pI), fullWeight);
+	      }
 	    }//End barrelECFill
-
+	  
 	    if(isMC){
-	      if(isTruthPhotonMatched && isTruthMatched){
+ 	      if(isTruthPhotonMatched && isTruthMatched){
 		TLorentzVector truthJet1;
 		truthJet1.SetPtEtaPhiM(aktR_truth_jet_pt_p->at(truthPos1), aktR_truth_jet_eta_p->at(truthPos1), aktR_truth_jet_phi_p->at(truthPos1), 0.0);
 
@@ -2760,47 +2884,136 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		truthJet2.SetPtEtaPhiM(aktR_truth_jet_pt_p->at(truthPos2), aktR_truth_jet_eta_p->at(truthPos2), aktR_truth_jet_phi_p->at(truthPos2), 0.0);
 
 		truthJet2 += truthJet1;
-		
+
+		Float_t multiJtDPhiTruth = TMath::Abs(getDPHI(truthJet2.Phi(), truthPhotonPhi));
+		Float_t xJJValueTruth = truthJet2.Pt()/truthPhotonPt;
+		Bool_t xJJValueTruthGood = xJJValueTruth >= xjBinsLowReco && xJJValueTruth < xjBinsHighReco;
 
 		for(auto const barrelECTruth : barrelECFillTruth){
-		  if(isGoodRecoSignal) photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYRaw(xJJValue, photon_pt_p->at(pI), fullWeight);
+		  if(isGoodRecoSignal) photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthWithRecoMatch(multiJtDPhiTruth, truthPhotonPt, fullWeight);
 
+		  photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(multiJtDPhiTruth, truthPhotonPt, fullWeight);		  
+		}
+
+
+		if(multiJtDPhiReco > gammaMultiJtDPhiCut && isTruthMatchedDPhi){
+		  for(auto const barrelECTruth : barrelECFillTruth){
+		    if(isGoodRecoSignal){
+		      if(xJJValueTruthGood && xJJValueGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthWithRecoMatch(xJJValueTruth, truthPhotonPt, fullWeight);
+		      photonPtJtAJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthWithRecoMatch(aJJValueTruth, truthPhotonPt, fullWeight);
+		    }
+
+		    /*		    
+		    std::cout << "Fill at Entry, evt: " << entry << ", " << eventNumber << std::endl;
+		    std::cout << " Truth photon pt eta phi: " << truthPhotonPt << ", " << truthPhotonEta << ", " << truthPhotonPhi << std::endl;
+		    std::cout << " Reco photon pt eta phi: " << photon_pt_p->at(truthPhoRecoPos) << ", " << photon_eta_p->at(truthPhoRecoPos) << ", " << photon_phi_p->at(truthPhoRecoPos) << std::endl;
+		    std::cout << " Truth Jet 1 pt eta phi: " << truthJet1.Pt() << ", " << truthJet1.Eta() << ", " << truthJet1.Phi() << std::endl;
+		    std::cout << " Truth Jet 2 pt eta phi: " << truthJet2.Pt() << ", " << truthJet2.Eta() << ", " << truthJet2.Phi() << std::endl;
+		    */
+
+		    if(xJJValueTruthGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(xJJValueTruth, truthPhotonPt, fullWeight);
+		    photonPtJtAJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(aJJValueTruth, truthPhotonPt, fullWeight);
+		  }
 		}
 	      }
-	    }//End barrelECFillTruth loop for truth w/ good reco match
-	    
+	    }//End barrelECFillTruth loop for truth w/ good reco match 
 	  }
 	}//End multijet loop
-
+      
       }//End fills for pure photon good reco   
     }//End Photon loop
 
 
-          
-    if(isMC){     
+            
+    if(isMC){
+      std::vector<TLorentzVector> goodTruthJets;
+      std::vector<int> goodTruthJetsPos, goodTruthJetsRecoPos;
+
       for(unsigned int jI = 0; jI < aktR_truth_jet_pt_p->size(); ++jI){	  
 	//Continue if the Truth jet is no good
+	Float_t dRTruthGammaJet = TMath::Abs(getDR(aktR_truth_jet_eta_p->at(jI), aktR_truth_jet_phi_p->at(jI), truthPhotonEta, truthPhotonPhi));
 	bool isGoodTruthJet = aktR_truth_jet_pt_p->at(jI) >= jtPtBinsLow && aktR_truth_jet_pt_p->at(jI) < jtPtBinsHigh;
-	if(isGoodTruthJet){
-	  Float_t dPhiTruthGammaJet = TMath::Abs(getDPHI(aktR_truth_jet_phi_p->at(jI), truthPhotonPhi));
-	  if(dPhiTruthGammaJet < gammaJtDPhiCut) isGoodTruthJet = false;
-	}
-	if(!isGoodTruthJet) continue;  
-	
+	isGoodTruthJet = isGoodTruthJet && aktR_truth_jet_eta_p->at(jI) >= jtEtaBinsLow && aktR_truth_jet_eta_p->at(jI) < jtEtaBinsHigh;
+	isGoodTruthJet = isGoodTruthJet && dRTruthGammaJet >= gammaExclusionDR;
+	Float_t dPhiTruthGammaJet = TMath::Abs(getDPHI(aktR_truth_jet_phi_p->at(jI), truthPhotonPhi));
+
 	//Determine if there is a matched reco jet
 	bool isGoodRecoJet = false;
 	Float_t recoPtToUse = -999.0;
 	Float_t recoPhiToUse = -999.0;
-	Float_t dPhiRecoGammaJet = -999;
-	if(aktR_truth_jet_recopos_p->at(jI) >= 0){
-	  recoPtToUse = aktRhi_etajes_jet_pt_p->at(aktR_truth_jet_recopos_p->at(jI));
-	  recoPhiToUse = aktRhi_etajes_jet_phi_p->at(aktR_truth_jet_recopos_p->at(jI));	  	  
-	  
+	Float_t dRRecoGammaJet = -999.0;
+	Float_t dPhiRecoGammaJet = -999.0;
+	Int_t recoPos = aktR_truth_jet_recopos_p->at(jI);
+	if(recoPos >= 0){
+	  recoPtToUse = aktRhi_etajes_jet_pt_p->at(recoPos);
+	  recoPhiToUse = aktRhi_etajes_jet_phi_p->at(recoPos);	  	  
+	  Float_t recoEtaToUse = aktRhi_etajes_jet_eta_p->at(recoPos);
+
+	  //[t cit
 	  if(recoPtToUse >= jtPtBinsLowReco && recoPtToUse < jtPtBinsHighReco) isGoodRecoJet = true;
+	  else recoPos = -1;
+
+	  //Eta cut
+	  if(isGoodRecoJet){
+	    if(recoEtaToUse < jtEtaBinsLow || recoEtaToUse > jtEtaBinsHigh){
+	      isGoodRecoJet = false;
+	      recoPos = -1;
+	    }
+	  }
 	  
-	  if(truthPhoRecoPos >= 0) dPhiRecoGammaJet = TMath::Abs(getDPHI(recoPhiToUse, photon_phi_p->at(truthPhoRecoPos)));
- 	  if(dPhiRecoGammaJet < gammaJtDPhiCut) isGoodRecoJet = false;
+	  if(truthPhoRecoPos >= 0){
+	    dPhiRecoGammaJet = TMath::Abs(getDPHI(recoPhiToUse, photon_phi_p->at(truthPhoRecoPos)));
+	    dRRecoGammaJet = getDR(recoEtaToUse, recoPhiToUse, photon_eta_p->at(truthPhoRecoPos), photon_phi_p->at(truthPhoRecoPos));
+	  }
+
+ 	  if(dRRecoGammaJet < gammaExclusionDR){
+	    isGoodRecoJet = false;
+	    recoPos = -1;
+	  }
 	}
+	
+	if(!isGoodTruthJet) continue;  
+
+	//With all cuts except dphi implemented, do dphi plotting	
+	if(!isGoodRecoJet || !truthPhoHasGoodReco){
+	  for(auto const barrelECTruth : barrelECFillTruth){
+	    photonPtJtDPhiVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthNoRecoMatch(dPhiTruthGammaJet, truthPhotonPt, fullWeight);
+	    
+	    photonPtJtDPhiVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(dPhiTruthGammaJet, truthPhotonPt, fullWeight);	   
+	  }//end barrelECTruth for loop
+	}//end if(!isGoodRecoJet || !truthPhoHasGoodReco) 
+
+	
+	//Now add dphi cutting
+	if(isGoodTruthJet){
+	  if(dPhiTruthGammaJet < gammaJtDPhiCut) isGoodTruthJet = false;
+	}
+	if(!isGoodTruthJet) continue;  
+
+
+	if(aktR_truth_jet_recopos_p->at(jI) >= 0){
+ 	  if(dPhiRecoGammaJet < gammaJtDPhiCut){
+	    isGoodRecoJet = false;
+	    recoPos = -1;
+	  }
+	}
+
+	Float_t xJValue = -999.0;
+	Bool_t xJValueGood = false;
+	Float_t xJValueTruth = -999.0;
+	Bool_t xJValueTruthGood = false;
+     
+	if(isGoodRecoJet && truthPhoRecoPos >= 0){
+	  xJValue = recoPtToUse/photon_phi_p->at(truthPhoRecoPos);
+	  xJValueGood = xJValue >= xjBinsLowReco && xJValue < xjBinsHighReco;
+	}
+
+	//Populate the good Truth jets vector
+	TLorentzVector tL;
+	tL.SetPtEtaPhiM(aktR_truth_jet_pt_p->at(jI), aktR_truth_jet_eta_p->at(jI), aktR_truth_jet_phi_p->at(jI), 0.0);
+	goodTruthJets.push_back(tL);
+	goodTruthJetsPos.push_back(jI);
+	goodTruthJetsRecoPos.push_back(recoPos);
        
 	//bools - good reco signal pho, is the match of the truth photon
 	//	bool doFill = !isGoodRecoJet && isTruthPhotonMatched;
@@ -2809,21 +3022,71 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  for(auto const barrelECTruth : barrelECFillTruth){
 	    photonPtJtPtVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthNoRecoMatch(aktR_truth_jet_pt_p->at(jI), truthPhotonPt, fullWeight);
 	    photonPtJtXJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthNoRecoMatch(aktR_truth_jet_pt_p->at(jI)/truthPhotonPt, truthPhotonPt, fullWeight);
-
-	    /*	    
-	    std::cout << "FILLING XYTRUTH, EVENT " << entry << ", L" << __LINE__ << std::endl;
-	    std::cout << " goodRecoJet, truthPhoHsGoodReco: " << isGoodRecoJet << ", " << truthPhoHasGoodReco << std::endl;
-	    std::cout << " recoPt, recoPhi: " << recoPtToUse << ", " << recoPhiToUse << std::endl;
-	    std::cout << " Truth Jet PT: " << aktR_truth_jet_pt_p->at(jI) << std::endl;
-	    std::cout << " Truth Gamma PT: " << truthPhotonPt << std::endl;
-	    */
 	    
 	    photonPtJtPtVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(aktR_truth_jet_pt_p->at(jI), truthPhotonPt, fullWeight);	   
+
 	    photonPtJtXJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(aktR_truth_jet_pt_p->at(jI)/truthPhotonPt, truthPhotonPt, fullWeight);	   
+	  }//end barrelECTruth for loop
+	}//end if(!isGoodRecoJet || !truthPhoHasGoodReco) 
+      }
+
+      //Construct multijet truth w/o reco fills
+      for(unsigned int jI = 0; jI < goodTruthJets.size(); ++jI){
+	TLorentzVector goodTruthJet1 = goodTruthJets[jI];
+	int recoPos1 = goodTruthJetsRecoPos[jI];
+	bool isRecoMatched1 = recoPos1 >= 0;
+
+	for(unsigned int jI2 = jI+1; jI2 < goodTruthJets.size(); ++jI2){
+	  TLorentzVector goodTruthJet2 = goodTruthJets[jI2];
+	  int recoPos2 = goodTruthJetsRecoPos[jI2];
+	  bool isRecoMatched2 = recoPos2 >= 0;
+
+	  bool isRecoMatched = isRecoMatched1 && isRecoMatched2;
+
+	  Float_t aJJValue = TMath::Abs(goodTruthJet1.Pt() - goodTruthJet2.Pt()) / truthPhotonPt;
+	  goodTruthJet2 += goodTruthJet1;
+	  
+	  Float_t multiJtDPhiValue = TMath::Abs(getDPHI(truthPhotonPhi, goodTruthJet2.Phi()));
+	  Float_t xJJValue = goodTruthJet2.Pt() / truthPhotonPt;
+
+	  if(!isRecoMatched || !truthPhoHasGoodReco){
+	    for(auto const barrelECTruth : barrelECFillTruth){
+	      photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthNoRecoMatch(multiJtDPhiValue, truthPhotonPt, fullWeight);
+	      photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(multiJtDPhiValue, truthPhotonPt, fullWeight);
+	    }
+	  }
+
+	  if(multiJtDPhiValue < gammaMultiJtDPhiCut) continue; //We dont fill truth that fails this cut
+
+	  //Calc. the reco multijtdphi - if it fails cut, isRecoMatched is turned false
+	  if(isRecoMatched && truthPhoHasGoodReco){
+	    TLorentzVector goodRecoJet1;
+	    goodRecoJet1.SetPtEtaPhiM(aktRhi_etajes_jet_pt_p->at(recoPos1), aktRhi_etajes_jet_eta_p->at(recoPos1), aktRhi_etajes_jet_phi_p->at(recoPos1), 0.0);
+
+	    TLorentzVector goodRecoJet2;
+	    goodRecoJet2.SetPtEtaPhiM(aktRhi_etajes_jet_pt_p->at(recoPos2), aktRhi_etajes_jet_eta_p->at(recoPos2), aktRhi_etajes_jet_phi_p->at(recoPos2), 0.0);
+
+	    goodRecoJet2 += goodRecoJet1;
+
+	    Float_t multiJtDPhiValue = TMath::Abs(getDPHI(photon_phi_p->at(truthPhoRecoPos), goodRecoJet2.Phi())); 
+
+	    if(multiJtDPhiValue < gammaMultiJtDPhiCut) isRecoMatched = false;
+	  }
+
+	  if(!isRecoMatched || !truthPhoHasGoodReco){
+	    for(auto const barrelECTruth : barrelECFillTruth){
+
+	      photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthNoRecoMatch(xJJValue, truthPhotonPt, fullWeight);
+	      photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(xJJValue, truthPhotonPt, fullWeight);
+
+	      photonPtJtAJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthNoRecoMatch(aJJValue, truthPhotonPt, fullWeight);
+	      photonPtJtAJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(aJJValue, truthPhotonPt, fullWeight);
+	    }
 	  }
 	}
       }
-    }
+      
+    }//end if(isMC)
   }
 
   std::cout << "MISMATCH CHECK: " << mismatchCounter << "/" << nEntries << "=" << ((Float_t)mismatchCounter)*100.0/(Float_t)nEntries << std::endl;    
