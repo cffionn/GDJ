@@ -375,8 +375,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   const Float_t jetVarMaxGlobal = config_p->GetValue("JETVARMAX.GLOBAL", 1000.);
 
   
-  const Float_t jetVarRatMinGlobal = config_p->GetValue("JETVARRATMIN.GLOBAL", -1000.);
-  const Float_t jetVarRatMaxGlobal = config_p->GetValue("JETVARRATMAX.GLOBAL", 1000.);
+  const Float_t jetVarRatMinGlobal = config_p->GetValue("JETVARRATMIN.GLOBAL", -1000.0);
+  const Float_t jetVarRatMaxGlobal = config_p->GetValue("JETVARRATMAX.GLOBAL", 1000.0);
   
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
@@ -1129,9 +1129,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	
 	if(pI == 0) reco_p[gI]->GetYaxis()->SetTitle("#frac{1}{N_{#gamma}} #frac{dN_{#gamma}}{dp_{T}}");
 	else reco_p[gI]->GetYaxis()->SetTitle(("#frac{1}{N_{JJ#gamma}} #frac{dN_{J#gamma}}{d" + varNameLabel + "}").c_str());	
-	reco_p[gI]->DrawCopy("HIST E1");
 
-	std::cout << "DRAWING: " << reco_p[gI]->GetName() << std::endl;
+	reco_p[gI]->DrawCopy("HIST E1");
 	
 	if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
 	
@@ -1262,8 +1261,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	    
 	    refoldClone_p->GetYaxis()->SetNdivisions(404);
 	    
-	    refoldClone_p->SetMaximum(1.06);
-	    refoldClone_p->SetMinimum(0.94);
+	    refoldClone_p->SetMaximum(1.25);
+	    refoldClone_p->SetMinimum(0.75);
 	    
 	    refoldClone_p->DrawCopy("HIST E1 P");
 	    hasDrawn = true;
@@ -1302,8 +1301,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	    prepTH1(unfoldClone_p, titleFont, titleSize/(padSplit2), labelSize/(padSplit2), unfoldClone_p->GetMarkerColor(), unfoldClone_p->GetMarkerStyle(), unfoldClone_p->GetMarkerSize(), unfoldClone_p->GetLineWidth(), 1.2, yOffset*(padSplit2)/(1.0-padSplit1));
 	  
 	    unfoldClone_p->GetYaxis()->SetNdivisions(404);	
-	    unfoldClone_p->SetMaximum(1.06);
-	    unfoldClone_p->SetMinimum(0.94);
+	    unfoldClone_p->SetMaximum(jetVarRatMaxGlobal);
+	    unfoldClone_p->SetMinimum(jetVarRatMinGlobal);
 	    unfoldClone_p->DrawCopy("HIST E1 P");
 	  }
 	  else unfoldClone_p->DrawCopy("HIST E1 P SAME");
@@ -1335,9 +1334,13 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 
 	    unfoldClone_p->GetYaxis()->SetNdivisions(404);
 	  
-	    unfoldClone_p->SetMaximum(1.06);
-	    unfoldClone_p->SetMinimum(0.94);
+	    unfoldClone_p->SetMaximum(jetVarRatMaxGlobal);
+	    unfoldClone_p->SetMinimum(jetVarRatMinGlobal);
 	 
+	    std::string xTitle = reco_p[gI]->GetXaxis()->GetTitle();
+	    if(xTitle.find("Reco. ") != std::string::npos) xTitle.replace(xTitle.find("Reco. "), 6, "");
+	    unfoldClone_p->GetXaxis()->SetTitle(xTitle.c_str());
+
 	    unfoldClone_p->DrawCopy("HIST E1 P");
 	  
 	    hasDrawn = true;
@@ -1392,7 +1395,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	for(unsigned int tI = 0; tI < tempLabels.size(); ++tI){
 	  if(pI == 0 && tempLabels[tI].find("jet") != std::string::npos) continue;
 
-	  label_p->DrawLatex(jetVarLabelXGlobal, jetVarLabelYGlobal - pos*0.083*0.55/topPanelFrac, tempLabels[tI].c_str());
+	  label_p->DrawLatex(jetVarLabelXGlobal, jetVarLabelYGlobal - pos*0.077*0.55/topPanelFrac, tempLabels[tI].c_str());
 	  
 	  ++pos;
 	}

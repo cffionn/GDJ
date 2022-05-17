@@ -2309,6 +2309,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   //Main signal processing loop
   for(ULong64_t entry = nEntriesStart; entry < nEntries+nEntriesStart; ++entry){
     if(entry%nDiv == 0) std::cout << " Entry " << entry << "/" << nEntries+nEntriesStart << "..." << std::endl;
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
     inTree_p->GetEntry(entry);
 
     //Cut 1: z vertex
@@ -2319,6 +2320,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
     vzPassing_p->Fill(vert_z);
     ++(eventCounter[0]);
 
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+    
     //Trigger processing
     if(!isMC){
       if(!didOneFireMiss){//only check this once per input
@@ -2342,6 +2345,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
     }
     ++(eventCounter[1]);
 
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+    
     //Grab the pthat of the sample if applicable (i.e. MC)
     Float_t minPthat = -1.0;
     Float_t maxPthat = -1.0;   
@@ -2369,6 +2374,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
       }
     }
 
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+    
     //Grab the centrality position in your array of histograms for this event
     //in the case of p+p, this is always zero
     Int_t centPos = -1;
@@ -2426,6 +2433,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
       pthat_Unweighted_p->Fill(pthat);
     }
 
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+    
     //Apply pt range cut and isolation now
     //Values hardcoded, find definitions here ATL-COM-PHYS-2021-215
     Bool_t truthPhoIsGood = false;
@@ -2448,6 +2457,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
     Int_t truthPhoRecoPos = -1;
     Bool_t truthPhoHasGoodReco = false;
 
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+    
     //Clean and re-new the vector for corrected isolated
     if(photon_correctedIso_p != nullptr){
       photon_correctedIso_p->clear();
@@ -2487,7 +2498,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	}
       }
     }
-  
+
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+    
     //Check the reco is good
     if(truthPhoRecoPos >= 0){
       recoGammaPt_ = photon_pt_p->at(truthPhoRecoPos);
@@ -2500,6 +2513,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
       else if(recoGammaPt_ < gammaPtBinsLowReco) truthPhoHasGoodReco = false;    
       else if(recoGammaPt_ >= gammaPtBinsHighReco) truthPhoHasGoodReco = false;          
     }
+
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
     
     //Response TTree filling
     if(isMC){
@@ -2568,6 +2583,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
     //All photons passing requirements must be included
     //If no reco match exists just fill
 
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+
     std::vector<int> barrelECFillTruth = {2}; //Always fill at the inclusive position
     if(isMC){
       if(photonEtaIsBarrel(truthPhotonEta)) barrelECFillTruth.push_back(0);
@@ -2585,12 +2602,17 @@ int gdjNTupleToHist(std::string inConfigFileName)
     }
 
     bool truthPhotonHasRecoMatch = false;
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
   
     for(unsigned int pI = 0; pI < photon_pt_p->size(); ++pI){
       //Passes basic fiducial cuts
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
       bool isGoodReco = photonEtaIsGood(photon_eta_p->at(pI));
       isGoodReco = isGoodReco && photon_pt_p->at(pI) >= gammaPtBinsLowReco;
       isGoodReco = isGoodReco && photon_pt_p->at(pI) < gammaPtBinsHighReco;
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
       
       //Signal is always defined as tightid + isolation so hardcode
       bool isSignal = photon_tight_p->at(pI);
@@ -2603,6 +2625,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
       //goodreco sideband
       bool isGoodRecoSideband = isGoodReco && isSideband;
 
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+      
       //Check if this reco is the truth match
       bool isTruthPhotonMatched = isMC && pI == truthPhoRecoPos && truthPhoHasGoodReco;
       if(isGoodReco){
@@ -2628,37 +2652,44 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  else if(isGoodRecoSideband) fillTH1(photonPtVCent_RAWSideband_p[centPos][barrelEC], photon_pt_p->at(pI), fullWeight);
 	}
       
+	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 	//We will keep collections of jets passing cuts for multijet observable construction
 	std::vector<TLorentzVector> goodRecoJets;
 	std::vector<int> goodRecoJetsPos, goodRecoJetsTruthPos;
       
 	//Now produce photon+jet observables
-	for(unsigned int jI = 0; jI < aktRhi_etajes_jet_pt_p->size(); ++jI){
+	for(unsigned int jI = 0; jI < aktRhi_insitu_jet_pt_p->size(); ++jI){
+	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 	  Float_t jtPtToUse = aktRhi_insitu_jet_pt_p->at(jI);
 	  Float_t jtPhiToUse = aktRhi_insitu_jet_phi_p->at(jI);
 	  Float_t jtEtaToUse = aktRhi_insitu_jet_eta_p->at(jI);	  
 
 	  bool isGoodTruthJet = false;
 	  int truthPos = -1;
-	  if(isMC && aktRhi_truthpos_p->at(jI) >= 0){
+	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+	  if(isMC){
 	    //MC corrections only apply to PYTHIA jets inserted in overlay
-	    jtPtToUse = aktRhi_etajes_jet_pt_p->at(jI);
-	    jtPhiToUse = aktRhi_etajes_jet_phi_p->at(jI);
-	    jtEtaToUse = aktRhi_etajes_jet_eta_p->at(jI);	    
+	    if(aktRhi_truthpos_p->at(jI) >= 0){
+	      jtPtToUse = aktRhi_etajes_jet_pt_p->at(jI);
+	      jtPhiToUse = aktRhi_etajes_jet_phi_p->at(jI);
+	      jtEtaToUse = aktRhi_etajes_jet_eta_p->at(jI);	    
 	   
-	    truthPos = aktRhi_truthpos_p->at(jI);
+	      truthPos = aktRhi_truthpos_p->at(jI);
+	      
+	      if(aktR_truth_jet_pt_p->at(truthPos) < jtPtBinsLow || aktR_truth_jet_pt_p->at(truthPos) > jtPtBinsHigh) truthPos = -1;
+	      else isGoodTruthJet = true;
 
-	    if(aktR_truth_jet_pt_p->at(truthPos) < jtPtBinsLow || aktR_truth_jet_pt_p->at(truthPos) > jtPtBinsHigh) truthPos = -1;
-	    else isGoodTruthJet = true;
-
-	    //Add eta cut
-	    if(isGoodTruthJet){
-	      if(aktR_truth_jet_eta_p->at(truthPos) < jtEtaBinsLow || aktR_truth_jet_eta_p->at(truthPos) > jtEtaBinsHigh){
-		truthPos = -1;
-		isGoodTruthJet = false;
+	      //Add eta cut
+	      if(isGoodTruthJet){
+		if(aktR_truth_jet_eta_p->at(truthPos) < jtEtaBinsLow || aktR_truth_jet_eta_p->at(truthPos) > jtEtaBinsHigh){
+		  truthPos = -1;
+		  isGoodTruthJet = false;
+		}
 	      }
 	    }
 
+
+	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 	    //Add dR Cut
 	    if(isGoodTruthJet){
 	      Float_t dRTruthGammaJet = getDR(aktR_truth_jet_eta_p->at(truthPos), aktR_truth_jet_phi_p->at(truthPos), truthPhotonEta, truthPhotonPhi);
@@ -2671,32 +2702,43 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  }
        
 	  //Good reco jet requirements - pass eta cuts, pass pt cuts, pass dr cut and (later) pass dphi w/ gamma cut
-	  
+
+	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+
 	  bool isGoodRecoJet = jtPtToUse >= jtPtBinsLowReco && jtPtToUse < jtPtBinsHighReco;
 	  isGoodRecoJet = isGoodRecoJet && jtEtaToUse >= jtEtaBinsLow && jtEtaToUse <= jtEtaBinsHigh;
 	  Float_t dPhiRecoGammaJet = TMath::Abs(getDPHI(jtPhiToUse, photon_phi_p->at(pI)));
 	  Float_t dRRecoGammaJet = getDR(jtEtaToUse, jtPhiToUse, photon_eta_p->at(pI), photon_phi_p->at(pI));
-       	  
+
+	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+	  
 	  //First do dphi - just copy the shit below
 	  //Exclude any jet around the photon candidate
 	  if(dRRecoGammaJet < gammaExclusionDR) isGoodRecoJet = false;
+
+	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+	  
 	  if(isGoodRecoJet){	    
+	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+
 	    for(auto const barrelEC : barrelECFill){
 	      if(isGoodRecoSignal){
 		photonPtJtDPhiVCent_MixMachine_p[centPos][barrelEC]->FillXYRaw(dPhiRecoGammaJet, photon_pt_p->at(pI), fullWeight);
-		
-		if(isTruthPhotonMatched && isGoodTruthJet){
-		  photonPtJtDPhiVCent_MixMachine_p[centPos][barrelEC]->FillXYRawWithTruthMatch(dPhiRecoGammaJet, photon_pt_p->at(pI), fullWeight);
-		}
-		else{
-		  photonPtJtDPhiVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(dPhiRecoGammaJet, photon_pt_p->at(pI), fullWeight);		  
-		}		
-	      }//end if(isGoodRecoSignal)
+		if(isMC){
+		  if(isTruthPhotonMatched && isGoodTruthJet){
+		    photonPtJtDPhiVCent_MixMachine_p[centPos][barrelEC]->FillXYRawWithTruthMatch(dPhiRecoGammaJet, photon_pt_p->at(pI), fullWeight);
+		  }
+		  else{
+		    photonPtJtDPhiVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(dPhiRecoGammaJet, photon_pt_p->at(pI), fullWeight);		  
+		  }		
+		}//end if(isGoodRecoSignal)
+	      }
 	      else if(isGoodRecoSideband){
 		photonPtJtDPhiVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYRaw(dPhiRecoGammaJet, photon_pt_p->at(pI), fullWeight);
 	      }
 	    }//End reco barrelECFill
 
+	    
 	    if(isMC){
 	      if(isTruthPhotonMatched && isGoodTruthJet){
 		Float_t gammaJtDPhiTruth = TMath::Abs(getDPHI(truthPhotonPhi, aktR_truth_jet_phi_p->at(truthPos)));
@@ -2720,7 +2762,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	      truthPos = -1;
 	    }	  
 	  }
-	
+
+	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+	  
 	  //Now construct non-dphi based observables by enforcing the dPhi gamma-jet cut
 	  if(dPhiRecoGammaJet < gammaJtDPhiCut) isGoodRecoJet = false;
 	
@@ -2745,6 +2789,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    goodRecoJetsPos.push_back(jI);
 	    goodRecoJetsTruthPos.push_back(truthPos);
 
+	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+
+
 	    for(auto const barrelEC : barrelECFill){
 	      if(isGoodRecoSignal){
 		photonPtJtPtVCent_MixMachine_p[centPos][barrelEC]->FillXYRaw(jtPtToUse, photon_pt_p->at(pI), fullWeight);
@@ -2752,17 +2799,19 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		  photonPtJtXJVCent_MixMachine_p[centPos][barrelEC]->FillXYRaw(xJValue, photon_pt_p->at(pI), fullWeight);
 		  //		  std::cout << " Is filling xj hist!" << std::endl;
 		}
-		
-		if(isTruthPhotonMatched && isGoodTruthJet){
-		  photonPtJtPtVCent_MixMachine_p[centPos][barrelEC]->FillXYRawWithTruthMatch(jtPtToUse, photon_pt_p->at(pI), fullWeight);
-		  if(xJValueGood){
-		    if(xJValueTruthGood) photonPtJtXJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawWithTruthMatch(xJValue, photon_pt_p->at(pI), fullWeight);
-		    else photonPtJtXJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(xJValue, photon_pt_p->at(pI), fullWeight);
+
+		if(isMC){
+		  if(isTruthPhotonMatched && isGoodTruthJet){
+		    photonPtJtPtVCent_MixMachine_p[centPos][barrelEC]->FillXYRawWithTruthMatch(jtPtToUse, photon_pt_p->at(pI), fullWeight);
+		    if(xJValueGood){
+		      if(xJValueTruthGood) photonPtJtXJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawWithTruthMatch(xJValue, photon_pt_p->at(pI), fullWeight);
+		      else photonPtJtXJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(xJValue, photon_pt_p->at(pI), fullWeight);
+		    }		  
 		  }
-		}
-		else{
-		  photonPtJtPtVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(jtPtToUse, photon_pt_p->at(pI), fullWeight);
-		  if(xJValueGood) photonPtJtXJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(xJValue, photon_pt_p->at(pI), fullWeight);
+		  else{
+		    photonPtJtPtVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(jtPtToUse, photon_pt_p->at(pI), fullWeight);
+		    if(xJValueGood) photonPtJtXJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(xJValue, photon_pt_p->at(pI), fullWeight);
+		  }
 		}
 	      }
 	      else if(isGoodRecoSideband){
@@ -2795,6 +2844,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  }
 	}//End reco jet loop
 
+	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+      	
 	//Now we start another loop but one for multijet events
 	for(unsigned int gI = 0; gI < goodRecoJets.size(); ++gI){
 	  TLorentzVector goodRecoJet1 = goodRecoJets[gI];
@@ -2845,9 +2896,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	      if(isGoodRecoSignal){
 		photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRaw(multiJtDPhiReco, photon_pt_p->at(pI), fullWeight);
 
-		if(isTruthPhotonMatched && isTruthMatched) photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawWithTruthMatch(multiJtDPhiReco, photon_pt_p->at(pI), fullWeight);
-		else photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(multiJtDPhiReco, photon_pt_p->at(pI), fullWeight);
-		
+		if(isMC){
+		  if(isTruthPhotonMatched && isTruthMatched) photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawWithTruthMatch(multiJtDPhiReco, photon_pt_p->at(pI), fullWeight);
+		  else photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(multiJtDPhiReco, photon_pt_p->at(pI), fullWeight);
+		}
 	      }
 	      else if(isGoodRecoSideband) photonPtJtDPhiJJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYRaw(multiJtDPhiReco, photon_pt_p->at(pI), fullWeight);
 
@@ -2859,14 +2911,16 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
 		if(isTruthMatchedDPhi && isTruthPhotonMatched && xJJValueGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRaw(xJJValue, photon_pt_p->at(pI), fullWeight);
 		photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRaw(aJJValue, photon_pt_p->at(pI), fullWeight);
-		
-		if(isTruthPhotonMatched && isTruthMatchedDPhi && xJJValueTruthGood){
-		  if(xJJValueGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawWithTruthMatch(xJJValue, photon_pt_p->at(pI), fullWeight);		  
-		  photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawWithTruthMatch(aJJValue, photon_pt_p->at(pI), fullWeight);		  
-		}
-		else{
-		  if(xJJValueGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(xJJValue, photon_pt_p->at(pI), fullWeight);
-		  photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(aJJValue, photon_pt_p->at(pI), fullWeight);		  
+
+		if(isMC){
+		  if(isTruthPhotonMatched && isTruthMatchedDPhi && xJJValueTruthGood){
+		    if(xJJValueGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawWithTruthMatch(xJJValue, photon_pt_p->at(pI), fullWeight);		  
+		    photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawWithTruthMatch(aJJValue, photon_pt_p->at(pI), fullWeight);		  
+		  }
+		  else{
+		    if(xJJValueGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(xJJValue, photon_pt_p->at(pI), fullWeight);
+		    photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(aJJValue, photon_pt_p->at(pI), fullWeight);		  
+		  }
 		}
 	      }//isGoodRecoSignal if statement ends
 	      else if(isGoodRecoSideband){
@@ -2923,6 +2977,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       }//End fills for pure photon good reco   
     }//End Photon loop
 
+    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 
             
     if(isMC){
@@ -3504,6 +3559,13 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	      
 	      Float_t binSidebandContent = subHist_Sideband_p->GetBinContent(bIX+1, bIY+1);
 	      Float_t binSidebandError = subHist_Sideband_p->GetBinError(bIX+1, bIY+1);
+
+	      if(binContent < TMath::Power(10,-50) && binSidebandContent < TMath::Power(10,-50)){
+		outHists_p[hI]->SetBinContent(bIX+1, bIY+1, 0.0);
+		outHists_p[hI]->SetBinError(bIX+1, bIY+1, 0.0);
+
+		continue;
+	      }
 	      
 	      //		std::cout << "CONTENT: " << binContent << std::endl;
 	      
@@ -3529,6 +3591,15 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  Float_t binError = photonPtVCent_RAW_p[cI][barrelAndECComboPos]->GetBinError(bIX+1);
 	  
 	  Float_t binSidebandContent = photonPtVCent_RAWSideband_p[cI][barrelAndECComboPos]->GetBinContent(bIX+1);
+	  
+	  if(binContent < TMath::Power(10,-50) && binSidebandContent < TMath::Power(10,-50)){
+	    photonPtVCent_PURCORR_p[cI][barrelAndECComboPos]->SetBinContent(bIX+1, 0.0);
+	    photonPtVCent_PURCORR_p[cI][barrelAndECComboPos]->SetBinError(bIX+1, 0.0);
+	    
+	    continue;
+	  }
+
+
 	  binSidebandContent = (1.0 - purity)*binSidebandContent*binContent/binSidebandContent;
 	  
 	  binContent -= binSidebandContent;
