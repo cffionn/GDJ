@@ -79,7 +79,7 @@ class mixMachine{
   mixMachine::mixMode m_mixMode;
   std::vector<std::string> m_noneMixNames = {"RAW", "SUB", "TRUTH", "TRUTHWITHRECOMATCH", "TRUTHNORECOMATCH", "RAWWITHTRUTHMATCH", "RAWNOTRUTHMATCH"};
   std::vector<std::string> m_inclusiveMixNames = {"RAW", "MIX", "SUB", "TRUTH", "TRUTHWITHRECOMATCH", "TRUTHNORECOMATCH", "RAWWITHTRUTHMATCH", "RAWNOTRUTHMATCH"};
-  std::vector<std::string> m_multiMixNames = {"RAW", "MIX", "MIXCORRECTION", "MIXCORRECTED", "SUB", "TRUTH", "TRUTHMATCHEDRECO", "SINGLETRUTHTOMULTIFAKE", "SINGLETRUTHTOMULTIFAKEMIX"};
+  std::vector<std::string> m_multiMixNames = {"RAW", "MIX", "MIXCORRECTION", "MIXCORRECTED", "SUB", "TRUTH", "TRUTHWITHRECOMATCH", "TRUTHNORECOMATCH", "RAWWITHTRUTHMATCH", "RAWNOTRUTHMATCH", "SINGLETRUTHTOMULTIFAKE", "SINGLETRUTHTOMULTIFAKEMIX"};
 
   std::vector<TH1D*> m_hists1D;
   std::vector<TH2D*> m_hists2D;
