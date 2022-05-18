@@ -2804,10 +2804,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    for(auto const barrelEC : barrelECFill){
 	      if(isGoodRecoSignal){
 		photonPtJtPtVCent_MixMachine_p[centPos][barrelEC]->FillXYRaw(jtPtToUse, photon_pt_p->at(pI), fullWeight);
-		if(xJValueGood){
-		  photonPtJtXJVCent_MixMachine_p[centPos][barrelEC]->FillXYRaw(xJValue, photon_pt_p->at(pI), fullWeight);
-		  //		  std::cout << " Is filling xj hist!" << std::endl;
-		}
+		if(xJValueGood) photonPtJtXJVCent_MixMachine_p[centPos][barrelEC]->FillXYRaw(xJValue, photon_pt_p->at(pI), fullWeight);
 
 		if(isMC){
 		  if(isTruthPhotonMatched && isGoodTruthJet){
@@ -2916,9 +2913,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
  	      if(multiJtDPhiReco < gammaMultiJtDPhiCut) continue;	    
 
 	      if(isGoodRecoSignal){
-		//		std::cout << "Fill at Entry, evt: " << entry << ", " << eventNumber << std::endl;
-
-		if(isTruthMatchedDPhi && isTruthPhotonMatched && xJJValueGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRaw(xJJValue, photon_pt_p->at(pI), fullWeight);
+		if(xJJValueGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRaw(xJJValue, photon_pt_p->at(pI), fullWeight);
 		photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRaw(aJJValue, photon_pt_p->at(pI), fullWeight);
 
 		if(isMC){
