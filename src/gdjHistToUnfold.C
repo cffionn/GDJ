@@ -433,6 +433,24 @@ int gdjHistToUnfold(std::string inConfigFileName)
     }
   }
 
+  const Int_t nXJJBins = inResponseFileConfig_p->GetValue("NXJJBINS", 20);
+  const Float_t xjjBinsLow = inResponseFileConfig_p->GetValue("XJJBINSLOW", 0.0);
+  const Float_t xjjBinsHigh = inResponseFileConfig_p->GetValue("XJJBINSHIGH", 2.0);
+  const Bool_t xjjBinsDoCustom = inResponseFileConfig_p->GetValue("XJJBINSDOCUSTOM", 0);
+  Double_t xjjBins[nMaxBins+1];
+  const Float_t xjjBinsLowReco = inResponseFileConfig_p->GetValue("XJJBINSLOWRECO", xjjBinsLow);
+  const Float_t xjjBinsHighReco = inResponseFileConfig_p->GetValue("XJJBINSHIGHRECO", xjjBinsHigh);
+
+
+  if(!xjjBinsDoCustom) getLinBins(xjjBinsLow, xjjBinsHigh, nXJJBins, xjjBins);
+  else{
+    std::string xjjBinsCustomStr = inResponseFileConfig_p->GetValue("XJJBINSCUSTOM", "");
+    std::vector<float> xjjBinsCustomVect = strToVectF(xjjBinsCustomStr);
+    for(unsigned int i = 0; i < xjjBinsCustomVect.size(); ++i){
+      xjjBins[i] = xjjBinsCustomVect[i];
+    }
+  }
+  
   const Int_t nDPhiBins = inResponseFileConfig_p->GetValue("NDPHIBINS", 20);
   const Float_t dphiBinsLow = inResponseFileConfig_p->GetValue("DPHIBINSLOW", 0.0);
   const Float_t dphiBinsHigh = inResponseFileConfig_p->GetValue("DPHIBINSHIGH", TMath::Pi());
@@ -502,9 +520,15 @@ int gdjHistToUnfold(std::string inConfigFileName)
     }
   }
   else if(isStrSame(varNameLower, "xjj")){
+    nVarBins = nXJJBins;
     for(Int_t vI = 0; vI < nVarBins+1; ++vI){
-      varBins[vI] = xjBins[vI];
+      varBins[vI] = xjjBins[vI];
     }
+
+    varBinsLow = xjjBinsLow;
+    varBinsHigh = xjjBinsHigh;
+    varBinsLowReco = xjjBinsLowReco;
+    varBinsHighReco = xjjBinsHighReco;
   }
   else if(isStrSame(varNameLower, "dphi")){
     nVarBins = nDPhiBins;
