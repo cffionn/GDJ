@@ -3044,7 +3044,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    std::vector<TLorentzVector> jets2 = mixingMap[key][jetPos2];
 
 	    //Go thru and select jets passing cuts from first mixed event
-
+	    std::vector<TLorentzVector> passingJets1, passingJets2;
 	    for(unsigned int jI = 0; jI < jets.size(); ++jI){
 	      Float_t dRRecoGammaJet = getDR(jets[jI].Eta(), jets[jI].Phi(), photon_eta_p->at(pI), photon_phi_p->at(pI));
 	      Float_t dPhiRecoGammaJet = TMath::Abs(getDPHI(jets[jI].Phi(), photon_phi_p->at(pI)));
@@ -3066,6 +3066,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	      //Add in the dphi cut
 	      isGoodRecoJet = isGoodRecoJet && dPhiRecoGammaJet >= gammaJtDPhiCut;
 	      if(isGoodRecoJet){
+		//Since jet passes fill passingJets1
+		passingJets1.push_back(jets[jI]);
+
 		Float_t xJValue = jets[jI].Pt() / photon_pt_p->at(pI);
 		Bool_t xJValueGood = xJValue >= xjBinsLowReco && xJValue < xjBinsHighReco;
 		for(auto const barrelEC : barrelECFill){		
@@ -3080,6 +3083,112 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		}//End for(auto const barrelEC : barrelECFill){
 	      }//End if(isGoodRecoJet){
 	    }//End for(unsigned int jI = 0; jI < jets.size...	    
+
+	    //For multijet mixing we must process a second event
+	    for(unsigned int jI = 0; jI < jets2.size(); ++jI){
+	      Float_t dRRecoGammaJet = getDR(jets2[jI].Eta(), jets2[jI].Phi(), photon_eta_p->at(pI), photon_phi_p->at(pI));
+	      Float_t dPhiRecoGammaJet = TMath::Abs(getDPHI(jets2[jI].Phi(), photon_phi_p->at(pI)));
+	      bool isGoodRecoJet = jets2[jI].Pt() >= jtPtBinsLowReco && jets2[jI].Pt() < jtPtBinsHighReco;
+	      isGoodRecoJet = isGoodRecoJet && jets2[jI].Eta() >= jtEtaBinsLow && jets2[jI].Eta() <= jtEtaBinsHigh;
+	      isGoodRecoJet = isGoodRecoJet && dRRecoGammaJet >= gammaExclusionDR;
+	      //Add in the dphi cut
+	      isGoodRecoJet = isGoodRecoJet && dPhiRecoGammaJet >= gammaJtDPhiCut;
+
+	      if(isGoodRecoJet) passingJets2.push_back(jets2[jI]);
+	    }//End for(unsigned int jI = 0; jI < jets2.size...	    
+
+	    //We have 2 valid jet collections now for this photon - do multijet mixing
+	    //First pure background, single mixed event w/ itself
+	    for(unsigned int jI = 0; jI < passingJets1.size(); ++jI){
+	      TLorentzVector jet1 = passingJets1[jI];
+
+	      for(unsigned int jI2 = jI+1; jI2 < passingJets1.size(); ++jI2){
+		TLorentzVector jet2 = passingJets1[jI2];
+
+		//enforce dR exclusion region
+		Float_t dR = getDR(jet1.Eta(), jet1.Phi(), jet2.Eta(), jet2.Phi());
+		if(dR < mixJetExclusionDR) continue;
+
+		jet2 += jet1;
+		//enforce multijetdphi cut
+		Float_t multiJtDPhi = TMath::Abs(getDPHI(jet2.Phi(), photon_phi_p->at(pI)));
+		if(multiJtDPhi < gammaMultiJtDPhiCut) continue;
+
+		Float_t xJJValue = jet2.Pt() / photon_pt_p->at(pI);
+		Bool_t xJJValueGood = xJJValue >= xjjBinsLowReco && xJJValue < xjjBinsHighReco;
+		
+		for(auto const barrelEC : barrelECFill){
+		  if(isGoodRecoSignal){
+		    if(xJJValueGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC]->FillXYMix(xJJValue, photon_pt_p->at(pI), mixWeight);		  
+		  }
+		  else if(isGoodRecoSideband){
+		    if(xJJValueGood) photonPtJtXJJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYMix(xJJValue, photon_pt_p->at(pI), mixWeight);		  
+		  }
+		}//end for(barrelECFill){
+	      }//end for(jI2 < passingJets2.size()){
+	    }//end for(jI < passingJets1.size()){
+
+	    //Now do mixed event crossed w/ current event i.e. one real one fake jet	    
+	    for(unsigned int jI = 0; jI < goodRecoJets.size(); ++jI){
+	      TLorentzVector signalJet = goodRecoJets[jI];
+
+	      for(unsigned int jI2 = 0; jI2 < passingJets1.size(); ++jI2){
+		TLorentzVector mixJet = passingJets1[jI2];
+
+		//enforce dR exclusion region
+		Float_t dR = getDR(signalJet.Eta(), signalJet.Phi(), mixJet.Eta(), mixJet.Phi());
+		if(dR < mixJetExclusionDR) continue;
+
+		mixJet += signalJet;
+		//enforce multijetdphi cut
+		Float_t multiJtDPhi = TMath::Abs(getDPHI(mixJet.Phi(), photon_phi_p->at(pI)));
+		if(multiJtDPhi < gammaMultiJtDPhiCut) continue;
+
+		Float_t xJJValue = mixJet.Pt() / photon_pt_p->at(pI);
+		Bool_t xJJValueGood = xJJValue >= xjjBinsLowReco && xJJValue < xjjBinsHighReco;
+		
+		for(auto const barrelEC : barrelECFill){
+		  if(isGoodRecoSignal){
+		    if(xJJValueGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC]->FillXYMix(xJJValue, photon_pt_p->at(pI), mixWeight);		  
+		  }
+		  else if(isGoodRecoSideband){
+		    if(xJJValueGood) photonPtJtXJJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYMix(xJJValue, photon_pt_p->at(pI), mixWeight);		  
+		  }
+		}//end for(barrelECFill){
+	      }//end for(jI2<passingJets1.size){
+	    }//end for(jI<goodRecoJets.size()){
+
+	    //Finally we need to correct the mixed event for instances where we took a fake jet from the signal event and mixed it with a fake jet from the mixed event, by using 2 mixed events
+	    for(unsigned int jI = 0; jI < passingJets1.size(); ++jI){
+	      TLorentzVector jet1 = passingJets1[jI];
+
+	      for(unsigned int jI2 = 0; jI2 < passingJets2.size(); ++jI2){
+		TLorentzVector jet2 = passingJets2[jI2];
+
+		//enforce dR exclusion region
+		Float_t dR = getDR(jet1.Eta(), jet1.Phi(), jet2.Eta(), jet2.Phi());
+		if(dR < mixJetExclusionDR) continue;
+
+		jet2 += jet1;
+		//enforce multijetdphi cut
+		Float_t multiJtDPhi = TMath::Abs(getDPHI(jet2.Phi(), photon_phi_p->at(pI)));
+		if(multiJtDPhi < gammaMultiJtDPhiCut) continue;
+
+		Float_t xJJValue = jet2.Pt() / photon_pt_p->at(pI);
+		Bool_t xJJValueGood = xJJValue >= xjjBinsLowReco && xJJValue < xjjBinsHighReco;
+		
+		for(auto const barrelEC : barrelECFill){
+		  if(isGoodRecoSignal){
+		    if(xJJValueGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC]->FillXYMixCorrection(xJJValue, photon_pt_p->at(pI), mixWeight);		  
+		  }
+		  else if(isGoodRecoSideband){
+		    if(xJJValueGood) photonPtJtXJJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYMixCorrection(xJJValue, photon_pt_p->at(pI), mixWeight);		  
+		  }
+		}//end for(barrelECFill){
+	      }
+	    }
+
+	    ++nCurrentMixEvents; // increment to next mixed event
 	  }//End while(nCurrentMixEvents < nMixEvents){		  
 	}//End if(doMix){
       }//End fills for pure photon good reco   
