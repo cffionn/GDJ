@@ -2027,12 +2027,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
       unsigned long long key = keyBoy.GetKey(eventKeyVect);//, vzPos, evtPlanePos});
       
       if(mixingMapCounter[key] >= mixCap) continue;
-
       
       std::vector<TLorentzVector> jets;
       for(unsigned int jI = 0; jI < aktRhi_insitu_jet_pt_p->size(); ++jI){
-	if(aktRhi_insitu_jet_pt_p->at(jI) < jtPtBinsLow) continue;
-	if(aktRhi_insitu_jet_pt_p->at(jI) >= jtPtBinsHigh) continue;
+	if(aktRhi_insitu_jet_pt_p->at(jI) < jtPtBinsLowReco) continue;
+	if(aktRhi_insitu_jet_pt_p->at(jI) >= jtPtBinsHighReco) continue;
 
 	Float_t jtEtaToCut = aktRhi_insitu_jet_eta_p->at(jI);
 	if(jtEtaBinsDoAbs) jtEtaToCut = TMath::Abs(jtEtaToCut);
@@ -2116,7 +2115,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
     std::cout << "MINIMUM NUMBER TO MIX, CORRESPONDING KEY: " << minimumVal << " (" << keyBoy.GetKeyStr(minKey) << "), key=" << minKey << std::endl;
     std::cout << "MAXIMUM NUMBER TO MIX, CORRESPONDING KEY: " << maximumVal << " (" << keyBoy.GetKeyStr(maxKey) << "), key=" << maxKey << std::endl;
     std::cout << "AVERAGE NUMBER TO MIX: " << aveVal/tempCounter << std::endl;
-    std::cout << "MEDIAN NUMBER TO MIX: " << tempCounts[tempCounts.size()/2] << std::endl;
+    if(tempCounts.size() != 0) std::cout << "MEDIAN NUMBER TO MIX: " << tempCounts[tempCounts.size()/2] << std::endl;
+    else std::cout << "NO MEDIAN COUNTS" << std::endl;
   }
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
@@ -2711,7 +2711,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  }
        
 	  //Good reco jet requirements - pass eta cuts, pass pt cuts, pass dr cut and (later) pass dphi w/ gamma cut
-
+	
 	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 
 	  bool isGoodRecoJet = jtPtToUse >= jtPtBinsLowReco && jtPtToUse < jtPtBinsHighReco;
@@ -2976,14 +2976,115 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	      }
 	    }//End barrelECFillTruth loop for truth w/ good reco match 
 	  }
-	}//End multijet loop
-      
+	}//End multijet loop      
+
+	//If doMix, begin running the mixing
+	if(doMix){
+	  unsigned long long mixCentPos = 0;
+	  unsigned long long mixPsi2Pos = 0;
+	  if(!isPP){
+	    if(doMixCent) mixCentPos = ghostPos(nMixCentBins, mixCentBins, cent);
+	    if(doMixPsi2){
+	      if(evtPlane2Phi > TMath::Pi()/2) evtPlane2Phi -= TMath::Pi();
+	      else if(evtPlane2Phi < -TMath::Pi()/2) evtPlane2Phi += TMath::Pi();
+	      mixPsi2Pos = ghostPos(nMixPsi2Bins, mixPsi2Bins, evtPlane2Phi);
+	    }
+	  }
+
+	  unsigned long long mixVzPos = 0;
+	  if(doMixVz) mixVzPos = ghostPos(nMixVzBins, mixVzBins, vert_z);
+
+	  std::vector<unsigned long long> eventKeyVect;
+	  if(doMixCent) eventKeyVect.push_back(mixCentPos);
+	  if(doMixPsi2) eventKeyVect.push_back(mixPsi2Pos);
+	  if(doMixVz) eventKeyVect.push_back(mixVzPos);
+
+	  //Create the key to grab the mixed event jets
+	  unsigned long long key = keyBoy.GetKey(eventKeyVect);
+	  unsigned long long maxPos = mixingMap[key].size();
+	  if(maxPos == 0){
+	    std::cout << "WHOOPS NO AVAILABLE MIXED EVENT. bailing" << std::endl;
+	    std::cout << key << ", " << mixCentPos << ", " << cent << std::endl;
+	    return 1;
+	  }
+	  unsigned long long nCurrentMixEvents = 0;
+
+	  std::vector<unsigned long long> jetPos1s, jetPos2s;
+	  
+	  while(nCurrentMixEvents < nMixEvents){
+	    unsigned long long jetPos = maxPos;	 
+	    bool goodJetPos = false;
+	    while(!goodJetPos){
+	      jetPos = randGen_p->Uniform(0, maxPos-1);
+	      goodJetPos = jetPos != maxPos && !vectContainsULL(jetPos, &jetPos1s);
+	    }
+	    ++(signalMapCounterPost[key]);
+	    std::vector<TLorentzVector> jets = mixingMap[key][jetPos];
+
+	    unsigned long long jetPos2 = maxPos;
+	    bool goodJetPos2 = false;
+	    while(!goodJetPos2){
+	      jetPos2 = randGen_p->Uniform(0, maxPos-1);
+	      goodJetPos2 = jetPos2 != maxPos && jetPos2 != jetPos;
+
+ 	      if(goodJetPos2){
+		//Make sure we haven't used this combo yet -- only need to test swapped case as jetPos != jetPos1s[jpI] by earlier test !vectContainsULL
+		for(unsigned int jpI = 0; jpI < jetPos1s.size(); ++jpI){
+		  if(jetPos2s[jpI] == jetPos && jetPos1s[jpI] == jetPos2){
+		    goodJetPos2 = false;
+		    break;
+		  }
+		}
+	      }//End if(goodJetPos2){
+	    }//End while(!goodJetPos2){
+
+	    jetPos1s.push_back(jetPos);
+	    jetPos2s.push_back(jetPos2);
+
+	    std::vector<TLorentzVector> jets2 = mixingMap[key][jetPos2];
+
+	    //Go thru and select jets passing cuts from first mixed event
+
+	    for(unsigned int jI = 0; jI < jets.size(); ++jI){
+	      Float_t dRRecoGammaJet = getDR(jets[jI].Eta(), jets[jI].Phi(), photon_eta_p->at(pI), photon_phi_p->at(pI));
+	      Float_t dPhiRecoGammaJet = TMath::Abs(getDPHI(jets[jI].Phi(), photon_phi_p->at(pI)));
+	      bool isGoodRecoJet = jets[jI].Pt() >= jtPtBinsLowReco && jets[jI].Pt() < jtPtBinsHighReco;
+	      isGoodRecoJet = isGoodRecoJet && jets[jI].Eta() >= jtEtaBinsLow && jets[jI].Eta() <= jtEtaBinsHigh;
+	      isGoodRecoJet = isGoodRecoJet && dRRecoGammaJet >= gammaExclusionDR;
+
+	      if(isGoodRecoJet){
+		for(auto const barrelEC : barrelECFill){
+		  if(isGoodRecoSignal){
+		    photonPtJtDPhiVCent_MixMachine_p[centPos][barrelEC]->FillXYMix(dPhiRecoGammaJet, photon_pt_p->at(pI), mixWeight);
+		  }
+		  else if(isGoodRecoSideband){
+		    photonPtJtDPhiVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYMix(dPhiRecoGammaJet, photon_pt_p->at(pI), mixWeight);
+		  }
+		}//End for(auto const barrelEC...
+	      }//End if(isGoodRecoJet)
+
+	      //Add in the dphi cut
+	      isGoodRecoJet = isGoodRecoJet && dPhiRecoGammaJet >= gammaJtDPhiCut;
+	      if(isGoodRecoJet){
+		Float_t xJValue = jets[jI].Pt() / photon_pt_p->at(pI);
+		Bool_t xJValueGood = xJValue >= xjBinsLowReco && xJValue < xjBinsHighReco;
+		for(auto const barrelEC : barrelECFill){		
+		  if(isGoodRecoSignal){
+		    photonPtJtPtVCent_MixMachine_p[centPos][barrelEC]->FillXYMix(jets[jI].Pt(), photon_pt_p->at(pI), mixWeight);
+		    if(xJValueGood) photonPtJtXJVCent_MixMachine_p[centPos][barrelEC]->FillXYMix(jets[jI].Pt()/photon_pt_p->at(pI), photon_pt_p->at(pI), mixWeight);		  
+		  }
+		  else if(isGoodRecoSideband){
+		    photonPtJtPtVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYMix(jets[jI].Pt(), photon_pt_p->at(pI), mixWeight);
+		    if(xJValueGood) photonPtJtXJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYMix(jets[jI].Pt()/photon_pt_p->at(pI), photon_pt_p->at(pI), mixWeight);		  
+		  }
+		}//End for(auto const barrelEC : barrelECFill){
+	      }//End if(isGoodRecoJet){
+	    }//End for(unsigned int jI = 0; jI < jets.size...	    
+	  }//End while(nCurrentMixEvents < nMixEvents){		  
+	}//End if(doMix){
       }//End fills for pure photon good reco   
     }//End Photon loop
-
-    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-
-            
+         
     if(isMC){
       std::vector<TLorentzVector> goodTruthJets;
       std::vector<int> goodTruthJetsPos, goodTruthJetsRecoPos;
@@ -3184,12 +3285,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
       
       tempRatioVals.push_back(ratio);
     }
-    
+
     std::sort(std::begin(tempRatioVals), std::end(tempRatioVals));
     
     std::cout << "LOWEST RATIO MIX-PER-SIGNAL, CORRESPONDING KEY: " << minimumNumVal << "/" << minimumDenomVal << "=" << minimumRatioVal << " (" << keyBoy.GetKeyStr(minRatioKey) << "), key=" << minRatioKey << std::endl;
     std::cout << "HIGHEST RATIO MIX-PER-SIGNAL, CORRESPONDING KEY: " << maximumNumVal << "/" << maximumDenomVal << "=" << maximumRatioVal << " (" << keyBoy.GetKeyStr(maxRatioKey) << "), key=" << maxRatioKey << std::endl;
-    std::cout << "MEDIAN RATIO MIX-PER-SIGNAL: " << tempRatioVals[tempRatioVals.size()/2] << std::endl;
+
+    if(tempRatioVals.size() != 0) std::cout << "MEDIAN RATIO MIX-PER-SIGNAL: " << tempRatioVals[tempRatioVals.size()/2] << std::endl;
+    else std::cout << "NO MEDIAN RATIO MIX-PER-SIGNAL." << std::endl;
   }
   
   std::cout << std::endl;
@@ -3198,6 +3301,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
     std::cout << " N=" << val.first << ": " << val.second << std::endl;
   }
   std::cout << std::endl;
+
+  std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   std::cout << "FULL WEIGHTS USED: " << std::endl;
   for(unsigned int i = 0; i < fullWeightVals.size(); ++i){
