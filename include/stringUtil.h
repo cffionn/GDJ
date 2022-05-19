@@ -203,6 +203,18 @@ inline bool vectContainsInt(int inInt, std::vector<int>* inVect)
   return isInVect;
 }
 
+inline bool vectContainsULL(unsigned long long inInt, std::vector<unsigned long long>* inVect)
+{
+  bool isInVect = false;
+  for(unsigned int vI = 0; vI < inVect->size(); ++vI){
+    if(inInt == ((*inVect)[vI])){
+      isInVect = true;
+      break;
+    }
+  }
+  return isInVect;
+}
+
 inline std::vector<std::string> strToVect(std::string inStr)
 {
   std::vector<std::string> retVect;
