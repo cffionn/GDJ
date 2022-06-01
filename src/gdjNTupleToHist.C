@@ -184,8 +184,7 @@ bool readBins(TEnv* config_p, std::string varStr, Int_t nMaxBins, Int_t* nBins, 
     
     (*binsStrForConfig) = (*binsStrForConfig) + newStr + ",";    
   }
-  if(binsStrForConfig->size() > 0) binsStrForConfig->replace(binsStrForConfig->size()-1, 1, "");
-  
+  if(binsStrForConfig->size() > 0) binsStrForConfig->replace(binsStrForConfig->size()-1, 1, "");  
   return binsFilled;
 }
 
