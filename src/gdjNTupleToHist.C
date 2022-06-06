@@ -2868,8 +2868,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    Float_t aJJValue = TMath::Abs(goodRecoJet1.Pt() - goodRecoJet2.Pt())/photon_pt_p->at(pI);
 	    Bool_t aJJValueGood = aJJValue >= ajBinsLowReco && aJJValue < ajBinsHighReco;
 	    Float_t dPhiJJValue = TMath::Abs(getDPHI(goodRecoJet1.Phi(), goodRecoJet2.Phi()));
-
+	    Float_t dRJJValue = getDR(goodRecoJet1.Eta(), goodRecoJet1.Phi(), goodRecoJet2.Eta(), goodRecoJet2.Phi());
+	    Bool_t dRJJPasses = dRJJValue >= mixJetExclusionDR;
 	    goodRecoJet2 += goodRecoJet1;
+
+	    if(!dRJJPasses) continue;
 
 	    //Does the multijet pass multijtdphi cut at truth level?	    
 	    Float_t multiJtDPhiTruth = -999.0;
@@ -2920,6 +2923,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		if(aJJValueGood) photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRaw(aJJValue, photon_pt_p->at(pI), fullWeight);
 
 		photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRaw(dPhiJJValue, photon_pt_p->at(pI), fullWeight);
+		photonPtJtDRJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRaw(dRJJValue, photon_pt_p->at(pI), fullWeight);
 
 		if(isMC){
 		  if(isTruthPhotonMatched && isTruthMatchedDPhi && xJJValueTruthGood){
@@ -2927,12 +2931,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		    if(aJJValueGood) photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawWithTruthMatch(aJJValue, photon_pt_p->at(pI), fullWeight);
 
 		    photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawWithTruthMatch(dPhiJJValue, photon_pt_p->at(pI), fullWeight);
+		    photonPtJtDRJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawWithTruthMatch(dRJJValue, photon_pt_p->at(pI), fullWeight);
 		  }
 		  else{
 		    if(xJJValueGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(xJJValue, photon_pt_p->at(pI), fullWeight);
 		    if(aJJValueGood) photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(aJJValue, photon_pt_p->at(pI), fullWeight);		  
 
 		    photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(dPhiJJValue, photon_pt_p->at(pI), fullWeight);		  
+		    photonPtJtDRJJVCent_MixMachine_p[centPos][barrelEC]->FillXYRawNoTruthMatch(dRJJValue, photon_pt_p->at(pI), fullWeight);		  
 		  }
 		}
 	      }//isGoodRecoSignal if statement ends
@@ -2941,6 +2947,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		if(aJJValueGood) photonPtJtAJJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYRaw(aJJValue, photon_pt_p->at(pI), fullWeight);
 
 		photonPtJtDPhiJJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYRaw(dPhiJJValue, photon_pt_p->at(pI), fullWeight);
+		photonPtJtDRJJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYRaw(dRJJValue, photon_pt_p->at(pI), fullWeight);
 	      }
 	    }//End barrelECFill
 	  
@@ -2955,7 +2962,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		Float_t aJJValueTruth = TMath::Abs(truthJet1.Pt() - truthJet2.Pt())/truthPhotonPt;
 		Bool_t aJJValueTruthGood = aJJValueTruth >= ajBinsLowReco && aJJValueTruth < ajBinsHighReco;
 		Float_t dPhiJJValueTruth = TMath::Abs(getDPHI(truthJet1.Phi(), truthJet2.Phi()));
-		
+		Float_t dRJJValueTruth = getDR(truthJet1.Eta(), truthJet1.Phi(), truthJet2.Eta(), truthJet2.Phi());
+	
 		truthJet2 += truthJet1;
 
 		Float_t multiJtDPhiTruth = TMath::Abs(getDPHI(truthJet2.Phi(), truthPhotonPhi));
@@ -2976,6 +2984,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		      if(aJJValueTruthGood && aJJValueGood) photonPtJtAJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthWithRecoMatch(aJJValueTruth, truthPhotonPt, fullWeight);
 
 		      photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthWithRecoMatch(dPhiJJValueTruth, truthPhotonPt, fullWeight);
+		      photonPtJtDRJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthWithRecoMatch(dRJJValueTruth, truthPhotonPt, fullWeight);
 		    }
 
 		    /*		    
@@ -2990,6 +2999,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		    if(aJJValueTruthGood) photonPtJtAJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(aJJValueTruth, truthPhotonPt, fullWeight);
 
 		    photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(dPhiJJValueTruth, truthPhotonPt, fullWeight); 
+		    photonPtJtDRJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(dRJJValueTruth, truthPhotonPt, fullWeight); 
 		  }
 		}
 	      }
@@ -3132,6 +3142,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		Bool_t aJJValueGood = aJJValue >= ajBinsLowReco && aJJValue < ajBinsHighReco;
 
 		Float_t dPhiJJValue = TMath::Abs(getDPHI(jet1.Phi(), jet2.Phi()));
+		Float_t dRJJValue = getDR(jet1.Eta(), jet1.Phi(), jet2.Eta(), jet2.Phi());
 
 		jet2 += jet1;
 		//enforce multijetdphi cut
@@ -3147,12 +3158,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		    if(aJJValueGood) photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC]->FillXYMix(aJJValue, photon_pt_p->at(pI), mixWeight);
 
 		    photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC]->FillXYMix(dPhiJJValue, photon_pt_p->at(pI), mixWeight);
+		    photonPtJtDRJJVCent_MixMachine_p[centPos][barrelEC]->FillXYMix(dRJJValue, photon_pt_p->at(pI), mixWeight);
 		  }
 		  else if(isGoodRecoSideband){
 		    if(xJJValueGood) photonPtJtXJJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYMix(xJJValue, photon_pt_p->at(pI), mixWeight);
 		    if(aJJValueGood) photonPtJtAJJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYMix(aJJValue, photon_pt_p->at(pI), mixWeight);
 
 		    photonPtJtDPhiJJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYMix(dPhiJJValue, photon_pt_p->at(pI), mixWeight);
+		    photonPtJtDRJJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYMix(dRJJValue, photon_pt_p->at(pI), mixWeight);
 		  }
 		}//end for(barrelECFill){
 	      }//end for(jI2 < passingJets2.size()){
@@ -3173,6 +3186,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		Bool_t aJJValueGood = aJJValue >= ajBinsLowReco && aJJValue < ajBinsHighReco;
 
 		Float_t dPhiJJValue = TMath::Abs(getDPHI(signalJet.Phi(), mixJet.Phi()));
+		Float_t dRJJValue = getDR(signalJet.Eta(), signalJet.Phi(), mixJet.Eta(), mixJet.Phi());
 
 		mixJet += signalJet;
 		//enforce multijetdphi cut
@@ -3188,12 +3202,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		    if(aJJValueGood) photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC]->FillXYMix(aJJValue, photon_pt_p->at(pI), mixWeight);
 
 		    photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC]->FillXYMix(dPhiJJValue, photon_pt_p->at(pI), mixWeight);
+		    photonPtJtDRJJVCent_MixMachine_p[centPos][barrelEC]->FillXYMix(dRJJValue, photon_pt_p->at(pI), mixWeight);
 		  }
 		  else if(isGoodRecoSideband){
 		    if(xJJValueGood) photonPtJtXJJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYMix(xJJValue, photon_pt_p->at(pI), mixWeight);
 		    if(aJJValueGood) photonPtJtAJJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYMix(aJJValue, photon_pt_p->at(pI), mixWeight);
 
 		    photonPtJtDPhiJJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYMix(dPhiJJValue, photon_pt_p->at(pI), mixWeight);
+		    photonPtJtDRJJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYMix(dRJJValue, photon_pt_p->at(pI), mixWeight);
 		  }
 		}//end for(barrelECFill){
 	      }//end for(jI2<passingJets1.size){
@@ -3214,6 +3230,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		Bool_t aJJValueGood = aJJValue >= ajBinsLowReco && aJJValue < ajBinsHighReco;
 
 		Float_t dPhiJJValue = TMath::Abs(getDPHI(jet1.Phi(), jet2.Phi()));
+		Float_t dRJJValue = getDR(jet1.Eta(), jet1.Phi(), jet2.Eta(), jet2.Phi());
 
 		jet2 += jet1;
 		//enforce multijetdphi cut
@@ -3229,12 +3246,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		    if(aJJValueGood) photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC]->FillXYMixCorrection(aJJValue, photon_pt_p->at(pI), mixWeight);
 
 		    photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC]->FillXYMixCorrection(dPhiJJValue, photon_pt_p->at(pI), mixWeight);
+		    photonPtJtDRJJVCent_MixMachine_p[centPos][barrelEC]->FillXYMixCorrection(dRJJValue, photon_pt_p->at(pI), mixWeight);
 		  }
 		  else if(isGoodRecoSideband){
 		    if(xJJValueGood) photonPtJtXJJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYMixCorrection(xJJValue, photon_pt_p->at(pI), mixWeight);
 		    if(aJJValueGood) photonPtJtAJJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYMixCorrection(aJJValue, photon_pt_p->at(pI), mixWeight);
 
 		    photonPtJtDPhiJJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYMixCorrection(dPhiJJValue, photon_pt_p->at(pI), mixWeight);
+		    photonPtJtDRJJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYMixCorrection(dRJJValue, photon_pt_p->at(pI), mixWeight);
 		  }
 		}//end for(barrelECFill){
 	      }
@@ -3368,6 +3387,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  Bool_t aJJValueGood = aJJValue >= ajBinsLow && aJJValue < ajBinsHigh;
 
 	  Float_t dPhiJJValue = TMath::Abs(getDPHI(goodTruthJet1.Phi(), goodTruthJet2.Phi()));
+	  Float_t dRJJValue = getDR(goodTruthJet1.Eta(), goodTruthJet1.Phi(), goodTruthJet2.Eta(), goodTruthJet2.Phi());
 
 	  goodTruthJet2 += goodTruthJet1;
 	  
@@ -3423,6 +3443,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
 	      photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthNoRecoMatch(dPhiJJValue, truthPhotonPt, fullWeight);
 	      photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(dPhiJJValue, truthPhotonPt, fullWeight);
+
+	      photonPtJtDRJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthNoRecoMatch(dRJJValue, truthPhotonPt, fullWeight);
+	      photonPtJtDRJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(dRJJValue, truthPhotonPt, fullWeight);
 
 	    }
 	  }
