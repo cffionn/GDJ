@@ -496,6 +496,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   std::map<std::string, std::string> varNameLowerToLabel;
   varNameLowerToLabel["xj"] = "x_{J#gamma}";
   varNameLowerToLabel["xjj"] = "#vec{x}_{JJ#gamma}";
+  varNameLowerToLabel["ajj"] = "#vec{A}_{JJ#gamma}";
   varNameLowerToLabel["pt"] = "p_{T}";
   varNameLowerToLabel["dphi"] = "#Delta#phi_{J#gamma}";
   if(varNameLowerToLabel.count(varNameLabel) != 0) varNameLabel = varNameLowerToLabel[varNameLabel];
@@ -615,9 +616,13 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   Double_t gammaPtBins[nMaxPtBins+1];
 
   std::vector<Float_t> jetVarMax, jetVarMin;
+
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
   if(gammaPtBinsDoLog) getLogBins(gammaPtBinsLow, gammaPtBinsHigh, nGammaPtBins, gammaPtBins);
   else if(gammaPtBinsDoCustom){
+    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
     std::string gammaPtBinsStr = inUnfoldFileConfig_p->GetValue("GAMMAPTBINSCUSTOM", "");
     if(gammaPtBinsStr.size() == 0){
       std::cout << "No custom bins given. return 1" << std::endl;
@@ -625,18 +630,24 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
     }
     std::vector<float> gammaPtBinsTemp = strToVectF(gammaPtBinsStr);
     Int_t nGammaPtBinsTemp = ((Int_t)gammaPtBinsTemp.size()) - 1;
-    if(nGammaPtBins != nGammaPtBinsTemp){
+    if(nGammaPtBins != nGammaPtBinsTemp){      
+      std::cout << "nGammaPtBins dont match - by stored value \'" << nGammaPtBins << "\', via vector \'" << nGammaPtBinsTemp << "\'" << std::endl;
       return 1;
     }
 
     for(unsigned int gI = 0; gI < gammaPtBinsTemp.size(); ++gI){
       gammaPtBins[gI] = gammaPtBinsTemp[gI];
     }
+
+    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
   }
   else getLinBins(gammaPtBinsLow, gammaPtBinsHigh, nGammaPtBins, gammaPtBins);
 
   gStyle->SetOptStat(0);
 
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+  
   std::string jtVar = inUnfoldFileConfig_p->GetValue("VARNAME", "");
   if(jtVar.size() == 0){
     std::cout << "Varname: \'" << jtVar << "\' is invalid. return 1" << std::endl;
@@ -649,6 +660,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   if(isStrSame(jtVarUpper, "PT")) varPrefix = "JT";
 
   std::string binVarStr = varPrefix + jtVarUpper;
+  if(isStrSame(binVarStr, "AJJ")) binVarStr = "AJ";
   
   Int_t nVarBins = inUnfoldFileConfig_p->GetValue(("N" + binVarStr + "BINS").c_str(), -1);
   Float_t varBinsLow = inUnfoldFileConfig_p->GetValue((binVarStr + "BINSLOW").c_str(), -1);
@@ -656,6 +668,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   Bool_t varBinsDoLog = inUnfoldFileConfig_p->GetValue((binVarStr + "BINSDOLOG").c_str(), 0);
   Bool_t varBinsDoCustom = inUnfoldFileConfig_p->GetValue((binVarStr + "BINSDOCUSTOM").c_str(), 0);
   Double_t varBins[nMaxPtBins+1];
+
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   if(varBinsDoLog) getLogBins(varBinsLow, varBinsHigh, nVarBins, varBins);
   else if(varBinsDoCustom){
@@ -676,6 +690,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   }
   else getLinBins(varBinsLow, varBinsHigh, nVarBins, varBins);
 
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+  
   //Photon-pt only; double vector for centrality, iterations
   std::vector<std::string> statsDeltaPhoPtNames, iterDeltaPhoPtNames, totalDeltaPhoPtNames;
   std::vector<std::string> recoHistPhoPtNames, truthHistPhoPtNames;
@@ -929,7 +945,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       std::vector<std::vector<TH1F*> > unfold_p;
       std::vector<std::vector<TH1F*> > refold_p;
       
-      
+          
       //1D unfold still has to convert the unfold1d and refold1d to vector
       if(pI == 0){
 	unfold_p.push_back({});
@@ -946,7 +962,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       else{
 	reco_p.clear();
 	truth_p.clear();
-	
+      
 	for(Int_t gI = 0; gI < nGammaPtBinsForUnfold; ++gI){
 	  reco_p.push_back(new TH1F(("reco_GammaPt" + std::to_string(gI) + "_h").c_str(), ";;", nVarBins, varBins));
 	  truth_p.push_back(new TH1F(("truth_GammaPt" + std::to_string(gI) + "_h").c_str(), ";;", nVarBins, varBins));
@@ -1126,7 +1142,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	}
 	
 	if(pI == 0) reco_p[gI]->GetYaxis()->SetTitle("#frac{1}{N_{#gamma}} #frac{dN_{#gamma}}{dp_{T}}");
-	else reco_p[gI]->GetYaxis()->SetTitle(("#frac{1}{N_{JJ#gamma}} #frac{dN_{J#gamma}}{d" + varNameLabel + "}").c_str());	
+	else if(varNameLower.find("JJ") != std::string::npos) reco_p[gI]->GetYaxis()->SetTitle(("#frac{1}{N_{JJ#gamma}} #frac{dN_{J#gamma}}{d" + varNameLabel + "}").c_str());	
+	else reco_p[gI]->GetYaxis()->SetTitle(("#frac{1}{N_{J#gamma}} #frac{dN_{J#gamma}}{d" + varNameLabel + "}").c_str());	
 
 	reco_p[gI]->DrawCopy("HIST E1");
 	
@@ -1422,6 +1439,23 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       delete statsDelta_p;
       delete iterDelta_p;
       delete totalDelta_p;
+
+      if(pI == 1){
+	for(unsigned int i = 0; i < reco_p.size(); ++i){
+	  delete reco_p[i];
+	  delete truth_p[i];
+	}
+
+	for(unsigned int i = 0; i < unfold_p.size(); ++i){
+	  for(unsigned int j = 0; j < unfold_p[i].size(); ++j){
+	    delete unfold_p[i][j];
+	    delete refold_p[i][j];
+	  }
+	}
+	
+	reco_p.clear();
+	truth_p.clear();	
+      }
     }
     if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   }

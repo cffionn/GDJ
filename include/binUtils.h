@@ -92,11 +92,21 @@ inline void binWidthAndSelfNorm(TH1* inHist_p)
 template <typename T>
 void fineHistToCoarseHist(T* fineHist_p, T* coarseHist_p)
 {
+  std::string histClassName = fineHist_p->ClassName();
+  bool isTH2 = histClassName.find("TH2") != std::string::npos;
+  
   //Initialize coarse histogram to 0                                                                  
   for(Int_t bIX = 0; bIX < coarseHist_p->GetXaxis()->GetNbins(); ++bIX){
-    for(Int_t bIY = 0; bIY < coarseHist_p->GetYaxis()->GetNbins(); ++bIY){
-      coarseHist_p->SetBinContent(bIX+1, bIY+1, 0.0);
-      coarseHist_p->SetBinError(bIX+1, bIY+1, 0.0);
+
+    if(isTH2){
+      for(Int_t bIY = 0; bIY < coarseHist_p->GetYaxis()->GetNbins(); ++bIY){
+	coarseHist_p->SetBinContent(bIX+1, bIY+1, 0.0);
+	coarseHist_p->SetBinError(bIX+1, bIY+1, 0.0);
+      }
+    }
+    else{
+      coarseHist_p->SetBinContent(bIX+1, 0.0);
+      coarseHist_p->SetBinError(bIX+1, 0.0);
     }
   }
 
@@ -134,69 +144,75 @@ h in coarser binning. returning"  << std::endl;
 
     fineToCoarseXs[bIX] = fineToCoarseXPos;
   }
-
+  
   //Build out our y-map
-  for(Int_t bIY = 0; bIY < fineHist_p->GetYaxis()->GetNbins(); ++bIY){
-    Float_t binCenterFine = fineHist_p->GetYaxis()->GetBinCenter(bIY+1);
-    Int_t fineToCoarseYPos = -1;
-
-    bool belowCoarse = binCenterFine < coarseHist_p->GetYaxis()->GetBinLowEdge(1);
-    bool aboveCoarse = binCenterFine >= coarseHist_p->GetYaxis()->GetBinLowEdge(coarseHist_p->GetYaxis()->GetNbins()+1);
-    if(belowCoarse || aboveCoarse){
-      fineToCoarseYs[bIY] = -1;
-      continue;
-    }
-    
-    for(Int_t bIY2 = 0; bIY2 < coarseHist_p->GetYaxis()->GetNbins(); ++bIY2){
-      Float_t binLowCoarse = coarseHist_p->GetYaxis()->GetBinLowEdge(bIY2+1);
-      Float_t binHighCoarse = coarseHist_p->GetYaxis()->GetBinLowEdge(bIY2+2);
-
-      if(binCenterFine >= binLowCoarse && binCenterFine < binHighCoarse){
-        fineToCoarseYPos = bIY2;
-        break;
+  if(isTH2){
+    for(Int_t bIY = 0; bIY < fineHist_p->GetYaxis()->GetNbins(); ++bIY){
+      Float_t binCenterFine = fineHist_p->GetYaxis()->GetBinCenter(bIY+1);
+      Int_t fineToCoarseYPos = -1;
+      
+      bool belowCoarse = binCenterFine < coarseHist_p->GetYaxis()->GetBinLowEdge(1);
+      bool aboveCoarse = binCenterFine >= coarseHist_p->GetYaxis()->GetBinLowEdge(coarseHist_p->GetYaxis()->GetNbins()+1);
+      if(belowCoarse || aboveCoarse){
+	fineToCoarseYs[bIY] = -1;
+	continue;
       }
-    }
-
-    if(fineToCoarseYPos < 0){
-      std::cout << "FINEHISTTOCOARSEHIST WARNING: binCenterFine '" << binCenterFine << "' has no matc\
+      
+      for(Int_t bIY2 = 0; bIY2 < coarseHist_p->GetYaxis()->GetNbins(); ++bIY2){
+	Float_t binLowCoarse = coarseHist_p->GetYaxis()->GetBinLowEdge(bIY2+1);
+	Float_t binHighCoarse = coarseHist_p->GetYaxis()->GetBinLowEdge(bIY2+2);
+	
+	if(binCenterFine >= binLowCoarse && binCenterFine < binHighCoarse){
+	  fineToCoarseYPos = bIY2;
+	  break;
+	}
+      }
+      
+      if(fineToCoarseYPos < 0){
+	std::cout << "FINEHISTTOCOARSEHIST WARNING: binCenterFine '" << binCenterFine << "' has no matc\
 h in coarser binning. returning"  << std::endl;
-      return;
+	return;
+      }
+      
+      fineToCoarseYs[bIY] = fineToCoarseYPos;
     }
-
-    fineToCoarseYs[bIY] = fineToCoarseYPos;
   }
 
+  for(auto const & fineToCoarseY : fineToCoarseYs){
+    std::cout << " " << fineToCoarseY.first << ", " << fineToCoarseY.second << std::endl;
+  }
+  
   //Now fill out coarse from fine
   for(Int_t bIX = 0; bIX < fineHist_p->GetXaxis()->GetNbins(); ++bIX){
     Int_t coarsePosX = fineToCoarseXs[bIX];
 
     if(coarsePosX < 0) continue;
-    
-    for(Int_t bIY = 0; bIY < fineHist_p->GetYaxis()->GetNbins(); ++bIY){
-      Int_t coarsePosY = fineToCoarseYs[bIY];
 
-      if(coarsePosY < 0) continue;
-      
-      Float_t newValue = coarseHist_p->GetBinContent(coarsePosX+1, coarsePosY+1) + fineHist_p->GetBinContent(bIX+1, bIY+1);
+    if(isTH2){
+      for(Int_t bIY = 0; bIY < fineHist_p->GetYaxis()->GetNbins(); ++bIY){
+	Int_t coarsePosY = fineToCoarseYs[bIY];
 
-      Float_t newError = coarseHist_p->GetBinError(coarsePosX+1, coarsePosY+1);
-      newError = TMath::Sqrt(newError*newError + fineHist_p->GetBinError(bIX+1, bIY+1)*fineHist_p->GetBinError(bIX+1, bIY+1));
-
-      coarseHist_p->SetBinContent(coarsePosX+1, coarsePosY+1, newValue);
-      coarseHist_p->SetBinError(coarsePosX+1, coarsePosY+1, newError);
+	if(coarsePosY < 0) continue;
+	
+	Float_t newValue = coarseHist_p->GetBinContent(coarsePosX+1, coarsePosY+1) + fineHist_p->GetBinContent(bIX+1, bIY+1);
+	
+	Float_t newError = coarseHist_p->GetBinError(coarsePosX+1, coarsePosY+1);
+	newError = TMath::Sqrt(newError*newError + fineHist_p->GetBinError(bIX+1, bIY+1)*fineHist_p->GetBinError(bIX+1, bIY+1));
+	
+	coarseHist_p->SetBinContent(coarsePosX+1, coarsePosY+1, newValue);
+	coarseHist_p->SetBinError(coarsePosX+1, coarsePosY+1, newError);
+      }
+    }
+    else{
+      Float_t newValue = coarseHist_p->GetBinContent(coarsePosX+1) + fineHist_p->GetBinContent(bIX+1);
+	
+      Float_t newError = coarseHist_p->GetBinError(coarsePosX+1);
+      newError = TMath::Sqrt(newError*newError + fineHist_p->GetBinError(bIX+1)*fineHist_p->GetBinError(bIX+1));
+	
+      coarseHist_p->SetBinContent(coarsePosX+1, newValue);
+      coarseHist_p->SetBinError(coarsePosX+1, newError);      
     }
   }
-  /*
-  std::cout << "CHECKING COARSE HIST: " << std::endl;
-
-  for(Int_t bIY = 0; bIY < coarseHist_p->GetYaxis()->GetNbins(); ++bIY){
-    std::cout << "Y" << bIY << ": ";
-    for(Int_t bIX = 0; bIX < coarseHist_p->GetXaxis()->GetNbins(); ++bIX){
-      std::cout << coarseHist_p->GetBinContent(bIX+1, bIY+1) << ",";
-    }
-    std::cout << std::endl;
-  }
-  */
   
   return;
 }
