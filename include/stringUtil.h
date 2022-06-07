@@ -312,7 +312,8 @@ inline std::string strLowerToUpper(std::string inStr)
 }
 
 
-inline std::vector<std::string> getLabels(TEnv* plotConfig_p, TH1F* histForLabels_p, std::map<std::string, std::string>* labelMap, std::vector<std::string>* labelsForSaveStr = nullptr)
+template <typename T>
+inline std::vector<std::string> getLabels(TEnv* plotConfig_p, T* histForLabels_p, std::map<std::string, std::string>* labelMap, std::vector<std::string>* labelsForSaveStr = nullptr)
 {
   std::vector<std::string> labelVect;
   Int_t nGlobalLabels = 0;
@@ -371,11 +372,14 @@ inline std::vector<std::string> getLabels(TEnv* plotConfig_p, TH1F* histForLabel
 
   std::string jtPtLowStr = plotConfig_p->GetValue("JTPTBINSLOW", "");
   std::string jtPtHighStr = plotConfig_p->GetValue("JTPTBINSHIGH", "");
+  std::string jtPtLowRecoStr = plotConfig_p->GetValue("JTPTBINSLOWRECO", "");
+  std::string jtPtHighRecoStr = plotConfig_p->GetValue("JTPTBINSHIGHRECO", "");
   std::string jtEtaLowStr = plotConfig_p->GetValue("JTETABINSLOW", "");
   std::string jtEtaHighStr = plotConfig_p->GetValue("JTETABINSHIGH", "");
   std::string mixJJDR = plotConfig_p->GetValue("MIXJETEXCLUSIONDR", "");
   //Add the three relevant jet cuts
-  labelVect.push_back(jtPtLowStr + "<p_{T,Jet}<" + jtPtHighStr);
+  labelVect.push_back(jtPtLowStr + "<p_{T,Jet}^{Truth}<" + jtPtHighStr);
+  labelVect.push_back(jtPtLowRecoStr + "<p_{T,Jet}^{Reco.}<" + jtPtHighRecoStr);
   labelVect.push_back(jtEtaLowStr + "<#eta_{Jet}<" + jtEtaHighStr);
   labelVect.push_back("#DeltaR_{JJ}>" + mixJJDR);
 
@@ -391,11 +395,13 @@ inline std::vector<std::string> getLabels(TEnv* plotConfig_p, TH1F* histForLabel
     labelVect.push_back(multiDPhiJJStr);
   }
 
+  /*
   const bool isMC = plotConfig_p->GetValue("ISMC", 0);
   if(isMC){
     std::string assocGenMinPtStr = plotConfig_p->GetValue("ASSOCGENMINPT", "");
     if(assocGenMinPtStr.size() != 0) labelVect.push_back("p_{T,Jet}^{Truth Match} > " + assocGenMinPtStr);
   }
+  */
 
   return labelVect;
 

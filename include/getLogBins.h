@@ -3,7 +3,7 @@
 
 #include "TMath.h"
 
-void getLogBins(const Float_t lower, const Float_t higher, const Int_t nBins, Double_t bins[])
+inline void getLogBins(const Float_t lower, const Float_t higher, const Int_t nBins, Double_t bins[])
 {
   Float_t logBins[nBins+1];
   bins[0] = lower;

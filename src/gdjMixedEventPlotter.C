@@ -851,7 +851,8 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 
   //  std::vector<std::string> observables1 = {"JtXJ", "JtXJJ", "JtAJJ", "JtDPhiJJG", "JtDPhiJJ", "JtDRJJ", "JtPt", "JtDPhi"};
   //  std::vector<std::string> mixStrings = {"MIX", "MIXCORRECTED", "MIXCORRECTED", "MIXCORRECTED", "MIXCORRECTED", "MIXCORRECTED", "MIX", "MIX"};
-  std::vector<std::string> barrelECStr = {"Barrel", "EC", "BarrelAndEC"};
+  //  std::vector<std::string> barrelECStr = {"Barrel", "EC", "BarrelAndEC"};
+  std::vector<std::string> barrelECStr = {"BarrelAndEC"};
 
   std::vector<std::string> normYAxisTitle = {"#frac{1}{N_{#gamma}}#frac{dN_{J#gamma}}{dx_{J#gamma}}",
 					     "#frac{1}{N_{#gamma}}#frac{dN_{JJ#gamma}}{dx_{JJ#gamma}}",
@@ -862,10 +863,10 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 					     "#frac{1}{N_{#gamma}}#frac{dN_{J#gamma}}{dp_{T,J#gamma}}",
 					     "#frac{1}{N_{#gamma}}#frac{dN_{J#gamma}}{d#Delta#phi_{J#gamma}}"};
 
-  //  std::vector<std::string> observables1 = {"JtPt", "JtXJ", "JtDPhi"};
-  //  std::vector<std::string> mixStrings = {"MIX", "MIX", "MIX"};
-  std::vector<std::string> observables1 = {"JtXJJ", "JtDRJJ"};
-  std::vector<std::string> mixStrings = {"MIXCORRECTED", "MIXCORRECTED"};
+  std::vector<std::string> observables1 = {"JtPt", "JtXJ", "JtDPhi", "JtXJJ"};
+  std::vector<std::string> mixStrings = {"MIX", "MIX", "MIX", "MIXCORRECTED"};
+  //  std::vector<std::string> observables1 = {"JtXJJ", "JtDRJJ"};
+  //  std::vector<std::string> mixStrings = {"MIXCORRECTED", "MIXCORRECTED"};
   //  std::vector<std::string> barrelECStr = {"Barrel"};
 
   std::vector<std::vector<std::string> > globalLabels;
@@ -880,10 +881,16 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 
   plotConfig_p->SetValue("JTPTBINSLOW", config_p->GetValue("JTPTBINSLOW", ""));
   plotConfig_p->SetValue("JTPTBINSHIGH", config_p->GetValue("JTPTBINSHIGH", ""));
+  plotConfig_p->SetValue("JTPTBINSLOWRECO", config_p->GetValue("JTPTBINSLOWRECO", ""));
+  plotConfig_p->SetValue("JTPTBINSHIGHRECO", config_p->GetValue("JTPTBINSHIGHRECO", ""));
   plotConfig_p->SetValue("JTETABINSLOW", config_p->GetValue("JTETABINSLOW", ""));
   plotConfig_p->SetValue("JTETABINSHIGH", config_p->GetValue("JTETABINSHIGH", ""));
   plotConfig_p->SetValue("MIXJETEXCLUSIONDR", config_p->GetValue("MIXJETEXCLUSIONDR", ""));
-    
+
+  //We need gamma pt bins to know which y axis positions to exclude
+  const Float_t gammaPtBinsLowReco = config_p->GetValue("GAMMAPTBINSLOWRECO", 1000.0);
+  const Float_t gammaPtBinsHighReco = config_p->GetValue("GAMMAPTBINSHIGHRECO", -1000.0);
+  
   const Int_t nMaxBins = 100;
   for(Int_t cI = 0; cI < nCentBins; ++cI){
     std::string centStr = "PP";
@@ -895,7 +902,8 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
       bool isBarrelAndEC = barrelECStr[bI].find("BarrelAndEC") != std::string::npos;
       //      if(isBarrelAndEC) mainBarrelECStr = "Barrel";	
 
-      std::string phoName = centStr + "/photonPtVCent_" + centStr + "_" + mainBarrelECStr + "_RAW_Fine_h";
+      std::string phoName = centStr + "/photonPtVCent_" + centStr + "_" + mainBarrelECStr + "_RAW_h";
+      if(doGlobalDebug) std::cout << "FILE, LINE, PHONAME: " << __FILE__ << ", " << __LINE__ << ", " << phoName << std::endl;
       TH1F* photonHist_p = (TH1F*)inFile_p->Get(phoName.c_str());
       TH1F* photonHistMC_p = nullptr;
       if(mcFileName.size() != 0) photonHistMC_p = (TH1F*)mcFile_p->Get(phoName.c_str());
@@ -998,7 +1006,7 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	std::string mcName = rawName;
 	std::string mcNameEC;
 	if(isMC){
-	  if(!strReplace(&mcName, "RAW", "TRUTHMATCHEDRECO")) return 1;
+	  if(!strReplace(&mcName, "RAW", "RAWWITHTRUTHMATCH")) return 1;
 	  mcNameEC = mcName;
 
 	  if(isBarrelAndEC){
@@ -1181,6 +1189,7 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	  */
 	  
 	  if(isMC){
+	    if(doGlobalDebug) std::cout << "FILE, LINE, mcNAME: " << __FILE__ << ", " << __LINE__ << ", " << mcName << std::endl;
 	    mc_p = (TH2F*)inFile_p->Get(mcName.c_str());
 	    //	    if(isBarrelAndEC) mcEC_p = (TH2F*)inFile_p->Get(mcNameEC.c_str());	      
 	  }
@@ -1217,7 +1226,7 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	*/
  		        
 	const Int_t nBinsTemp = raw_p->GetXaxis()->GetNbins();
-	if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+	if(doGlobalDebug) std::cout << "FILE, LINE, nBinsTemp: " << __FILE__ << ", " << __LINE__ << ", " << nBinsTemp << std::endl;
 
 	if(nBinsTemp > nMaxBins){
 	  std::cout << "Number of bins needed \'" << nBinsTemp << "\' exceeds max \'" << nMaxBins << "\'. return 1" << std::endl;
@@ -1227,12 +1236,22 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	for(Int_t bIX = 0; bIX < nBinsTemp+1; ++bIX){
 	  binsTemp[bIX] = raw_p->GetXaxis()->GetBinLowEdge(bIX+1);
 	}
+
+	if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	
 	for(Int_t bIY = 0; bIY < raw_p->GetYaxis()->GetNbins(); ++bIY){	
+	  Float_t binCenter = raw_p->GetYaxis()->GetBinCenter(bIY+1);
+
+	  if(binCenter < gammaPtBinsLowReco) continue;
+	  if(binCenter >= gammaPtBinsHighReco) continue;
+
 	  //Calculate photon integral of this bin
 	  Float_t lowEdge = raw_p->GetYaxis()->GetBinLowEdge(bIY+1);
 	  Float_t highEdge = raw_p->GetYaxis()->GetBinLowEdge(bIY+2);
-	  
+
+	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+	  if(doGlobalDebug) std::cout << "FILE, LINE, photonHistName: " << __FILE__ << ", " << __LINE__ << ", " << photonHist_p->GetName() << std::endl;
+
 	  Float_t photonIntegral = 0.0;
 	  for(Int_t pI = 0; pI < photonHist_p->GetXaxis()->GetNbins(); ++pI){
 	    Float_t binCenter = photonHist_p->GetXaxis()->GetBinCenter(pI+1);
@@ -1310,19 +1329,29 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	    }	    
 	  }
 
+	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+	  
 	  for(Int_t bIX = 0; bIX < raw_p->GetXaxis()->GetNbins(); ++bIX){	
+	    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+	    
 	    rawTemp_p->SetBinContent(bIX+1, raw_p->GetBinContent(bIX+1, bIY+1));
 	    mixTemp_p->SetBinContent(bIX+1, mix_p->GetBinContent(bIX+1, bIY+1));
 	    subTemp_p->SetBinContent(bIX+1, sub_p->GetBinContent(bIX+1, bIY+1));
+
+	    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	    
 	    rawTemp_p->SetBinError(bIX+1, raw_p->GetBinError(bIX+1, bIY+1));
 	    mixTemp_p->SetBinError(bIX+1, mix_p->GetBinError(bIX+1, bIY+1));
 	    subTemp_p->SetBinError(bIX+1, sub_p->GetBinError(bIX+1, bIY+1));
+
+	    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	    
 	    if(isMC){
 	      mcTemp_p->SetBinContent(bIX+1, mc_p->GetBinContent(bIX+1, bIY+1));
 	      mcTemp_p->SetBinError(bIX+1, mc_p->GetBinError(bIX+1, bIY+1));
 	    }
+
+	    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
 	    if(mcFileName.size() != 0){	
 	      subMCTemp_p->SetBinContent(bIX+1, subMC_p->GetBinContent(bIX+1, bIY+1));
@@ -1333,7 +1362,11 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
 	    //	    if(isStrSame(observables1[oI], "JtXJJ") || isStrSame(observables1[oI], "JtDPhiJJG")){
+	    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	    if(isMultijet){
+
+	      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
 	      mixUncorrectedTemp_p->SetBinContent(bIX+1, mixUncorrected_p->GetBinContent(bIX+1, bIY+1));
               mixUncorrectedTemp_p->SetBinError(bIX+1, mixUncorrected_p->GetBinError(bIX+1, bIY+1));
 
@@ -1369,6 +1402,8 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	    }
 	  }
 
+	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+	  
 	  //Temp check of the remaining non-closure
 	  if(isStrSame(observables1[oI], "JtDRJJ")){
 	    if(isMC){
