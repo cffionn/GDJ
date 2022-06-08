@@ -477,8 +477,10 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   //  const std::string multiJtCutGlobalStr = "MultiJt0";
   const std::string jtPtBinsGlobalStr = "GlobalJtPt0";
 
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
+  const Int_t nMaxJESJER = 100;
+  Int_t nJESJER = inUnfoldFileConfig_p->GetValue("NJETSYSANDNOM", -1);
+  std::vector<std::string> jesJERStrVect = strToVect(inUnfoldFileConfig_p->GetValue("JETSYSANDNOM", ""));
+ 
   //Additional params are required if it is Pb+Pb
   std::vector<std::string> pbpbParams = {"CENTBINS"};
   if(!checkEnvForParams(inUnfoldFileConfig_p, necessaryUnfoldFileParams)) return 1;
@@ -722,16 +724,16 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 
     recoHistPhoPtJetVarNames.push_back("photonPtJet" + jtVar + "Reco_PreUnfold_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
     truthHistPhoPtJetVarNames.push_back("photonPtJet" + jtVar + "Truth_PreUnfold_" + centBinsStr[cI] + "_TRUTH_COMBINED_h");
-    statsDeltaPhoPtJetVarNames.push_back("statsDelta_PhoPtJet" + jtVar + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
-    iterDeltaPhoPtJetVarNames.push_back("iterDelta_PhoPtJet" + jtVar + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
-    totalDeltaPhoPtJetVarNames.push_back("totalDelta_PhoPtJet" + jtVar + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
+    statsDeltaPhoPtJetVarNames.push_back("statsDelta_PhoPtJet" + jtVar + "_" + centBinsStr[cI] + "_" + jesJERStrVect[0] + "_PURCORR_COMBINED_h");
+    iterDeltaPhoPtJetVarNames.push_back("iterDelta_PhoPtJet" + jtVar + "_" + centBinsStr[cI] + "_" + jesJERStrVect[0] + "_PURCORR_COMBINED_h");
+    totalDeltaPhoPtJetVarNames.push_back("totalDelta_PhoPtJet" + jtVar + "_" + centBinsStr[cI] + "_" + jesJERStrVect[0] + "_PURCORR_COMBINED_h");
     
     for(Int_t uI = 0; uI < nIter+1; ++uI){
       unfoldNamesPhoPt[cI].push_back("photonPtReco_Iter" + std::to_string(uI) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
       refoldNamesPhoPt[cI].push_back("photonPtReco_Iter" + std::to_string(uI) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_Refolded_h");
 
-      unfoldNamesPhoPtJetVar[cI].push_back("photonPtJet" + jtVar + "Reco_Iter" + std::to_string(uI) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
-      refoldNamesPhoPtJetVar[cI].push_back("photonPtJet" + jtVar + "Reco_Iter" + std::to_string(uI) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_Refolded_h");
+      unfoldNamesPhoPtJetVar[cI].push_back("photonPtJet" + jtVar + "Reco_Iter" + std::to_string(uI) + "_" + centBinsStr[cI] + "_" + jesJERStrVect[0] + "_PURCORR_COMBINED_h");
+      refoldNamesPhoPtJetVar[cI].push_back("photonPtJet" + jtVar + "Reco_Iter" + std::to_string(uI) + "_" + centBinsStr[cI] + "_" + jesJERStrVect[0] + "_PURCORR_COMBINED_Refolded_h");
     }
   }
 
