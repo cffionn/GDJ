@@ -2951,6 +2951,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    }//End barrelECFill
 	  	  	  
 	    if(isMC){
+
 	      /*
 	      std::cout << "RECO JETS going to truth fill" << std::endl;
 	      std::cout << " Reco Jet1 (pt,eta,phi): " << goodRecoJets[gI].Pt() << ", " << goodRecoJets[gI].Eta() << ", " << goodRecoJets[gI].Phi() << std::endl;
@@ -2991,15 +2992,15 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
 
 		if(multiJtDPhiReco > gammaMultiJtDPhiCut && isTruthMatchedDPhi){
-		  //		  std::cout << " PASSED MULTIJTDPHI" << std::endl;
+		  //std::cout << " PASSED MULTIJTDPHI" << std::endl;
 		  for(auto const barrelECTruth : barrelECFillTruth){
 		    if(isGoodRecoSignal){
-		      //		      std::cout << " PASSED GOOD RECO SIGNAL" << std::endl;
+		      //std::cout << " PASSED GOOD RECO SIGNAL" << std::endl;
 		      if(xJJValueTruthGood && xJJValueGood){
-			//			std::cout << "XJJ FILL AT ENTRY: " << entry << std::endl;
-			//			std::cout << " xjjvalue PASSED" << std::endl;
+			//std::cout << "XJJ FILL AT ENTRY: " << entry << std::endl;
+			//std::cout << " xjjvalue PASSED" << std::endl;
 			photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthWithRecoMatch(xJJValueTruth, truthPhotonPt, fullWeight);
-			//			std::cout << " FILLED" << std::endl;
+			//std::cout << " FILLED" << std::endl;
 		      }
 		      if(aJJValueTruthGood && aJJValueGood) photonPtJtAJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthWithRecoMatch(aJJValueTruth, truthPhotonPt, fullWeight);
 
@@ -3007,7 +3008,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		      photonPtJtDRJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthWithRecoMatch(dRJJValueTruth, truthPhotonPt, fullWeight);
 		    }
 
-		    /*		    
+		    /*	    
 		    std::cout << "Fill at Entry, evt: " << entry << ", " << eventNumber << std::endl;
 		    std::cout << " Truth photon pt eta phi: " << truthPhotonPt << ", " << truthPhotonEta << ", " << truthPhotonPhi << std::endl;
 		    std::cout << " Reco photon pt eta phi: " << photon_pt_p->at(truthPhoRecoPos) << ", " << photon_eta_p->at(truthPhoRecoPos) << ", " << photon_phi_p->at(truthPhoRecoPos) << std::endl;
@@ -3016,7 +3017,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		    */
 
 		    if(xJJValueTruthGood){
-		      //		      std::cout << "FILLING TRUTH NO RECO AT ENTRY: " << entry << std::endl;
+		      //std::cout << "FILLING TRUTH NO RECO AT ENTRY: " << entry << std::endl;
 		      photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(xJJValueTruth, truthPhotonPt, fullWeight);
 		    }
 		    if(aJJValueTruthGood) photonPtJtAJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(aJJValueTruth, truthPhotonPt, fullWeight);
@@ -3398,7 +3399,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	TLorentzVector goodTruthJet1 = goodTruthJets[jI];
 	int recoPos1 = goodTruthJetsRecoPos[jI];
 	bool isRecoMatched1 = recoPos1 >= 0;
-       
+	
 	for(unsigned int jI2 = jI+1; jI2 < goodTruthJets.size(); ++jI2){
 	  TLorentzVector goodTruthJet2 = goodTruthJets[jI2];
 	  int recoPos2 = goodTruthJetsRecoPos[jI2];
@@ -3406,6 +3407,13 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
 	  bool isRecoMatched = isRecoMatched1 && isRecoMatched2;
 
+	  /*
+	  std::cout << "Possible truth pair: " << std::endl;
+	  std::cout << " Truth Jet 1 (pt,eta,phi):" << goodTruthJet1.Pt() << ", " << goodTruthJet1.Eta() << ", " << goodTruthJet1.Phi() << std::endl;
+	  std::cout << " Truth Jet 2 (pt,eta,phi):" << goodTruthJet2.Pt() << ", " << goodTruthJet2.Eta() << ", " << goodTruthJet2.Phi() << std::endl;
+	  std::cout << " isRecoMatched1, 2, all: " << isRecoMatched1 << ", " << isRecoMatched2 << ", " << isRecoMatched << std::endl;
+	  */
+	  
 	  Float_t aJJValue = TMath::Abs(goodTruthJet1.Pt() - goodTruthJet2.Pt()) / truthPhotonPt;
 	  Bool_t aJJValueGood = aJJValue >= ajBinsLow && aJJValue < ajBinsHigh;
 
@@ -3429,10 +3437,13 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
 	  if(multiJtDPhiValue < gammaMultiJtDPhiCut) continue; //We dont fill truth that fails this cut
 
+	  //	  std::cout << " Passed dR and DPhi cuts" << std::endl;
+	  
 	  Bool_t isGoodXJJReco = false;
 	  Bool_t isGoodAJJReco = false;
 
 	  //Calc. the reco multijtdphi - if it fails cut, isRecoMatched is turned false
+	  //	  std::cout << "truthPhoHasGoodReco: " << truthPhoHasGoodReco << std::endl;
 	  if(isRecoMatched && truthPhoHasGoodReco){
 	    TLorentzVector goodRecoJet1;
 	    goodRecoJet1.SetPtEtaPhiM(aktRhi_etajes_jet_pt_p->at(recoPos1), aktRhi_etajes_jet_eta_p->at(recoPos1), aktRhi_etajes_jet_phi_p->at(recoPos1), 0.0);
@@ -3442,22 +3453,29 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
 	    Float_t aJJValueReco = TMath::Abs(goodRecoJet1.Pt() - goodRecoJet2.Pt()) / photon_pt_p->at(truthPhoRecoPos);
 	    isGoodAJJReco = aJJValueReco >= ajBinsLowReco && aJJValueReco < ajBinsHighReco;
-	   	    
+
+	    Float_t tempRecoDR = getDR(goodRecoJet1.Eta(), goodRecoJet1.Phi(), goodRecoJet2.Eta(), goodRecoJet2.Phi());
+
+	    //	    std::cout << "tempRecoDR: " << tempRecoDR << std::endl;
+	    if(tempRecoDR < mixJetExclusionDR) isRecoMatched = false;
+	    
 	    goodRecoJet2 += goodRecoJet1;
 
 	    Float_t xJJValueReco = goodRecoJet2.Pt() / photon_pt_p->at(truthPhoRecoPos);
 	    isGoodXJJReco = xJJValueReco >= xjjBinsLowReco && xJJValueReco < xjjBinsHighReco;
 
 	    Float_t multiJtDPhiValue = TMath::Abs(getDPHI(photon_phi_p->at(truthPhoRecoPos), goodRecoJet2.Phi())); 
-
+	    
 	    if(multiJtDPhiValue < gammaMultiJtDPhiCut) isRecoMatched = false;
-	  }
 
+	    if(!isRecoMatched) isGoodXJJReco = false;
+	  }
+      
 	  if(!isRecoMatched || !truthPhoHasGoodReco){
 	    for(auto const barrelECTruth : barrelECFillTruth){
 
 	      if(!isGoodXJJReco){
-		//a		std::cout << "TRUTH WITH NO RECO FILLING AT ENTRY: " << entry << std::endl;
+		//		std::cout << "TRUTH WITH NO RECO FILLING AT ENTRY: " << entry << std::endl;
 		//		std::cout << " Truth jet1 (pt,eta,phi): " << goodTruthJet1.Pt() << ", " << goodTruthJet1.Eta() << ", " << goodTruthJet1.Phi() << std::endl;
 		//		std::cout << " Truth jet2 (pt,eta,phi): " << goodTruthJet2.Pt() << ", " << goodTruthJet2.Eta() << ", " << goodTruthJet2.Phi() << std::endl;
 		
