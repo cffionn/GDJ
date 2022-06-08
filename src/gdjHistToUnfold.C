@@ -967,9 +967,10 @@ int gdjHistToUnfold(std::string inConfigFileName)
     //Now construct 2-D unfold response matrix for gammapt-jetvariable    
     //Start w/ truth jets, no reco    
     TLorentzVector tL;
-    std::vector<TLorentzVector> goodUnmatchedTruthJets;
 
     for(Int_t jesJERI = 0; jesJERI < nJESJER; ++jesJERI){
+      std::vector<TLorentzVector> goodUnmatchedTruthJets;
+
       for(Int_t tI = 0; tI < nTruthJtUnmatched_; ++tI){
 	bool truthJetOutOfBounds = truthJtUnmatchedPt_[tI] < jtPtBinsLow || truthJtUnmatchedPt_[tI] >= jtPtBinsHigh;
 	truthJetOutOfBounds = truthJetOutOfBounds || truthJtUnmatchedEta_[tI] < jtEtaBinsLow || truthJtUnmatchedEta_[tI] > jtEtaBinsHigh;
