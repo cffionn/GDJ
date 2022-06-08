@@ -323,13 +323,17 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
   //MixMode - 0 is p+p (no mixing), 1 is normal inclusive jet mixing, 2 is multi-jet mixing
   std::string mixModeStr = "MIXMODE0";
-  if(!isPP){
+/  if(!isPP){
     if(isMultijet) mixModeStr = "MIXMODE2";
     else mixModeStr = "MIXMODE1";
   }
 
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-      
+  //Grab the number of jet systematics
+  const Int_t nMaxJESJER = 100;
+  Int_t nJESJER = inResponseFileConfig_p->GetValue("NJETSYSANDNOM", -1);
+  std::vector<std::string> jesJERStr = strToVect(inResponseFileConfig_p->GetValue("JETSYSANDNOM"));
+  
+  
   //Grab the in-file defined bins
   Int_t nGammaPtBins = inResponseFileConfig_p->GetValue("NGAMMAPTBINS", 0);
   Float_t gammaPtBinsLow = inResponseFileConfig_p->GetValue("GAMMAPTBINSLOW", 80.0);
@@ -600,8 +604,8 @@ int gdjHistToUnfold(std::string inConfigFileName)
   TH1D* photonPtReco_p[nMaxCentBins];
   TH1D* photonPtTruth_p[nMaxCentBins];  
 
-  TH2D* photonPtJetVarReco_p[nMaxCentBins];
-  TH2D* photonPtJetVarTruth_p[nMaxCentBins];  
+  TH2D* photonPtJetVarReco_p[nMaxCentBins][nMaxJESJER];
+  TH2D* photonPtJetVarTruth_p[nMaxCentBins][nMaxJESJER];  
   
   //  const Int_t nBarrelAndEC = 2;
   //  const std::string barrelAndECStr[nBarrelAndEC] = {"Barrel", "EC"};
@@ -617,29 +621,28 @@ int gdjHistToUnfold(std::string inConfigFileName)
     std::cout << "SWITCHING TO UNIFIED PURITY MODE" << std::endl;
   }
   
-  TH1D* photonPtReco_PURCORR_p[nMaxCentBins][nBarrelAndECMax];  
-  TH1D* photonPtReco_PURCORR_COMBINED_p[nMaxCentBins];  
-  TH1D* photonPtReco_TRUTH_p[nMaxCentBins][nBarrelAndECMax];
-  TH1D* photonPtReco_TRUTH_COMBINED_p[nMaxCentBins];
+  TH1D* photonPtReco_PURCORR_p[nMaxCentBins][nBarrelAndECMax][nMaxJESJER];  
+  TH1D* photonPtReco_PURCORR_COMBINED_p[nMaxCentBins][nMaxJESJER];  
+  TH1D* photonPtReco_TRUTH_p[nMaxCentBins][nBarrelAndECMax][nMaxJESJER];
+  TH1D* photonPtReco_TRUTH_COMBINED_p[nMaxCentBins][nMaxJESJER];
 
-  TH2D* photonPtJetVarReco_PURCORR_p[nMaxCentBins][nBarrelAndECMax];
-  TH2D* photonPtJetVarReco_PURCORR_COMBINED_p[nMaxCentBins];
-  TH2D* photonPtJetVarReco_TRUTH_p[nMaxCentBins][nBarrelAndECMax];
-  TH2D* photonPtJetVarReco_TRUTH_COMBINED_p[nMaxCentBins];
+  TH2D* photonPtJetVarReco_PURCORR_p[nMaxCentBins][nBarrelAndECMax][nMaxJESJER];
+  TH2D* photonPtJetVarReco_PURCORR_COMBINED_p[nMaxCentBins][nMaxJESJER];
+  TH2D* photonPtJetVarReco_TRUTH_p[nMaxCentBins][nBarrelAndECMax][nMaxJESJER];
+  TH2D* photonPtJetVarReco_TRUTH_COMBINED_p[nMaxCentBins][nMaxJESJER];
   
-  RooUnfoldResponse* rooResGamma_p[nMaxCentBins];  
-  TH2D* rooResGammaMatrix_p[nMaxCentBins];
-  TH1D* rooResGammaMisses_p[nMaxCentBins];
+  RooUnfoldResponse* rooResGamma_p[nMaxCentBins][nMaxJESJER];  
+  TH2D* rooResGammaMatrix_p[nMaxCentBins][nMaxJESJER];
+  TH1D* rooResGammaMisses_p[nMaxCentBins][nMaxJESJER];
 
-  RooUnfoldResponse* rooResGammaJetVar_p[nMaxCentBins]; 
-  TH2D* rooResGammaJetVarMatrixReco_p[nMaxCentBins];
-  TH2D* rooResGammaJetVarMatrixTruth_p[nMaxCentBins];
-  TH2D* rooResGammaJetVarMisses_p[nMaxCentBins];
+  RooUnfoldResponse* rooResGammaJetVar_p[nMaxCentBins][nMaxJESJER]; 
+  TH2D* rooResGammaJetVarMatrixReco_p[nMaxCentBins][nMaxJESJER];
+  TH2D* rooResGammaJetVarMatrixTruth_p[nMaxCentBins][nMaxJESJER];
+  TH2D* rooResGammaJetVarMisses_p[nMaxCentBins][nMaxJESJER];
   
   //Lets check if a rebin is requested that it is valid
   if(doRebin){
     std::string histName = centBinsStr[0] + "/photonPtJt" + varName + "VCent_" + centBinsStr[0] + "_" + barrelAndECStr[0] + "_" + gammaJtDPhiStr + "_" + mixModeStr + "_SUB_h";
-    std::cout << "HISTNAME: " << histName  << std::endl;
     TH2D* tempTH2DorCheck_p = (TH2D*)inUnfoldFile_p->Get(histName.c_str());
 
     //Check that the macro histogram bins align with requested new binning                      
@@ -665,8 +668,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
       
       varBinsStr = varBinsStr + newStr + ",";
     }    
-    
-    
+        
     nGammaPtBins = nRebinY;
     for(Int_t vI = 0; vI < nRebinY+1; ++vI){
       gammaPtBins[vI] = rebinYVect[vI];
@@ -694,14 +696,12 @@ int gdjHistToUnfold(std::string inConfigFileName)
   for(Int_t cI = 0; cI < nCentBins; ++ cI){    
     photonPtReco_p[cI] = new TH1D(("photonPtReco_" + centBinsStr[cI] + "_h").c_str(), ";Reco. Photon p_{T};Counts", nGammaPtBins, gammaPtBins);
     photonPtTruth_p[cI] = new TH1D(("photonPtTruth_" + centBinsStr[cI] + "_h").c_str(), ";Truth Photon p_{T};Counts", nGammaPtBins, gammaPtBins);
-    
-    photonPtJetVarReco_p[cI] = new TH2D(("photonPtJet" + varName + "Reco_" + centBinsStr[cI] + "_h").c_str(), (";Reco. " + varNameStyle + ";Reco. Photon p_{T}").c_str(), nVarBins, varBins, nGammaPtBins, gammaPtBins);
-    photonPtJetVarTruth_p[cI] = new TH2D(("photonPtJet" + varName + "Truth_" + centBinsStr[cI] + "_h").c_str(), (";Truth " + varNameStyle + ";Truth Photon p_{T}").c_str(), nVarBins, varBins, nGammaPtBins, gammaPtBins);
 
-    /*
-    std::cout << "nBarrelAndEC: " << nBarrelAndEC << std::endl;
-    return 1;
-    */
+    for(Int_t jI = 0; jI < nJESJER; ++jI){
+      photonPtJetVarReco_p[cI][jI] = new TH2D(("photonPtJet" + varName + "Reco_" + centBinsStr[cI] + "_" + jesJERStr[jI] + "_h").c_str(), (";Reco. " + varNameStyle + ";Reco. Photon p_{T}").c_str(), nVarBins, varBins, nGammaPtBins, gammaPtBins);
+      photonPtJetVarTruth_p[cI][jI] = new TH2D(("photonPtJet" + varName + "Truth_" + centBinsStr[cI] + "_" + jesJERStr[jI] + "_h").c_str(), (";Truth " + varNameStyle + ";Truth Photon p_{T}").c_str(), nVarBins, varBins, nGammaPtBins, gammaPtBins);
+    }
+    
     for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
       std::string baseName = centBinsStr[cI] + "/photonPt";
       std::string jtName = "Jt" + varName;
@@ -710,7 +710,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
       std::string photonPtJtVarPurCorrName = baseName + jtName + midName + "_" + gammaJtDPhiStr + "_PURCORR_h";
       std::string photonPtTruthName = baseName + midName + "_TRUTH_h";
       std::string photonPtJtVarTruthName = baseName + jtName + midName + "_" + gammaJtDPhiStr + "_" + mixModeStr + "_TRUTH_h";
-
+      
       TFile* tempFilePointer_p = inUnfoldFile_p;
       if(!isMC) tempFilePointer_p = inResponseFile_p;
       
@@ -730,7 +730,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	titleStr = ";" + xTitle + ";" + yTitle;
 	photonPtJetVarReco_PURCORR_p[cI][eI] = new TH2D(photonPtJtVarPurCorrName.c_str(), titleStr.c_str(), nVarBins, varBins, nGammaPtBins, gammaPtBins);	
 	fineHistToCoarseHist(tempHistTH2D_p, photonPtJetVarReco_PURCORR_p[cI][eI]);
-
+	
 	tempHistTH1D_p = (TH1D*)tempFilePointer_p->Get(photonPtTruthName.c_str());
 	strReplace(&photonPtTruthName, "TRUTH_h", "TRUTH_REBIN_h");
 	xTitle = tempHistTH1D_p->GetXaxis()->GetTitle();
@@ -748,16 +748,12 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	fineHistToCoarseHist(tempHistTH2D_p, photonPtJetVarReco_TRUTH_p[cI][eI]);
       }
       else{
-	std::cout << "CORRNAME: " << photonPtPurCorrName << std::endl;
 	photonPtReco_PURCORR_p[cI][eI] = (TH1D*)inUnfoldFile_p->Get(photonPtPurCorrName.c_str());     
-	std::cout << "LINE, NAMEPURCORR: " << __LINE__ << ", " << photonPtJtVarPurCorrName << std::endl;
 	photonPtJetVarReco_PURCORR_p[cI][eI] = (TH2D*)inUnfoldFile_p->Get(photonPtJtVarPurCorrName.c_str());     
 	
 	photonPtReco_TRUTH_p[cI][eI] = (TH1D*)tempFilePointer_p->Get(photonPtTruthName.c_str());
-	std::cout << "TRUTH HIST: " << photonPtJtVarTruthName << std::endl;
-	std::cout << "LINE, NAMETRUTH: " << __LINE__ << ", " << photonPtJtVarTruthName << std::endl;
 	photonPtJetVarReco_TRUTH_p[cI][eI] = (TH2D*)tempFilePointer_p->Get(photonPtJtVarTruthName.c_str());
-      }
+      }     
     }
     
     photonPtReco_PURCORR_COMBINED_p[cI] = new TH1D(("photonPtVCent_" + centBinsStr[cI] + "_PURCORR_COMBINED_h").c_str(), ";Reco. Photon p_{T};Counts (Purity Corrected)", nGammaPtBins, gammaPtBins);
