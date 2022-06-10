@@ -188,6 +188,13 @@ bool readBins(TEnv* config_p, std::string varStr, Int_t nMaxBins, Int_t* nBins, 
   return binsFilled;
 }
 
+//Taken from Run2 dijet asymmetry, ATL-COM-PHY-2020-138
+Double_t getRTrkJESSysPt(float cent, Double_t jtPt)
+{
+  Double_t factor = 1 - 0.000153*(80.0 - cent);
+  return jtPt*factor;
+}
+
 
 int gdjNTupleToHist(std::string inConfigFileName)
 {
@@ -1066,14 +1073,16 @@ int gdjNTupleToHist(std::string inConfigFileName)
   const Int_t nJESSys = 18;
   const Int_t nJERSys = 9;
 
-  const Int_t nJetSysAndNom = 1 + nJESSys + nJERSys;
+  //1 (nominal) + nJESSys + 1 (centrality dependent rtrk JESSys manual) + nJERSys
+  const Int_t nJetSysAndNom = 1 + nJESSys + 1 + nJERSys;
 
   std::string jetSysAndNomStr[nJetSysAndNom] = {"Nominal"}; 
   for(Int_t sI = 0; sI < nJESSys; ++sI){
     jetSysAndNomStr[1 + sI] = "JES" + std::to_string(sI);
   }
+  jetSysAndNomStr[1+nJESSys] = "JESRTRK";
   for(Int_t sI = 0; sI < nJERSys; ++sI){
-    jetSysAndNomStr[1 + nJESSys + sI] = "JER" + std::to_string(sI);
+    jetSysAndNomStr[1 + nJESSys + 1 + sI] = "JER" + std::to_string(sI);
   }
 
   Int_t sampleTag;
@@ -2561,8 +2570,13 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    for(Int_t jsI = 0; jsI < nJESSys; ++jsI){
               recoJtPt_[nRecoJt_][1 + jsI] = aktRhi_etajes_jet_pt_sysJES_p[jsI]->at(recoPos);
             }
+	    //Manually insert the rtrk centrality dependent Pb+Pb specific uncertainty
+	    //in pp, just set it to zero for simplicity
+	    if(!isPP) recoJtPt_[nRecoJt_][1+nJESSys] = getRTrkJESSysPt(cent, aktRhi_etajes_jet_pt_p->at(recoPos));
+	    else recoJtPt_[nRecoJt_][1+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos);
+
 	    for(Int_t jsI = 0; jsI < nJERSys; ++jsI){
-              recoJtPt_[nRecoJt_][1 + nJESSys + jsI] = aktRhi_etajes_jet_pt_sysJER_p[jsI]->at(recoPos);
+              recoJtPt_[nRecoJt_][1 + nJESSys + 1 + jsI] = aktRhi_etajes_jet_pt_sysJER_p[jsI]->at(recoPos);
             }
 
 	    recoJtPhi_[nRecoJt_] = aktRhi_etajes_jet_phi_p->at(recoPos);
