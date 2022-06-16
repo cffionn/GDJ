@@ -220,7 +220,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 					      "DOUNIFIEDPURITY",
 					      "PURITYFILENAME",
 					      "JETR",
-					      "ASSOCGENMINPT",
+					      //					      "ASSOCGENMINPT",
 					      "GAMMAEXCLUSIONDR",
 					      "MIXJETEXCLUSIONDR",
 					      "DOMIX",
@@ -348,7 +348,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
     return 1;
   }
   const std::string jetRStr = prettyString(((double)jetR)/10., 1, false);
-  const double assocGenMinPt = config_p->GetValue("ASSOCGENMINPT", 15.0);
+  //  const double assocGenMinPt = config_p->GetValue("ASSOCGENMINPT", 15.0);
   const double gammaExclusionDR = config_p->GetValue("GAMMAEXCLUSIONDR", 0.5);
   const double mixJetExclusionDR = config_p->GetValue("MIXJETEXCLUSIONDR", 0.5);
 
@@ -2963,7 +2963,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		photonPtJtDRJJVCent_MixMachine_Sideband_p[centPos][barrelEC]->FillXYRaw(dRJJValue, photon_pt_p->at(pI), fullWeight);
 	      }
 	    }//End barrelECFill
-	  	  	  
+	  	  	  	  
 	    if(isMC){
 
 	      /*
@@ -3005,10 +3005,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		}
 
 
-		if(multiJtDPhiReco > gammaMultiJtDPhiCut && isTruthMatchedDPhi){
+		if(isTruthMatchedDPhi){
 		  //std::cout << " PASSED MULTIJTDPHI" << std::endl;
 		  for(auto const barrelECTruth : barrelECFillTruth){
-		    if(isGoodRecoSignal){
+		    if(isGoodRecoSignal && multiJtDPhiReco > gammaMultiJtDPhiCut){
 		      //std::cout << " PASSED GOOD RECO SIGNAL" << std::endl;
 		      if(xJJValueTruthGood && xJJValueGood){
 			//std::cout << "XJJ FILL AT ENTRY: " << entry << std::endl;
