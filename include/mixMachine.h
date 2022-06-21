@@ -70,6 +70,10 @@ class mixMachine{
   void WriteToFile(TFile* inFile_p);
   void WriteToDirectory(TDirectoryFile* inDir_p);
 
+  void PushTrackingMap(int inVal);
+  bool IsInTrackingMap(int inVal);
+  void CleanTrackingMap();
+  
   void Print();
   void Clean();
 
@@ -97,6 +101,8 @@ class mixMachine{
   std::vector<double> m_binsYVect;
 
   std::string m_titleX, m_titleY;
+
+  std::map<int,bool> m_trackingMap;
 };
 
 #endif
