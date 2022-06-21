@@ -3347,7 +3347,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
          
     if(isMC){
       std::vector<TLorentzVector> goodTruthJets;
-      std::vector<int> goodTruthJetsPos, goodTruthJetsRecoPos;
+      std::vector<int> goodTruthJetsPos;
 
       for(unsigned int jI = 0; jI < aktR_truth_jet_pt_p->size(); ++jI){	  
 	//Continue if the Truth jet is no good
@@ -3356,53 +3356,15 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	isGoodTruthJet = isGoodTruthJet && aktR_truth_jet_eta_p->at(jI) >= jtEtaBinsLow && aktR_truth_jet_eta_p->at(jI) < jtEtaBinsHigh;
 	isGoodTruthJet = isGoodTruthJet && dRTruthGammaJet >= gammaExclusionDR;
 	Float_t dPhiTruthGammaJet = TMath::Abs(getDPHI(aktR_truth_jet_phi_p->at(jI), truthPhotonPhi));
-
-	//Determine if there is a matched reco jet
-	bool isGoodRecoJet = false;
-	Float_t recoPtToUse = -999.0;
-	Float_t recoPhiToUse = -999.0;
-	Float_t dRRecoGammaJet = -999.0;
-	Float_t dPhiRecoGammaJet = -999.0;
-	Int_t recoPos = aktR_truth_jet_recopos_p->at(jI);
-	if(recoPos >= 0){
-	  recoPtToUse = aktRhi_etajes_jet_pt_p->at(recoPos);
-	  recoPhiToUse = aktRhi_etajes_jet_phi_p->at(recoPos);	  	  
-	  Float_t recoEtaToUse = aktRhi_etajes_jet_eta_p->at(recoPos);
-
-	  //[t cit
-	  if(recoPtToUse >= jtPtBinsLowReco && recoPtToUse < jtPtBinsHighReco) isGoodRecoJet = true;
-	  else recoPos = -1;
-
-	  //Eta cut
-	  if(isGoodRecoJet){
-	    if(recoEtaToUse < jtEtaBinsLow || recoEtaToUse > jtEtaBinsHigh){
-	      isGoodRecoJet = false;
-	      recoPos = -1;
-	    }
-	  }
-	  
-	  if(truthPhoRecoPos >= 0){
-	    dPhiRecoGammaJet = TMath::Abs(getDPHI(recoPhiToUse, photon_phi_p->at(truthPhoRecoPos)));
-	    dRRecoGammaJet = getDR(recoEtaToUse, recoPhiToUse, photon_eta_p->at(truthPhoRecoPos), photon_phi_p->at(truthPhoRecoPos));
-	  }
-
- 	  if(dRRecoGammaJet < gammaExclusionDR){
-	    isGoodRecoJet = false;
-	    recoPos = -1;
-	  }
-	}
 	
 	if(!isGoodTruthJet) continue;  
 
-	//With all cuts except dphi implemented, do dphi plotting	
-	if(!isGoodRecoJet || !truthPhoHasGoodReco){
-	  for(auto const barrelECTruth : barrelECFillTruth){
-	    photonPtJtDPhiVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthNoRecoMatch(dPhiTruthGammaJet, truthPhotonPt, fullWeight);
-	    
-	    photonPtJtDPhiVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(dPhiTruthGammaJet, truthPhotonPt, fullWeight);	   
-	  }//end barrelECTruth for loop
-	}//end if(!isGoodRecoJet || !truthPhoHasGoodReco) 
-
+	for(auto const barrelECTruth : barrelECFillTruth){
+	  photonPtJtDPhiVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(dPhiTruthGammaJet, truthPhotonPt, fullWeight);	   	  
+	
+	  if(photonPtJtDPhiVCent_MixMachine_p[centPos][barrelECTruth]->IsInTrackingMap(jI)) photonPtJtDPhiVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthWithRecoMatch(dPhiTruthGammaJet, truthPhotonPt, fullWeight);	    
+	  else photonPtJtDPhiVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthNoRecoMatch(dPhiTruthGammaJet, truthPhotonPt, fullWeight);	    
+	}//end barrelECTruth for loop
 	
 	//Now add dphi cutting
 	if(isGoodTruthJet){
@@ -3410,67 +3372,38 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	}
 	if(!isGoodTruthJet) continue;  
 
-
-	if(aktR_truth_jet_recopos_p->at(jI) >= 0){
- 	  if(dPhiRecoGammaJet < gammaJtDPhiCut){
-	    isGoodRecoJet = false;
-	    recoPos = -1;
-	  }
-	}
-
-	Float_t xJValue = -999.0;
-	Bool_t xJValueGood = false;
 	Float_t xJValueTruth = -999.0;
 	Bool_t xJValueTruthGood = false;
      
-	if(isGoodRecoJet && truthPhoRecoPos >= 0){
-	  xJValue = recoPtToUse/photon_phi_p->at(truthPhoRecoPos);
-	  xJValueGood = xJValue >= xjBinsLowReco && xJValue < xjBinsHighReco;
-	}
-
 	//Populate the good Truth jets vector
 	TLorentzVector tL;
 	tL.SetPtEtaPhiM(aktR_truth_jet_pt_p->at(jI), aktR_truth_jet_eta_p->at(jI), aktR_truth_jet_phi_p->at(jI), 0.0);
 	goodTruthJets.push_back(tL);
 	goodTruthJetsPos.push_back(jI);
-	goodTruthJetsRecoPos.push_back(recoPos);
        
-	//bools - good reco signal pho, is the match of the truth photon
-	//	bool doFill = !isGoodRecoJet && isTruthPhotonMatched;
-
-	if(!isGoodRecoJet || !truthPhoHasGoodReco){
-	  for(auto const barrelECTruth : barrelECFillTruth){
-	    photonPtJtPtVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthNoRecoMatch(aktR_truth_jet_pt_p->at(jI), truthPhotonPt, fullWeight);
-	    photonPtJtXJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthNoRecoMatch(aktR_truth_jet_pt_p->at(jI)/truthPhotonPt, truthPhotonPt, fullWeight);
-	    
-	    photonPtJtPtVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(aktR_truth_jet_pt_p->at(jI), truthPhotonPt, fullWeight);	   
-
-	    photonPtJtXJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(aktR_truth_jet_pt_p->at(jI)/truthPhotonPt, truthPhotonPt, fullWeight);	   
-	  }//end barrelECTruth for loop
-	}//end if(!isGoodRecoJet || !truthPhoHasGoodReco) 
+	for(auto const barrelECTruth : barrelECFillTruth){
+	  photonPtJtPtVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(aktR_truth_jet_pt_p->at(jI), truthPhotonPt, fullWeight);	   
+	  if(photonPtJtPtVCent_MixMachine_p[centPos][barrelECTruth]->IsInTrackingMap(jI)) photonPtJtPtVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthWithRecoMatch(aktR_truth_jet_pt_p->at(jI), truthPhotonPt, fullWeight);
+	  else photonPtJtPtVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthNoRecoMatch(aktR_truth_jet_pt_p->at(jI), truthPhotonPt, fullWeight);
+	  
+	  photonPtJtXJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(aktR_truth_jet_pt_p->at(jI)/truthPhotonPt, truthPhotonPt, fullWeight);	   
+	  if(photonPtJtXJVCent_MixMachine_p[centPos][barrelECTruth]->IsInTrackingMap(jI)) photonPtJtXJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthWithRecoMatch(aktR_truth_jet_pt_p->at(jI)/truthPhotonPt, truthPhotonPt, fullWeight);	    
+	  else photonPtJtXJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthNoRecoMatch(aktR_truth_jet_pt_p->at(jI)/truthPhotonPt, truthPhotonPt, fullWeight);	    
+	}//end barrelECTruth for loop
       }
 
       //Construct multijet truth w/o reco fills
       for(unsigned int jI = 0; jI < goodTruthJets.size(); ++jI){
 	TLorentzVector goodTruthJet1 = goodTruthJets[jI];
-	int recoPos1 = goodTruthJetsRecoPos[jI];
-	bool isRecoMatched1 = recoPos1 >= 0;
-	
+	int truthID1 = goodTruthJetsPos[jI];
+
 	for(unsigned int jI2 = jI+1; jI2 < goodTruthJets.size(); ++jI2){
 	  TLorentzVector goodTruthJet2 = goodTruthJets[jI2];
-	  int recoPos2 = goodTruthJetsRecoPos[jI2];
-	  bool isRecoMatched2 = recoPos2 >= 0;
-
-	  bool oneJetNoDRRecoMatched = recoPos2 < 0 || recoPos1 < 0;
-	  bool isRecoMatched = isRecoMatched1 && isRecoMatched2;
-
-	  /*
-	  std::cout << "Possible truth pair: " << std::endl;
-	  std::cout << " Truth Jet 1 (pt,eta,phi):" << goodTruthJet1.Pt() << ", " << goodTruthJet1.Eta() << ", " << goodTruthJet1.Phi() << std::endl;
-	  std::cout << " Truth Jet 2 (pt,eta,phi):" << goodTruthJet2.Pt() << ", " << goodTruthJet2.Eta() << ", " << goodTruthJet2.Phi() << std::endl;
-	  std::cout << " isRecoMatched1, 2, all: " << isRecoMatched1 << ", " << isRecoMatched2 << ", " << isRecoMatched << std::endl;
-	  */
+	  int truthID2 = goodTruthJetsPos[jI2];
 	  
+	  int truthCompID1 = 1000*truthID1 + truthID2;
+	  int truthCompID2 = 1000*truthID2 + truthID1;
+
 	  Float_t aJJValue = TMath::Abs(goodTruthJet1.Pt() - goodTruthJet2.Pt()) / truthPhotonPt;
 	  Bool_t aJJValueGood = aJJValue >= ajBinsLow && aJJValue < ajBinsHigh;
 
@@ -3485,74 +3418,42 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  Float_t xJJValue = goodTruthJet2.Pt() / truthPhotonPt;
 	  Bool_t xJJValueGood = xJJValue >= xjjBinsLow && xJJValue < xjjBinsHigh;
 
-	  if(!isRecoMatched || !truthPhoHasGoodReco){
-	    for(auto const barrelECTruth : barrelECFillTruth){
-	      photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthNoRecoMatch(multiJtDPhiValue, truthPhotonPt, fullWeight);
-	      photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(multiJtDPhiValue, truthPhotonPt, fullWeight);
-	    }
-	  }
+	  for(auto const barrelECTruth : barrelECFillTruth){
+	    photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(multiJtDPhiValue, truthPhotonPt, fullWeight);
+
+	    bool truthFillWithRecoPos = photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelECTruth]->IsInTrackingMap(truthCompID1) || photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelECTruth]->IsInTrackingMap(truthCompID2);
+
+	    if(truthFillWithRecoPos) photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthWithRecoMatch(multiJtDPhiValue, truthPhotonPt, fullWeight);
+	    else photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthNoRecoMatch(multiJtDPhiValue, truthPhotonPt, fullWeight);
+	  }	  
 
 	  if(multiJtDPhiValue < gammaMultiJtDPhiCut) continue; //We dont fill truth that fails this cut
 
-	  //	  std::cout << " Passed dR and DPhi cuts" << std::endl;
-	  
-	  Bool_t isGoodXJJReco = false;
-	  Bool_t isGoodAJJReco = false;
+	  for(auto const barrelECTruth : barrelECFillTruth){
 
-	  //Calc. the reco multijtdphi - if it fails cut, isRecoMatched is turned false
-	  //	  std::cout << "truthPhoHasGoodReco: " << truthPhoHasGoodReco << std::endl;
-	  if(isRecoMatched && truthPhoHasGoodReco){
-	    TLorentzVector goodRecoJet1;
-	    goodRecoJet1.SetPtEtaPhiM(aktRhi_etajes_jet_pt_p->at(recoPos1), aktRhi_etajes_jet_eta_p->at(recoPos1), aktRhi_etajes_jet_phi_p->at(recoPos1), 0.0);
+	    bool truthFillWithRecoPos = photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth]->IsInTrackingMap(truthCompID1) || photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth]->IsInTrackingMap(truthCompID2);
+	    photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(xJJValue, truthPhotonPt, fullWeight);
+	    if(truthFillWithRecoPos) photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthWithRecoMatch(xJJValue, truthPhotonPt, fullWeight);
+	    else photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthNoRecoMatch(xJJValue, truthPhotonPt, fullWeight);
 
-	    TLorentzVector goodRecoJet2;
-	    goodRecoJet2.SetPtEtaPhiM(aktRhi_etajes_jet_pt_p->at(recoPos2), aktRhi_etajes_jet_eta_p->at(recoPos2), aktRhi_etajes_jet_phi_p->at(recoPos2), 0.0);
 
-	    Float_t aJJValueReco = TMath::Abs(goodRecoJet1.Pt() - goodRecoJet2.Pt()) / photon_pt_p->at(truthPhoRecoPos);
-	    isGoodAJJReco = aJJValueReco >= ajBinsLowReco && aJJValueReco < ajBinsHighReco;
+	    truthFillWithRecoPos = photonPtJtAJJVCent_MixMachine_p[centPos][barrelECTruth]->IsInTrackingMap(truthCompID1) || photonPtJtAJJVCent_MixMachine_p[centPos][barrelECTruth]->IsInTrackingMap(truthCompID2);
+	    photonPtJtAJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(aJJValue, truthPhotonPt, fullWeight);
+	    if(truthFillWithRecoPos) photonPtJtAJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthWithRecoMatch(aJJValue, truthPhotonPt, fullWeight);
+	    else photonPtJtAJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthNoRecoMatch(aJJValue, truthPhotonPt, fullWeight);
 
-	    Float_t tempRecoDR = getDR(goodRecoJet1.Eta(), goodRecoJet1.Phi(), goodRecoJet2.Eta(), goodRecoJet2.Phi());
 
-	    //	    std::cout << "tempRecoDR: " << tempRecoDR << std::endl;
-	    if(tempRecoDR < mixJetExclusionDR) isRecoMatched = false;
-	    
-	    goodRecoJet2 += goodRecoJet1;
+	    truthFillWithRecoPos = photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelECTruth]->IsInTrackingMap(truthCompID1) || photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelECTruth]->IsInTrackingMap(truthCompID2);
+	    photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(dPhiJJValue, truthPhotonPt, fullWeight);
+	    if(truthFillWithRecoPos) photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthWithRecoMatch(dPhiJJValue, truthPhotonPt, fullWeight);
+	    else photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthNoRecoMatch(dPhiJJValue, truthPhotonPt, fullWeight);
 
-	    Float_t xJJValueReco = goodRecoJet2.Pt() / photon_pt_p->at(truthPhoRecoPos);
-	    isGoodXJJReco = xJJValueReco >= xjjBinsLowReco && xJJValueReco < xjjBinsHighReco;
 
-	    Float_t multiJtDPhiValue = TMath::Abs(getDPHI(photon_phi_p->at(truthPhoRecoPos), goodRecoJet2.Phi())); 
-	    
-	    if(multiJtDPhiValue < gammaMultiJtDPhiCut) isRecoMatched = false;
-
-	    if(!isRecoMatched) isGoodXJJReco = false;
-	  }
-      
-	  if(!isRecoMatched || !truthPhoHasGoodReco){
-	    for(auto const barrelECTruth : barrelECFillTruth){
-
-	      if(!isGoodXJJReco){
-		//		std::cout << "TRUTH WITH NO RECO FILLING AT ENTRY: " << entry << std::endl;
-		//		std::cout << " Truth jet1 (pt,eta,phi): " << goodTruthJet1.Pt() << ", " << goodTruthJet1.Eta() << ", " << goodTruthJet1.Phi() << std::endl;
-		//		std::cout << " Truth jet2 (pt,eta,phi): " << goodTruthJet2.Pt() << ", " << goodTruthJet2.Eta() << ", " << goodTruthJet2.Phi() << std::endl;
-		
-		photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthNoRecoMatch(xJJValue, truthPhotonPt, fullWeight);
-		if(oneJetNoDRRecoMatched) photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(xJJValue, truthPhotonPt, fullWeight);
-	      }
-
-	      if(!isGoodAJJReco){
-		photonPtJtAJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthNoRecoMatch(aJJValue, truthPhotonPt, fullWeight);
-		photonPtJtAJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(aJJValue, truthPhotonPt, fullWeight);
-	      }
-
-	      photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthNoRecoMatch(dPhiJJValue, truthPhotonPt, fullWeight);
-	      photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(dPhiJJValue, truthPhotonPt, fullWeight);
-
-	      photonPtJtDRJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthNoRecoMatch(dRJJValue, truthPhotonPt, fullWeight);
-	      photonPtJtDRJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(dRJJValue, truthPhotonPt, fullWeight);
-
-	    }
-	  }
+	    truthFillWithRecoPos = photonPtJtDRJJVCent_MixMachine_p[centPos][barrelECTruth]->IsInTrackingMap(truthCompID1) || photonPtJtDRJJVCent_MixMachine_p[centPos][barrelECTruth]->IsInTrackingMap(truthCompID2);
+	    photonPtJtDRJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(dRJJValue, truthPhotonPt, fullWeight);
+	    if(truthFillWithRecoPos) photonPtJtDRJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthWithRecoMatch(dRJJValue, truthPhotonPt, fullWeight);
+	    else photonPtJtDRJJVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthNoRecoMatch(dRJJValue, truthPhotonPt, fullWeight);
+	  }	  
 	}
       }      
     }//end if(isMC)
