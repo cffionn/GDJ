@@ -71,6 +71,7 @@ class mixMachine{
   void WriteToDirectory(TDirectoryFile* inDir_p);
 
   void PushTrackingMap(int inVal);
+  void PushTrackingMap(std::vector<int> inVals);
   bool IsInTrackingMap(int inVal);
   void CleanTrackingMap();
   
