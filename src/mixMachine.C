@@ -683,6 +683,31 @@ void mixMachine::Print()
   return;
 }
 
+void mixMachine::PushTrackingMap(int inVal)
+{
+  m_trackingMap[inVal] = true;
+  return;
+}
+
+void mixMachine::PushTrackingMap(std::vector<int> inVals)
+{
+  for(auto const & val : inVals){
+    PushTrackingMap(val);
+  }
+  return;
+}
+
+bool mixMachine::IsInTrackingMap(int inVal)
+{
+  return m_trackingMap.count(inVal) > 0;
+}
+
+void mixMachine::CleanTrackingMap()
+{
+  m_trackingMap.clear();
+  return;
+}
+
 void mixMachine::Clean()
 {
   m_isInit = false;
@@ -707,6 +732,8 @@ void mixMachine::Clean()
     delete m_hists2D[i];
   }  
   m_hists2D.clear();
+
+  CleanTrackingMap();
 
   return;
 }
