@@ -24,7 +24,7 @@ void sampleHandler::PreInit()
 {
   validMinPthatsByYear[2015] = {};
   validMinPthatsByYear[2017] = {35, 50, 70, 140, 280};
-  validMinPthatsByYear[2018] = {35, 50, 70, 140};
+  validMinPthatsByYear[2018] = {35, 50, 70, 140, 280};
 
   //PYTHIA8 + Overlay
   dataSetNameToIsPP["mc16_5TeV.423101.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP35_50.merge.AOD.e5094_d1516_r11439_r11217"] = 0;
@@ -46,6 +46,11 @@ void sampleHandler::PreInit()
   dataSetNameToMCFlag["mc16_5TeV.423104.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP140_280.merge.AOD.e5094_d1516_r11439_r11217"] = PYTHIA;
   dataSetNameToYear["mc16_5TeV.423104.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP140_280.merge.AOD.e5094_d1516_r11439_r11217"] = 2018;
   dataSetNameToMinPthat["mc16_5TeV.423104.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP140_280.merge.AOD.e5094_d1516_r11439_r11217"] = 140;
+
+  dataSetNameToIsPP["mc16_5TeV.423105.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP280_500.merge.AOD.e5094_d1516_r11439_r11217"] = 0;
+  dataSetNameToMCFlag["mc16_5TeV.423105.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP280_500.merge.AOD.e5094_d1516_r11439_r11217"] = PYTHIA;
+  dataSetNameToYear["mc16_5TeV.423105.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP280_500.merge.AOD.e5094_d1516_r11439_r11217"] = 2018;
+  dataSetNameToMinPthat["mc16_5TeV.423105.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP280_500.merge.AOD.e5094_d1516_r11439_r11217"] = 280;
 
   //PYTHIA8
   dataSetNameToIsPP["mc16_5TeV.423101.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP35_50.merge.AOD.e5094_s3238_r10441_r10210"] = 1;
@@ -189,7 +194,7 @@ void sampleHandler::PreInit()
 	    tagToXSec[tag] = 9.7299;//in nanobarn
 	    tagToFilterEff[tag] = 0.000028205;
 	  }
-	  else if(tag == 35201810){
+	  else if(tag == 35201810){//PYT in Overlay
 	    tagToXSec[tag] = 351620;//in nanobar
 	    tagToFilterEff[tag] = 0.000029113;
 	  }
@@ -204,6 +209,10 @@ void sampleHandler::PreInit()
 	  else if(tag == 140201810){
 	    tagToXSec[tag] = 1044;//in nanobarn
 	    tagToFilterEff[tag] = 0.000050981;
+	  }
+	  else if(tag == 280201810){
+	    tagToXSec[tag] = 37.592;//in nanobarn
+	    tagToFilterEff[tag] =  0.000043848;
 	  }
 	  else{
 	    tagToXSec[tag] = 0.0;//in nanobarn

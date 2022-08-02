@@ -218,7 +218,8 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 					       "truthPhotonIso3",
 					       "truthPhotonIso4"};
 
-  Int_t runNumber_, eventNumber_;
+  UInt_t runNumber_;
+  ULong64_t eventNumber_;
   UInt_t lumiBlock_;
   Bool_t passesToroid_;
 
@@ -295,20 +296,20 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   Float_t truthPhotonIso4_;
   
   Int_t akt2hi_jet_n_;
-  const Int_t nJES = 18;
+  const Int_t nJESR2 = 19;
   std::vector<std::vector<float>* > akt2hi_etajes_jet_pt_sys_JES_p;
   if(isMC){
-    akt2hi_etajes_jet_pt_sys_JES_p.reserve(nJES);
-    for(unsigned int eI = 0; eI < nJES; ++eI){
+    akt2hi_etajes_jet_pt_sys_JES_p.reserve(nJESR2);
+    for(unsigned int eI = 0; eI < nJESR2; ++eI){
       akt2hi_etajes_jet_pt_sys_JES_p[eI] = nullptr;
     }
   }
 
-  const Int_t nJER = 9;
+  const Int_t nJERR2 = 10;
   std::vector<std::vector<float>* > akt2hi_etajes_jet_pt_sys_JER_p;
   if(isMC){
-    akt2hi_etajes_jet_pt_sys_JER_p.reserve(nJER);
-    for(unsigned int eI = 0; eI < nJER; ++eI){
+    akt2hi_etajes_jet_pt_sys_JER_p.reserve(nJERR2);
+    for(unsigned int eI = 0; eI < nJERR2; ++eI){
       akt2hi_etajes_jet_pt_sys_JER_p[eI] = nullptr;
     }
   }
@@ -334,16 +335,20 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   Int_t akt4hi_jet_n_;
   std::vector<float>* akt4hi_etajes_jet_pt_p=nullptr;
   std::vector<std::vector<float>* > akt4hi_etajes_jet_pt_sys_JES_p;
+
+  const Int_t nJESR4 = 18;
+  const Int_t nJERR4 = 9;
+
   if(isMC){
-    akt4hi_etajes_jet_pt_sys_JES_p.reserve(nJES);
-    for(unsigned int eI = 0; eI < nJES; ++eI){
+    akt4hi_etajes_jet_pt_sys_JES_p.reserve(nJESR4);
+    for(unsigned int eI = 0; eI < nJESR4; ++eI){
       akt4hi_etajes_jet_pt_sys_JES_p[eI] = nullptr;
     }
   }
   std::vector<std::vector<float>* > akt4hi_etajes_jet_pt_sys_JER_p;
   if(isMC){
-    akt4hi_etajes_jet_pt_sys_JER_p.reserve(nJER);
-    for(unsigned int eI = 0; eI < nJER; ++eI){
+    akt4hi_etajes_jet_pt_sys_JER_p.reserve(nJERR4);
+    for(unsigned int eI = 0; eI < nJERR4; ++eI){
       akt4hi_etajes_jet_pt_sys_JER_p[eI] = nullptr;
     }
   }
@@ -464,8 +469,8 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
-  outTree_p->Branch("runNumber", &runNumber_, "runNumber/I");
-  outTree_p->Branch("eventNumber", &eventNumber_, "eventNumber/I");
+  outTree_p->Branch("runNumber", &runNumber_, "runNumber/i");
+  outTree_p->Branch("eventNumber", &eventNumber_, "eventNumber/l");
   outTree_p->Branch("lumiBlock", &lumiBlock_, "lumiBlock/i");
   outTree_p->Branch("passesToroid", &passesToroid_, "passesToroid/i");
 
@@ -563,11 +568,11 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   outTree_p->Branch("akt2hi_jet_n", &akt2hi_jet_n_, "akt2hi_jet_n/I");
 
   if(isMC){
-    for(Int_t eI = 0; eI < nJES; ++eI){
+    for(Int_t eI = 0; eI < nJESR2; ++eI){
       outTree_p->Branch(("akt2hi_etajes_jet_pt_sys_JES_" + std::to_string(eI)).c_str(), &(akt2hi_etajes_jet_pt_sys_JES_p[eI]));
     }
     
-    for(Int_t eI = 0; eI < nJER; ++eI){
+    for(Int_t eI = 0; eI < nJERR2; ++eI){
       outTree_p->Branch(("akt2hi_etajes_jet_pt_sys_JER_" + std::to_string(eI)).c_str(), &(akt2hi_etajes_jet_pt_sys_JER_p[eI]));
     }
   }
@@ -595,11 +600,11 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   outTree_p->Branch("akt4hi_jet_n", &akt4hi_jet_n_, "akt4hi_jet_n/I");
 
   if(isMC){
-    for(Int_t eI = 0; eI < nJES; ++eI){
+    for(Int_t eI = 0; eI < nJESR4; ++eI){
       outTree_p->Branch(("akt4hi_etajes_jet_pt_sys_JES_" + std::to_string(eI)).c_str(), &(akt4hi_etajes_jet_pt_sys_JES_p[eI]));
     }
     
-    for(Int_t eI = 0; eI < nJER; ++eI){
+    for(Int_t eI = 0; eI < nJERR4; ++eI){
       outTree_p->Branch(("akt4hi_etajes_jet_pt_sys_JER_" + std::to_string(eI)).c_str(), &(akt4hi_etajes_jet_pt_sys_JER_p[eI]));
     }
   }
@@ -1151,11 +1156,11 @@ int gdjNtuplePreProc(std::string inConfigFileName)
        
     inTree_p->SetBranchAddress("akt2hi_etajes_jet_pt", &akt2hi_etajes_jet_pt_p);
     if(isMC){
-      for(Int_t eI = 0; eI < nJES; ++eI){
+      for(Int_t eI = 0; eI < nJESR2; ++eI){
 	inTree_p->SetBranchAddress(("akt2hi_etajes_jet_pt_sys_JES_" + std::to_string(eI)).c_str(), &(akt2hi_etajes_jet_pt_sys_JES_p[eI]));
       }
 
-      for(Int_t eI = 0; eI < nJER; ++eI){
+      for(Int_t eI = 0; eI < nJERR2; ++eI){
 	inTree_p->SetBranchAddress(("akt2hi_etajes_jet_pt_sys_JER_" + std::to_string(eI)).c_str(), &(akt2hi_etajes_jet_pt_sys_JER_p[eI]));
       }
     }
@@ -1183,11 +1188,11 @@ int gdjNtuplePreProc(std::string inConfigFileName)
     inTree_p->SetBranchAddress("akt4hi_jet_n", &akt4hi_jet_n_);
     inTree_p->SetBranchAddress("akt4hi_etajes_jet_pt", &akt4hi_etajes_jet_pt_p);
     if(isMC){
-      for(Int_t eI = 0; eI < nJES; ++eI){
+      for(Int_t eI = 0; eI < nJESR4; ++eI){
 	inTree_p->SetBranchAddress(("akt4hi_etajes_jet_pt_sys_JES_" + std::to_string(eI)).c_str(), &(akt4hi_etajes_jet_pt_sys_JES_p[eI]));
       }
 
-      for(Int_t eI = 0; eI < nJER; ++eI){
+      for(Int_t eI = 0; eI < nJERR4; ++eI){
 	inTree_p->SetBranchAddress(("akt4hi_etajes_jet_pt_sys_JER_" + std::to_string(eI)).c_str(), &(akt4hi_etajes_jet_pt_sys_JER_p[eI]));
       }
     }
@@ -1494,40 +1499,40 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
       //akt2 jet collection size checks
-      if(akt2hi_etajes_jet_pt_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_etajes_jet_pt_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH, L" << __LINE__  << std::endl;
 
       if(isMC){
-	for(Int_t eI = 0; eI < nJES; ++eI){
-	  if(akt2hi_etajes_jet_pt_sys_JES_p[eI]->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	for(Int_t eI = 0; eI < nJESR2; ++eI){
+	  if(akt2hi_etajes_jet_pt_sys_JES_p[eI]->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH, L" << __LINE__  << ", " << eI << "/" << nJESR2 << std::endl;
 	}
 
-	for(Int_t eI = 0; eI < nJER; ++eI){
-	  if(akt2hi_etajes_jet_pt_sys_JER_p[eI]->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	for(Int_t eI = 0; eI < nJERR2; ++eI){
+	  if(akt2hi_etajes_jet_pt_sys_JER_p[eI]->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH, L" << __LINE__  << ", " << eI << "/" << nJERR2 << std::endl;
 	}
       }
 
-      if(akt2hi_etajes_jet_eta_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt2hi_etajes_jet_phi_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt2hi_etajes_jet_e_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt2hi_etajes_jet_m_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_etajes_jet_eta_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH, L" << __LINE__  << std::endl;
+      if(akt2hi_etajes_jet_phi_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH, L" << __LINE__  << std::endl;
+      if(akt2hi_etajes_jet_e_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH, L" << __LINE__  << std::endl;
+      if(akt2hi_etajes_jet_m_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH, L" << __LINE__  << std::endl;
 
-      if(akt2hi_insitu_jet_pt_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt2hi_insitu_jet_eta_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt2hi_insitu_jet_phi_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt2hi_insitu_jet_e_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-      if(akt2hi_insitu_jet_m_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_insitu_jet_pt_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH, L" << __LINE__  << std::endl;
+      if(akt2hi_insitu_jet_eta_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH, L" << __LINE__  << std::endl;
+      if(akt2hi_insitu_jet_phi_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH, L" << __LINE__  << std::endl;
+      if(akt2hi_insitu_jet_e_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH, L" << __LINE__  << std::endl;
+      if(akt2hi_insitu_jet_m_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH, L" << __LINE__  << std::endl;
 
-      if(akt2hi_jet_clean_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+      if(akt2hi_jet_clean_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH, L" << __LINE__  << std::endl;
       if(isMC){
-	if(akt2hi_truthpos_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt2hi_truthpos_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH, L" << __LINE__  << std::endl;
       }
 
       if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
       if(keepJetConstituents){	
-	if(akt2hi_jetconstit_pt_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-	if(akt2hi_jetconstit_phi_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
-	if(akt2hi_jetconstit_eta_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	if(akt2hi_jetconstit_pt_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH, L" << __LINE__  << std::endl;
+	if(akt2hi_jetconstit_phi_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH, L" << __LINE__  << std::endl;
+	if(akt2hi_jetconstit_eta_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH, L" << __LINE__  << std::endl;
       }
 
       //akt4 jet collection size checks
@@ -1536,11 +1541,11 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
       if(isMC){
-	for(Int_t eI = 0; eI < nJES; ++eI){
+	for(Int_t eI = 0; eI < nJESR4; ++eI){
 	  if(akt4hi_etajes_jet_pt_sys_JES_p[eI]->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
 	}
 
-	for(Int_t eI = 0; eI < nJER; ++eI){
+	for(Int_t eI = 0; eI < nJERR4; ++eI){
 	  if(akt4hi_etajes_jet_pt_sys_JER_p[eI]->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
 	}
       }
