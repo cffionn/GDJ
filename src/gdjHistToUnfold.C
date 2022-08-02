@@ -239,8 +239,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 					      "DOREWEIGHTDR",
 					      "UNFOLDERRTYPE",
 					      "NTOYS",
-					      "DOREBIN",
-					      "UNFOLD"};
+					      "DOREBIN"};
 
   //Terminate if not all necessary params are found
   if(!checkEnvForParams(config_p, necessaryParams)) return 1;
