@@ -235,7 +235,8 @@ int gdjHistToUnfold(std::string inConfigFileName)
 					      "VARNAME",
                                               "OUTFILENAME",
 					      "NITER",
-					      "DOREWEIGHT",
+					      "DOREWEIGHTVAR",
+					      "DOREWEIGHTDR",
 					      "UNFOLDERRTYPE",
 					      "NTOYS",
 					      "DOREBIN",
@@ -255,7 +256,9 @@ int gdjHistToUnfold(std::string inConfigFileName)
   const bool isMultijet = isStrSame(varNameLower, "ajj") || isStrSame(varNameLower, "xjj") || isStrSame(varNameLower, "dphijjg") || isStrSame(varNameLower, "dphijj") || isStrSame(varNameLower, "drjj");  
   
   const int nIter = config_p->GetValue("NITER", -1);
-  const bool doReweight = config_p->GetValue("DOREWEIGHT", 0);
+  const bool doReweightVar = config_p->GetValue("DOREWEIGHTVAR", 0);
+  //second conditional to avoid double weighting
+  const bool doReweightDR = config_p->GetValue("DOREWEIGHTDR", 0) && !isStrSame("drjj", varNameLower);
 
   const std::string inUnfoldName = config_p->GetValue("UNFOLD", "");
   
@@ -800,6 +803,13 @@ int gdjHistToUnfold(std::string inConfigFileName)
   TH2D* rooResGammaJetVarMatrixTruth_p[nMaxCentBins][nMaxJESJER];
   TH2D* rooResGammaJetVarMisses_p[nMaxCentBins][nMaxJESJER];
   
+
+  //Declare some additional histograms for reweighting
+  TH2D* photonPtDRJJReco_PURCORR_p[nMaxCentBins][nBarrelAndECMax];
+  TH2D* photonPtDRJJReco_PURCORR_COMBINED_p[nMaxCentBins];
+  TH2D* photonPtDRJJReco_PURCORR_ForReweight_p[nMaxCentBins][nBarrelAndECMax];
+  TH2D* photonPtDRJJReco_PURCORR_COMBINED_ForReweight_p[nMaxCentBins];  
+
   //Lets check if a rebin is requested that it is valid
   if(doRebin){
     std::string histName = centBinsStr[0] + "/photonPtJt" + varName + "VCent_" + centBinsStr[0] + "_" + barrelAndECStr[0] + "_" + gammaJtDPhiStr + "_" + mixModeStr + "_SUB_h";
@@ -901,14 +911,35 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
 	strReplace(&photonPtJtVarPurCorrName, "PURCORR_REBIN_h", "PURCORR_h");
 	tempHistTH2D_p = (TH2D*)tempFilePointer_p->Get(photonPtJtVarPurCorrName.c_str());
-	strReplace(&photonPtJtVarPurCorrName, "PURCORR_h", "PURCORR_REBIN_ForReweight_h");		  
+	strReplace(&photonPtJtVarPurCorrName, "PURCORR_h", "PURCORR_REBIN_ForReweight_h"); 
 	xTitle = tempHistTH2D_p->GetXaxis()->GetTitle();
 	yTitle = tempHistTH2D_p->GetYaxis()->GetTitle();
 	titleStr = ";" + xTitle + ";" + yTitle;
 	photonPtJetVarReco_PURCORR_ForReweight_p[cI][eI] = new TH2D(photonPtJtVarPurCorrName.c_str(), titleStr.c_str(), nVarBins, varBins, nGammaPtBins, gammaPtBins);	
 	fineHistToCoarseHist(tempHistTH2D_p, photonPtJetVarReco_PURCORR_ForReweight_p[cI][eI]);
 
-
+	//For reweighting DR
+	if(doReweightDR){
+	  strReplace(&photonPtJtVarPurCorrName, "PURCORR_REBIN_ForReweight_h", "PURCORR_h");
+	  strReplace(&photonPtJtVarPurCorrName, jtName, "JtDRJJ");
+	  tempHistTH2D_p = (TH2D*)inUnfoldFile_p->Get(photonPtJtVarPurCorrName.c_str());
+	  strReplace(&photonPtJtVarPurCorrName, "PURCORR_h", "PURCORR_REBIN_h"); 
+	  xTitle = tempHistTH2D_p->GetXaxis()->GetTitle();
+	  yTitle = tempHistTH2D_p->GetYaxis()->GetTitle();
+	  titleStr = ";" + xTitle + ";" + yTitle;
+	  photonPtDRJJReco_PURCORR_ForReweight_p[cI][eI] = new TH2D(photonPtJtVarPurCorrName.c_str(), titleStr.c_str(), nDRBins, drBins, nGammaPtBins, gammaPtBins);	
+	  fineHistToCoarseHist(tempHistTH2D_p, photonPtDRJJReco_PURCORR_ForReweight_p[cI][eI]);
+	  
+	  strReplace(&photonPtJtVarPurCorrName, "PURCORR_REBIN_h", "PURCORR_h");
+	  tempHistTH2D_p = (TH2D*)tempFilePointer_p->Get(photonPtJtVarPurCorrName.c_str());
+	  strReplace(&photonPtJtVarPurCorrName, "PURCORR_h", "PURCORR_REBIN_ForReweight_h"); 
+	  xTitle = tempHistTH2D_p->GetXaxis()->GetTitle();
+	  yTitle = tempHistTH2D_p->GetYaxis()->GetTitle();
+	  titleStr = ";" + xTitle + ";" + yTitle;
+	  photonPtDRJJReco_PURCORR_ForReweight_p[cI][eI] = new TH2D(photonPtJtVarPurCorrName.c_str(), titleStr.c_str(), nDRBins, drBins, nGammaPtBins, gammaPtBins);	
+	  fineHistToCoarseHist(tempHistTH2D_p, photonPtDRJJReco_PURCORR_ForReweight_p[cI][eI]);
+	}
+	
 	//Truth histograms
 	tempHistTH1D_p = (TH1D*)tempFilePointer_p->Get(photonPtTruthName.c_str());
 	strReplace(&photonPtTruthName, "TRUTH_h", "TRUTH_REBIN_h");
@@ -935,18 +966,26 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
       	photonPtReco_PURCORR_ForReweight_p[cI][eI] = (TH1D*)tempFilePointer_p->Get(photonPtPurCorrName.c_str());     
 	photonPtJetVarReco_PURCORR_ForReweight_p[cI][eI] = (TH2D*)tempFilePointer_p->Get(photonPtJtVarPurCorrName.c_str());     
-      }     
+
+	//For dR based reweighitng
+	photonPtJtVarPurCorrName.replace(photonPtJtVarPurCorrName.find(jtName), jtName.size(), "JtDRJJ");
+	photonPtDRJJReco_PURCORR_p[cI][eI] = (TH2D*)inUnfoldFile_p->Get(photonPtJtVarPurCorrName.c_str());     
+	photonPtDRJJReco_PURCORR_ForReweight_p[cI][eI] = (TH2D*)tempFilePointer_p->Get(photonPtJtVarPurCorrName.c_str());     
+	
+      }
     }
     
     photonPtReco_PURCORR_COMBINED_p[cI] = new TH1D(("photonPtVCent_" + centBinsStr[cI] + "_PURCORR_COMBINED_h").c_str(), ";Reco. Photon p_{T};Counts (Purity Corrected)", nGammaPtBins, gammaPtBins);
     photonPtJetVarReco_PURCORR_COMBINED_p[cI] = new TH2D(("photonPtJt" + varName + "VCent_" + centBinsStr[cI] + "_" + gammaJtDPhiStr + "_PURCORR_COMBINED_h").c_str(), (";Reco. " + varNameStyle + ";Reco. Photon p_{T}").c_str(), nVarBins, varBins, nGammaPtBins, gammaPtBins);
+    photonPtDRJJReco_PURCORR_COMBINED_p[cI] = new TH2D(("photonPtJtDRJJVCent_" + centBinsStr[cI] + "_" + gammaJtDPhiStr + "_PURCORR_COMBINED_h").c_str(), ";Reco. #DeltaR_{JJ};Reco. Photon p_{T}", nDRBins, drBins, nGammaPtBins, gammaPtBins);
     
     photonPtReco_TRUTH_COMBINED_p[cI] = new TH1D(("photonPtVCent_" + centBinsStr[cI] + "_" + gammaJtDPhiStr + "_TRUTH_COMBINED_h").c_str(), (";Reco. " + varNameStyle + ";Reco. Photon p_{T}").c_str(), nGammaPtBins, gammaPtBins);
     photonPtJetVarReco_TRUTH_COMBINED_p[cI] = new TH2D(("photonPtJt" + varName + "VCent_" + centBinsStr[cI] + "_" + gammaJtDPhiStr + "_TRUTH_COMBINED_h").c_str(), (";Reco. " + varNameStyle + ";Reco. Photon p_{T}").c_str(), nVarBins, varBins, nGammaPtBins, gammaPtBins);   
 
     photonPtReco_PURCORR_COMBINED_ForReweight_p[cI] = new TH1D(("photonPtVCent_" + centBinsStr[cI] + "_PURCORR_COMBINED_ForReweight_h").c_str(), ";Reco. Photon p_{T};Counts (Purity Corrected)", nGammaPtBins, gammaPtBins);
     photonPtJetVarReco_PURCORR_COMBINED_ForReweight_p[cI] = new TH2D(("photonPtJt" + varName + "VCent_" + centBinsStr[cI] + "_" + gammaJtDPhiStr + "_PURCORR_COMBINED_ForReweight_h").c_str(), (";Reco. " + varNameStyle + ";Reco. Photon p_{T}").c_str(), nVarBins, varBins, nGammaPtBins, gammaPtBins);
-
+    photonPtDRJJReco_PURCORR_COMBINED_ForReweight_p[cI] = new TH2D(("photonPtJtDRJJVCent_" + centBinsStr[cI] + "_" + gammaJtDPhiStr + "_PURCORR_COMBINED_ForReweight_h").c_str(), ";Reco. #DeltaR_{JJ};Reco. Photon p_{T}", nDRBins, drBins, nGammaPtBins, gammaPtBins);
+    
     
     for(Int_t bIX = 0; bIX < photonPtReco_TRUTH_COMBINED_p[cI]->GetXaxis()->GetNbins(); ++bIX){
       Float_t content = 0.0;
@@ -1041,10 +1080,50 @@ int gdjHistToUnfold(std::string inConfigFileName)
       }
     }
 
+    if(doReweightDR){
+      for(Int_t bIX = 0; bIX < photonPtDRJJReco_PURCORR_COMBINED_p[cI]->GetXaxis()->GetNbins(); ++bIX){
+	for(Int_t bIY = 0; bIY < photonPtDRJJReco_PURCORR_COMBINED_p[cI]->GetYaxis()->GetNbins(); ++bIY){
+	  
+	  Float_t content = 0.0;
+	  Float_t error = 0.0;
+	  
+	  for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
+	    Float_t tempContent = photonPtDRJJReco_PURCORR_p[cI][eI]->GetBinContent(bIX+1, bIY+1);
+	    Float_t tempError = photonPtDRJJReco_PURCORR_p[cI][eI]->GetBinError(bIX+1, bIY+1);
+
+	    content += tempContent;
+	    error = TMath::Sqrt(error*error + tempError*tempError);
+	  }
+	  
+	  photonPtDRJJReco_PURCORR_COMBINED_p[cI]->SetBinContent(bIX+1, bIY+1, content);
+	  photonPtDRJJReco_PURCORR_COMBINED_p[cI]->SetBinError(bIX+1, bIY+1, error);	
+	  
+	  content = 0.0;
+	  error = 0.0;
+	  
+	  for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
+	    Float_t tempContent = photonPtDRJJReco_PURCORR_ForReweight_p[cI][eI]->GetBinContent(bIX+1, bIY+1);
+	    Float_t tempError = photonPtDRJJReco_PURCORR_ForReweight_p[cI][eI]->GetBinError(bIX+1, bIY+1);
+	    
+	    content += tempContent;
+	    error = TMath::Sqrt(error*error + tempError*tempError);
+	  }
+	  
+	  photonPtDRJJReco_PURCORR_COMBINED_ForReweight_p[cI]->SetBinContent(bIX+1, bIY+1, content);
+	  photonPtDRJJReco_PURCORR_COMBINED_ForReweight_p[cI]->SetBinError(bIX+1, bIY+1, error);
+	}
+      }
+    }
+   
     std::vector<TH1*> hists_p = {photonPtJetVarReco_p[cI], photonPtJetVarTruth_p[cI]};
     hists_p.push_back(photonPtJetVarReco_PURCORR_COMBINED_p[cI]);
     hists_p.push_back(photonPtJetVarReco_TRUTH_COMBINED_p[cI]);
     hists_p.push_back(photonPtJetVarReco_PURCORR_COMBINED_ForReweight_p[cI]);
+
+    if(doReweightDR){     
+      hists_p.push_back(photonPtDRJJReco_PURCORR_COMBINED_p[cI]);
+      hists_p.push_back(photonPtDRJJReco_PURCORR_COMBINED_ForReweight_p[cI]);
+    }
     
     setSumW2(hists_p);
   }
@@ -1052,22 +1131,32 @@ int gdjHistToUnfold(std::string inConfigFileName)
   //Lets immediately contruct the reweighting histogram
   TH1D* reweightPhoPt_p[nMaxCentBins];
   TH2D* reweightPhoPtJetVar_p[nMaxCentBins];
-  if(doReweight && !isMC){
-    for(Int_t cI = 0; cI < nCentBins; ++cI){    
-      reweightPhoPt_p[cI] = new TH1D(("reweightPhoPt_" + centBinsStr[cI] + "_h").c_str(), ";;", nGammaPtBins, gammaPtBins);
+  TH2D* reweightPhoPtDRJJ_p[nMaxCentBins];
 
-      reweightPhoPtJetVar_p[cI] = new TH2D(("reweightPhoPtJetVar_" + centBinsStr[cI] + "_h").c_str(), ";;", nVarBins, varBins, nGammaPtBins, gammaPtBins);
+  if(!isMC){
+    if(doReweightVar){
+      for(Int_t cI = 0; cI < nCentBins; ++cI){    
+	reweightPhoPt_p[cI] = new TH1D(("reweightPhoPt_" + centBinsStr[cI] + "_h").c_str(), ";;", nGammaPtBins, gammaPtBins);
+	
+	reweightPhoPtJetVar_p[cI] = new TH2D(("reweightPhoPtJetVar_" + centBinsStr[cI] + "_h").c_str(), ";;", nVarBins, varBins, nGammaPtBins, gammaPtBins);
+	
+	reweightPhoPtDRJJ_p[cI] = new TH2D(("reweightPhoPtDRJJ_" + centBinsStr[cI] + "_h").c_str(), ";;", nDRBins, drBins, nGammaPtBins, gammaPtBins);
+	
+	makeReweightHist(reweightPhoPt_p[cI], photonPtReco_PURCORR_COMBINED_p[cI], photonPtReco_PURCORR_COMBINED_ForReweight_p[cI]);
+	makeReweightHist(reweightPhoPtJetVar_p[cI], photonPtJetVarReco_PURCORR_COMBINED_p[cI], photonPtJetVarReco_PURCORR_COMBINED_ForReweight_p[cI]); 
+      }     
+    }
 
-      makeReweightHist(reweightPhoPt_p[cI], photonPtReco_PURCORR_COMBINED_p[cI], photonPtReco_PURCORR_COMBINED_ForReweight_p[cI]);
-      makeReweightHist(reweightPhoPtJetVar_p[cI], photonPtJetVarReco_PURCORR_COMBINED_p[cI], photonPtJetVarReco_PURCORR_COMBINED_ForReweight_p[cI]); 
+    if(doReweightDR){
+      for(Int_t cI = 0; cI < nCentBins; ++cI){    
+	reweightPhoPtDRJJ_p[cI] = new TH2D(("reweightPhoPtDRJJ_" + centBinsStr[cI] + "_h").c_str(), ";;", nDRBins, drBins, nGammaPtBins, gammaPtBins);
+	
+	makeReweightHist(reweightPhoPtDRJJ_p[cI], photonPtDRJJReco_PURCORR_COMBINED_p[cI], photonPtDRJJReco_PURCORR_COMBINED_ForReweight_p[cI]); 
+      }
     }
   }
 
-  //  return 1;
-  
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;  
   //Grab the unfolding ttree for matrix filling
-
   TTree* unfoldTree_p = (TTree*)inResponseFile_p->Get("unfoldTree_p");
 
   //Before declaring variables define array size for JES/JER syst. + check it matches input
@@ -1191,7 +1280,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
     if(truthGammaOutOfBounds) continue;
 
     Double_t phoWeight = 1.0;
-    if(doReweight) phoWeight = reweightPhoPt_p[centPos]->GetBinContent(reweightPhoPt_p[centPos]->FindBin(truthGammaPt_));
+    if(doReweightVar) phoWeight = reweightPhoPt_p[centPos]->GetBinContent(reweightPhoPt_p[centPos]->FindBin(truthGammaPt_));
 
     TLorentzVector truthGammaTL;
     truthGammaTL.SetPtEtaPhiM(truthGammaPt_, truthGammaEta_, truthGammaPhi_, 0.0);
@@ -1216,7 +1305,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	if(!isStrSame(inUnfoldName, "ALL")) continue;
       }
       std::vector<TLorentzVector> goodUnmatchedTruthJets;
-
+    
       for(Int_t tI = 0; tI < nTruthJtUnmatched_; ++tI){
 	bool truthJetOutOfBounds = truthJtUnmatchedPt_[tI] < jtPtBinsLow || truthJtUnmatchedPt_[tI] >= jtPtBinsHigh;
 	truthJetOutOfBounds = truthJetOutOfBounds || truthJtUnmatchedEta_[tI] < jtEtaBinsLow || truthJtUnmatchedEta_[tI] > jtEtaBinsHigh;
@@ -1224,10 +1313,11 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
 	TLorentzVector truthJetTL;
 	truthJetTL.SetPtEtaPhiM(truthJtUnmatchedPt_[tI], truthJtUnmatchedEta_[tI], truthJtUnmatchedPhi_[tI], 0.0);
-
+      
 	Double_t truthJetVar = getVar(varNameLower, truthJetTL, truthJetTL, truthGammaTL);
 	Double_t phoJetWeight = 1.0;
-	if(doReweight) phoJetWeight = reweightPhoPtJetVar_p[centPos]->GetBinContent(reweightPhoPtJetVar_p[centPos]->GetXaxis()->FindBin(truthJetVar), reweightPhoPtJetVar_p[centPos]->GetYaxis()->FindBin(truthGammaPt_));
+	if(doReweightVar) phoJetWeight = reweightPhoPtJetVar_p[centPos]->GetBinContent(reweightPhoPtJetVar_p[centPos]->GetXaxis()->FindBin(truthJetVar), reweightPhoPtJetVar_p[centPos]->GetYaxis()->FindBin(truthGammaPt_));
+     	
 	
 	Float_t gammaJtDRTruth = getDR(truthJtUnmatchedEta_[tI], truthJtUnmatchedPhi_[tI], truthGammaEta_, truthGammaPhi_);
 	bool gammaJtPassesDRTruth = gammaJtDRTruth >= gammaJtDRExclusionCut;
@@ -1281,8 +1371,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	Float_t gammaJtDRTruth = getDR(truthJtEta_[jI], truthJtPhi_[jI], truthGammaEta_, truthGammaPhi_);
 	bool gammaJtPassesDRTruth = gammaJtDRTruth >= gammaJtDRExclusionCut;
 	if(!gammaJtPassesDRTruth) continue;      
-
-	
+      	
 	
 	if(jesJERI == 0 && false) std::cout << " Passes gammaJtDRTruth" << std::endl;
 	
@@ -1306,9 +1395,9 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	truthJetTL.SetPtEtaPhiM(truthJtPt_[jI], truthJtEta_[jI], truthJtPhi_[jI], 0.0);
 
 	Double_t truthJetVar = getVar(varNameLower, truthJetTL, truthJetTL, truthGammaTL);
-
+     
 	Double_t phoJetWeight = 1.0;
-	if(doReweight) phoJetWeight = reweightPhoPtJetVar_p[centPos]->GetBinContent(reweightPhoPtJetVar_p[centPos]->GetXaxis()->FindBin(truthJetVar), reweightPhoPtJetVar_p[centPos]->GetYaxis()->FindBin(truthGammaPt_));       
+	if(doReweightVar) phoJetWeight = reweightPhoPtJetVar_p[centPos]->GetBinContent(reweightPhoPtJetVar_p[centPos]->GetXaxis()->FindBin(truthJetVar), reweightPhoPtJetVar_p[centPos]->GetYaxis()->FindBin(truthGammaPt_));       
 	
 	if(jesJERI == 0 && false) std::cout << " Passes recoJtOutOfBounds: " << recoJtOutOfBounds << std::endl;
 	if(jesJERI == 0 && false) std::cout << " Passes recoGammaOutOfBounds: " << recoGammaOutOfBounds << std::endl;
@@ -1383,13 +1472,17 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	  TLorentzVector goodTruthJet1 = goodUnmatchedTruthJets[tI];
 	  
 	  for(unsigned int tI2 = tI+1; tI2 < goodUnmatchedTruthJets.size(); ++tI2){
-	    TLorentzVector goodTruthJet2 = goodUnmatchedTruthJets[tI2];
-	    
+	    TLorentzVector goodTruthJet2 = goodUnmatchedTruthJets[tI2];	   
+
 	    Double_t varValTruth = getVar(varNameLower, goodTruthJet1, goodTruthJet2, truthGammaTL);
 	    Double_t phoJetWeight = 1.0;
-	    if(doReweight) phoJetWeight = reweightPhoPtJetVar_p[centPos]->GetBinContent(reweightPhoPtJetVar_p[centPos]->GetXaxis()->FindBin(varValTruth), reweightPhoPtJetVar_p[centPos]->GetYaxis()->FindBin(truthGammaPt_));       
+	    if(doReweightVar) phoJetWeight = reweightPhoPtJetVar_p[centPos]->GetBinContent(reweightPhoPtJetVar_p[centPos]->GetXaxis()->FindBin(varValTruth), reweightPhoPtJetVar_p[centPos]->GetYaxis()->FindBin(truthGammaPt_));       
 	    
 	    Float_t multiJtTruthDR = getDR(goodTruthJet1.Eta(), goodTruthJet1.Phi(), goodTruthJet2.Eta(), goodTruthJet2.Phi());
+	    if(doReweightDR){
+	      phoJetWeight *= reweightPhoPtDRJJ_p[centPos]->GetBinContent(reweightPhoPtDRJJ_p[centPos]->GetXaxis()->FindBin(multiJtTruthDR), reweightPhoPtDRJJ_p[centPos]->GetYaxis()->FindBin(truthGammaPt_));
+	    }
+
 	    goodTruthJet2 += goodTruthJet1;
 	    
 	    //Test it passes the only additional multijet cut - dphi
@@ -1418,9 +1511,14 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
 	    Double_t varValTruth = getVar(varNameLower, goodTruthJet1, goodTruthJet2, truthGammaTL);
 	    Double_t phoJetWeight = 1.0;
-	    if(doReweight) phoJetWeight = reweightPhoPtJetVar_p[centPos]->GetBinContent(reweightPhoPtJetVar_p[centPos]->GetXaxis()->FindBin(varValTruth), reweightPhoPtJetVar_p[centPos]->GetYaxis()->FindBin(truthGammaPt_));       
+	    if(doReweightVar) phoJetWeight = reweightPhoPtJetVar_p[centPos]->GetBinContent(reweightPhoPtJetVar_p[centPos]->GetXaxis()->FindBin(varValTruth), reweightPhoPtJetVar_p[centPos]->GetYaxis()->FindBin(truthGammaPt_));       
 	    
-	    Float_t multiJtTruthDR = getDR(goodTruthJet1.Eta(), goodTruthJet1.Phi(), goodTruthJet2.Eta(), goodTruthJet2.Phi());	  
+	    Float_t multiJtTruthDR = getDR(goodTruthJet1.Eta(), goodTruthJet1.Phi(), goodTruthJet2.Eta(), goodTruthJet2.Phi());
+
+	    if(doReweightDR){
+	      phoJetWeight *= reweightPhoPtDRJJ_p[centPos]->GetBinContent(reweightPhoPtDRJJ_p[centPos]->GetXaxis()->FindBin(multiJtTruthDR), reweightPhoPtDRJJ_p[centPos]->GetYaxis()->FindBin(truthGammaPt_));
+	    }
+	    
 	    goodTruthJet2 += goodTruthJet1;
 	    
 	    Float_t multiJtTruthDPhi = TMath::Abs(getDPHI(truthGammaPhi_, goodTruthJet2.Phi()));
@@ -1442,13 +1540,17 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
 	    Double_t varValTruth = getVar(varNameLower, goodTruthJet1, goodTruthJet2, truthGammaTL);
 	    Double_t phoJetWeight = 1.0;
-	    if(doReweight) phoJetWeight = reweightPhoPtJetVar_p[centPos]->GetBinContent(reweightPhoPtJetVar_p[centPos]->GetXaxis()->FindBin(varValTruth), reweightPhoPtJetVar_p[centPos]->GetYaxis()->FindBin(truthGammaPt_));       
-
+	    if(doReweightVar) phoJetWeight = reweightPhoPtJetVar_p[centPos]->GetBinContent(reweightPhoPtJetVar_p[centPos]->GetXaxis()->FindBin(varValTruth), reweightPhoPtJetVar_p[centPos]->GetYaxis()->FindBin(truthGammaPt_));       
+	    
 	    if(isStrSame(varNameLower, "ajj")) varValReco = TMath::Abs(goodRecoJet1.Pt() - goodRecoJet2.Pt())/recoGammaPt_;
 	    else if(isStrSame(varNameLower, "dphijj")) varValReco = TMath::Abs(getDPHI(goodRecoJet1.Phi(), goodRecoJet2.Phi()));
 	    else if(isStrSame(varNameLower, "drjj")) varValReco = getDR(goodRecoJet1.Eta(), goodRecoJet1.Phi(), goodRecoJet2.Eta(), goodRecoJet2.Phi());
-
+	    
 	    Float_t multiJtTruthDR = getDR(goodTruthJet1.Eta(), goodTruthJet1.Phi(), goodTruthJet2.Eta(), goodTruthJet2.Phi());	  
+	    if(doReweightDR){
+	      phoJetWeight *= reweightPhoPtDRJJ_p[centPos]->GetBinContent(reweightPhoPtDRJJ_p[centPos]->GetXaxis()->FindBin(multiJtTruthDR), reweightPhoPtDRJJ_p[centPos]->GetYaxis()->FindBin(truthGammaPt_));
+	    }
+
 	    Float_t multiJtRecoDR = getDR(goodRecoJet1.Eta(), goodRecoJet1.Phi(), goodRecoJet2.Eta(), goodRecoJet2.Phi());	  
 	    goodTruthJet2 += goodTruthJet1;	  
 	    goodRecoJet2 += goodRecoJet1;
@@ -1674,7 +1776,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
       delete rooResGammaJetVarMisses_p[cI][jI];
     }
     
-    if(!isSameInputFile && doReweight){
+    if(!isSameInputFile && doReweightVar){
       delete reweightPhoPtJetVar_p[cI];
     }
   }
