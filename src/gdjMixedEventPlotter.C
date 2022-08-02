@@ -824,17 +824,10 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 					      "JETR"};
 
   std::vector<std::string> pbpbParams = {"CENTBINS"};
-
-  std::vector<std::string> mcParams = {"ASSOCGENMINPT"};
   
   if(!configs.ContainsParamSet(necessaryParams)) return 1;
   const bool isMC = config_p->GetValue("ISMC", 0);
   
-  if(isMC){
-    if(!configs.ContainsParamSet(mcParams)) return 1;
-
-    plotConfig_p->SetValue("ASSOCGENMINPT", config_p->GetValue("ASSOCGENMINPT", ""));
-  }
   plotConfig_p->SetValue("ISMC", isMC);
  
   //  const int nGammaPtBinsSub = std::stoi(configs.GetConfigVal("NGAMMAPTBINSSUB"));
@@ -854,6 +847,7 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
   //  std::vector<std::string> barrelECStr = {"Barrel", "EC", "BarrelAndEC"};
   std::vector<std::string> barrelECStr = {"BarrelAndEC"};
 
+  /*
   std::vector<std::string> normYAxisTitle = {"#frac{1}{N_{#gamma}}#frac{dN_{J#gamma}}{dx_{J#gamma}}",
 					     "#frac{1}{N_{#gamma}}#frac{dN_{JJ#gamma}}{dx_{JJ#gamma}}",
 					     "#frac{1}{N_{#gamma}}#frac{dN_{JJ#gamma}}{dA_{JJ#gamma}}",
@@ -862,9 +856,19 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 					     "#frac{1}{N_{#gamma}}#frac{dN_{JJ}}{d#DeltaR_{JJ}}",
 					     "#frac{1}{N_{#gamma}}#frac{dN_{J#gamma}}{dp_{T,J#gamma}}",
 					     "#frac{1}{N_{#gamma}}#frac{dN_{J#gamma}}{d#Delta#phi_{J#gamma}}"};
+  */
+  
+  std::vector<std::string> observables1 = {"JtPt", "JtXJ", "JtDPhi", "JtXJJ", "JtDRJJ", "JtDPhiJJG", "JtDPhiJJ", "JtAJJ"};
+  std::vector<std::string> mixStrings = {"MIX", "MIX", "MIX", "MIXCORRECTED", "MIXCORRECTED", "MIXCORRECTED", "MIXCORRECTED", "MIXCORRECTED"};
+  std::vector<std::string> normYAxisTitle = {"#frac{1}{N_{#gamma}}#frac{dN_{J#gamma}}{dp_{T}^{Jet}}",
+					     "#frac{1}{N_{#gamma}}#frac{dN_{J#gamma}}{dx_{J#gamma}}",
+					     "#frac{1}{N_{#gamma}}#frac{dN_{J#gamma}}{d#Delta#phi_{J#gamma}}",
+					     "#frac{1}{N_{#gamma}}#frac{dN_{JJ#gamma}}{dx_{JJ#gamma}}",
+					     "#frac{1}{N_{#gamma}}#frac{dN_{JJ}}{d#DeltaR_{JJ}}",
+					     "#frac{1}{N_{#gamma}}#frac{dN_{JJ#gamma}}{d#Delta#phi_{JJ#gamma}}",
+					     "#frac{1}{N_{#gamma}}#frac{dN_{JJ}}{d#Delta#phi_{JJ}}",
+  					     "#frac{1}{N_{#gamma}}#frac{dN_{JJ#gamma}}{dA_{JJ#gamma}}"};
 
-  std::vector<std::string> observables1 = {"JtPt", "JtXJ", "JtDPhi", "JtXJJ"};
-  std::vector<std::string> mixStrings = {"MIX", "MIX", "MIX", "MIXCORRECTED"};
   //  std::vector<std::string> observables1 = {"JtXJJ", "JtDRJJ"};
   //  std::vector<std::string> mixStrings = {"MIXCORRECTED", "MIXCORRECTED"};
   //  std::vector<std::string> barrelECStr = {"Barrel"};
@@ -1774,8 +1778,6 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	      }
 	    }
 	  }
-
-	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	  
 	  delete rawTemp_p;
 	  delete mixTemp_p;
@@ -1783,14 +1785,9 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	  if(isMC) delete mcTemp_p;	  
 	  if(mcFileName.size() != 0) delete subMCTemp_p;
 
-	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-	  
 	  if(isMultijet){
-	    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	    delete mixUncorrectedTemp_p;
 	    delete mixCorrectionTemp_p;
-
-	    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	    
 	    //	    delete mixBkgdTemp_p;
 	    //	    delete mixBkgdUncorrTemp_p;

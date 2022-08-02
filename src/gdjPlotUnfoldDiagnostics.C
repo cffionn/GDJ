@@ -47,6 +47,7 @@
 #include "include/stringUtil.h"
 #include "include/unfoldingUtil.h"
 // #include "include/treeUtil.h"
+#include "include/varUtil.h"
 
 template <typename T>
 bool axisFix(T* input)
@@ -469,8 +470,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 							"ISPP",
 							"NITER",
 							"JETR",
-							"VARNAME",
-							"ASSOCGENMINPT"};
+							"VARNAME"};
   
   //Global cut referential labels (dphi0 is the gamma+jet dphi cut)
   const std::string gammaJtDPhiStr = "DPhi0";
@@ -480,7 +480,9 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   const Int_t nMaxJESJER = 100;
   Int_t nJESJER = inUnfoldFileConfig_p->GetValue("NJETSYSANDNOM", -1);
   std::vector<std::string> jesJERStrVect = strToVect(inUnfoldFileConfig_p->GetValue("JETSYSANDNOM", ""));
- 
+
+  std::string unfoldName = inUnfoldFileConfig_p->GetValue("UNFOLD", "");
+  
   //Additional params are required if it is Pb+Pb
   std::vector<std::string> pbpbParams = {"CENTBINS"};
   if(!checkEnvForParams(inUnfoldFileConfig_p, necessaryUnfoldFileParams)) return 1;
@@ -490,18 +492,12 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   
   std::string varNameUpper = strLowerToUpper(varName);
   std::string varNameLower = returnAllLowercaseString(varName);
-  std::string varNameLabel = varNameLower;
+  std::string varNameLabel = varNameToLabel(varName);
 
+  const Bool_t isMultijet = isStrSame(varNameLower, "xjj") || isStrSame(varNameLower, "dphijjg") || isStrSame(varNameLower, "ajj") || isStrSame(varNameLower, "dphijj") || isStrSame(varNameLower, "drjj");
+  
   const Float_t jtPtBinsLow = inUnfoldFileConfig_p->GetValue("JTPTBINSLOW", -999.0);
   const Float_t jtPtBinsHigh = inUnfoldFileConfig_p->GetValue("JTPTBINSHIGH", -999.0);
-  
-  std::map<std::string, std::string> varNameLowerToLabel;
-  varNameLowerToLabel["xj"] = "x_{J#gamma}";
-  varNameLowerToLabel["xjj"] = "#vec{x}_{JJ#gamma}";
-  varNameLowerToLabel["ajj"] = "#vec{A}_{JJ#gamma}";
-  varNameLowerToLabel["pt"] = "p_{T}";
-  varNameLowerToLabel["dphi"] = "#Delta#phi_{J#gamma}";
-  if(varNameLowerToLabel.count(varNameLabel) != 0) varNameLabel = varNameLowerToLabel[varNameLabel];
   
   //Add to global labels
   int jetR = inUnfoldFileConfig_p->GetValue("JETR", 100);
@@ -517,6 +513,9 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
     return 1;
   }
   if(gammaJtDPhiCutLabel.find("pi") != std::string::npos) gammaJtDPhiCutLabel.replace(gammaJtDPhiCutLabel.find("pi"), 2, "#pi");
+
+  std::string gammaMultiJtDPhiCut = inUnfoldFileConfig_p->GetValue("GAMMAMULTIJTDPHI", "");
+  if(gammaMultiJtDPhiCut.find("pi") != std::string::npos) gammaMultiJtDPhiCut.replace(gammaMultiJtDPhiCut.find("pi"), 2, "#pi");
   
   //Add to the global labels
   globalLabels.push_back(jetRStr);
@@ -701,6 +700,10 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   //Loop over all jet systematics
 
   for(Int_t jesJERI = 0; jesJERI < nJESJER; ++jesJERI){
+    if(!isStrSame(unfoldName, jesJERStrVect[jesJERI])){
+      if(!isStrSame(unfoldName, "ALL")) continue;
+    }
+
     //Photon-pt only; double vector for centrality, iterations
     std::vector<std::string> statsDeltaPhoPtNames, iterDeltaPhoPtNames, totalDeltaPhoPtNames;
     std::vector<std::string> recoHistPhoPtNames, truthHistPhoPtNames;
@@ -792,6 +795,10 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	else if(!isMC && truthHistNames[cI].find("HalfTo") != std::string::npos) tempLabels = globalLabelsMCOverrides;
 	tempLabels.push_back("#bf{" + prettyString(gammaPtBins[0], 1, false) + " < p_{T,#gamma} < " + prettyString(gammaPtBins[nGammaPtBins], 1, false) + "}");
 
+	if(isMultijet){
+	  tempLabels.push_back("|#Delta#phi_{JJ#gamma}| > " + gammaMultiJtDPhiCut);
+	}
+	
 	if(!isPP) tempLabels.push_back(centBinsLabel[cI%centBinsLabel.size()]);
 	else tempLabels.push_back("p+p");
 	//EndLabelMods
@@ -838,7 +845,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  }
 	}
 	
-	if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+	if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << pI << std::endl;
 	
 	TH1D* reco1D_p = nullptr;
 	TH2D* reco2D_p = nullptr;
@@ -848,23 +855,27 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	}
 	else if(pI == 1){
 	  reco2D_p = (TH2D*)inUnfoldFile_p->Get(recoHistNames[cI].c_str());
+	  std::cout << recoHistNames[cI] << std::endl;
+	  reco2D_p->Print("ALL");
 	  getIterativeHists2D(reco2D_p, unfoldedHists2D_p, statsDelta_p, iterDelta_p, totalDelta_p, doRelativeTerm, varBinsLowReco, varBinsHighReco, gammaPtBinsLowReco, gammaPtBinsHighReco);
 	}
 	
-	TCanvas* canv_p = new TCanvas("canv_p", "", width, height);
-	setMargins(canv_p, leftMargin, topMargin, rightMargin, leftMargin); //intentionally settng bottom to left margin value
+	TCanvas* canv_p = new TCanvas("canv_p", "", width, height*3.0/4.0);
+	setMargins(canv_p, leftMargin, topMargin, rightMargin, leftMargin/2.0); //intentionally settng bottom to left margin value
 	canv_p->cd();
       
 	HIJet::Style::EquipHistogram(iterDelta_p, 2);
 	HIJet::Style::EquipHistogram(statsDelta_p, 1);
 	HIJet::Style::EquipHistogram(totalDelta_p, 0);
-      
-	totalDelta_p->SetMinimum(0.0);	
+
+	
+	totalDelta_p->SetMinimum(0.05);	
 	totalDelta_p->DrawCopy("HIST E1 P");
 	statsDelta_p->DrawCopy("HIST E1 P SAME");
 	iterDelta_p->DrawCopy("HIST E1 P SAME");
 	totalDelta_p->DrawCopy("HIST E1 P SAME");    
 	
+	gPad->SetLogy();
 	//Draw Legends
 	for(unsigned int lI = 0; lI < leg_p.size(); ++lI){leg_p[lI]->Draw("SAME");}
 	
@@ -873,7 +884,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	for(unsigned int tI = 0; tI < tempLabels.size(); ++tI){
 	  if(pI == 0 && tempLabels[tI].find("jet") != std::string::npos) continue;
 	  
-	  label_p->DrawLatex(diagLabelXGlobal, diagLabelYGlobal - labelPos*0.06, tempLabels[tI].c_str());
+	  label_p->DrawLatex(diagLabelXGlobal, diagLabelYGlobal - labelPos*0.05, tempLabels[tI].c_str());
 	  ++labelPos;
 	}
 	axisFix(canv_p);

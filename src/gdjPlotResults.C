@@ -47,6 +47,7 @@
 #include "include/stringUtil.h"
 #include "include/unfoldingUtil.h"
 // #include "include/treeUtil.h"
+#include "include/varUtil.h"
 
 //vector of syst, bin-by-bin
 //As a start, assume symmetric syst
@@ -287,7 +288,8 @@ int gdjPlotResults(std::string inConfigFileName)
   }
 
   const std::string varNameUpper = strLowerToUpper(varName);
-
+  const std::string varNameLabel = varNameToLabel(varName);
+  
   float minVal = config_p->GetValue((varNameUpper + "MIN").c_str(), 0.0);
   float maxVal = config_p->GetValue((varNameUpper + "MAX").c_str(), 0.0);
   float minRatVal = config_p->GetValue((varNameUpper + "RATMIN").c_str(), 0.0);
@@ -487,8 +489,9 @@ int gdjPlotResults(std::string inConfigFileName)
       if(isStrSame(jesJERStrVect[jI], "JESRTRK")) isSystCorrelated.push_back(false);
       else isSystCorrelated.push_back(true);
       
+      //WE WILL NOT BE USING THIS CURRENTLY, INSTEAD TAKE THE SAME ITERATION AS NOMINAL FOR NOW
       Int_t iterPPSyst = inPPTermFileConfig_p->GetValue((varNameUpper + "_GAMMAPTALL_PP_" + jesJERStrVect[jI]).c_str(), -1);
-      ppSystHistNames.push_back("photonPtJet" + varNameUpper + "Reco_Iter" + std::to_string(iterPPSyst) + "_PP_" + jesJERStrVect[jI] + "_PURCORR_COMBINED_h");
+      ppSystHistNames.push_back("photonPtJet" + varNameUpper + "Reco_Iter" + std::to_string(iterPP) + "_PP_" + jesJERStrVect[jI] + "_PURCORR_COMBINED_h");
     }
  
     TH2D* ppHist2D_p = (TH2D*)inPPFile_p->Get(ppHistName.c_str());
@@ -549,7 +552,8 @@ int gdjPlotResults(std::string inConfigFileName)
       std::vector<std::string> pbpbSystHistNames;      
       for(unsigned int jI = 0; jI < jesJERStrVect.size(); ++jI){
 	if(isStrSame(jesJERStrVect[jI], "Nominal")) continue;
-	
+
+	//WE WILL NOT BE USING THIS CURRENTLY, INSTEAD TAKE THE SAME ITERATION AS NOMINAL FOR NOW
 	Int_t iterPbPbSyst = inPbPbTermFileConfig_p->GetValue((varNameUpper + "_GAMMAPTALL_" + centBinsStr[cI] + "_" + jesJERStrVect[jI]).c_str(), -1);
 	pbpbSystHistNames.push_back("photonPtJet" + varNameUpper + "Reco_Iter" + std::to_string(iterPbPb) + "_" + centBinsStr[cI] + "_" + jesJERStrVect[jI] + "_PURCORR_COMBINED_h");
       }
@@ -686,7 +690,7 @@ int gdjPlotResults(std::string inConfigFileName)
       label_p->SetTextAlign(31);
       
       for(unsigned int i = 0; i < labels.size(); ++i){
-	label_p->DrawLatex(labelX, labelY - 0.0775*i, labels[i].c_str());
+	label_p->DrawLatex(labelX, labelY - 0.083*i, labels[i].c_str());
       }
       delete label_p;
       
@@ -738,6 +742,8 @@ int gdjPlotResults(std::string inConfigFileName)
       
       pbpbHist_p->SetTickLength(pbpbHist_p->GetTickLength()*(1.0 - padSplit)/padSplit);
       pbpbHist_p->SetTickLength(pbpbHist_p->GetTickLength("Y")*(1.0 - padSplit)/padSplit, "Y");
+
+      pbpbHist_p->GetXaxis()->SetTitle(varNameLabel.c_str());
       pbpbHist_p->DrawCopy("HIST E1 P");
 
       drawSyst(pads_p[1], pbpbHist_p, ratSyst);
