@@ -1661,7 +1661,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	photonPtJtAJJVCent_PURCORR_p[cI][eI] = new TH2D(("photonPtJtAJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_PURCORR_h").c_str(), ";Reco. A_{JJ#gamma};Reco. Photon p_{T}", nAJBins, ajBins, nGammaPtBins, gammaPtBins);
 	photonPtJtDPhiJJGVCent_PURCORR_p[cI][eI] = new TH2D(("photonPtJtDPhiJJGVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_PURCORR_h").c_str(), ";Reco. #Delta#phi_{JJ#gamma};Reco. Photon p_{T}", nDPhiBins, dPhiBins, nGammaPtBins, gammaPtBins);
 	photonPtJtDPhiJJVCent_PURCORR_p[cI][eI] = new TH2D(("photonPtJtDPhiJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_PURCORR_h").c_str(), ";Reco. #Delta#phi_{JJ};Reco. Photon p_{T}", nDPhiBins, dPhiBins, nGammaPtBins, gammaPtBins);
-	photonPtJtDRJJVCent_PURCORR_p[cI][eI] = new TH2D(("photonPtJtDRJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_PURCORR_h").c_str(), ";Reco. #DeltaR_{JJ};Reco. Photon p_{T}", nDPhiBins, dPhiBins, nGammaPtBins, gammaPtBins);
+	photonPtJtDRJJVCent_PURCORR_p[cI][eI] = new TH2D(("photonPtJtDRJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + gammaJtDPhiStr + "_PURCORR_h").c_str(), ";Reco. #DeltaR_{JJ};Reco. Photon p_{T}", nDRBins, drBins, nGammaPtBins, gammaPtBins);
 
 	setSumW2({photonPtJtPtVCent_PURCORR_p[cI][eI], photonPtJtXJVCent_PURCORR_p[cI][eI], photonPtJtDPhiVCent_PURCORR_p[cI][eI], photonPtJtXJJVCent_PURCORR_p[cI][eI], photonPtJtAJJVCent_PURCORR_p[cI][eI], photonPtJtDPhiJJGVCent_PURCORR_p[cI][eI], photonPtJtDPhiJJVCent_PURCORR_p[cI][eI], photonPtJtDRJJVCent_PURCORR_p[cI][eI]});
 	
@@ -1723,7 +1723,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   ULong64_t nEntriesAllFiles = 0;
 
   for(unsigned int fileI = 0; fileI < inROOTFileNames.size(); ++fileI){
-    inFile_p = new TFile(inROOTFileName.c_str(), "READ");
+    inFile_p = new TFile(inROOTFileNames[fileI].c_str(), "READ");
     inTree_p = (TTree*)inFile_p->Get("gammaJetTree_p");
 
     nEntriesAllFiles += (ULong64_t)inTree_p->GetEntries();
@@ -3607,7 +3607,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   }
   std::cout << std::endl;
 
-  doGlobalDebug = false;
+  //  doGlobalDebug = false;
   if(doGlobalDebug) std::cout << "DOGLOBALDEBUG MANUALLY TURNED ON AT LINE: " << __LINE__ << std::endl;
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
@@ -3896,6 +3896,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	TF1* purityFit_p = (TF1*)purityFile_p->Get(purityFitStr.c_str());
 	TH2D* tempRawHist_p = photonPtJtPtVCent_MixMachine_p[cI][barrelAndECComboPos]->GetTH2DPtr("RAW");
 
+      
 	
 	for(Int_t bIY = 0; bIY < tempRawHist_p->GetYaxis()->GetNbins(); ++bIY){
 	  Float_t lowVal = tempRawHist_p->GetYaxis()->GetBinLowEdge(bIY+1);
@@ -3946,14 +3947,20 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    totalSideband += content;
 	  }
 	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-	  
-	  
+	  	  
 	  Float_t meanVal = totalNum/totalDenom;
+	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+       
  	  Float_t purity = purityFit_p->Eval(meanVal);
+	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	  
 	  std::vector<mixMachine*> inMixMachines_p = {photonPtJtPtVCent_MixMachine_p[cI][barrelAndECComboPos], photonPtJtXJVCent_MixMachine_p[cI][barrelAndECComboPos], photonPtJtDPhiVCent_MixMachine_p[cI][barrelAndECComboPos], photonPtJtXJJVCent_MixMachine_p[cI][barrelAndECComboPos], photonPtJtAJJVCent_MixMachine_p[cI][barrelAndECComboPos], photonPtJtDPhiJJGVCent_MixMachine_p[cI][barrelAndECComboPos], photonPtJtDPhiJJVCent_MixMachine_p[cI][barrelAndECComboPos], photonPtJtDRJJVCent_MixMachine_p[cI][barrelAndECComboPos]};
+	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	  std::vector<mixMachine*> inMixMachines_Sideband_p = {photonPtJtPtVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos], photonPtJtXJVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos], photonPtJtDPhiVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos], photonPtJtXJJVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos], photonPtJtAJJVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos], photonPtJtDPhiJJGVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos], photonPtJtDPhiJJVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos], photonPtJtDRJJVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos]};
+	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	  std::vector<TH2D*> outHists_p = {photonPtJtPtVCent_PURCORR_p[cI][barrelAndECComboPos], photonPtJtXJVCent_PURCORR_p[cI][barrelAndECComboPos], photonPtJtDPhiVCent_PURCORR_p[cI][barrelAndECComboPos], photonPtJtXJJVCent_PURCORR_p[cI][barrelAndECComboPos], photonPtJtAJJVCent_PURCORR_p[cI][barrelAndECComboPos], photonPtJtDPhiJJGVCent_PURCORR_p[cI][barrelAndECComboPos], photonPtJtDPhiJJVCent_PURCORR_p[cI][barrelAndECComboPos], photonPtJtDRJJVCent_PURCORR_p[cI][barrelAndECComboPos]};	  
+
+	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	  
 	  for(unsigned int hI = 0; hI < inMixMachines_p.size(); ++hI){
 	    TH2D* subHist_p = inMixMachines_p[hI]->GetTH2DPtr("SUB");
@@ -3986,8 +3993,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	      outHists_p[hI]->SetBinError(bIX+1, bIY+1, binError);
 	    }
 	  }	 	   
+
+	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	}       
 	
+	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	
 	for(Int_t bIX = 0; bIX < photonPtVCent_RAW_p[cI][barrelAndECComboPos]->GetXaxis()->GetNbins(); ++bIX){
 	  Float_t center = photonPtVCent_RAW_p[cI][barrelAndECComboPos]->GetXaxis()->GetBinCenter(bIX+1);
@@ -4168,6 +4178,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
     }
   }
 
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
   purityFile_p->Close();
   delete purityFile_p;
 
@@ -4213,6 +4225,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
     mixDir_p->Close();
     delete mixDir_p;
   }
+
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   runNumber_p->Write("", TObject::kOverwrite);
 
@@ -4476,6 +4490,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	photonPtJtAJJVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtJtDPhiJJGVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtJtDPhiJJVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDRJJVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
 
 	if(isMC){
 	  photonPtJtPtVCent_TRUTHMATCHEDRECO_p[cI][eI]->Write("", TObject::kOverwrite);
@@ -4485,6 +4500,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  photonPtJtAJJVCent_TRUTHMATCHEDRECO_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtDPhiJJGVCent_TRUTHMATCHEDRECO_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtDPhiJJVCent_TRUTHMATCHEDRECO_p[cI][eI]->Write("", TObject::kOverwrite);
+	  //	  photonPtJtDRJJVCent_TRUTHMATCHEDRECO_p[cI][eI]->Write("", TObject::kOverwrite);
 
 	  photonPtJtPtVCent_PUREBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtXJVCent_PUREBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
@@ -4497,6 +4513,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  photonPtJtDPhiJJGVCent_MIXBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtDPhiJJVCent_PUREBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtDPhiJJVCent_MIXBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
+	  //	  photonPtJtDRJJVCent_PUREBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
+	  //	  photonPtJtDRJJVCent_MIXBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
 
 	  
 	  photonPtJtPtVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
@@ -4506,6 +4524,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  photonPtJtAJJVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtDPhiJJGVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtDPhiJJVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
+	  //	  photonPtJtDRJJVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
 	}
       }
       else if(isPP){	
@@ -4516,6 +4535,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	photonPtJtAJJVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtJtDPhiJJGVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtJtDPhiJJVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
+	photonPtJtDRJJVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
 
 	if(isMC){
 	  photonPtJtPtVCent_TRUTHMATCHEDRECO_p[cI][eI]->Write("", TObject::kOverwrite);
@@ -4525,6 +4545,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  photonPtJtAJJVCent_TRUTHMATCHEDRECO_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtDPhiJJGVCent_TRUTHMATCHEDRECO_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtDPhiJJVCent_TRUTHMATCHEDRECO_p[cI][eI]->Write("", TObject::kOverwrite);
+	  //	  photonPtJtDRJJVCent_TRUTHMATCHEDRECO_p[cI][eI]->Write("", TObject::kOverwrite);
 
 	  photonPtJtPtVCent_PUREBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtXJVCent_PUREBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
@@ -4535,8 +4556,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  photonPtJtAJJVCent_MIXBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtDPhiJJGVCent_PUREBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtDPhiJJGVCent_MIXBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
-	  photonPtJtDPhiJJVCent_PUREBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
+ 	  photonPtJtDPhiJJVCent_PUREBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtDPhiJJVCent_MIXBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
+	  // 	  photonPtJtDRJJVCent_PUREBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
+	  //	  photonPtJtDRJJVCent_MIXBKGD_p[cI][eI]->Write("", TObject::kOverwrite);
 
 	  photonPtJtPtVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtXJVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
@@ -4545,6 +4568,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  photonPtJtAJJVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtDPhiJJGVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
 	  photonPtJtDPhiJJVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
+	  //	  photonPtJtDRJJVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
 	}
       }
     }    
@@ -4557,6 +4581,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
     centDir_p->Close();
     delete centDir_p;
   }
+
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   //Before we do a bunch of deletions lets auto-generate some stats tables
   if(!isMC){
@@ -4786,6 +4812,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	delete photonPtJtAJJVCent_PURCORR_p[cI][eI];
 	delete photonPtJtDPhiJJGVCent_PURCORR_p[cI][eI];
 	delete photonPtJtDPhiJJVCent_PURCORR_p[cI][eI];
+	delete photonPtJtDRJJVCent_PURCORR_p[cI][eI];
 
 	if(isMC){
 	  delete photonPtJtPtVCent_TRUTHMATCHEDRECO_p[cI][eI];
@@ -4795,6 +4822,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  delete photonPtJtAJJVCent_TRUTHMATCHEDRECO_p[cI][eI];
 	  delete photonPtJtDPhiJJGVCent_TRUTHMATCHEDRECO_p[cI][eI];
 	  delete photonPtJtDPhiJJVCent_TRUTHMATCHEDRECO_p[cI][eI];
+	  //	  delete photonPtJtDRJJVCent_TRUTHMATCHEDRECO_p[cI][eI];
 
 	  delete photonPtJtPtVCent_PUREBKGD_p[cI][eI];
 	  delete photonPtJtXJVCent_PUREBKGD_p[cI][eI];
@@ -4807,6 +4835,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  delete photonPtJtDPhiJJGVCent_MIXBKGD_p[cI][eI];
 	  delete photonPtJtDPhiJJVCent_PUREBKGD_p[cI][eI];
 	  delete photonPtJtDPhiJJVCent_MIXBKGD_p[cI][eI];
+	  //	  delete photonPtJtDRJJVCent_PUREBKGD_p[cI][eI];
+	  //	  delete photonPtJtDRJJVCent_MIXBKGD_p[cI][eI];
 
 	  delete photonPtJtPtVCent_TRUTH_p[cI][eI];
 	  delete photonPtJtXJVCent_TRUTH_p[cI][eI];
@@ -4815,6 +4845,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  delete photonPtJtAJJVCent_TRUTH_p[cI][eI];
 	  delete photonPtJtDPhiJJGVCent_TRUTH_p[cI][eI];
 	  delete photonPtJtDPhiJJVCent_TRUTH_p[cI][eI];
+	  //	  delete photonPtJtDRJJVCent_TRUTH_p[cI][eI];
 	}
       }
       else if(isPP){
@@ -4825,6 +4856,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	delete photonPtJtAJJVCent_PURCORR_p[cI][eI];
 	delete photonPtJtDPhiJJGVCent_PURCORR_p[cI][eI];
 	delete photonPtJtDPhiJJVCent_PURCORR_p[cI][eI];
+	delete photonPtJtDRJJVCent_PURCORR_p[cI][eI];
 
 	if(isMC){
 	  delete photonPtJtPtVCent_TRUTHMATCHEDRECO_p[cI][eI];
@@ -4834,8 +4866,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  delete photonPtJtAJJVCent_TRUTHMATCHEDRECO_p[cI][eI];
 	  delete photonPtJtDPhiJJGVCent_TRUTHMATCHEDRECO_p[cI][eI];
 	  delete photonPtJtDPhiJJVCent_TRUTHMATCHEDRECO_p[cI][eI];
-
-	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+	  //	  delete photonPtJtDRJJVCent_TRUTHMATCHEDRECO_p[cI][eI];
 
 	  delete photonPtJtPtVCent_TRUTH_p[cI][eI];
 	  delete photonPtJtXJVCent_TRUTH_p[cI][eI];
@@ -4844,6 +4875,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  delete photonPtJtAJJVCent_TRUTH_p[cI][eI];
 	  delete photonPtJtDPhiJJGVCent_TRUTH_p[cI][eI];
 	  delete photonPtJtDPhiJJVCent_TRUTH_p[cI][eI];
+	  //	  delete photonPtJtDRJJVCent_TRUTH_p[cI][eI];
 	}
       }
     }      
