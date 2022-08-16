@@ -10,6 +10,7 @@
 #include "TCanvas.h"
 #include "TError.h"
 #include "TH1.h"
+#include "TLatex.h"
 #include "TMath.h"
 
 //Local
@@ -338,6 +339,17 @@ inline void drawWhiteBoxNDC(TCanvas* canv_p, Double_t x1, Double_t y1, Double_t 
   box_p->SetFillColor(color);
   box_p->DrawBox(x1, y1, x2, y2);
   delete box_p;
+
+  return;
+}
+
+void initLabel(TLatex* label_p, int font, float size, bool alignR)
+{
+  label_p->SetNDC();
+  label_p->SetTextFont(font);
+  label_p->SetTextSize(size);
+  label_p->SetTextColor(1);
+  if(alignR) label_p->SetTextAlign(31);
 
   return;
 }

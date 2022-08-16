@@ -157,6 +157,187 @@ void drawSyst(TPad* pad_p, TH1D* nominalHist_p, std::vector<std::vector<Double_t
 }
 
 
+void plotSyst(TH1D* nominalHist_p, std::vector<std::vector<Double_t> > systVals, std::vector<std::string> systNames, std::vector<std::string> labels, std::string saveName)
+{
+  globalDebugHandler gDebug;
+  const bool doGlobalDebug = gDebug.GetDoGlobalDebug();
+  
+  //Series of consistency checks
+  const Int_t nMaxHist = 36;
+  if(systVals.size() + 1 > nMaxHist){
+    std::cout << "Needed number of histograms '" << systVals.size()+1 << "' exceeds plotSyst nMaxHist="  << nMaxHist << ". return" << std::endl;
+    return;
+  }
+
+  if(systVals.size() != systNames.size()){
+    std::cout << "SystVals and systNames have different sizes \'" << systVals.size() << "\', \'" << systNames.size() << "\', respectively. return" << std::endl;
+    return;
+  }
+
+  //Define some plotting parameters
+  const int titleFont = 42;
+  const double titleSize = 0.035;
+  const double labelSize = titleSize*0.9;
+  const double yOffset = 1.0;
+
+  const Float_t height = 900.0;
+  const Float_t width = 1200.0;
+
+  const Double_t leftMargin = 0.14;
+  const Double_t bottomAbsFracOfLeft = 0.8;
+  const Double_t bottomMargin = bottomAbsFracOfLeft*leftMargin*width/height;
+
+  //Define a bin array and grab the relevant bin edges; check it is within array size
+  const Int_t nBinsMax = 100;
+  Int_t nBinsX = nominalHist_p->GetXaxis()->GetNbins();
+  if(nBinsX > nBinsMax){
+    std::cout << "nBinsX needed in plotSyst \'" << nBinsX << "\' exceeds binsMax \'" << nBinsMax << "\'. return" << std::endl;
+    return;
+  }
+  Float_t binsX[nBinsMax];
+  for(Int_t bIX = 0; bIX < nBinsX+1; ++bIX){
+    binsX[bIX] = nominalHist_p->GetXaxis()->GetBinLowEdge(bIX+1);
+  }
+  
+  //Define our histogram array and new the total syst hist
+  std::string titleStr = ";" + std::string(nominalHist_p->GetXaxis()->GetTitle()) + ";Syst. (%)";
+  TH1D* systHist_p[nMaxHist];
+  systHist_p[0] = new TH1D("systHist_Total_h", titleStr.c_str(), nBinsX, binsX);
+  HIJet::Style::EquipHistogram(systHist_p[0], 0);
+  
+  std::vector<Float_t> systTotal;
+  for(Int_t bIX = 0; bIX < nBinsX; ++bIX){
+    systTotal.push_back(0.0);
+  }
+  
+  for(unsigned int sI = 0; sI < systVals.size(); ++sI){
+    systHist_p[sI+1] = new TH1D(("systHist_" + systNames[sI] + "_h").c_str(), titleStr.c_str(), nBinsX, binsX);
+
+    for(Int_t bIX = 0; bIX < nBinsX; ++bIX){ 
+      systHist_p[sI+1]->SetBinContent(bIX+1, systVals[sI][bIX]/nominalHist_p->GetBinContent(bIX+1));
+      systHist_p[sI+1]->SetBinError(bIX+1, 0);
+
+      systTotal[bIX] += systVals[sI][bIX]*systVals[sI][bIX];
+    }    
+
+    HIJet::Style::EquipHistogram(systHist_p[sI+1], sI+1);
+  }
+
+  Double_t maxVal = 0.0;
+  for(Int_t bIX = 0; bIX < nBinsX; ++bIX){
+    Float_t val = TMath::Sqrt(systTotal[bIX])/nominalHist_p->GetBinContent(bIX+1);
+    if(val > maxVal) maxVal = val;
+
+    systHist_p[0]->SetBinContent(bIX+1, val);
+    systHist_p[0]->SetBinError(bIX+1, 0.0);
+  }
+
+  systHist_p[0]->SetMaximum(maxVal*1.2);
+  systHist_p[0]->SetMinimum(-maxVal*1.2);
+  
+  TCanvas* canv_p = new TCanvas("canvSyst_p", "", width, height);
+  canv_p->SetTopMargin(0.20);
+  canv_p->SetRightMargin(0.25);
+  canv_p->SetLeftMargin(leftMargin);
+  canv_p->SetBottomMargin(bottomMargin);
+
+  canv_p->cd();
+
+  for(Int_t sI = 0; sI < systVals.size(); ++sI){
+    if(sI == 0) systHist_p[sI]->DrawCopy("HIST");
+    else systHist_p[sI]->DrawCopy("HIST SAME");
+
+    //Create the mirrored version for negative values
+    for(Int_t bIX = 0; bIX < nBinsX; ++bIX){
+      systHist_p[sI]->SetBinContent(bIX+1, -systHist_p[sI]->GetBinContent(bIX+1));
+    }
+
+    systHist_p[sI]->DrawCopy("HIST SAME"); 
+  }
+
+  TLatex* label_p = new TLatex();
+  label_p->SetNDC();
+  label_p->SetTextFont(titleFont);
+  label_p->SetTextSize(titleSize);
+  //  label_p->SetTextAlign(31);
+
+  Float_t xPos = 0.01;
+  Float_t maxLength = 0.0;
+  for(unsigned int i = 0; i < labels.size(); ++i){
+    if(i != 0 && i%3 == 0){
+      xPos += maxLength + 0.05;
+      maxLength = 0;
+    }
+
+    label_p->SetText(xPos, 0.96 - 0.06*(i%3), labels[i].c_str());
+    if(label_p->GetXsize() > maxLength) maxLength = label_p->GetXsize();
+
+    label_p->DrawLatex(xPos, 0.96 - 0.06*(i%3), labels[i].c_str());
+  }
+  delete label_p;
+
+  std::vector<TLegend*> legs_p = {nullptr, nullptr};
+  if(systVals.size() <= nMaxHist/2) legs_p[0] = new TLegend(0.81, 0.81 - systVals.size()*0.045, 0.90, 0.81);
+  else{
+    legs_p[0] = new TLegend(0.76, 0.81 - (nMaxHist/2)*0.045, 0.87, 0.81);
+    legs_p[1] = new TLegend(0.87, 0.81 - (systVals.size() - nMaxHist/2)*0.045, 0.99, 0.81);
+
+    legs_p[1]->SetTextFont(titleFont);
+    legs_p[1]->SetTextSize(titleSize);
+    legs_p[1]->SetBorderSize(0);
+    legs_p[1]->SetFillColor(0);
+  }   
+  legs_p[0]->SetTextFont(titleFont);
+  legs_p[0]->SetTextSize(titleSize);
+  legs_p[0]->SetBorderSize(0);
+  legs_p[0]->SetFillColor(0);
+  
+  legs_p[0]->AddEntry(systHist_p[0], "Total", "L");
+  for(Int_t sI = 0; sI < systVals.size(); ++sI){
+    legs_p[(sI+1)/(nMaxHist/2)]->AddEntry(systHist_p[sI+1], systNames[sI].c_str(), "L");
+  }
+
+  legs_p[0]->Draw("SAME");
+  if(systVals.size() > nMaxHist/2) legs_p[1]->Draw("SAME");
+  
+
+  TLine* line_p = new TLine();
+  line_p->SetLineStyle(2);
+  line_p->DrawLine(binsX[0], 0.0, binsX[nBinsX], 0.0);  
+  delete line_p;
+  
+  quietSaveAs(canv_p, saveName);
+  delete canv_p;
+  delete legs_p[0];
+  if(systVals.size() > nMaxHist/2) delete legs_p[1];
+  
+  /*
+  TCanvas* canv_p = new TCanvas("canvSyst_p", "", width/2.0, height);
+  canv_p->SetTopMargin(0.02);
+  canv_p->SetRightMargin(0.02);
+  canv_p->SetLeftMargin(0.02);
+  canv_p->SetBottomMargin(0.02);
+
+  canv_p->cd();
+
+  TH1D* temp_p = new TH1D("temp_p", "", 10, 0, 1);
+  temp_p->SetMarkerColor(0.0);
+  temp_p->SetLineColor(0.0);
+  temp_p->GetXaxis()->SetLineColor(kWhite);
+  temp_p->GetYaxis()->SetLineColor(kWhite);
+  
+  temp_p->DrawCopy("HIST E1 P");
+
+  quietSaveAs(canv_p, saveName);
+  delete canv_p;
+  */
+  
+  for(unsigned int sI = 0; sI < systVals.size()+1; ++sI){delete systHist_p[sI];}
+  
+  return;
+}
+
+
 int gdjPlotResults(std::string inConfigFileName)
 {
   const int titleFont = 42;
@@ -483,9 +664,12 @@ int gdjPlotResults(std::string inConfigFileName)
     std::string ppHistName = "photonPtJet" + varNameUpper + "Reco_Iter" + std::to_string(iterPP) + "_PP_Nominal_PURCORR_COMBINED_h";
     std::vector<std::string> ppSystHistNames;
     std::vector<bool> isSystCorrelated;
+    std::vector<std::string> systNames;
     for(unsigned int jI = 0; jI < jesJERStrVect.size(); ++jI){
       if(isStrSame(jesJERStrVect[jI], "Nominal")) continue;
 
+      systNames.push_back(jesJERStrVect[jI]);
+      
       if(isStrSame(jesJERStrVect[jI], "JESRTRK")) isSystCorrelated.push_back(false);
       else isSystCorrelated.push_back(true);
       
@@ -632,7 +816,6 @@ int gdjPlotResults(std::string inConfigFileName)
       HIJet::Style::EquipHistogram(pbpbHist_p, 1); 
 
       if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
-
       
       ppHist_p->SetMinimum(minVal);
       ppHist_p->SetMaximum(maxVal);
@@ -665,12 +848,12 @@ int gdjPlotResults(std::string inConfigFileName)
 
       for(unsigned int lI = 0; lI < labelsTemp.size(); ++lI){
 	if(isStrSame(labelsTemp[lI], "h")) continue;
-
 	labels.push_back(labelsTemp[lI]);
       }
       labels.push_back(prettyString(gammaPtBins[gI], 1, false) + " < p_{T,#gamma} < " + prettyString(gammaPtBins[gI+1], 1, false));
       labels.push_back(gammaJtDPhiCutLabel);
-      
+
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
       
       unsigned int pos = 0;
       while(pos < labels.size()){
@@ -679,10 +862,22 @@ int gdjPlotResults(std::string inConfigFileName)
 	else if(labels[pos].find("Iter") != std::string::npos) labels.erase(pos + labels.begin());
 	else ++pos;
       }
-
+ 
       if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+     
+      std::string plotSaveName = "pdfDir/" + dateStr + "/" + varName + "UnfoldedSyst_GammaPt" + std::to_string(gI) + "_PP_" + dateStr + "." + saveExt;
+      std::vector<std::string> systLabels = labels;
+      systLabels[1] = "#it{pp} at #sqrt{s_{NN}}=5.02 TeV";
+      if(cI == 0) plotSyst(ppHist_p, ppSyst, systNames, systLabels, plotSaveName);            
+
+      pbpbHist_p->GetXaxis()->SetTitle(ppHist_p->GetXaxis()->GetTitle());      
+      plotSaveName = "pdfDir/" + dateStr + "/" + varName + "UnfoldedSyst_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_" + dateStr + "." + saveExt;      
+      systLabels[1] = centBinsLabel[cI] + " at #sqrt{s_{NN}}=5.02 TeV";
+      plotSyst(pbpbHist_p, pbpbSyst, systNames, systLabels, plotSaveName);            
       
-          
+      canv_p->cd();
+      pads_p[0]->cd();           
+      
       TLatex* label_p = new TLatex();
       label_p->SetNDC();
       label_p->SetTextFont(42);

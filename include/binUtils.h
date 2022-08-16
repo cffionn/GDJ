@@ -6,6 +6,9 @@
 #include <iostream>
 #include <string>
 
+//ROOT
+#include "TMath.h"
+
 //Local
 #include "include/stringUtil.h"
 

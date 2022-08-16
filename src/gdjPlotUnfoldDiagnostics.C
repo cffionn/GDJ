@@ -72,28 +72,6 @@ bool tpadsAxisFix(std::vector<TPad*> pads_p)
   return true;
 }
 
-template <typename T>
-void setMargins(T* input, Float_t marginL, Float_t marginT, Float_t marginR, Float_t marginB)
-{
-  input->SetLeftMargin(marginL);
-  input->SetTopMargin(marginT);
-  input->SetRightMargin(marginR);
-  input->SetBottomMargin(marginB);
-  
-  return;
-}
-
-void initLabel(TLatex* label_p, int font, float size, bool alignR)
-{
-  label_p->SetNDC();
-  label_p->SetTextFont(font);
-  label_p->SetTextSize(size);
-  label_p->SetTextColor(1);
-  if(alignR) label_p->SetTextAlign(31);
-  
-  return;
-}
-
 //Switch from void to bool because there are failure conditions to setup
 //Needs to be a pointer to a vector of pointers
 template <typename T>
@@ -142,7 +120,7 @@ bool setupLegends(int font, float size, std::vector<TLegend*>* leg_p, std::vecto
 
   for(unsigned int lI = 0; lI < legX.size(); ++lI){
     leg_p->push_back(nullptr);
-    leg_p->at(lI) = new TLegend(legX[lI], legY[lI] - ((Float_t)legN->at(lI))*0.0475, legX[lI] + maxLegXChar*0.02, legY[lI]);
+    leg_p->at(lI) = new TLegend(legX[lI], legY[lI] - ((Float_t)legN->at(lI))*0.0455, legX[lI] + maxLegXChar*0.02, legY[lI]);
   
     leg_p->at(lI)->SetTextFont(font);
     leg_p->at(lI)->SetTextSize(size);
@@ -165,30 +143,6 @@ bool setupLegends(int font, float size, std::vector<TLegend*>* leg_p, std::vecto
   return true;
 }
 
-bool prepTH1(TH1* hist_p, int font, float titleSize, float labelSize, int color, int style, float size, int width, float xOffset, float yOffset)
-{
-  hist_p->GetXaxis()->SetTitleFont(font);
-  hist_p->GetXaxis()->SetTitleSize(titleSize);
-  hist_p->GetYaxis()->SetTitleFont(font);
-  hist_p->GetYaxis()->SetTitleSize(titleSize);
-
-  hist_p->GetXaxis()->SetLabelFont(font);
-  hist_p->GetXaxis()->SetLabelSize(labelSize);
-  hist_p->GetYaxis()->SetLabelFont(font);
-  hist_p->GetYaxis()->SetLabelSize(labelSize);
-
-  hist_p->SetLineColor(color);
-  hist_p->SetLineWidth(width);
-
-  hist_p->SetMarkerColor(color);
-  hist_p->SetMarkerSize(size);
-  hist_p->SetMarkerStyle(style);
-
-  hist_p->GetXaxis()->SetTitleOffset(xOffset);
-  hist_p->GetYaxis()->SetTitleOffset(yOffset);
-  
-  return true;
-}
 
 //Middle hist in vector should be nominal - others are adjacent iterations
 bool drawBoxAdjacentIter(TPad* pad_p, std::vector<TH1*> hists_p, Float_t opacity, std::vector<double>* deltaVals)
@@ -204,8 +158,10 @@ bool drawBoxAdjacentIter(TPad* pad_p, std::vector<TH1*> hists_p, Float_t opacity
   if(hists_p.size() != 3){
     std::cout << "drawBoxAdjacentIter ERROR: Number of hists must be three; given \'" << hists_p.size() << "\'. return false" << std::endl;
     return false;
-  }  
-  Int_t color = hists_p[0]->GetMarkerColor();
+  }
+
+  //Color of the middle (nominal!) hist - others are adjacent iterations
+  Int_t color = hists_p[1]->GetMarkerColor();
 
   TBox* box_p = new TBox();
   box_p->SetFillColorAlpha(color, opacity);
@@ -695,14 +651,11 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   }
   else getLinBins(varBinsLow, varBinsHigh, nVarBins, varBins);
 
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
   //Loop over all jet systematics
-
-  for(Int_t jesJERI = 0; jesJERI < nJESJER; ++jesJERI){
+  for(Int_t jesJERI = 0; jesJERI < nJESJER; ++jesJERI){   
     if(!isStrSame(unfoldName, jesJERStrVect[jesJERI])){
       if(!isStrSame(unfoldName, "ALL")) continue;
-    }
+    }    
 
     //Photon-pt only; double vector for centrality, iterations
     std::vector<std::string> statsDeltaPhoPtNames, iterDeltaPhoPtNames, totalDeltaPhoPtNames;
@@ -867,7 +820,6 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	HIJet::Style::EquipHistogram(iterDelta_p, 2);
 	HIJet::Style::EquipHistogram(statsDelta_p, 1);
 	HIJet::Style::EquipHistogram(totalDelta_p, 0);
-
 	
 	totalDelta_p->SetMinimum(0.05);	
 	totalDelta_p->DrawCopy("HIST E1 P");
@@ -1133,21 +1085,14 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  if(pI == 0) reco_p[gI]->GetYaxis()->SetTitle("#frac{1}{N_{#gamma}} #frac{dN_{#gamma}}{dp_{T}}");
 	  else if(varNameLower.find("JJ") != std::string::npos) reco_p[gI]->GetYaxis()->SetTitle(("#frac{1}{N_{JJ#gamma}} #frac{dN_{J#gamma}}{d" + varNameLabel + "}").c_str());	
 	  else reco_p[gI]->GetYaxis()->SetTitle(("#frac{1}{N_{J#gamma}} #frac{dN_{J#gamma}}{d" + varNameLabel + "}").c_str());
-
 	  	  
 	  reco_p[gI]->DrawCopy("HIST E1");
-	  
-	  if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
 	  
 	  if(doLogX || pI == 0) gPad->SetLogx();
 	  if(doLogY || pI == 0) gPad->SetLogy();
 	  
-	  std::cout << "LOG SCALES SET" << std::endl;
-	  
 	  if(truth_p[gI] != nullptr) truth_p[gI]->DrawCopy("HIST E1 SAME");
-	  
-	  if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
-	  
+	  	  
 	  for(Int_t i = 1; i < nIter+1; ++i){
 	    HIJet::Style::EquipHistogram(unfold_p[gI][i], i-1);
 	    binWidthAndSelfNorm(unfold_p[gI][i]);
@@ -1158,13 +1103,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	    refold_p[gI][i]->SetMarkerSize(0.00001);
 	    refold_p[gI][i]->SetLineStyle(2);
 	  }
-	  	
-	  for(Int_t i = 1; i < nIterForLoop; ++i){
-	    unfold_p[gI][i]->DrawCopy("HIST E1 P SAME");
-	  }
+	  for(Int_t i = 1; i < nIterForLoop; ++i){unfold_p[gI][i]->DrawCopy("HIST E1 P SAME");}
 	  
-	  if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
-	
 	  canvBest_p->cd();
 	  padsBest_p[0]->cd();
 	  
