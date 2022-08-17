@@ -537,9 +537,13 @@ int gdjPlotResults(std::string inConfigFileName)
   if(!compEnvParams(inPbPbFileConfig_p, inPPFileConfig_p, paramsToCompare)) return 1;
 
   //Grab the jes/jer systs
-  const Int_t nMaxJESJER = 100;
+  const Int_t nMaxSyst = 100;
   Int_t nJESJER = inPPFileConfig_p->GetValue("NJETSYSANDNOM", -1);
   std::vector<std::string> jesJERStrVect = strToVect(inPPFileConfig_p->GetValue("JETSYSANDNOM", ""));
+
+  //Grab all systs
+  Int_t nSyst = inPPFileConfig_p->GetValue("NSYST", -1);
+  std::vector<std::string> systStrVect = strToVect(inPPFileConfig_p->GetValue("SYST", ""));
   
   
   //Add to global labels
@@ -665,17 +669,18 @@ int gdjPlotResults(std::string inConfigFileName)
     std::vector<std::string> ppSystHistNames;
     std::vector<bool> isSystCorrelated;
     std::vector<std::string> systNames;
-    for(unsigned int jI = 0; jI < jesJERStrVect.size(); ++jI){
-      if(isStrSame(jesJERStrVect[jI], "Nominal")) continue;
+    for(unsigned int jI = 0; jI < systStrVect.size(); ++jI){
+      if(isStrSame(systStrVect[jI], "Nominal")) continue;
 
-      systNames.push_back(jesJERStrVect[jI]);
+      systNames.push_back(systStrVect[jI]);
       
-      if(isStrSame(jesJERStrVect[jI], "JESRTRK")) isSystCorrelated.push_back(false);
+      if(isStrSame(systStrVect[jI], "JESRTRK")) isSystCorrelated.push_back(false);
+      else if(isStrSame(systStrVect[jI], "PRIOR")) isSystCorrelated.push_back(false);
       else isSystCorrelated.push_back(true);
       
       //WE WILL NOT BE USING THIS CURRENTLY, INSTEAD TAKE THE SAME ITERATION AS NOMINAL FOR NOW
-      Int_t iterPPSyst = inPPTermFileConfig_p->GetValue((varNameUpper + "_GAMMAPTALL_PP_" + jesJERStrVect[jI]).c_str(), -1);
-      ppSystHistNames.push_back("photonPtJet" + varNameUpper + "Reco_Iter" + std::to_string(iterPP) + "_PP_" + jesJERStrVect[jI] + "_PURCORR_COMBINED_h");
+      Int_t iterPPSyst = inPPTermFileConfig_p->GetValue((varNameUpper + "_GAMMAPTALL_PP_" + systStrVect[jI]).c_str(), -1);
+      ppSystHistNames.push_back("photonPtJet" + varNameUpper + "Reco_Iter" + std::to_string(iterPPSyst) + "_PP_" + systStrVect[jI] + "_PURCORR_COMBINED_h");
     }
  
     TH2D* ppHist2D_p = (TH2D*)inPPFile_p->Get(ppHistName.c_str());
@@ -731,15 +736,15 @@ int gdjPlotResults(std::string inConfigFileName)
 	centBins2Str.replace(centBins2Str.find("to"), 2, "-");
 	centBins2Str = centBins2Str + "%";
       }
-
+    
       std::string pbpbHistName = "photonPtJet" + varNameUpper + "Reco_Iter" + std::to_string(iterPbPb) + "_" + centBinsStr[cI] + "_Nominal_PURCORR_COMBINED_h";
       std::vector<std::string> pbpbSystHistNames;      
-      for(unsigned int jI = 0; jI < jesJERStrVect.size(); ++jI){
-	if(isStrSame(jesJERStrVect[jI], "Nominal")) continue;
+      for(unsigned int systI = 0; systI < systStrVect.size(); ++systI){
+	if(isStrSame(systStrVect[systI], "Nominal")) continue;
 
 	//WE WILL NOT BE USING THIS CURRENTLY, INSTEAD TAKE THE SAME ITERATION AS NOMINAL FOR NOW
-	Int_t iterPbPbSyst = inPbPbTermFileConfig_p->GetValue((varNameUpper + "_GAMMAPTALL_" + centBinsStr[cI] + "_" + jesJERStrVect[jI]).c_str(), -1);
-	pbpbSystHistNames.push_back("photonPtJet" + varNameUpper + "Reco_Iter" + std::to_string(iterPbPb) + "_" + centBinsStr[cI] + "_" + jesJERStrVect[jI] + "_PURCORR_COMBINED_h");
+	Int_t iterPbPbSyst = inPbPbTermFileConfig_p->GetValue((varNameUpper + "_GAMMAPTALL_" + centBinsStr[cI] + "_" + systStrVect[systI]).c_str(), -1);
+	pbpbSystHistNames.push_back("photonPtJet" + varNameUpper + "Reco_Iter" + std::to_string(iterPbPbSyst) + "_" + centBinsStr[cI] + "_" + systStrVect[systI] + "_PURCORR_COMBINED_h");
       }
 
       TH2D* pbpbHist2D_p = (TH2D*)inPbPbFile_p->Get(pbpbHistName.c_str());

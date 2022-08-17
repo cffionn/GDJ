@@ -433,10 +433,17 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   //  const std::string multiJtCutGlobalStr = "MultiJt0";
   const std::string jtPtBinsGlobalStr = "GlobalJtPt0";
 
-  const Int_t nMaxJESJER = 100;
-  Int_t nJESJER = inUnfoldFileConfig_p->GetValue("NJETSYSANDNOM", -1);
-  std::vector<std::string> jesJERStrVect = strToVect(inUnfoldFileConfig_p->GetValue("JETSYSANDNOM", ""));
+  const Int_t nMaxSyst = 100;
+  Int_t nSyst = inUnfoldFileConfig_p->GetValue("NSYST", -1);
+  std::vector<std::string> systStrVect = strToVect(inUnfoldFileConfig_p->GetValue("SYST", ""));
 
+  /*
+  for(unsigned int sI = 0; sI < systStrVect.size(); ++sI){
+    std::cout << systStrVect[sI] << std::endl;
+  }
+  return 1;
+  */
+  
   std::string unfoldName = inUnfoldFileConfig_p->GetValue("UNFOLD", "");
   
   //Additional params are required if it is Pb+Pb
@@ -652,8 +659,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   else getLinBins(varBinsLow, varBinsHigh, nVarBins, varBins);
 
   //Loop over all jet systematics
-  for(Int_t jesJERI = 0; jesJERI < nJESJER; ++jesJERI){   
-    if(!isStrSame(unfoldName, jesJERStrVect[jesJERI])){
+  for(Int_t systI = 0; systI < nSyst; ++systI){   
+    if(!isStrSame(unfoldName, systStrVect[systI])){
       if(!isStrSame(unfoldName, "ALL")) continue;
     }    
 
@@ -683,16 +690,16 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       
       recoHistPhoPtJetVarNames.push_back("photonPtJet" + jtVar + "Reco_PreUnfold_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
       truthHistPhoPtJetVarNames.push_back("photonPtJet" + jtVar + "Truth_PreUnfold_" + centBinsStr[cI] + "_TRUTH_COMBINED_h");
-      statsDeltaPhoPtJetVarNames.push_back("statsDelta_PhoPtJet" + jtVar + "_" + centBinsStr[cI] + "_" + jesJERStrVect[jesJERI] + "_PURCORR_COMBINED_h");
-      iterDeltaPhoPtJetVarNames.push_back("iterDelta_PhoPtJet" + jtVar + "_" + centBinsStr[cI] + "_" + jesJERStrVect[jesJERI] + "_PURCORR_COMBINED_h");
-      totalDeltaPhoPtJetVarNames.push_back("totalDelta_PhoPtJet" + jtVar + "_" + centBinsStr[cI] + "_" + jesJERStrVect[jesJERI] + "_PURCORR_COMBINED_h");
+      statsDeltaPhoPtJetVarNames.push_back("statsDelta_PhoPtJet" + jtVar + "_" + centBinsStr[cI] + "_" + systStrVect[systI] + "_PURCORR_COMBINED_h");
+      iterDeltaPhoPtJetVarNames.push_back("iterDelta_PhoPtJet" + jtVar + "_" + centBinsStr[cI] + "_" + systStrVect[systI] + "_PURCORR_COMBINED_h");
+      totalDeltaPhoPtJetVarNames.push_back("totalDelta_PhoPtJet" + jtVar + "_" + centBinsStr[cI] + "_" + systStrVect[systI] + "_PURCORR_COMBINED_h");
     
       for(Int_t uI = 0; uI < nIter+1; ++uI){
 	unfoldNamesPhoPt[cI].push_back("photonPtReco_Iter" + std::to_string(uI) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
 	refoldNamesPhoPt[cI].push_back("photonPtReco_Iter" + std::to_string(uI) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_Refolded_h");
 
-	unfoldNamesPhoPtJetVar[cI].push_back("photonPtJet" + jtVar + "Reco_Iter" + std::to_string(uI) + "_" + centBinsStr[cI] + "_" + jesJERStrVect[jesJERI] + "_PURCORR_COMBINED_h");
-	refoldNamesPhoPtJetVar[cI].push_back("photonPtJet" + jtVar + "Reco_Iter" + std::to_string(uI) + "_" + centBinsStr[cI] + "_" + jesJERStrVect[jesJERI] + "_PURCORR_COMBINED_Refolded_h");
+	unfoldNamesPhoPtJetVar[cI].push_back("photonPtJet" + jtVar + "Reco_Iter" + std::to_string(uI) + "_" + centBinsStr[cI] + "_" + systStrVect[systI] + "_PURCORR_COMBINED_h");
+	refoldNamesPhoPtJetVar[cI].push_back("photonPtJet" + jtVar + "Reco_Iter" + std::to_string(uI) + "_" + centBinsStr[cI] + "_" + systStrVect[systI] + "_PURCORR_COMBINED_Refolded_h");
       }
     }
 
@@ -704,7 +711,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       //pI = 1; Photon+Jet Var processing
 
       //Skip all jet systematics on pure photon unfold
-      if(pI == 0 && jesJERI != 0) continue;
+      if(pI == 0 && systI != 0) continue;
       
       std::vector<std::string> statsDeltaNames = statsDeltaPhoPtNames;
       std::vector<std::string> iterDeltaNames = iterDeltaPhoPtNames;
@@ -808,8 +815,6 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	}
 	else if(pI == 1){
 	  reco2D_p = (TH2D*)inUnfoldFile_p->Get(recoHistNames[cI].c_str());
-	  std::cout << recoHistNames[cI] << std::endl;
-	  reco2D_p->Print("ALL");
 	  getIterativeHists2D(reco2D_p, unfoldedHists2D_p, statsDelta_p, iterDelta_p, totalDelta_p, doRelativeTerm, varBinsLowReco, varBinsHighReco, gammaPtBinsLowReco, gammaPtBinsHighReco);
 	}
 	
@@ -844,7 +849,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	if(pI == 0) saveName = saveName + "PhoPt";
 	else if(pI == 1) saveName = saveName + "PhoPtJet" + varName;
 	saveName = saveName + "_" + centBinsStr[cI%centBinsStr.size()];
-	if(pI == 1) saveName = saveName + "_" + jesJERStrVect[jesJERI];
+	if(pI == 1) saveName = saveName + "_" + systStrVect[systI];
 	saveName = saveName + "_Delta" + deltaStr + "_" + saveTag +  "." + saveExt;
 	
 	quietSaveAs(canv_p, saveName);
@@ -859,7 +864,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 
 	//Write photon pt termination point to our config file
 	std::string configStr = "GAMMAPT_" + centBinsStr[cI%centBinsStr.size()];
-	if(pI == 1) configStr = varNameUpper + "_GAMMAPTALL_" + centBinsStr[cI%centBinsStr.size()] + "_" + jesJERStrVect[jesJERI];
+	if(pI == 1) configStr = varNameUpper + "_GAMMAPTALL_" + centBinsStr[cI%centBinsStr.size()] + "_" + systStrVect[systI];
 	int termPos = -1;
 	for(Int_t i = 1; i < nIter+1; ++i){
 	  Double_t totalDelta = totalDelta_p->GetBinContent(i);
@@ -1132,11 +1137,6 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	    refold_p[gI][i]->SetMarkerSize(0.00001);
 	    refold_p[gI][i]->SetLineStyle(2);
 	    	
-	    if(pI == 1 && gI == 3 && cI == 0){
-	      std::cout << "HIST NAME: " << unfold_p[gI][i]->GetName() << std::endl;
-	      unfold_p[gI][i]->Print("ALL");
-	    }
-       
 	    unfold_p[gI][i]->DrawCopy("HIST E1 P SAME");
 	    refold_p[gI][i]->DrawCopy("HIST E1 SAME");
 	    
@@ -1346,7 +1346,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  if(pI == 0) saveName = saveName + "PhoPt";
 	  else if(pI == 1) saveName = saveName + "PhoPtJet" + varName + "_GammaPt" + std::to_string(gI);
 	  saveName = saveName + "_" + centBinsStr[cI%centBinsStr.size()];
-	  if(pI == 1) saveName = saveName + "_" + jesJERStrVect[jesJERI];
+	  if(pI == 1) saveName = saveName + "_" + systStrVect[systI];
 	  saveName = saveName + "_Delta" + deltaStr + "_" + saveTag +  "." + saveExt;
 
 	  quietSaveAs(canv_p, saveName);    
@@ -1359,7 +1359,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  if(pI == 0) saveName = saveName + "PhoPt";
 	  else if(pI == 1) saveName = saveName + "PhoPtJet" + varName + "_GammaPt" + std::to_string(gI);
 	  saveName = saveName + "_BESTIterations_" + centBinsStr[cI%centBinsStr.size()];
-	  if(pI == 1) saveName = saveName + "_" + jesJERStrVect[jesJERI];
+	  if(pI == 1) saveName = saveName + "_" + systStrVect[systI];
 	  saveName = saveName + "_Delta" + deltaStr + "_" + saveTag +  "." + saveExt;
 	  
 	  quietSaveAs(canvBest_p, saveName);
@@ -1389,7 +1389,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	}//End if(pI == 1)
       }//End for(unsigned int cI = 0; cI < statsDeltaNames.size();
     }//End for(Int_t pI = 0; pI < nProc;...
-  }//End for(Int_t jesJERI = 0; jesJERI < nJESJER;....
+  }//End for(Int_t systI = 0; systI < nSyst;....
   
   inUnfoldFile_p->Close();
   delete inUnfoldFile_p;

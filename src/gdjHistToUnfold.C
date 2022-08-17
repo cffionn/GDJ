@@ -2318,6 +2318,13 @@ int gdjHistToUnfold(std::string inConfigFileName)
     inUnfoldFileConfig_p->SetValue((binVarStr + "BINSLOWRECO").c_str(), varBinsLowReco);
     inUnfoldFileConfig_p->SetValue((binVarStr + "BINSHIGHRECO").c_str(), varBinsHighReco);
   }
+
+  inUnfoldFileConfig_p->SetValue("NSYST", nSyst);
+  std::string systStr = "";
+  for(unsigned int sI = 0; sI < systStrVect.size(); ++sI){
+    systStr = systStr + systStrVect[sI] + ",";
+  }
+  inUnfoldFileConfig_p->SetValue("SYST", systStr.c_str());
   
   inUnfoldFileConfig_p->SetValue("VARNAME", varName.c_str());
   inUnfoldFileConfig_p->SetValue("NITER", nIter);
