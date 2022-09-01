@@ -258,6 +258,20 @@ inline std::vector<double> strToVectD(std::string inStr)
   return retVect;
 }
 
+inline std::string vectToStr(std::vector<std::string> inVect, std::string sepChar)
+{
+  std::string retStr = "";
+  for(unsigned int vI = 0; vI < inVect.size(); ++vI){
+    retStr = retStr + inVect[vI] + sepChar;
+  }
+  return retStr;
+}
+
+inline std::string vectToStrComma(std::vector<std::string> inVect)
+{
+  return vectToStr(inVect, ",");
+}
+
 inline std::string getDateStr()
 {
   std::time_t now = time(0);
