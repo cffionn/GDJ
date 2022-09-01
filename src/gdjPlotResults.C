@@ -58,11 +58,11 @@ std::vector<std::vector<Double_t> > getSyst(TFile* histFile_p, TH1D* nominalHist
   for(unsigned int jI = 0; jI < systHistNames.size(); ++jI){
     TH2D* temp2D_p = (TH2D*)histFile_p->Get(systHistNames[jI].c_str());
     TH1D* temp1D_p = (TH1D*)nominalHist_p->Clone("temp1D_p");
-
-    for(Int_t bIX = 0; bIX < temp2D_p->GetXaxis()->GetNbins(); ++bIX){
-      temp1D_p->SetBinContent(bIX+1, temp2D_p->GetBinContent(bIX+1, yPos+1));
-      temp1D_p->SetBinError(bIX+1, temp2D_p->GetBinError(bIX+1, yPos+1));
+    for(Int_t bIX = 0; bIX < temp1D_p->GetXaxis()->GetNbins(); ++bIX){
+      temp1D_p->GetBinContent(bIX+1, 0.0);
+      temp1D_p->GetBinError(bIX+1, 0.0);
     }
+    fineTH2ToCoarseTH1(temp2D_p, temp1D_p, yPos);
     binWidthAndScaleNorm(temp1D_p, scaleTotal);
     
     systVals.push_back({});   
@@ -88,16 +88,17 @@ std::vector<std::vector<Double_t> > getSystRat(TFile* histFilePbPb_p, TFile* his
     TH2D* temp2DPP_p = (TH2D*)histFilePP_p->Get(systHistNamesPP[jI].c_str());
     TH1D* temp1DPP_p = (TH1D*)nominalHistPP_p->Clone("temp1DPP_p");
 
-    for(Int_t bIX = 0; bIX < temp2DPbPb_p->GetXaxis()->GetNbins(); ++bIX){
-      temp1DPbPb_p->SetBinContent(bIX+1, temp2DPbPb_p->GetBinContent(bIX+1, yPos+1));
-      temp1DPbPb_p->SetBinError(bIX+1, temp2DPbPb_p->GetBinError(bIX+1, yPos+1));
-    }
-    binWidthAndScaleNorm(temp1DPbPb_p, scaleTotalPbPb);
+    for(Int_t bIX = 0; bIX < temp1DPbPb_p->GetXaxis()->GetNbins(); ++bIX){
+      temp1DPbPb_p->SetBinContent(bIX+1, 0.0);
+      temp1DPbPb_p->SetBinError(bIX+1, 0.0);
 
-    for(Int_t bIX = 0; bIX < temp2DPP_p->GetXaxis()->GetNbins(); ++bIX){
-      temp1DPP_p->SetBinContent(bIX+1, temp2DPP_p->GetBinContent(bIX+1, yPos+1));
-      temp1DPP_p->SetBinError(bIX+1, temp2DPP_p->GetBinError(bIX+1, yPos+1));
+      temp1DPP_p->SetBinContent(bIX+1, 0.0);
+      temp1DPP_p->SetBinError(bIX+1, 0.0);
     }
+    fineTH2ToCoarseTH1(temp2DPbPb_p, temp1DPbPb_p, yPos);
+    fineTH2ToCoarseTH1(temp2DPP_p, temp1DPP_p, yPos);
+    
+    binWidthAndScaleNorm(temp1DPbPb_p, scaleTotalPbPb);
     binWidthAndScaleNorm(temp1DPP_p, scaleTotalPP);
      
     systVals.push_back({});   
@@ -148,7 +149,11 @@ void drawSyst(TPad* pad_p, TH1D* nominalHist_p, std::vector<std::vector<Double_t
     Float_t binHigh = nominalHist_p->GetXaxis()->GetBinLowEdge(bIX+2);
 
     box_p->SetFillColorAlpha(color, 0.3);
-    box_p->DrawBox(binLow, binVal - systQuadSum, binHigh, binVal + systQuadSum);
+
+    Double_t minVal = TMath::Max(binVal - systQuadSum, nominalHist_p->GetMinimum());
+    Double_t maxVal = TMath::Min(binVal + systQuadSum, nominalHist_p->GetMaximum());
+
+    box_p->DrawBox(binLow, minVal, binHigh, maxVal);
   }
 
   delete box_p;
@@ -157,21 +162,23 @@ void drawSyst(TPad* pad_p, TH1D* nominalHist_p, std::vector<std::vector<Double_t
 }
 
 
-void plotSyst(TH1D* nominalHist_p, std::vector<std::vector<Double_t> > systVals, std::vector<std::string> systNames, std::vector<std::string> labels, std::string saveName)
+std::vector<Double_t> plotSyst(TH1D* nominalHist_p, std::vector<std::vector<Double_t> > systVals, std::vector<std::string> systNames, std::vector<std::string> labels, std::string yStr, std::string saveName)
 {
+  std::vector<Double_t> systTotal;
+  
   globalDebugHandler gDebug;
   const bool doGlobalDebug = gDebug.GetDoGlobalDebug();
   
   //Series of consistency checks
   const Int_t nMaxHist = 36;
   if(systVals.size() + 1 > nMaxHist){
-    std::cout << "Needed number of histograms '" << systVals.size()+1 << "' exceeds plotSyst nMaxHist="  << nMaxHist << ". return" << std::endl;
-    return;
+    std::cout << "Needed number of histograms '" << systVals.size()+1 << "' exceeds plotSyst nMaxHist="  << nMaxHist << ". return {}" << std::endl;
+    return {};
   }
 
   if(systVals.size() != systNames.size()){
-    std::cout << "SystVals and systNames have different sizes \'" << systVals.size() << "\', \'" << systNames.size() << "\', respectively. return" << std::endl;
-    return;
+    std::cout << "SystVals and systNames have different sizes \'" << systVals.size() << "\', \'" << systNames.size() << "\', respectively. return {}" << std::endl;
+    return {};
   }
 
   //Define some plotting parameters
@@ -191,8 +198,8 @@ void plotSyst(TH1D* nominalHist_p, std::vector<std::vector<Double_t> > systVals,
   const Int_t nBinsMax = 100;
   Int_t nBinsX = nominalHist_p->GetXaxis()->GetNbins();
   if(nBinsX > nBinsMax){
-    std::cout << "nBinsX needed in plotSyst \'" << nBinsX << "\' exceeds binsMax \'" << nBinsMax << "\'. return" << std::endl;
-    return;
+    std::cout << "nBinsX needed in plotSyst \'" << nBinsX << "\' exceeds binsMax \'" << nBinsMax << "\'. return {}" << std::endl;
+    return {};
   }
   Float_t binsX[nBinsMax];
   for(Int_t bIX = 0; bIX < nBinsX+1; ++bIX){
@@ -200,12 +207,11 @@ void plotSyst(TH1D* nominalHist_p, std::vector<std::vector<Double_t> > systVals,
   }
   
   //Define our histogram array and new the total syst hist
-  std::string titleStr = ";" + std::string(nominalHist_p->GetXaxis()->GetTitle()) + ";Syst. (%)";
+  std::string titleStr = ";" + std::string(nominalHist_p->GetXaxis()->GetTitle()) + ";" + yStr + " Syst. (%)";
   TH1D* systHist_p[nMaxHist];
   systHist_p[0] = new TH1D("systHist_Total_h", titleStr.c_str(), nBinsX, binsX);
   HIJet::Style::EquipHistogram(systHist_p[0], 0);
   
-  std::vector<Float_t> systTotal;
   for(Int_t bIX = 0; bIX < nBinsX; ++bIX){
     systTotal.push_back(0.0);
   }
@@ -310,31 +316,10 @@ void plotSyst(TH1D* nominalHist_p, std::vector<std::vector<Double_t> > systVals,
   delete canv_p;
   delete legs_p[0];
   if(systVals.size() > nMaxHist/2) delete legs_p[1];
-  
-  /*
-  TCanvas* canv_p = new TCanvas("canvSyst_p", "", width/2.0, height);
-  canv_p->SetTopMargin(0.02);
-  canv_p->SetRightMargin(0.02);
-  canv_p->SetLeftMargin(0.02);
-  canv_p->SetBottomMargin(0.02);
 
-  canv_p->cd();
-
-  TH1D* temp_p = new TH1D("temp_p", "", 10, 0, 1);
-  temp_p->SetMarkerColor(0.0);
-  temp_p->SetLineColor(0.0);
-  temp_p->GetXaxis()->SetLineColor(kWhite);
-  temp_p->GetYaxis()->SetLineColor(kWhite);
-  
-  temp_p->DrawCopy("HIST E1 P");
-
-  quietSaveAs(canv_p, saveName);
-  delete canv_p;
-  */
-  
   for(unsigned int sI = 0; sI < systVals.size()+1; ++sI){delete systHist_p[sI];}
   
-  return;
+  return systTotal;
 }
 
 
@@ -359,31 +344,25 @@ int gdjPlotResults(std::string inConfigFileName)
   const bool doGlobalDebug = gDebug.GetDoGlobalDebug();
   
   TEnv* config_p = new TEnv(inConfigFileName.c_str());
+  //Define necessary params for the input config file
   std::vector<std::string> necessaryParams = {"INPBPBFILENAME",
 					      "INPPFILENAME",
 					      "INPBPBTERMFILENAME",
 					      "INPPTERMFILENAME",
 					      "SAVETAG",
-					      "SAVEEXT",
-					      "PTMIN",
-					      "PTMAX",
-					      "PTRATMIN",
-					      "PTRATMAX",
-					      "PTDOLOGX",
-					      "PTDOLOGY",
-  					      "XJMIN",
-					      "XJMAX",
-  					      "XJRATMIN",
-					      "XJRATMAX",
-					      "XJDOLOGX",
-					      "XJDOLOGY",
-					      "XJJMIN",
-					      "XJJMAX",
-					      "XJJRATMIN",
-					      "XJJRATMAX",
-  					      "DOXJJMIN",
-					      "DOXJJMAX"};
+					      "SAVEEXT"};
 
+  //Define a second set once we've accessed the file and know what var we are working with
+  std::vector<std::string> necessaryVarParams = {"VARMINY",
+						 "VARMAXY",
+						 "VARRATMINY",
+						 "VARRATMAXY",
+						 "VARDOLOGX",
+						 "VARDOLOGY",
+						 "VARLEGX",
+						 "VARLEGY",
+  						 "VARLABELX",
+						 "VARLABELY"};
   
   if(!checkEnvForParams(config_p, necessaryParams)) return 1;
   const std::string inPbPbFileName = config_p->GetValue("INPBPBFILENAME", "");
@@ -467,22 +446,34 @@ int gdjPlotResults(std::string inConfigFileName)
     std::cout << "Varname of input files \'" << varName << "\' does not match the varName of termination files \'" << termVarName << "\'. return 1" << std::endl;
     return 1;
   }
-
   const std::string varNameUpper = strLowerToUpper(varName);
   const std::string varNameLabel = varNameToLabel(varName);
+
+  //Now that we have the varName, fix necessaryVarParams and check our input config has them before getting the values
+  for(unsigned int vI = 0; vI < necessaryVarParams.size(); ++vI){
+    std::string repStr = necessaryVarParams[vI];
+    repStr.replace(repStr.find("VAR"), 3, varNameUpper);
+    necessaryVarParams[vI] = repStr;
+  }
+  if(!checkEnvForParams(config_p, necessaryVarParams)) return 1;
+
+  //Only optional value truncating the x-axis range; hence the absurd default values
+  float minValX = config_p->GetValue((varNameUpper + "MINX").c_str(), -1000.0);
+  float maxValX = config_p->GetValue((varNameUpper + "MAXX").c_str(), -10000.0);
+  bool doXTrunc = minValX < maxValX;
   
-  float minVal = config_p->GetValue((varNameUpper + "MIN").c_str(), 0.0);
-  float maxVal = config_p->GetValue((varNameUpper + "MAX").c_str(), 0.0);
-  float minRatVal = config_p->GetValue((varNameUpper + "RATMIN").c_str(), 0.0);
-  float maxRatVal = config_p->GetValue((varNameUpper + "RATMAX").c_str(), 0.0);
+  
+  //Min. necessary values for plotting
+  float minVal = config_p->GetValue((varNameUpper + "MINY").c_str(), 0.0);
+  float maxVal = config_p->GetValue((varNameUpper + "MAXY").c_str(), 0.0);
+  float minRatVal = config_p->GetValue((varNameUpper + "RATMINY").c_str(), 0.0);
+  float maxRatVal = config_p->GetValue((varNameUpper + "RATMAXY").c_str(), 0.0);
   bool doLogX = config_p->GetValue((varNameUpper + "DOLOGX").c_str(), 0);
   bool doLogY = config_p->GetValue((varNameUpper + "DOLOGY").c_str(), 0);
-
   float legX = config_p->GetValue((varNameUpper + "LEGX").c_str(), 0.1);
   float legY = config_p->GetValue((varNameUpper + "LEGY").c_str(), 0.1);
   float labelX = config_p->GetValue((varNameUpper + "LABELX").c_str(), 0.1);
   float labelY = config_p->GetValue((varNameUpper + "LABELY").c_str(), 0.1);
-
   
   std::string varPrefix = "";
   if(isStrSame(varNameUpper, "PT")) varPrefix = "JT";
@@ -496,8 +487,11 @@ int gdjPlotResults(std::string inConfigFileName)
   Float_t varBinsHigh = inPbPbFileConfig_p->GetValue((binVarStr + "BINSHIGH").c_str(), -1);
   Bool_t varBinsDoLog = inPbPbFileConfig_p->GetValue((binVarStr + "BINSDOLOG").c_str(), 0);
   Bool_t varBinsDoCustom = inPbPbFileConfig_p->GetValue((binVarStr + "BINSDOCUSTOM").c_str(), 0);
+  std::string varBinsStr;
   Double_t varBins[nMaxPtBins+1];
-
+  Int_t nVarBinsTrunc = -1;
+  Double_t varBinsTrunc[nMaxPtBins+1];
+  
   std::string gammaJtDPhiCutLabel = inPbPbFileConfig_p->GetValue("GAMMAJTDPHI", "");
   if(gammaJtDPhiCutLabel.size() == 0){
     std::cout << "GammaJtDPhi not found, check line L" << __LINE__ << ". return 1" << std::endl;
@@ -506,11 +500,10 @@ int gdjPlotResults(std::string inConfigFileName)
   if(gammaJtDPhiCutLabel.find("pi") != std::string::npos) gammaJtDPhiCutLabel.replace(gammaJtDPhiCutLabel.find("pi"), 2, "#pi");
   gammaJtDPhiCutLabel = "|#Delta#phi_{#gamma,jet}|>" + gammaJtDPhiCutLabel;
   
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
+  //Grab the bins and throw them in the varBins array
   if(varBinsDoLog) getLogBins(varBinsLow, varBinsHigh, nVarBins, varBins);
   else if(varBinsDoCustom){
-    std::string varBinsStr = inPbPbFileConfig_p->GetValue((binVarStr + "BINSCUSTOM").c_str(), "");
+    varBinsStr = inPbPbFileConfig_p->GetValue((binVarStr + "BINSCUSTOM").c_str(), "");
     if(varBinsStr.size() == 0){
       std::cout << "No custom bins given. return 1" << std::endl;
       return 1;
@@ -527,13 +520,47 @@ int gdjPlotResults(std::string inConfigFileName)
   }
   else getLinBins(varBinsLow, varBinsHigh, nVarBins, varBins);
 
+  //if an x-axis truncation is requested, test that given values match array
+  if(doXTrunc){
+    if(!checkHistContainsBins({minValX, maxValX}, nVarBins, varBins, 0.0001)){      
+      std::cout << "gdjPlotResults ERROR: Requested plotting truncation in var \'" << varNameUpper << "\' to range " << minValX << "-" << maxValX << " is not found in bins \'" << varBinsStr << "\'. return 1" << std::endl;
+      
+      return 1;
+    }
+
+    nVarBinsTrunc = truncateBinRange(nVarBins, varBins, minValX, maxValX, 0.0001, varBinsTrunc);
+    /*   
+    std::cout << "Original bins: " << std::endl;
+    for(Int_t bIX = 0; bIX < nVarBins; ++bIX){
+      std::cout << " " << varBins[bIX] << ",";
+    }
+    std::cout << " " <<  varBins[nVarBins] << "." << std::endl;
+
+    std::cout << std::endl;
+    std::cout << "New bins: " << std::endl;
+    for(Int_t bIX = 0; bIX < nVarBinsTrunc; ++bIX){
+      std::cout << " " << varBinsTrunc[bIX] << ",";
+    }
+    std::cout << " " << varBinsTrunc[nVarBinsTrunc] << ".";
+    
+    return 1;
+    */
+  }
+  
   const std::string gammaJtDPhiStr = "DPhi0";
   //  const std::string multiJtCutGlobalStr = "MultiJt0";
   const std::string jtPtBinsGlobalStr = "GlobalJtPt0";
 
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+  
   std::vector<std::string> pbpbParams = {"CENTBINS"};
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   if(!checkEnvForParams(inPbPbFileConfig_p, necessaryFileParams)) return 1;
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   if(!checkEnvForParams(inPPFileConfig_p, necessaryFileParams)) return 1;
+  
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
   if(!compEnvParams(inPbPbFileConfig_p, inPPFileConfig_p, paramsToCompare)) return 1;
 
   //Grab the jes/jer systs
@@ -541,9 +568,13 @@ int gdjPlotResults(std::string inConfigFileName)
   Int_t nJESJER = inPPFileConfig_p->GetValue("NJETSYSANDNOM", -1);
   std::vector<std::string> jesJERStrVect = strToVect(inPPFileConfig_p->GetValue("JETSYSANDNOM", ""));
 
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
   //Grab all systs
   Int_t nSyst = inPPFileConfig_p->GetValue("NSYST", -1);
   std::vector<std::string> systStrVect = strToVect(inPPFileConfig_p->GetValue("SYST", ""));
+
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
   
   //Add to global labels
@@ -684,12 +715,11 @@ int gdjPlotResults(std::string inConfigFileName)
     }
  
     TH2D* ppHist2D_p = (TH2D*)inPPFile_p->Get(ppHistName.c_str());
-    TH1D* ppHist_p = new TH1D("ppHist1D_h", ";;", nVarBins, varBins);
-    for(Int_t bIX = 0; bIX < ppHist2D_p->GetXaxis()->GetNbins(); ++bIX){
-      ppHist_p->SetBinContent(bIX+1, ppHist2D_p->GetBinContent(bIX+1, gI+1));
-      ppHist_p->SetBinError(bIX+1, ppHist2D_p->GetBinError(bIX+1, gI+1));
-    }
-    
+    TH1D* ppHist_p = nullptr;
+    if(!doXTrunc) ppHist_p = new TH1D("ppHist1D_h", ";;", nVarBins, varBins);
+    else ppHist_p = new TH1D("ppHist1D_h", ";;", nVarBinsTrunc, varBinsTrunc);
+    fineTH2ToCoarseTH1(ppHist2D_p, ppHist_p, gI);
+
     binWidthAndScaleNorm(ppHist_p, scaledTotalPP);
     std::vector<std::vector<Double_t > > ppSyst = getSyst(inPPFile_p, ppHist_p, ppSystHistNames, gI, scaledTotalPP);
 
@@ -712,15 +742,11 @@ int gdjPlotResults(std::string inConfigFileName)
     ppHist_p->GetYaxis()->SetTitle("#frac{1}{N_{#gamma}*}#frac{dN_{#vec{JJ}#gamma}}{d#vec{x}_{JJ#gamma}}");
     ppHist_p->GetXaxis()->SetTitle("#vec{x}_{JJ#gamma}");
 
-    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << std::endl;
   
     for(unsigned int cI = 0; cI < centBinsStr.size(); ++cI){   
       if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
  
       const Int_t iterPbPbPhoPt = inPbPbTermFileConfig_p->GetValue(("GAMMAPT_" + centBinsStr[cI]).c_str(), -1);
-
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
    
       Int_t iterPbPb = inPbPbTermFileConfig_p->GetValue((varNameUpper + "_GAMMAPTALL_" + centBinsStr[cI] + "_Nominal").c_str(), -1);
       if(iterPbPb < 0){
@@ -728,8 +754,6 @@ int gdjPlotResults(std::string inConfigFileName)
 	return 1;
       }
 
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
-       
       std::string centBins2Str = centBinsStr[cI];
       if(centBins2Str.find("to") != std::string::npos){
 	centBins2Str.replace(0, 4, "");
@@ -748,42 +772,31 @@ int gdjPlotResults(std::string inConfigFileName)
       }
 
       TH2D* pbpbHist2D_p = (TH2D*)inPbPbFile_p->Get(pbpbHistName.c_str());
-      TH1D* pbpbHist_p = new TH1D("pbpbHist1D_h", ";;", nVarBins, varBins);
-      for(Int_t bIX = 0; bIX < pbpbHist2D_p->GetXaxis()->GetNbins(); ++bIX){
-	pbpbHist_p->SetBinContent(bIX+1, pbpbHist2D_p->GetBinContent(bIX+1, gI+1));
-	pbpbHist_p->SetBinError(bIX+1, pbpbHist2D_p->GetBinError(bIX+1, gI+1));
-      }
+      TH1D* pbpbHist_p = nullptr;
+      if(!doXTrunc) pbpbHist_p = new TH1D("pbpbHist1D_h", ";;", nVarBins, varBins);
+      else pbpbHist_p = new TH1D("pbpbHist1D_h", ";;", nVarBinsTrunc, varBinsTrunc);
+      fineTH2ToCoarseTH1(pbpbHist2D_p, pbpbHist_p, gI);
 
       TH1D* pbpbHistPhoPt_p = nullptr;          
       if(iterPbPbPhoPt > 0) pbpbHistPhoPt_p = (TH1D*)inPbPbFile_p->Get(("photonPtReco_Iter" + std::to_string(iterPbPbPhoPt) + "_" + centBinsStr[cI] + "_PURCORR_COMBINED_h").c_str());
       else{
 	std::cout << "No good termination point found. return 1" << std::endl;
 	return 1;
-	//	pbpbHistPhoPt_p = (TH1D*)inPbPbFile_p->Get(("photonPtReco_Iter3_" + centBinsStr[cI] + "_PURCORR_COMBINED_h").c_str());
-      }
-
-      if(doGlobalDebug){       
-	std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
-	std::cout << "photonPtReco_Iter" + std::to_string(iterPbPbPhoPt) + "_" + centBinsStr[cI] + "_Nominal_PURCORR_COMBINED_h" << std::endl;
       }
       
       Double_t scaledTotalPbPb = 0.0;
       for(Int_t bIX = 0; bIX < pbpbHistPhoPt_p->GetXaxis()->GetNbins(); ++bIX){
 	Float_t binCenter = pbpbHistPhoPt_p->GetBinCenter(bIX+1);
-	if(binCenter < gammaPtBins[gI] || binCenter >= gammaPtBins[gI+1]) continue;
-	
+	if(binCenter < gammaPtBins[gI] || binCenter >= gammaPtBins[gI+1]) continue;	
+
 	scaledTotalPbPb += pbpbHistPhoPt_p->GetBinContent(bIX+1);
       }
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
 
           
       binWidthAndScaleNorm(pbpbHist_p, scaledTotalPbPb);      
       std::vector<std::vector<Double_t > > pbpbSyst = getSyst(inPbPbFile_p, pbpbHist_p, pbpbSystHistNames, gI, scaledTotalPbPb);
       //      pbpbHist_p->Scale(1./pbpbHist_p->Integral());
 
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
-	
       TCanvas* canv_p = new TCanvas("canv_p", "", width, height);
       TPad* pads_p[nPad];
       canv_p->SetTopMargin(noMargin);
@@ -815,15 +828,15 @@ int gdjPlotResults(std::string inConfigFileName)
       pads_p[1]->cd();
       canv_p->cd();
       
-      pads_p[0]->cd();
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
-      
+      pads_p[0]->cd();      
       HIJet::Style::EquipHistogram(pbpbHist_p, 1); 
 
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
-      
       ppHist_p->SetMinimum(minVal);
       ppHist_p->SetMaximum(maxVal);
+
+      //Need to set this for both so the systematics dont overflow the plotting space but still draw correctly
+      pbpbHist_p->SetMinimum(minVal);
+      pbpbHist_p->SetMaximum(maxVal);
       
       ppHist_p->DrawCopy("HIST E1 P");
       pbpbHist_p->DrawCopy("HIST E1 P SAME");
@@ -873,12 +886,12 @@ int gdjPlotResults(std::string inConfigFileName)
       std::string plotSaveName = "pdfDir/" + dateStr + "/" + varName + "UnfoldedSyst_GammaPt" + std::to_string(gI) + "_PP_" + dateStr + "." + saveExt;
       std::vector<std::string> systLabels = labels;
       systLabels[1] = "#it{pp} at #sqrt{s_{NN}}=5.02 TeV";
-      if(cI == 0) plotSyst(ppHist_p, ppSyst, systNames, systLabels, plotSaveName);            
+      if(cI == 0) plotSyst(ppHist_p, ppSyst, systNames, systLabels, "pp", plotSaveName);            
 
       pbpbHist_p->GetXaxis()->SetTitle(ppHist_p->GetXaxis()->GetTitle());      
       plotSaveName = "pdfDir/" + dateStr + "/" + varName + "UnfoldedSyst_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_" + dateStr + "." + saveExt;      
       systLabels[1] = centBinsLabel[cI] + " at #sqrt{s_{NN}}=5.02 TeV";
-      plotSyst(pbpbHist_p, pbpbSyst, systNames, systLabels, plotSaveName);            
+      plotSyst(pbpbHist_p, pbpbSyst, systNames, systLabels, centBinsLabel[cI], plotSaveName);            
       
       canv_p->cd();
       pads_p[0]->cd();           
@@ -901,9 +914,7 @@ int gdjPlotResults(std::string inConfigFileName)
       leg_p->SetFillStyle(0);
    
       leg_p->AddEntry(pbpbHist_p, ("Pb+Pb #bf{" + centBins2Str + "}").c_str(), "P L");
-      leg_p->AddEntry(ppHist_p, "p+p", "P L");
-
-
+      leg_p->AddEntry(ppHist_p, "p+p", "P L");      
       leg_p->Draw("SAME");
       
       gPad->SetTicks();
@@ -912,14 +923,12 @@ int gdjPlotResults(std::string inConfigFileName)
       
       canv_p->cd();
       pads_p[1]->cd();
-
       
       std::vector<std::vector<Double_t > > ratSyst = getSystRat(inPbPbFile_p, inPPFile_p, pbpbHist_p, ppHist_p, pbpbSystHistNames, ppSystHistNames, isSystCorrelated, gI, scaledTotalPbPb, scaledTotalPP);
 
       pbpbHist_p->Divide(ppHist_p);
       
       pbpbHist_p->GetYaxis()->SetNdivisions(505);
-      
       pbpbHist_p->GetXaxis()->SetTitleOffset(1.2);
       
       pbpbHist_p->GetXaxis()->SetTitleFont(titleFont);
@@ -947,10 +956,13 @@ int gdjPlotResults(std::string inConfigFileName)
       pbpbHist_p->DrawCopy("HIST E1 P");
 
       drawSyst(pads_p[1], pbpbHist_p, ratSyst);
-      pbpbHist_p->DrawCopy("HIST E1 P SAME");
+      pbpbHist_p->DrawCopy("HIST E1 P SAME");      
+
+      plotSaveName = "pdfDir/" + dateStr + "/" + varName + "UnfoldedSyst_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "OverPP_" + dateStr + "." + saveExt;            
+      plotSyst(pbpbHist_p, ratSyst, systNames, systLabels, centBinsLabel[cI] + "/pp", plotSaveName);
       
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
-      
+      canv_p->cd();
+      pads_p[1]->cd();
       
       TLine* line_p = new TLine();
       line_p->SetLineStyle(2);

@@ -220,6 +220,67 @@ h in coarser binning. returning"  << std::endl;
   return;
 }
 
+void fineTH2ToCoarseTH1(TH2* fineHist_p, TH1* coarseHist_p, Int_t yPos)
+{
+  //Initialize coarse histogram to 0                                                                  
+  for(Int_t bIX = 0; bIX < coarseHist_p->GetXaxis()->GetNbins(); ++bIX){
+    coarseHist_p->SetBinContent(bIX+1, 0.0);
+    coarseHist_p->SetBinError(bIX+1, 0.0);
+  }
+
+  //Declare our bin maps
+  std::map<Int_t, Int_t> fineToCoarseXs;
+
+  //Build out our x-map                                                                               
+  for(Int_t bIX = 0; bIX < fineHist_p->GetXaxis()->GetNbins(); ++bIX){
+    Float_t binCenterFine = fineHist_p->GetXaxis()->GetBinCenter(bIX+1);
+    Int_t fineToCoarseXPos = -1;
+
+    bool belowCoarse = binCenterFine < coarseHist_p->GetXaxis()->GetBinLowEdge(1);
+    bool aboveCoarse = binCenterFine >= coarseHist_p->GetXaxis()->GetBinLowEdge(coarseHist_p->GetXaxis()->GetNbins()+1);
+
+    if(belowCoarse || aboveCoarse){
+      fineToCoarseXs[bIX] = -1;
+      continue;
+    }
+    
+    for(Int_t bIX2 = 0; bIX2 < coarseHist_p->GetXaxis()->GetNbins(); ++bIX2){
+      Float_t binLowCoarse = coarseHist_p->GetXaxis()->GetBinLowEdge(bIX2+1);
+      Float_t binHighCoarse = coarseHist_p->GetXaxis()->GetBinLowEdge(bIX2+2);      
+      
+      if(binCenterFine >= binLowCoarse && binCenterFine < binHighCoarse){
+        fineToCoarseXPos = bIX2;
+        break;
+      }
+    }
+
+    if(fineToCoarseXPos < 0){
+      std::cout << "FINEHISTTOCOARSEHIST WARNING: binCenterFine '" << binCenterFine << "' has no matc\
+h in coarser binning. returning"  << std::endl;
+      return;
+    }
+
+    fineToCoarseXs[bIX] = fineToCoarseXPos;
+  }
+    
+  //Now fill out coarse from fine
+  for(Int_t bIX = 0; bIX < fineHist_p->GetXaxis()->GetNbins(); ++bIX){
+    Int_t coarsePosX = fineToCoarseXs[bIX];
+
+    if(coarsePosX < 0) continue;
+
+    Float_t newValue = coarseHist_p->GetBinContent(coarsePosX+1) + fineHist_p->GetBinContent(bIX+1, yPos+1);
+	
+    Float_t newError = coarseHist_p->GetBinError(coarsePosX+1);
+    newError = TMath::Sqrt(newError*newError + fineHist_p->GetBinError(bIX+1, yPos+1)*fineHist_p->GetBinError(bIX+1, yPos+1));
+    
+    coarseHist_p->SetBinContent(coarsePosX+1, newValue);
+    coarseHist_p->SetBinError(coarsePosX+1, newError);          
+  }
+  
+  return;
+}
+
 bool checkMinBinWidth(std::vector<float> bins, float minBinWidth)
 {
   bool allBinsGood = true;
@@ -329,6 +390,81 @@ bool checkHistContainsBins(std::vector<float> bins, TH1F* hist_p, float deltaVal
   }
 
   return allBinsFound;
+}
+
+bool checkHistContainsBins(std::vector<float> bins, Int_t nHistBins, Double_t histBins[], float deltaValue)
+{
+  std::string binsStr = "";
+  for(Int_t hI = 0; hI < nHistBins+1; ++hI){
+    binsStr = binsStr + std::to_string(histBins[hI]) + ",";
+  }
+  
+  bool allBinsFound = true;  
+  for(unsigned int xI = 0; xI < bins.size(); ++xI){
+    bool binFound = false;
+
+    for(Int_t bIX = 0; bIX < nHistBins+1; ++bIX){
+      Float_t binLowEdge = histBins[bIX];
+
+      if(TMath::Abs(binLowEdge - bins[xI]) < deltaValue){
+        binFound = true;
+        break;
+      }
+    }
+
+    if(!binFound){           
+      std::cout << "CHECKHISTCONTAINSBINS ERROR: Requested bin '" << bins[xI] << "' is not found in histogram defined by bins \'" << binsStr << "\'. return false" << std::endl;
+      allBinsFound = false;
+    }
+  }
+
+  if(!allBinsFound){
+    std::cout << "CHECKHISTCONTAINSBINS ERROR: Bin not found" << std::endl;
+    std::cout << " Bins requested:" << std::endl;
+    std::string reqBinsStr = "";
+    for(unsigned int bI = 0; bI < bins.size()-1; ++bI){
+      reqBinsStr = reqBinsStr + bins[bI] + ", ";
+    }
+    reqBinsStr = reqBinsStr + bins[bins.size()-1] + ".";
+    std::cout << "  " << reqBinsStr << std::endl;
+
+    std::cout << " Hist bins:" << std::endl;
+    reqBinsStr = "";
+    for(Int_t bI = 0; bI < nHistBins; ++bI){
+      reqBinsStr = reqBinsStr + std::to_string(histBins[bI]) + ", ";
+    }
+    reqBinsStr = reqBinsStr + histBins[nHistBins] + ".";
+    std::cout << "  " << reqBinsStr << std::endl;
+
+    std::cout << "return false" << std::endl;
+  }
+
+  return allBinsFound;
+}
+
+
+Int_t truncateBinRange(Int_t inNBins, Double_t inBins[], Double_t low, Double_t high, Double_t deltaVal, Double_t outBins[])
+{
+  Int_t outNBins = -1;
+  bool hitLow = false;
+  for(Int_t bI = 0; bI < inNBins; ++bI){
+    if(!hitLow){
+      if(TMath::Abs(low - inBins[bI]) < deltaVal){
+	hitLow = true;
+	++outNBins;
+	outBins[outNBins] = inBins[bI];
+      }
+    }
+    else{
+      ++outNBins;
+      outBins[outNBins] = inBins[bI];
+      if(TMath::Abs(high - inBins[bI]) < deltaVal){
+	break;
+      }      
+    }    
+  }
+
+  return outNBins;
 }
 
 
