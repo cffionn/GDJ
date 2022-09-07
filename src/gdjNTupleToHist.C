@@ -2572,17 +2572,16 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    }
 	    unfoldTree_p->Fill();
 	  }
-	}
-	//End response filling
-	
 
-	if(systI == 0){
 	  for(auto const barrelEC : barrelECFillTruth){
 	    fillTH1(photonPtVCent_TRUTH_p[centPos][barrelEC], truthPhotonPt, fullWeight);
 	    if(truthPhoHasGoodReco) fillTH1(photonPtVCent_TRUTHWithRecoMatch_p[centPos][barrelEC], truthPhotonPt, fullWeight);
 	    else fillTH1(photonPtVCent_TRUTHNoRecoMatch_p[centPos][barrelEC], truthPhotonPt, fullWeight);
 	  }
 	}
+	//End response filling
+	
+	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 
 	//Now we populate the histograms
 	//All photons passing requirements must be included
@@ -4675,6 +4674,12 @@ int gdjNTupleToHist(std::string inConfigFileName)
   }
   if(jetSysAndNom.find(",") != std::string::npos) jetSysAndNom.replace(jetSysAndNom.size()-1, 1, "");
   config_p->SetValue("JETSYSANDNOM", jetSysAndNom.c_str());
+  
+  std::string systStrForConfig = vectToStrComma(systStrVect);
+  std::string systTypeForConfig = vectToStrComma(systTypeVect);
+
+  config_p->SetValue("SYSTNAMES", systStrForConfig.c_str());
+  config_p->SetValue("SYSTTYPES", systTypeForConfig.c_str());
   
   config_p->Write("config", TObject::kOverwrite);
 
