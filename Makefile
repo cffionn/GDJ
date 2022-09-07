@@ -39,7 +39,7 @@ MKDIR_OBJ=mkdir -p $(GDJDIR)/obj
 MKDIR_OUTPUT=mkdir -p $(GDJDIR)/output
 MKDIR_PDF=mkdir -p $(GDJDIR)/pdfDir
 
-all: mkdirBin mkdirLib mkdirObj mkdirOutput mkdirPdf obj/centralityFromInput.o obj/checkMakeDir.o obj/configParser.o obj/globalDebugHandler.o obj/keyHandler.o obj/sampleHandler.o obj/mixMachine.o lib/libATLASGDJ.so bin/gdjNtuplePreProc.exe bin/gdjAnalyzeTxtOut.exe bin/gdjNTupleToHist.exe bin/gdjNTupleToMBHist.exe bin/gdjHistDumper.exe bin/gdjGammaJetResponsePlot.exe bin/gdjMixedEventPlotter.exe bin/gdjControlPlotter.exe bin/gdjResponsePlotter.exe bin/gdjDataMCRawPlotter.exe bin/gdjPbPbOverPPRawPlotter.exe bin/gdjRCPRawPlotter.exe bin/gdjR4OverR2RawPlotter.exe bin/grlToTex.exe bin/testKeyHandler.exe bin/testSampleHandler.exe bin/gdjPlotMBHist.exe bin/gdjHistToUnfold.exe bin/gdjPlotUnfoldDiagnostics.exe #bin/gdjPlotResults.exe bin/gdjHistDQM.exe
+all: mkdirBin mkdirLib mkdirObj mkdirOutput mkdirPdf obj/binFlattener.o obj/centralityFromInput.o obj/checkMakeDir.o obj/configParser.o obj/globalDebugHandler.o obj/keyHandler.o obj/sampleHandler.o obj/mixMachine.o lib/libATLASGDJ.so bin/gdjNtuplePreProc.exe bin/gdjAnalyzeTxtOut.exe bin/gdjToyMultiMix.exe bin/gdjPlotToy.exe bin/gdjNTupleToHist.exe bin/gdjNTupleToMBHist.exe bin/gdjHistDumper.exe bin/gdjGammaJetResponsePlot.exe bin/gdjMixedEventPlotter.exe bin/gdjControlPlotter.exe bin/gdjResponsePlotter.exe bin/gdjDataMCRawPlotter.exe bin/gdjPbPbOverPPRawPlotter.exe bin/gdjRCPRawPlotter.exe bin/gdjR4OverR2RawPlotter.exe bin/grlToTex.exe bin/testKeyHandler.exe bin/testSampleHandler.exe bin/gdjPlotMBHist.exe bin/gdjHistToUnfold.exe bin/gdjPlotUnfoldReweight.exe bin/gdjPlotUnfoldDiagnostics.exe bin/gdjPlotResults.exe #bin/gdjHistDQM.exe
 #bin/gdjNTupleToSignalHist.exe bin/gdjPlotSignalHist.exe bin/gdjToyMultiMix.exe bin/gdjPlotToy.exe
 
 mkdirBin:
@@ -56,6 +56,9 @@ mkdirOutput:
 
 mkdirPdf:
 	$(MKDIR_PDF)
+
+obj/binFlattener.o: src/binFlattener.C
+	$(CXX) $(CXXFLAGS) -fPIC -c src/binFlattener.C -o obj/binFlattener.o $(INCLUDE) $(ROOT)
 
 obj/centralityFromInput.o: src/centralityFromInput.C
 	$(CXX) $(CXXFLAGS) -fPIC -c src/centralityFromInput.C -o obj/centralityFromInput.o $(INCLUDE) $(ROOT)
@@ -79,7 +82,7 @@ obj/mixMachine.o: src/mixMachine.C
 	$(CXX) $(CXXFLAGS) -fPIC -c src/mixMachine.C -o obj/mixMachine.o $(ROOT) $(INCLUDE)
 
 lib/libATLASGDJ.so:
-	$(CXX) $(CXXFLAGS) -fPIC -shared -o lib/libATLASGDJ.so obj/centralityFromInput.o obj/checkMakeDir.o obj/configParser.o obj/globalDebugHandler.o obj/keyHandler.o obj/sampleHandler.o obj/mixMachine.o $(ROOT) $(INCLUDE)
+	$(CXX) $(CXXFLAGS) -fPIC -shared -o lib/libATLASGDJ.so obj/binFlattener.o obj/centralityFromInput.o obj/checkMakeDir.o obj/configParser.o obj/globalDebugHandler.o obj/keyHandler.o obj/sampleHandler.o obj/mixMachine.o $(ROOT) $(INCLUDE)
 
 bin/gdjNtuplePreProc.exe: src/gdjNtuplePreProc.C
 	$(CXX) $(CXXFLAGS) src/gdjNtuplePreProc.C -o bin/gdjNtuplePreProc.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
@@ -152,6 +155,9 @@ bin/gdjPlotToy.exe: src/gdjPlotToy.C
 
 bin/gdjHistToUnfold.exe: src/gdjHistToUnfold.C
 	$(CXX) $(CXXFLAGS) src/gdjHistToUnfold.C -o bin/gdjHistToUnfold.exe $(ROOT) $(INCLUDE) $(LIB) $(ROOUNFOLDLIB) -lATLASGDJ
+
+bin/gdjPlotUnfoldReweight.exe: src/gdjPlotUnfoldReweight.C
+	$(CXX) $(CXXFLAGS) src/gdjPlotUnfoldReweight.C -o bin/gdjPlotUnfoldReweight.exe $(ROOT) $(INCLUDE) $(LIB) $(ROOUNFOLDLIB) -lATLASGDJ
 
 bin/gdjPlotUnfoldDiagnostics.exe: src/gdjPlotUnfoldDiagnostics.C
 	$(CXX) $(CXXFLAGS) src/gdjPlotUnfoldDiagnostics.C -o bin/gdjPlotUnfoldDiagnostics.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ

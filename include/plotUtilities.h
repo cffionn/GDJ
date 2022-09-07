@@ -343,7 +343,7 @@ inline void drawWhiteBoxNDC(TCanvas* canv_p, Double_t x1, Double_t y1, Double_t 
   return;
 }
 
-void initLabel(TLatex* label_p, int font, float size, bool alignR)
+inline void initLabel(TLatex* label_p, int font, float size, bool alignR)
 {
   label_p->SetNDC();
   label_p->SetTextFont(font);

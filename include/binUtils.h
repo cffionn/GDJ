@@ -7,6 +7,8 @@
 #include <string>
 
 //ROOT
+#include "TH1.h"
+#include "TH2.h"
 #include "TMath.h"
 
 //Local
@@ -220,7 +222,7 @@ h in coarser binning. returning"  << std::endl;
   return;
 }
 
-void fineTH2ToCoarseTH1(TH2* fineHist_p, TH1* coarseHist_p, Int_t yPos)
+inline void fineTH2ToCoarseTH1(TH2* fineHist_p, TH1* coarseHist_p, Int_t yPos)
 {
   //Initialize coarse histogram to 0                                                                  
   for(Int_t bIX = 0; bIX < coarseHist_p->GetXaxis()->GetNbins(); ++bIX){
@@ -440,6 +442,11 @@ bool checkHistContainsBins(std::vector<float> bins, Int_t nHistBins, Double_t hi
   }
 
   return allBinsFound;
+}
+
+bool isFloatSame(float float1, float float2, float deltaValue)
+{ 
+  return TMath::Abs(float1 - float2) < deltaValue;
 }
 
 
