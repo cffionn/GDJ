@@ -9,6 +9,12 @@ binFlattener::binFlattener(std::string inBinFlattenerName, std::vector<double> i
   return;
 }
 
+binFlattener::binFlattener(std::string inBinFlattenerName, int inNBinSet1, double inBinSet1[], int inNBinSet2, double inBinSet2[])
+{
+  if(!Init(inBinFlattenerName, inNBinSet1, inBinSet1, inNBinSet2, inBinSet2)) std::cout << "BINFLATTENER: Initialization failure for binFlattener \'" << inBinFlattenerName << "\'. return " << std::endl;
+  return;
+}
+
 bool binFlattener::Init(std::string inBinFlattenerName, std::vector<double> inBinSet1, std::vector<double> inBinSet2)
 {
   m_binFlattenerName = inBinFlattenerName;
@@ -39,6 +45,20 @@ bool binFlattener::Init(std::string inBinFlattenerName, std::vector<double> inBi
   
   m_isInit = true;
   return m_isInit;
+}
+
+bool binFlattener::Init(std::string inBinFlattenerName, int inNBinSet1, double inBinSet1, int inNBinSet2, double inBinSet2)
+{
+  std::vector<double> binSet1, binSet2;
+  for(int bI = 0; bI < inNBinSet1+1; ++bI){
+    binSet1.push_back(inBinSet1[bI]);
+  }
+
+  for(int bI = 0; bI < inNBinSet2+1; ++bI){
+    binSet2.push_back(inBinSet2[bI]);
+  }
+  
+  return Init(inBinFlattenerName, binSet1, binSet2);
 }
 
 std::vector<double> binFlattener::GetFlattenedBins(double inLowVal, double inHiVal)

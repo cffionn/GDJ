@@ -18,7 +18,10 @@ class binFlattener{
   ~binFlattener(){};
 
   binFlattener(std::string inBinFlattenerName, std::vector<double> inBinSet1, std::vector<double> inBinSet2);
+  binFlattener(std::string inBinFlattenerName, int inNBinSet1, double inBinSet1[], int inNBinSet2, double inBinSet2[]);
   bool Init(std::string inBinFlattenerName, std::vector<double> inBinSet1, std::vector<double> inBinSet2);
+  bool Init(std::string inBinFlattenerName, int inNBinSet1, double inBinSet1[], int inNBinSet2, double inBinSet2[]);
+  std::vector<double> GetFlattenedBins(double inLowVal=0.0, double inHiVal=1.0);
   std::vector<double> GetFlattenedBins(double inLowVal=0.0, double inHiVal=1.0);
   int GetBin1PosFromGlobal(int globalPos);
   int GetBin2PosFromGlobal(int globalPos);
