@@ -22,10 +22,10 @@ class binFlattener{
   bool Init(std::string inBinFlattenerName, std::vector<double> inBinSet1, std::vector<double> inBinSet2);
   bool Init(std::string inBinFlattenerName, int inNBinSet1, double inBinSet1[], int inNBinSet2, double inBinSet2[]);
   std::vector<double> GetFlattenedBins(double inLowVal=0.0, double inHiVal=1.0);
-  std::vector<double> GetFlattenedBins(double inLowVal=0.0, double inHiVal=1.0);
   int GetBin1PosFromGlobal(int globalPos);
   int GetBin2PosFromGlobal(int globalPos);
   int GetGlobalFromBin12Pos(int bin1Pos, int bin2Pos);
+  double GetGlobalBinCenterFromBin12Val(double bin1Val, double bin2Val, int line);
   void Clean();
 
  private: 

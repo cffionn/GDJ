@@ -22,8 +22,8 @@ bool binFlattener::Init(std::string inBinFlattenerName, std::vector<double> inBi
   m_binSet1 = inBinSet1;
   m_binSet2 = inBinSet2;
 
-  m_nBins1 = m_binSet1.size();
-  m_nBins2 = m_binSet2.size();
+  m_nBins1 = m_binSet1.size() - 1;
+  m_nBins2 = m_binSet2.size() - 1;
 
   if(m_nBins1 > nMaxBins || m_nBins1 <= 0){
     if(m_nBins1 > nMaxBins) std::cout << "binFlattener Init Error: m_nBins1 \'" << m_nBins1 << "\' is greater than nMaxBins \'" << nMaxBins << "\'. Clean and return false" << std::endl;
@@ -47,7 +47,7 @@ bool binFlattener::Init(std::string inBinFlattenerName, std::vector<double> inBi
   return m_isInit;
 }
 
-bool binFlattener::Init(std::string inBinFlattenerName, int inNBinSet1, double inBinSet1, int inNBinSet2, double inBinSet2)
+bool binFlattener::Init(std::string inBinFlattenerName, int inNBinSet1, double inBinSet1[], int inNBinSet2, double inBinSet2[])
 {
   std::vector<double> binSet1, binSet2;
   for(int bI = 0; bI < inNBinSet1+1; ++bI){
@@ -91,7 +91,8 @@ std::vector<double> binFlattener::GetFlattenedBins(double inLowVal, double inHiV
     m_bin1And2ToGlobal[bI1] = tempMap;
   }
   m_nBinsGlobal = globalBinPos;
-  
+  m_binSetGlobal = flattenedBinArray;
+
   return flattenedBinArray;
 }
 
@@ -102,7 +103,7 @@ int binFlattener::GetBin1PosFromGlobal(int globalPos)
     return -1;
   }
 
-  if(globalPos < 0 || globalPos >= m_nBinsGlobal){
+  if(globalPos < 0 || globalPos >= (int)m_nBinsGlobal){
     std::cout << "binFlattener::GetBin1PosFromGlobal() Error: Given globalPos \'" << globalPos << "\' is outside accepted range (inclusive) \'0-" << m_nBinsGlobal-1 << "\'. return binPos -1" << std::endl;
     return -1;
   }
@@ -117,7 +118,7 @@ int binFlattener::GetBin2PosFromGlobal(int globalPos)
     return -1;
   }
 
-  if(globalPos < 0 || globalPos >= m_nBinsGlobal){
+  if(globalPos < 0 || globalPos >= (int)m_nBinsGlobal){
     std::cout << "binFlattener::GetBin2PosFromGlobal() Error: Given globalPos \'" << globalPos << "\' is outside accepted range (inclusive) \'0-" << m_nBinsGlobal-1 << "\'. return binPos -1" << std::endl;
     return -1;
   }
@@ -132,11 +133,11 @@ int binFlattener::GetGlobalFromBin12Pos(int bin1Pos, int bin2Pos)
     return -1;
   }
 
-  if(bin1Pos < 0 || bin1Pos >= m_nBins1){
+  if(bin1Pos < 0 || bin1Pos >= (int)m_nBins1){
     std::cout << "binFlattener::GetGlobalFromBin12Pos() Error: Given bin1Pos \'" << bin1Pos << "\' is outside accepted range (inclusive) \'0-" << m_nBins1-1 << "\'. return bin1Pos -1" << std::endl;
     return -1;
   }
-  if(bin2Pos < 0 || bin2Pos >= m_nBins2){
+  if(bin2Pos < 0 || bin2Pos >= (int)m_nBins2){
     std::cout << "binFlattener::GetGlobalFromBin12Pos() Error: Given bin2Pos \'" << bin2Pos << "\' is outside accepted range (inclusive) \'0-" << m_nBins2-1 << "\'. return bin2Pos -1" << std::endl;
     return -1;
   }
@@ -144,8 +145,40 @@ int binFlattener::GetGlobalFromBin12Pos(int bin1Pos, int bin2Pos)
   return (m_bin1And2ToGlobal[bin1Pos])[bin2Pos];
 }
 
-void binFlattener::Clean()
-{ 
+double binFlattener::GetGlobalBinCenterFromBin12Val(double bin1Val, double bin2Val, int line)
+{
+  if(!m_isInit){
+    std::cout << "binFlattener::GetGlobalBinCenterFromBin12Val() Error: Called w/o initializing. return globalBinCenter -1000.0" << std::endl;
+    return -1000.0;
+  }
+  if(m_binSetGlobal.size() == 0){
+    std::cout << "binFlattener::GetGlobalBinCenterFromBin12Val() Error: Called w/o globalBinArray init. return globalBinCenter -1000.0" << std::endl;
+    return -1000.0;
+  }
+
+  //init the return val as something outside the global bin range 
+  double retVal = m_binSetGlobal[0] - 1000.0;
+  if(bin1Val < m_binSet1.at(0) || bin1Val >= m_binSet1.at(m_nBins1)){
+    std::cout << "binFlattener::GetGlobalBinCenterFromBin12Val() Error: bin1Val \'" << bin1Val << "\' is outside given bin range of " << m_binSet1.at(0) << "-" << m_binSet1.at(m_nBins1) << ". return globalBinCenter " << retVal << std::endl;
+    return retVal;   
+  }
+
+  if(bin2Val < m_binSet2.at(0) || bin2Val >= m_binSet2.at(m_nBins2)){
+    std::cout << "binFlattener::GetGlobalBinCenterFromBin12Val() Error: bin2Val \'" << bin2Val << "\' is outside given bin range of " << m_binSet2.at(0) << "-" << m_binSet2.at(m_nBins2) << ", L" << line << ". return globalBinCenter " << retVal << std::endl;
+    return retVal;   
+  }
+
+  //Grab the relevant bin positions; use function from binUtils.h
+  int bin1Pos = getBinPosFromValue(bin1Val, m_binSet1);
+  int bin2Pos = getBinPosFromValue(bin2Val, m_binSet2);
+
+  int globalPos = GetGlobalFromBin12Pos(bin1Pos, bin2Pos);  
+  retVal = (m_binSetGlobal[globalPos] + m_binSetGlobal[globalPos+1])/2.;
+  return retVal;
+}
+
+
+void binFlattener::Clean(){ 
   m_isInit = false;
   m_binFlattenerName = "";
  

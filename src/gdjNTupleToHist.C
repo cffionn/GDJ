@@ -24,6 +24,7 @@
 #include "TTree.h"
 
 //Local
+#include "include/binFlattener.h"
 #include "include/binUtils.h"
 #include "include/centralityFromInput.h"
 #include "include/checkMakeDir.h"
@@ -255,10 +256,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
 					      "JTETABINSSUBHIGH",
 					      "JTETABINSSUBDOABS",
 					      "NPHIBINS",
-					      "NGAMMAPTBINSSUB",
-					      "GAMMAPTBINSSUBLOW",
-					      "GAMMAPTBINSSUBHIGH",
-					      "GAMMAPTBINSSUBDOLOG",
 					      "NGAMMAETABINSSUB",
 					      "GAMMAETABINSSUBLOW",
 					      "GAMMAETABINSSUBHIGH",
@@ -272,6 +269,15 @@ int gdjNTupleToHist(std::string inConfigFileName)
 					      "JTPTBINSLOWRECO",
 					      "JTPTBINSLOWRECOSYST",
 					      "JTPTBINSHIGHRECO",
+					      "NSUBJTPTBINS",
+					      "SUBJTPTBINSLOW",
+					      "SUBJTPTBINSHIGH",
+					      "SUBJTPTBINSDOLOG",
+					      "SUBJTPTBINSDOCUSTOM",
+					      "SUBJTPTBINSCUSTOM",
+					      "SUBJTPTBINSLOWRECO",
+					      "SUBJTPTBINSLOWRECOSYST",
+					      "SUBJTPTBINSHIGHRECO",
 					      "NDPHIBINS",
 					      "DPHIBINSLOW",
 					      "DPHIBINSHIGH",
@@ -619,15 +625,16 @@ int gdjNTupleToHist(std::string inConfigFileName)
   const Int_t nMaxPtBins = 200;
 
   //Block of variable declarations
-  Int_t nGammaPtBins, nJtPtBins, nXJBins, nXJJBins, nDPhiBins, nAJBins, nDRBins;
-  Float_t gammaPtBinsLow, gammaPtBinsHigh, jtPtBinsLow, jtPtBinsHigh, xjBinsLow, xjBinsHigh, xjjBinsLow, xjjBinsHigh, dPhiBinsLow, dPhiBinsHigh, ajBinsLow, ajBinsHigh, drBinsLow, drBinsHigh;
-  Bool_t gammaPtBinsDoLog, gammaPtBinsDoCustom, jtPtBinsDoLog, jtPtBinsDoCustom, xjBinsDoLog, xjBinsDoCustom, xjjBinsDoLog, xjjBinsDoCustom, dPhiBinsDoLog, dPhiBinsDoCustom, ajBinsDoLog, ajBinsDoCustom, drBinsDoLog, drBinsDoCustom;
-  Double_t gammaPtBins[nMaxPtBins+1], jtPtBins[nMaxPtBins+1], xjBins[nMaxPtBins+1], xjjBins[nMaxPtBins+1], dPhiBins[nMaxPtBins+1], ajBins[nMaxPtBins+1], drBins[nMaxPtBins+1];
-  std::string gammaPtBinsStrForConfig, jtPtBinsStrForConfig, xjBinsStrForConfig, xjjBinsStrForConfig, dPhiBinsStrForConfig, ajBinsStrForConfig, drBinsStrForConfig;
-  Float_t gammaPtBinsLowReco, gammaPtBinsHighReco, jtPtBinsLowReco, jtPtBinsHighReco, xjBinsLowReco, xjBinsHighReco, xjjBinsLowReco, xjjBinsHighReco, ajBinsLowReco, ajBinsHighReco;
+  Int_t nGammaPtBins, nJtPtBins, nSubJtPtBins, nXJBins, nXJJBins, nDPhiBins, nAJBins, nDRBins;
+  Float_t gammaPtBinsLow, gammaPtBinsHigh, jtPtBinsLow, jtPtBinsHigh, subJtPtBinsLow, subJtPtBinsHigh, xjBinsLow, xjBinsHigh, xjjBinsLow, xjjBinsHigh, dPhiBinsLow, dPhiBinsHigh, ajBinsLow, ajBinsHigh, drBinsLow, drBinsHigh;
+  Bool_t gammaPtBinsDoLog, gammaPtBinsDoCustom, jtPtBinsDoLog, jtPtBinsDoCustom, subJtPtBinsDoLog, subJtPtBinsDoCustom, xjBinsDoLog, xjBinsDoCustom, xjjBinsDoLog, xjjBinsDoCustom, dPhiBinsDoLog, dPhiBinsDoCustom, ajBinsDoLog, ajBinsDoCustom, drBinsDoLog, drBinsDoCustom;
+  Double_t gammaPtBins[nMaxPtBins+1], jtPtBins[nMaxPtBins+1], subJtPtBins[nMaxPtBins+1], xjBins[nMaxPtBins+1], xjjBins[nMaxPtBins+1], dPhiBins[nMaxPtBins+1], ajBins[nMaxPtBins+1], drBins[nMaxPtBins+1];
+  std::string gammaPtBinsStrForConfig, jtPtBinsStrForConfig, subJtPtBinsStrForConfig, xjBinsStrForConfig, xjjBinsStrForConfig, dPhiBinsStrForConfig, ajBinsStrForConfig, drBinsStrForConfig;
+  Float_t gammaPtBinsLowReco, gammaPtBinsHighReco, jtPtBinsLowReco, jtPtBinsHighReco, subJtPtBinsLowReco, subJtPtBinsHighReco, xjBinsLowReco, xjBinsHighReco, xjjBinsLowReco, xjjBinsHighReco, ajBinsLowReco, ajBinsHighReco;
 
   readBins(config_p, "GAMMAPT", nMaxPtBins, &nGammaPtBins, &gammaPtBinsLow, &gammaPtBinsHigh, &gammaPtBinsDoLog, &gammaPtBinsDoCustom, nullptr, gammaPtBins, &gammaPtBinsStrForConfig, &gammaPtBinsLowReco, &gammaPtBinsHighReco);
 
+  //Grabbing jtpt bins is more involved because of the pt systematic
   readBins(config_p, "JTPT", nMaxPtBins, &nJtPtBins, &jtPtBinsLow, &jtPtBinsHigh, &jtPtBinsDoLog, &jtPtBinsDoCustom, nullptr, jtPtBins, &jtPtBinsStrForConfig, &jtPtBinsLowReco, &jtPtBinsHighReco);
   const Float_t jtPtBinsLowRecoSyst = config_p->GetValue("JTPTBINSLOWRECOSYST", -1000.0);
   if(jtPtBinsLowRecoSyst < 0 || jtPtBinsLowRecoSyst < jtPtBinsLowReco){
@@ -635,40 +642,36 @@ int gdjNTupleToHist(std::string inConfigFileName)
     return 1;
   }
 
+  //Repeat for the subjtpt bins
+  readBins(config_p, "SUBJTPT", nMaxPtBins, &nSubJtPtBins, &subJtPtBinsLow, &subJtPtBinsHigh, &subJtPtBinsDoLog, &subJtPtBinsDoCustom, nullptr, subJtPtBins, &subJtPtBinsStrForConfig, &subJtPtBinsLowReco, &subJtPtBinsHighReco);
+  const Float_t subJtPtBinsLowRecoSyst = config_p->GetValue("SUBJTPTBINSLOWRECOSYST", -1000.0);
+  if(subJtPtBinsLowRecoSyst < 0 || subJtPtBinsLowRecoSyst < subJtPtBinsLowReco){
+    std::cout << "ERROR: Given value for subJtPtBinsLowRecoSyst (systematic variation of pt minimum for unfolding sensitivity) \'" << subJtPtBinsLowRecoSyst << "\' is not valid. Must be > 0 and > subJtPtBinsLowReco, \'" << subJtPtBinsLowReco << "\'. return 1" << std::endl;
+    return 1;
+  }
+
+  //Before continuing, institute a bunch of checks to make sure everything maps correctly between jtptbins and subjtptbins
+  const double deltaPt = 0.001; //should be sufficient for integer level pt bins
+  if(!isFloatSame(jtPtBinsLow, subJtPtBinsLow, deltaPt)){
+    std::cout << "ERROR gdjNTupleToHist: jtPtBinsLow \'" << jtPtBinsLow << "\' doesn't match subJtPtBinsLow \'" << subJtPtBinsLow << "\' to precision \'" << deltaPt << "\'. return 1" << std::endl;
+    return 1;
+  }
+  if(!isFloatSame(jtPtBinsLowReco, subJtPtBinsLowReco, deltaPt)){
+    std::cout << "ERROR gdjNTupleToHist: jtPtBinsLowReco \'" << jtPtBinsLowReco << "\' doesn't match subJtPtBinsLowReco \'" << subJtPtBinsLowReco << "\' to precision \'" << deltaPt << "\'. return 1" << std::endl;
+    return 1;
+  }
+  if(!isFloatSame(jtPtBinsLowRecoSyst, subJtPtBinsLowRecoSyst, deltaPt)){
+    std::cout << "ERROR gdjNTupleToHist: jtPtBinsLowRecoSyst \'" << jtPtBinsLowRecoSyst << "\' doesn't match subJtPtBinsLowRecoSyst \'" << subJtPtBinsLowRecoSyst << "\' to precision \'" << deltaPt << "\'. return 1" << std::endl;
+    return 1;
+  }
+  
   readBins(config_p, "XJ", nMaxPtBins, &nXJBins, &xjBinsLow, &xjBinsHigh, &xjBinsDoLog, &xjBinsDoCustom, nullptr, xjBins, &xjBinsStrForConfig, &xjBinsLowReco, &xjBinsHighReco);
   readBins(config_p, "XJJ", nMaxPtBins, &nXJJBins, &xjjBinsLow, &xjjBinsHigh, &xjjBinsDoLog, &xjjBinsDoCustom, nullptr, xjjBins, &xjjBinsStrForConfig, &xjjBinsLowReco, &xjjBinsHighReco);  
    readBins(config_p, "DPHI", nMaxPtBins, &nDPhiBins, &dPhiBinsLow, &dPhiBinsHigh, &dPhiBinsDoLog, &dPhiBinsDoCustom, nullptr, dPhiBins, &dPhiBinsStrForConfig);
   readBins(config_p, "AJ", nMaxPtBins, &nAJBins, &ajBinsLow, &ajBinsHigh, &ajBinsDoLog, &ajBinsDoCustom, nullptr, ajBins, &ajBinsStrForConfig, &ajBinsLowReco, &ajBinsHighReco);
   readBins(config_p, "DR", nMaxPtBins, &nDRBins, &drBinsLow, &drBinsHigh, &drBinsDoLog, &drBinsDoCustom, nullptr, drBins, &drBinsStrForConfig);
-  
-  //  return 1;
-  /*
-  const Int_t nGammaPtBins = config_p->GetValue("NGAMMAPTBINS", 10);
-  if(!goodBinning(inConfigFileName, nMaxPtBins, nGammaPtBins, "NGAMMAPTBINS")) return 1;
-  const Float_t gammaPtBinsLow = config_p->GetValue("GAMMAPTBINSLOW", 80.0);
-  const Float_t gammaPtBinsHigh = config_p->GetValue("GAMMAPTBINSHIGH", 280.0);
-  const Bool_t gammaPtBinsDoLog = (bool)config_p->GetValue("GAMMAPTBINSDOLOG", 1);
-  const Bool_t gammaPtBinsDoCustom = (bool)config_p->GetValue("GAMMAPTBINSDOCUSTOM", 0);
-  Double_t gammaPtBins[nMaxPtBins+1];
-  if(gammaPtBinsDoLog) getLogBins(gammaPtBinsLow, gammaPtBinsHigh, nGammaPtBins, gammaPtBins);
-  else if(gammaPtBinsDoCustom){
-    std::string gammaPtBinsStr = config_p->GetValue("GAMMAPTBINSCUSTOM", "");
-    if(gammaPtBinsStr.size() == 0){
-      std::cout << "CUSTOM GAMMA PT BINS REQUESTED, BUT \'GAMMAPTBINSCUSTOM\' not defined in config \'" << inConfigFileName << "\'. return 1" << std::endl;
-    }
-    std::vector<float> gammaPtBinsCustom = strToVectF(gammaPtBinsStr);
-    Int_t nGammaPtBinsTemp = ((Int_t)gammaPtBinsCustom.size()) - 1;
-    if(nGammaPtBinsTemp != nGammaPtBins){
-      std::cout << "REQUESTED CUSTON BINS \'" << gammaPtBinsStr << "\' HAS SIZE \'" << nGammaPtBinsTemp << "\' does not match given nGammaPtBins \'" << nGammaPtBins << "\'. return 1" << std::endl;
-      return 1;
-    }
-
-    for(unsigned int gI = 0; gI < gammaPtBinsCustom.size(); ++gI){
-      gammaPtBins[gI] = gammaPtBinsCustom[gI];
-    }
-  }
-  else getLinBins(gammaPtBinsLow, gammaPtBinsHigh, nGammaPtBins, gammaPtBins);
-  */
+ 
+ 
   std::vector<std::string> genGammaPtBinsStr, recoGammaPtBinsStr, gammaPtBinsStr;
   for(Int_t pI = 0; pI < nGammaPtBins; ++pI){
     genGammaPtBinsStr.push_back("GenGammaPt" + std::to_string(pI));
@@ -689,7 +692,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
   binsToLabelStr[genGammaPtBinsStr[genGammaPtBinsStr.size()-1]] = prettyString(gammaPtBins[0], 1, false) + " < Gen. p_{T,#gamma} < " + prettyString(gammaPtBins[nGammaPtBins], 1, false);
   binsToLabelStr[recoGammaPtBinsStr[recoGammaPtBinsStr.size()-1]] = prettyString(gammaPtBins[0], 1, false) + " < Reco. p_{T,#gamma} < " + prettyString(gammaPtBins[nGammaPtBins], 1, false);
-  binsToLabelStr[gammaPtBinsStr[gammaPtBinsStr.size()-1]] = prettyString(gammaPtBins[0], 1, false) + " < p_{T,#gamma} < " + prettyString(gammaPtBins[nGammaPtBins], 1, false);
+   binsToLabelStr[gammaPtBinsStr[gammaPtBinsStr.size()-1]] = prettyString(gammaPtBins[0], 1, false) + " < p_{T,#gamma} < " + prettyString(gammaPtBins[nGammaPtBins], 1, false);
   //Also set the fine grain photon bins right now
   
  
@@ -808,33 +811,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
   else binsToLabelStr[gammaEtaBinsSubStr[gammaEtaBinsSubStr.size()-1]] = prettyString(gammaEtaBinsSub[0], 2, false) + " < #eta_{#gamma} < " + prettyString(gammaEtaBinsSub[nGammaEtaBinsSub], 2, false);
 
 
-  /*
-  const Int_t nJtPtBins = config_p->GetValue("NJTPTBINS", 20);
-  if(!goodBinning(inConfigFileName, nMaxPtBins, nJtPtBins, "NJTPTBINS")) return 1;
-  const Float_t jtPtBinsLow = config_p->GetValue("JTPTBINSLOW", 30.0);
-  const Float_t jtPtBinsHigh = config_p->GetValue("JTPTBINSHIGH", 230.0);
-  const Bool_t jtPtBinsDoLog = config_p->GetValue("JTPTBINSDOLOG", 1);
-  const Bool_t jtPtBinsDoCustom = config_p->GetValue("JTPTBINSDOCUSTOM", 1);
-  Double_t jtPtBins[nMaxPtBins+1];
-  if(jtPtBinsDoLog) getLogBins(jtPtBinsLow, jtPtBinsHigh, nJtPtBins, jtPtBins);
-  else if(jtPtBinsDoCustom){
-    std::string jtPtBinsStr = config_p->GetValue("JTPTBINSCUSTOM", "");
-    if(jtPtBinsStr.size() == 0){
-      std::cout << "CUSTOM JT PT BINS REQUESTED, BUT \'JTPTBINSCUSTOM\' not defined in config \'" << inConfigFileName << "\'. return 1" << std::endl;
-    }
-    std::vector<float> jtPtBinsCustom = strToVectF(jtPtBinsStr);
-    Int_t nJtPtBinsTemp = ((Int_t)jtPtBinsCustom.size()) - 1;
-    if(nJtPtBinsTemp != nJtPtBins){
-      std::cout << "REQUESTED CUSTON BINS \'" << jtPtBinsStr << "\' HAS SIZE \'" << nJtPtBinsTemp << "\' does not match given nJtPtBins \'" << nJtPtBins << "\'. return 1" << std::endl;
-      return 1;
-    }
-
-    for(unsigned int gI = 0; gI < jtPtBinsCustom.size(); ++gI){
-      jtPtBins[gI] = jtPtBinsCustom[gI];
-    }
-  }
-  else getLinBins(jtPtBinsLow, jtPtBinsHigh, nJtPtBins, jtPtBins);
-  */
   std::string jtPtBinsGlobalStr = "GlobalJtPt0";
   std::string jtPtBinsGlobalLabel = prettyString(jtPtBinsLow,1,false) + " < p_{T,jet} < " + prettyString(jtPtBinsHigh,1,false);
   binsToLabelStr[jtPtBinsGlobalStr] = jtPtBinsGlobalLabel;   
@@ -859,86 +835,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
   jtPtBinsStr.push_back("JtPt" + std::to_string(nJtPtBins));
   binsToLabelStr[jtPtBinsStr[jtPtBinsStr.size()-1]] = prettyString(jtPtBins[0], 1, false) + " < p_{T,Jet} < " + prettyString(jtPtBins[nJtPtBins], 1, false);
 
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
-  /*  
-  const Int_t nDPhiBins = config_p->GetValue("NDPHIBINS", 16);
-  const Float_t dPhiBinsLow = config_p->GetValue("DPHIBINSLOW", 0.0);
-  const Float_t dPhiBinsHigh = config_p->GetValue("DPHIBINSHIGH", TMath::Pi());
-  const Bool_t dPhiBinsDoCustom = (bool)config_p->GetValue("DPHIBINSDOCUSTOM", 0);               
-  Double_t dphiBins[nMaxPtBins+1];
-  if(dPhiBinsDoCustom){
-    std::string dPhiBinsStr = config_p->GetValue("DPHIBINSCUSTOM", "");
-    if(dPhiBinsStr.size() == 0){
-      std::cout << "DPHI BINS REQUESTED, BUT \'DPHIBINSCUSTOM\' not defined in config \'" << inConfigFileName << "\'. return 1" << std::endl;
-    }     
-    std::vector<float> dPhiBinsCustom = strToVectF(dPhiBinsStr);
-    Int_t nDPhiBinsTemp = ((Int_t)dPhiBinsCustom.size()) - 1;
-    if(nDPhiBinsTemp != nDPhiBins){
-      std::cout << "REQUESTED CUSTON BINS \'" << dPhiBinsStr << "\' HAS SIZE \'" << nDPhiBinsTemp << "\' does not match given nDPhiBins \'" << nDPhiBins << "\'. return 1" << std::endl;          
-      return 1;                                                                                        
-    }
-
-    for(unsigned int gI = 0; gI < dPhiBinsCustom.size(); ++gI){
-      dphiBins[gI] = dPhiBinsCustom[gI];
-    }  
-  }
-  else getLinBins(dPhiBinsLow, dPhiBinsHigh, nDPhiBins, dphiBins);
-  std::string dphiBinsStrForConfig;
-  for(Int_t jI = 0; jI < nDPhiBins; ++jI){
-    dphiBinsStrForConfig = dphiBinsStrForConfig + prettyString(dphiBins[jI],8,false) + ",";      
-  }  
-  dphiBinsStrForConfig = dphiBinsStrForConfig + prettyString(dphiBins[nDPhiBins],8,false);
-
-  //Gotta do this because otherwise the bin limits are slightly off
-  std::vector<float> dphiBinsStrForConfigVect = strToVectF(dphiBinsStrForConfig);
-  for(unsigned int i = 0; i < dphiBinsStrForConfigVect.size(); ++i){
-    dphiBins[i] = dphiBinsStrForConfigVect[i];
-  }
-  */
 
   const Double_t gammaJtDPhiCut = mathStringToNum(config_p->GetValue("GAMMAJTDPHI", ""), doGlobalDebug);  
   const Double_t gammaMultiJtDPhiCut = mathStringToNum(config_p->GetValue("GAMMAMULTIJTDPHI", ""), doGlobalDebug);  
-
-  /*
-  const Int_t nDRBins = config_p->GetValue("NDRBINS", 10);
-  if(!goodBinning(inConfigFileName, nMaxPtBins, nDRBins, "NDRBINS")) return 1;
-  const Float_t drBinsLow = config_p->GetValue("DRBINSLOW", 80.0);
-  const Float_t drBinsHigh = config_p->GetValue("DRBINSHIGH", 280.0);
-  const Bool_t drBinsDoLog = (bool)config_p->GetValue("DRBINSDOLOG", 1);
-  const Bool_t drBinsDoCustom = (bool)config_p->GetValue("DRBINSDOCUSTOM", 0);
-  Double_t drBins[nMaxPtBins+1];
-  if(drBinsDoLog) getLogBins(drBinsLow, drBinsHigh, nDRBins, drBins);
-  else if(drBinsDoCustom){
-    std::string drBinsStr = config_p->GetValue("DRBINSCUSTOM", "");
-    if(drBinsStr.size() == 0){
-      std::cout << "CUSTOM DR BINS REQUESTED, BUT \'DRBINSCUSTOM\' not defined in config \'" << inConfigFileName << "\'. return 1" << std::endl;
-    }
-    std::vector<float> drBinsCustom = strToVectF(drBinsStr);
-    Int_t nDRBinsTemp = ((Int_t)drBinsCustom.size()) - 1;
-    if(nDRBinsTemp != nDRBins){
-      std::cout << "REQUESTED CUSTON BINS \'" << drBinsStr << "\' HAS SIZE \'" << nDRBinsTemp << "\' does not match given nDRBins \'" << nDRBins << "\'. return 1" << std::endl;
-      return 1;
-    }
-
-    for(unsigned int gI = 0; gI < drBinsCustom.size(); ++gI){
-      drBins[gI] = drBinsCustom[gI];
-    }
-  }
-  else getLinBins(drBinsLow, drBinsHigh, nDRBins, drBins);
-
-  std::string drBinsStrForConfig;
-  for(Int_t jI = 0; jI < nDRBins; ++jI){
-    drBinsStrForConfig = drBinsStrForConfig + prettyString(drBins[jI],8,false) + ",";      
-  }  
-  drBinsStrForConfig = drBinsStrForConfig + prettyString(drBins[nDRBins],8,false);
-
-  //Gotta do this because otherwise the bin limits are slightly off
-  std::vector<float> drBinsStrForConfigVect = strToVectF(drBinsStrForConfig);
-  for(unsigned int i = 0; i < drBinsStrForConfigVect.size(); ++i){
-    drBins[i] = drBinsStrForConfigVect[i];
-  }
-  */
 
   const std::string gammaJtDPhiStr = "DPhi0";
   std::string gammaJtDPhiLabel = returnAllCapsString(config_p->GetValue("GAMMAJTDPHI", ""));
@@ -949,103 +848,49 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
-  /*  
-  const Int_t nXJBins = config_p->GetValue("NXJBINS", 20);
-  const Float_t xjBinsLow = config_p->GetValue("XJBINSLOW", 0.0);
-  const Float_t xjBinsHigh = config_p->GetValue("XJBINSHIGH", 2.0);
-  const Bool_t xjBinsDoCustom = config_p->GetValue("XJBINSDOCUSTOM", 0);
-  std::string xjBinsCustomStr = config_p->GetValue("XJBINSCUSTOM", "");
-  Double_t xjBins[nMaxPtBins+1];
-  if(!xjBinsDoCustom) getLinBins(xjBinsLow, xjBinsHigh, nXJBins, xjBins);
-  else{
-    if(xjBinsCustomStr.size() == 0){
-      std::cout << "No custom bins supplied despite XJBINSDOCUSOM \'" << xjBinsDoCustom <<  "'\". Reverting to uniform binning." << std::endl;
-      getLinBins(xjBinsLow, xjBinsHigh, nXJBins, xjBins);
-    }
-    else{
-      std::vector<float> xjBinsCustomVect = strToVectF(xjBinsCustomStr);
-      //Check that the bins are ordered and the number matches nXJBins
-      Int_t nXJBinsCustomVect = xjBinsCustomVect.size();
-      if(nXJBinsCustomVect-1 != nXJBins){
-	std::cout << "Number of supplied NXJBINS, \'" << nXJBins << "\', does not match number from custom bin string \'" << nXJBinsCustomVect-1 << "\'. Reverting to uniform bins" << std::endl;
-        getLinBins(xjBinsLow, xjBinsHigh, nXJBins, xjBins);
-      }
-      else{
-        bool areBinsOrdered = true;
-        for(unsigned int i = 1; i < xjBinsCustomVect.size(); ++i){
-          if(xjBinsCustomVect[i] < xjBinsCustomVect[i-1]){
-            areBinsOrdered = false;
-            break;
-          }
-        }
 
-        if(areBinsOrdered){
-          for(unsigned int i = 0; i < xjBinsCustomVect.size(); ++i){
-            xjBins[i] = xjBinsCustomVect[i];
-          }
-        }
-        else{
-	  std::cout << "XJBINSCUSTOM provided \'" << xjBinsCustomStr << "\'is not ordered. Reverting to uniform bins"  << std::endl;
-          getLinBins(xjBinsLow, xjBinsHigh, nXJBins, xjBins);
-        }
-      }
-    }
+  //Initial bin grabbing is done, now make the multi-dim flattened bins
+  //Block of variable declarations
+  Int_t nSubJtGammaPtBins = -1;
+  Float_t subJtGammaPtBinsLow, subJtGammaPtBinsHigh;
+  Double_t subJtGammaPtBins[nMaxPtBins+1];
+  std::string subJtGammaPtBinsStrForConfig;
+
+  binFlattener subJtGammaPtBinFlattener;
+  //Now create your flattened bins using the binFlattener class
+  if(!subJtGammaPtBinFlattener.Init("subJtGammaPtBinFlattener", nGammaPtBins, gammaPtBins, nSubJtPtBins, subJtPtBins)){
+    std::cout << "Error gdjNTupleToHist: Failure to init binFlattener, L" << __LINE__ << ". return 1" << std::endl;
+    return 1;
   }
-  std::string xjBinsStrForConfig = "";
-  for(Int_t jI = 0; jI < nXJBins; ++jI){
-    xjBinsStrForConfig = xjBinsStrForConfig + std::to_string(xjBins[jI]) + ",";
+
+  double subJtGammaPtMax = 1.0;
+  while(subJtGammaPtMax/(nGammaPtBins*nSubJtPtBins) < 1){subJtGammaPtMax *= 10.0;}
+
+  std::vector<double> subJtGammaPtBinsV = subJtGammaPtBinFlattener.GetFlattenedBins(0.0, subJtGammaPtMax);
+
+  for(unsigned int sgI = 0; sgI < subJtGammaPtBinsV.size(); ++sgI){
+    ++nSubJtGammaPtBins;
+    subJtGammaPtBins[nSubJtGammaPtBins] = subJtGammaPtBinsV[sgI];
   }
-  xjBinsStrForConfig = xjBinsStrForConfig + std::to_string(xjBins[nXJBins]);
+
+  /*    
+  std::cout << "subJtGammaPtBins: " << std ::endl;
+  for(Int_t sgI = 0; sgI < nSubJtGammaPtBins; ++sgI){
+    std::cout << " " << sgI << ": " << subJtGammaPtBins[sgI] << "-" << subJtGammaPtBins[sgI+1] << " (gammaBin=" << subJtGammaPtBinFlattener.GetBin1PosFromGlobal(sgI) << ", subJtPtBins=" << subJtGammaPtBinFlattener.GetBin2PosFromGlobal(sgI) << ")" << std::endl;
+  }
+
+  std::cout << std::endl;
+  std::cout << "Gamma,subjtptbins: " << std::endl;
+  for(Int_t gI = 0; gI < nGammaPtBins; ++gI){
+    std::cout << " gI=" << gI << ", " << gammaPtBins[gI] << "-" << gammaPtBins[gI+1] << ": " << std::endl;
+    for(Int_t sI = 0; sI < nSubJtPtBins; ++sI){
+      std::cout << "  sI=" << sI << ", " << subJtPtBins[sI] << "-" << subJtPtBins[sI+1] << ", globalBin=" << subJtGammaPtBinFlattener.GetGlobalFromBin12Pos(gI, sI) << std::endl;
+    }  
+  }
+
+  return 1;
   */
 
-  /*
-  const Int_t nAJBins = config_p->GetValue("NAJBINS", 20);
-  const Float_t ajBinsLow = config_p->GetValue("AJBINSLOW", 0.0);
-  const Float_t ajBinsHigh = config_p->GetValue("AJBINSHIGH", 2.0);
-  const Bool_t ajBinsDoCustom = config_p->GetValue("AJBINSDOCUSTOM", 0);
-  std::string ajBinsCustomStr = config_p->GetValue("AJBINSCUSTOM", "");
-  Double_t ajBins[nMaxPtBins+1];
-  if(!ajBinsDoCustom) getLinBins(ajBinsLow, ajBinsHigh, nAJBins, ajBins);
-  else{
-    if(ajBinsCustomStr.size() == 0){
-      std::cout << "No custom bins supplied despite AJBINSDOCUSOM \'" << ajBinsDoCustom <<  "'\". Reverting to uniform binning." << std::endl;
-      getLinBins(ajBinsLow, ajBinsHigh, nAJBins, ajBins);
-    }
-    else{
-      std::vector<float> ajBinsCustomVect = strToVectF(ajBinsCustomStr);
-      //Check that the bins are ordered and the number matches nAJBins
-      Int_t nAJBinsCustomVect = ajBinsCustomVect.size();
-      if(nAJBinsCustomVect-1 != nAJBins){
-	std::cout << "Number of supplied NAJBINS, \'" << nAJBins << "\', does not match number from custom bin string \'" << nAJBinsCustomVect-1 << "\'. Reverting to uniform bins" << std::endl;
-        getLinBins(ajBinsLow, ajBinsHigh, nAJBins, ajBins);
-      }
-      else{
-        bool areBinsOrdered = true;
-        for(unsigned int i = 1; i < ajBinsCustomVect.size(); ++i){
-          if(ajBinsCustomVect[i] < ajBinsCustomVect[i-1]){
-            areBinsOrdered = false;
-            break;
-          }
-        }
-
-        if(areBinsOrdered){
-          for(unsigned int i = 0; i < ajBinsCustomVect.size(); ++i){
-            ajBins[i] = ajBinsCustomVect[i];
-          }
-        }
-        else{
-	  std::cout << "AJBINSCUSTOM provided \'" << ajBinsCustomStr << "\'is not ordered. Reverting to uniform bins"  << std::endl;
-          getLinBins(ajBinsLow, ajBinsHigh, nAJBins, ajBins);
-        }
-      }
-    }
-  }
-  std::string ajBinsStrForConfig = "";
-  for(Int_t jI = 0; jI < nAJBins; ++jI){
-    ajBinsStrForConfig = ajBinsStrForConfig + std::to_string(ajBins[jI]) + ",";
-  }
-  ajBinsStrForConfig = ajBinsStrForConfig + std::to_string(ajBins[nAJBins]);
-  */
   const unsigned long long mixCap = config_p->GetValue("MIXCAP", 100000000);
   const unsigned long long nMixEvents = config_p->GetValue("NMIXEVENTS", 1);
   const bool doStrictMix = config_p->GetValue("DOSTRICTMIX", true);
@@ -1211,6 +1056,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
   TEnv photonPtJtPtVCent_Config;
   createMixMachineTEnv(&photonPtJtPtVCent_Config, true, isMC, nJtPtBins, jtPtBinsStrForConfig, "Jet p_{T}", nGammaPtBins, gammaPtBinsStrForConfig, "Photon p_{T}");
 
+
+
   TEnv photonPtJtXJVCent_Config;
   createMixMachineTEnv(&photonPtJtXJVCent_Config, true, isMC, nXJBins, xjBinsStrForConfig, "Jet x_{J#gamma}", nGammaPtBins, gammaPtBinsStrForConfig, "Photon p_{T}");
 
@@ -1219,22 +1066,21 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
   //Multi-jet mixmachine TEnv
   TEnv photonPtJtXJJVCent_Config;
-  createMixMachineTEnv(&photonPtJtXJJVCent_Config, true, isMC, nXJJBins, xjjBinsStrForConfig, "Jet #vec{x}_{JJ#gamma}", nGammaPtBins, gammaPtBinsStrForConfig, "Photon p_{T}");
+  createMixMachineTEnv(&photonPtJtXJJVCent_Config, true, isMC, nXJJBins, xjjBinsStrForConfig, "Jet #vec{x}_{JJ#gamma}", nSubJtGammaPtBins, subJtGammaPtBinsStrForConfig, "Sub. Jet x Photon p_{T}");
 
   TEnv photonPtJtAJJVCent_Config;
-  createMixMachineTEnv(&photonPtJtAJJVCent_Config, true, isMC, nAJBins, ajBinsStrForConfig, "Jet A_{JJ#gamma}", nGammaPtBins, gammaPtBinsStrForConfig, "Photon p_{T}");
+  createMixMachineTEnv(&photonPtJtAJJVCent_Config, true, isMC, nAJBins, ajBinsStrForConfig, "Jet A_{JJ#gamma}", nSubJtGammaPtBins, subJtGammaPtBinsStrForConfig, "Sub. Jet x Photon p_{T}");
  
   TEnv photonPtJtDPhiJJGVCent_Config;
-  createMixMachineTEnv(&photonPtJtDPhiJJGVCent_Config, true, isMC, nDPhiBins, dPhiBinsStrForConfig, "Jet #Delta#phi_{JJ#gamma}", nGammaPtBins, gammaPtBinsStrForConfig, "Photon p_{T}");
+  createMixMachineTEnv(&photonPtJtDPhiJJGVCent_Config, true, isMC, nDPhiBins, dPhiBinsStrForConfig, "Jet #Delta#phi_{JJ#gamma}", nSubJtGammaPtBins, subJtGammaPtBinsStrForConfig, "Sub. Jet x Photon p_{T}");
 
   TEnv photonPtJtDPhiJJVCent_Config;
-  createMixMachineTEnv(&photonPtJtDPhiJJVCent_Config, true, isMC, nDPhiBins, dPhiBinsStrForConfig, "Jet #Delta#phi_{JJ}", nGammaPtBins, gammaPtBinsStrForConfig, "Photon p_{T}");
+  createMixMachineTEnv(&photonPtJtDPhiJJVCent_Config, true, isMC, nDPhiBins, dPhiBinsStrForConfig, "Jet #Delta#phi_{JJ}", nSubJtGammaPtBins, subJtGammaPtBinsStrForConfig, "Sub. Jet x Photon p_{T}");
 
   TEnv photonPtJtDRJJVCent_Config;
-  createMixMachineTEnv(&photonPtJtDRJJVCent_Config, true, isMC, nDRBins, drBinsStrForConfig, "Jet #DeltaR_{JJ}", nGammaPtBins, gammaPtBinsStrForConfig, "Photon p_{T}");
+  createMixMachineTEnv(&photonPtJtDRJJVCent_Config, true, isMC, nDRBins, drBinsStrForConfig, "Jet #DeltaR_{JJ}", nSubJtGammaPtBins, subJtGammaPtBinsStrForConfig, "Sub. Jet x Photon p_{T}");
 
   const Int_t nMaxSyst = 100;
-  //";Reco. Jet p_{T};Reco. Photon p_{T}", nJtPtBins, jtPtBins, nGammaPtBins, gammaPtBins
   mixMachine* photonPtJtPtVCent_MixMachine_p[nMaxCentBins][nBarrelAndEC][nMaxSyst];
   mixMachine* photonPtJtXJVCent_MixMachine_p[nMaxCentBins][nBarrelAndEC][nMaxSyst];
   mixMachine* photonPtJtDPhiVCent_MixMachine_p[nMaxCentBins][nBarrelAndEC][nMaxSyst];
@@ -1501,7 +1347,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       singleJetResponse_OneJetNoTruth_p[cI] = new TH2D(("singleJetResponse_OneJetNoTruth_" + centBinsStr[cI] + "_h").c_str(), ";Truth Jet p_{T};Response (Reco./Gen.)", nJtPtBins, jtPtBins, 100, 0.0, 2.0);
       doubleJetResponse_OneJetNoTruth_p[cI] = new TH2D(("doubleJetResponse_OneJetNoTruth_" + centBinsStr[cI] + "_h").c_str(), ";Truth Jet p_{T};Response (Reco./Gen.)", nJtPtBins, jtPtBins, 100, 0.0, 2.0);
     }
-
+    
     for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
       photonPtJtPtVCent_Config.SetValue("ISMC", isMC);
       photonPtJtXJVCent_Config.SetValue("ISMC", isMC);
@@ -1512,6 +1358,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       photonPtJtXJJVCent_Config.SetValue("ISMC", isMC);
       photonPtJtAJJVCent_Config.SetValue("ISMC", isMC);
       
+
       for(unsigned int systI = 0; systI < systStrVect.size(); ++systI){
 	photonPtJtPtVCent_MixMachine_p[cI][eI][systI] = new mixMachine("photonPtJtPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + systStrVect[systI] + "_" + gammaJtDPhiStr, inclusiveFlag, &photonPtJtPtVCent_Config);
 	photonPtJtXJVCent_MixMachine_p[cI][eI][systI] = new mixMachine("photonPtJtXJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + systStrVect[systI] + "_" + gammaJtDPhiStr, inclusiveFlag, &photonPtJtXJVCent_Config);
@@ -1522,6 +1369,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	photonPtJtDPhiJJVCent_MixMachine_p[cI][eI][systI] = new mixMachine("photonPtJtDPhiJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + systStrVect[systI] + "_" + gammaJtDPhiStr, multiFlag, &photonPtJtDPhiJJVCent_Config);
 	photonPtJtDRJJVCent_MixMachine_p[cI][eI][systI] = new mixMachine("photonPtJtDRJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + systStrVect[systI] + "_" + gammaJtDPhiStr, multiFlag, &photonPtJtDRJJVCent_Config);
       }
+    
 
       //Data or MC, Sideband should always be treated as data
       photonPtJtPtVCent_Config.SetValue("ISMC", 0);
@@ -1532,7 +1380,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       photonPtJtDRJJVCent_Config.SetValue("ISMC", 0);
       photonPtJtXJJVCent_Config.SetValue("ISMC", 0);
       photonPtJtAJJVCent_Config.SetValue("ISMC", 0);
-
+      
       for(unsigned int systI = 0; systI < systStrVect.size(); ++systI){
 	photonPtJtPtVCent_MixMachine_Sideband_p[cI][eI][systI] = new mixMachine("photonPtJtPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + systStrVect[systI] + "_" + gammaJtDPhiStr + "_Sideband", inclusiveFlag, &photonPtJtPtVCent_Config);
 	photonPtJtXJVCent_MixMachine_Sideband_p[cI][eI][systI] = new mixMachine("photonPtJtXJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + systStrVect[systI] + "_" + gammaJtDPhiStr + "_Sideband", inclusiveFlag, &photonPtJtXJVCent_Config);
@@ -1541,24 +1389,25 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	photonPtJtAJJVCent_MixMachine_Sideband_p[cI][eI][systI] = new mixMachine("photonPtJtAJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + systStrVect[systI] + "_" + gammaJtDPhiStr + "_Sideband", multiFlag, &photonPtJtAJJVCent_Config);
 	photonPtJtDPhiJJGVCent_MixMachine_Sideband_p[cI][eI][systI] = new mixMachine("photonPtJtDPhiJJGVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + systStrVect[systI] + "_" + gammaJtDPhiStr + "_Sideband", multiFlag, &photonPtJtDPhiJJGVCent_Config);
 	photonPtJtDPhiJJVCent_MixMachine_Sideband_p[cI][eI][systI] = new mixMachine("photonPtJtDPhiJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + systStrVect[systI] + "_" + gammaJtDPhiStr + "_Sideband", multiFlag, &photonPtJtDPhiJJVCent_Config);
-	photonPtJtDRJJVCent_MixMachine_Sideband_p[cI][eI][systI] = new mixMachine("photonPtJtDRJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + systStrVect[systI] + "_" + gammaJtDPhiStr + "_Sideband", multiFlag, &photonPtJtDRJJVCent_Config);
-      }
-          
+	photonPtJtDRJJVCent_MixMachine_Sideband_p[cI][eI][systI] = new mixMachine("photonPtJtDRJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + systStrVect[systI] + "_" + gammaJtDPhiStr + "_Sideband", multiFlag, &photonPtJtDRJJVCent_Config);       
+      }               
       photonPtVCent_RAW_p[cI][eI] = new TH1D(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_RAW_h").c_str(), ";Photon p_{T};Counts (Weighted)", nGammaPtBins, gammaPtBins);
       if(isMC){
 	photonPtVCent_RAWWithTruthMatch_p[cI][eI] = new TH1D(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_RAWWithTruthMatch_h").c_str(), ";Photon p_{T};Counts (Weighted)", nGammaPtBins, gammaPtBins);
 	photonPtVCent_RAWNoTruthMatch_p[cI][eI] = new TH1D(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_RAWNoTruthMatch_h").c_str(), ";Photon p_{T};Counts (Weighted)", nGammaPtBins, gammaPtBins);
       }
+
       photonPtVCent_RAWSideband_p[cI][eI] = new TH1D(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_RAWSideband_h").c_str(), ";Photon p_{T};Counts (Weighted)", nGammaPtBins, gammaPtBins);
+
       if(isMC){
 	photonPtVCent_TRUTH_p[cI][eI] = new TH1D(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_TRUTH_h").c_str(), ";Photon p_{T};Counts (Weighted)", nGammaPtBins, gammaPtBins);
 	photonPtVCent_TRUTHWithRecoMatch_p[cI][eI] = new TH1D(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_TRUTHWithRecoMatch_h").c_str(), ";Photon p_{T};Counts (Weighted)", nGammaPtBins, gammaPtBins);
 	photonPtVCent_TRUTHNoRecoMatch_p[cI][eI] = new TH1D(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_TRUTHNoRecoMatch_h").c_str(), ";Photon p_{T};Counts (Weighted)", nGammaPtBins, gammaPtBins);
       }
-                        
+      
       setSumW2({photonPtVCent_RAW_p[cI][eI], photonPtVCent_RAWSideband_p[cI][eI]});
       if(isMC) setSumW2({photonPtVCent_RAWWithTruthMatch_p[cI][eI], photonPtVCent_RAWNoTruthMatch_p[cI][eI], photonPtVCent_TRUTH_p[cI][eI], photonPtVCent_TRUTHWithRecoMatch_p[cI][eI], photonPtVCent_TRUTHNoRecoMatch_p[cI][eI]});	       
-
+      
       if(/*doMix*/true || isPP){
 	photonPtVCent_PURCORR_p[cI][eI] = new TH1D(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_PURCORR_h").c_str(), ";Photon p_{T};Counts (Weighted)", nGammaPtBins, gammaPtBins);
 
@@ -2454,7 +2303,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  return 1;
 	}
       }      
-
+    
       //We will have to construct some alt histograms for systematics so we will do this in a loop
       for(unsigned int systI = 0; systI < systStrVect.size(); ++systI){
 	//Go thru the photons to find the reco. match of truthPhoton + calc corrected iso
@@ -2588,10 +2437,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	//If no reco match exists just fill
 	
 	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-		
-	bool truthPhotonHasRecoMatch = false;
-	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-	
+			
 	for(unsigned int pI = 0; pI < photon_pt_p->size(); ++pI){
 	  //Passes basic fiducial cuts
 	  bool isGoodReco = photonEtaIsGood(photon_eta_p->at(pI));
@@ -2686,7 +2532,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	      
 	      //Good reco jet requirements - pass eta cuts, pass pt cuts, pass dr cut and (later) pass dphi w/ gamma cut
 	      bool isGoodRecoJet = jtPtToUse >= jtPtBinsLowReco && jtPtToUse < jtPtBinsHighReco;
-	      if(isStrSame(systStrVect[systI], "JTPTCUT")) isGoodRecoJet = jtPtToUse >= jtPtBinsLowRecoSyst;
+	      if(isStrSame(systStrVect[systI], "JTPTCUT")) isGoodRecoJet = jtPtToUse >= jtPtBinsLowRecoSyst  && jtPtToUse < jtPtBinsHighReco;
 	      isGoodRecoJet = isGoodRecoJet && jtEtaToUse >= jtEtaBinsLow && jtEtaToUse <= jtEtaBinsHigh;
 	      Float_t dPhiRecoGammaJet = TMath::Abs(getDPHI(jtPhiToUse, photon_phi_p->at(pI)));
 	      Float_t dRRecoGammaJet = getDR(jtEtaToUse, jtPhiToUse, photon_eta_p->at(pI), photon_phi_p->at(pI));
@@ -2818,7 +2664,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		Bool_t aJJValueGood = aJJValue >= ajBinsLowReco && aJJValue < ajBinsHighReco;
 		Float_t dPhiJJValue = TMath::Abs(getDPHI(goodRecoJet1.Phi(), goodRecoJet2.Phi()));
 		Float_t dRJJValue = getDR(goodRecoJet1.Eta(), goodRecoJet1.Phi(), goodRecoJet2.Eta(), goodRecoJet2.Phi());
-		Bool_t dRJJPasses = dRJJValue >= mixJetExclusionDR;
+		Bool_t dRJJPasses = dRJJValue >= mixJetExclusionDR;	     	      
+
+		//Use the binflattener for mixmachines
+		if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+		Float_t subJtGammaPtValReco = -999.0;
+		if(isGoodReco) subJtGammaPtValReco = subJtGammaPtBinFlattener.GetGlobalBinCenterFromBin12Val(photon_pt_p->at(pI), goodRecoJet2.Pt(), __LINE__);
+		Float_t subJtGammaPtValTruth = -999.0;
+
 		goodRecoJet2 += goodRecoJet1;
 		
 		if(!dRJJPasses) continue;
@@ -2839,6 +2692,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		  goodTruthJet2.SetPtEtaPhiM(aktR_truth_jet_pt_p->at(truthPos2), aktR_truth_jet_eta_p->at(truthPos2), aktR_truth_jet_phi_p->at(truthPos2), 0.0);
 		  
 		  aJJValueTruth = TMath::Abs(goodTruthJet1.Pt() - goodTruthJet2.Pt())/truthPhotonPt;
+
+		  //Swapping effects may seriously matter here
+		  subJtGammaPtValTruth = subJtGammaPtBinFlattener.GetGlobalBinCenterFromBin12Val(truthPhotonPt, goodTruthJet2.Pt(), __LINE__);
 		  
 		  goodTruthJet2 += goodTruthJet1;
 		  
@@ -2851,42 +2707,44 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		
 		Float_t multiJtDPhiReco = TMath::Abs(getDPHI(photon_phi_p->at(pI), goodRecoJet2.Phi()));
 		Float_t xJJValue = goodRecoJet2.Pt() / photon_pt_p->at(pI);
-		Bool_t xJJValueGood = xJJValue >= xjjBinsLowReco && xJJValue < xjjBinsHighReco;
+		Bool_t xJJValueGood = xJJValue >= xjjBinsLowReco && xJJValue < xjjBinsHighReco;	       
 		
 		for(auto const barrelEC : barrelECFill){	    
 		  if(isGoodRecoSignal){
-		    photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRaw(multiJtDPhiReco, photon_pt_p->at(pI), fullWeight);
+		    photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRaw(multiJtDPhiReco, subJtGammaPtValReco, fullWeight);
 		    
 		    if(isMC){
 		      if(isTruthPhotonMatched && isTruthMatched){
-			photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRawWithTruthMatch(multiJtDPhiReco, photon_pt_p->at(pI), fullWeight);
+			photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRawWithTruthMatch(multiJtDPhiReco, subJtGammaPtValReco, fullWeight);
 			photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelEC][systI]->PushTrackingMap({truthID1, truthID2});
 		      }
-		      else photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRawNoTruthMatch(multiJtDPhiReco, photon_pt_p->at(pI), fullWeight);
+		      else photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRawNoTruthMatch(multiJtDPhiReco, subJtGammaPtValReco, fullWeight);
 		    }
 		  }
-		  else if(isGoodRecoSideband) photonPtJtDPhiJJGVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYRaw(multiJtDPhiReco, photon_pt_p->at(pI), fullWeight);
+		  else if(isGoodRecoSideband) photonPtJtDPhiJJGVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYRaw(multiJtDPhiReco, subJtGammaPtValReco, fullWeight);
 		  
 		  //If it fails the reco cut we do not fill
 		  if(multiJtDPhiReco < gammaMultiJtDPhiCut) continue;	    
+
+	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 		  
 		  if(isGoodRecoSignal){
-		    if(xJJValueGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRaw(xJJValue, photon_pt_p->at(pI), fullWeight);
-		    if(aJJValueGood) photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRaw(aJJValue, photon_pt_p->at(pI), fullWeight);
+		    if(xJJValueGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRaw(xJJValue, subJtGammaPtValReco, fullWeight);
+		    if(aJJValueGood) photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRaw(aJJValue, subJtGammaPtValReco, fullWeight);
 		  
-		    photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRaw(dPhiJJValue, photon_pt_p->at(pI), fullWeight);
-		    photonPtJtDRJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRaw(dRJJValue, photon_pt_p->at(pI), fullWeight);
+		    photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRaw(dPhiJJValue, subJtGammaPtValReco, fullWeight);
+		    photonPtJtDRJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRaw(dRJJValue, subJtGammaPtValReco, fullWeight);
 		    
 		    if(isMC){
 		      //xJJ Handling
 		      if(xJJValueGood){
 			bool goodTruth = isTruthPhotonMatched && isTruthMatchedDPhi && xJJValueTruthGood;
 			if(goodTruth){
-			  photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRawWithTruthMatch(xJJValue, photon_pt_p->at(pI), fullWeight);		  		      
+			  photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRawWithTruthMatch(xJJValue, subJtGammaPtValReco, fullWeight);		  		      
 			  photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC][systI]->PushTrackingMap({truthID1, truthID2}); 
 			}
 			else{
-			  photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRawNoTruthMatch(xJJValue, photon_pt_p->at(pI), fullWeight);		  		      
+			  photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRawNoTruthMatch(xJJValue, subJtGammaPtValReco, fullWeight);		  		      
 			}
 		      }
 		      
@@ -2894,11 +2752,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		      if(aJJValueGood){
 			bool goodTruth = isTruthPhotonMatched && isTruthMatchedDPhi;
 			if(goodTruth){
-			  photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRawWithTruthMatch(aJJValue, photon_pt_p->at(pI), fullWeight);		  		      
+			  photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRawWithTruthMatch(aJJValue, subJtGammaPtValReco, fullWeight);		  		      
 			  photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC][systI]->PushTrackingMap({truthID1, truthID2}); 
 			}
 			else{
-			  photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRawNoTruthMatch(aJJValue, photon_pt_p->at(pI), fullWeight);		  		      
+			  photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRawNoTruthMatch(aJJValue, subJtGammaPtValReco, fullWeight);		  		      
 			}
 		      }
 		      
@@ -2906,11 +2764,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		      {
 			bool goodTruth = isTruthPhotonMatched && isTruthMatchedDPhi;
 			if(goodTruth){
-			  photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRawWithTruthMatch(dPhiJJValue, photon_pt_p->at(pI), fullWeight);		  		      
+			  photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRawWithTruthMatch(dPhiJJValue, subJtGammaPtValReco, fullWeight);		  		      
 			  photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC][systI]->PushTrackingMap({truthID1, truthID2}); 
 			}
 			else{
-			  photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRawNoTruthMatch(dPhiJJValue, photon_pt_p->at(pI), fullWeight);		  		      
+			  photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRawNoTruthMatch(dPhiJJValue, subJtGammaPtValReco, fullWeight);		  		      
 			}
 		      }
 		      
@@ -2918,25 +2776,27 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		      {
 			bool goodTruth = isTruthPhotonMatched && isTruthMatchedDPhi;
 			if(goodTruth){
-			  photonPtJtDRJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRawWithTruthMatch(dRJJValue, photon_pt_p->at(pI), fullWeight);		  		      
+			  photonPtJtDRJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRawWithTruthMatch(dRJJValue, subJtGammaPtValReco, fullWeight);		  		      
 			  photonPtJtDRJJVCent_MixMachine_p[centPos][barrelEC][systI]->PushTrackingMap({truthID1, truthID2}); 
 			}
 			else{
-			  photonPtJtDRJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRawNoTruthMatch(dRJJValue, photon_pt_p->at(pI), fullWeight);		  		      
+			  photonPtJtDRJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRawNoTruthMatch(dRJJValue, subJtGammaPtValReco, fullWeight);		  		      
 			}
 		      }
 		    }
 		  }//isGoodRecoSignal if statement ends
 		  else if(isGoodRecoSideband){
-		    if(xJJValueGood) photonPtJtXJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYRaw(xJJValue, photon_pt_p->at(pI), fullWeight);
-		    if(aJJValueGood) photonPtJtAJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYRaw(aJJValue, photon_pt_p->at(pI), fullWeight);
+		    if(xJJValueGood) photonPtJtXJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYRaw(xJJValue, subJtGammaPtValReco, fullWeight);
+		    if(aJJValueGood) photonPtJtAJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYRaw(aJJValue, subJtGammaPtValReco, fullWeight);
 		    
-		    photonPtJtDPhiJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYRaw(dPhiJJValue, photon_pt_p->at(pI), fullWeight);
-		    photonPtJtDRJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYRaw(dRJJValue, photon_pt_p->at(pI), fullWeight);
+		    photonPtJtDPhiJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYRaw(dPhiJJValue, subJtGammaPtValReco, fullWeight);
+		    photonPtJtDRJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYRaw(dRJJValue, subJtGammaPtValReco, fullWeight);
 		  }
 		}//End barrelECFill	      
 	      }//for(goodRecoJets2)
 	    }//End multijet loop, for(goodRecoJets)
+
+	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 	    
 	    //If doMix, begin running the mixing
 	    if(doMix){
@@ -3009,7 +2869,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		  Float_t dRRecoGammaJet = getDR(jets[jI].Eta(), jets[jI].Phi(), photon_eta_p->at(pI), photon_phi_p->at(pI));
 		  Float_t dPhiRecoGammaJet = TMath::Abs(getDPHI(jets[jI].Phi(), photon_phi_p->at(pI)));
 		  bool isGoodRecoJet = jets[jI].Pt() >= jtPtBinsLowReco && jets[jI].Pt() < jtPtBinsHighReco;
-		  if(isStrSame(systStrVect[systI], "JTPTCUT")) isGoodRecoJet = jets[jI].Pt() >= jtPtBinsLowRecoSyst;
+		  if(isStrSame(systStrVect[systI], "JTPTCUT")) isGoodRecoJet = jets[jI].Pt() >= jtPtBinsLowRecoSyst && jets[jI].Pt() < jtPtBinsHighReco;
 
 		  isGoodRecoJet = isGoodRecoJet && jets[jI].Eta() >= jtEtaBinsLow && jets[jI].Eta() <= jtEtaBinsHigh;
 		  isGoodRecoJet = isGoodRecoJet && dRRecoGammaJet >= gammaExclusionDR;
@@ -3051,7 +2911,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		  Float_t dRRecoGammaJet = getDR(jets2[jI].Eta(), jets2[jI].Phi(), photon_eta_p->at(pI), photon_phi_p->at(pI));
 		  Float_t dPhiRecoGammaJet = TMath::Abs(getDPHI(jets2[jI].Phi(), photon_phi_p->at(pI)));
 		  bool isGoodRecoJet = jets2[jI].Pt() >= jtPtBinsLowReco && jets2[jI].Pt() < jtPtBinsHighReco;
-		  if(isStrSame(systStrVect[systI], "JTPTCUT")) isGoodRecoJet = jets2[jI].Pt() >= jtPtBinsLowRecoSyst;
+		  if(isStrSame(systStrVect[systI], "JTPTCUT")) isGoodRecoJet = jets2[jI].Pt() >= jtPtBinsLowRecoSyst && jets2[jI].Pt() < jtPtBinsHighReco;
 
 		  isGoodRecoJet = isGoodRecoJet && jets2[jI].Eta() >= jtEtaBinsLow && jets2[jI].Eta() <= jtEtaBinsHigh;
 		  isGoodRecoJet = isGoodRecoJet && dRRecoGammaJet >= gammaExclusionDR;
@@ -3079,15 +2939,18 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		    Float_t dPhiJJValue = TMath::Abs(getDPHI(jet1.Phi(), jet2.Phi()));
 		    Float_t dRJJValue = getDR(jet1.Eta(), jet1.Phi(), jet2.Eta(), jet2.Phi());
 		    
+		    Float_t subJtGammaPtVal = -999.0;
+		    if(isGoodReco) subJtGammaPtVal = subJtGammaPtBinFlattener.GetGlobalBinCenterFromBin12Val(photon_pt_p->at(pI), jet2.Pt(), __LINE__);
+
 		    jet2 += jet1;
 		    //enforce multijetdphi cut
 		    Float_t multiJtDPhi = TMath::Abs(getDPHI(jet2.Phi(), photon_phi_p->at(pI)));
 		    for(auto const barrelEC : barrelECFill){
 		      if(isGoodRecoSignal){
-			photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMix(multiJtDPhi, photon_pt_p->at(pI), mixWeight);
+			photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMix(multiJtDPhi, subJtGammaPtVal, mixWeight);
 		      }
 		      else if(isGoodRecoSideband){
-			photonPtJtDPhiJJGVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMix(multiJtDPhi, photon_pt_p->at(pI), mixWeight);
+			photonPtJtDPhiJJGVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMix(multiJtDPhi, subJtGammaPtVal, mixWeight);
 		      }
 		    }
 		    
@@ -3098,22 +2961,24 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		    
 		    for(auto const barrelEC : barrelECFill){
 		      if(isGoodRecoSignal){
-			if(xJJValueGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMix(xJJValue, photon_pt_p->at(pI), mixWeight);		  
-			if(aJJValueGood) photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMix(aJJValue, photon_pt_p->at(pI), mixWeight);
+			if(xJJValueGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMix(xJJValue, subJtGammaPtVal, mixWeight);		  
+			if(aJJValueGood) photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMix(aJJValue, subJtGammaPtVal, mixWeight);
 			
-			photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMix(dPhiJJValue, photon_pt_p->at(pI), mixWeight);
-			photonPtJtDRJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMix(dRJJValue, photon_pt_p->at(pI), mixWeight);
+			photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMix(dPhiJJValue, subJtGammaPtVal, mixWeight);
+			photonPtJtDRJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMix(dRJJValue, subJtGammaPtVal, mixWeight);
 		      }
 		      else if(isGoodRecoSideband){
-			if(xJJValueGood) photonPtJtXJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMix(xJJValue, photon_pt_p->at(pI), mixWeight);
-			if(aJJValueGood) photonPtJtAJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMix(aJJValue, photon_pt_p->at(pI), mixWeight);
+			if(xJJValueGood) photonPtJtXJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMix(xJJValue, subJtGammaPtVal, mixWeight);
+			if(aJJValueGood) photonPtJtAJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMix(aJJValue, subJtGammaPtVal, mixWeight);
 		      
-			photonPtJtDPhiJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMix(dPhiJJValue, photon_pt_p->at(pI), mixWeight);
-			photonPtJtDRJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMix(dRJJValue, photon_pt_p->at(pI), mixWeight);
+			photonPtJtDPhiJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMix(dPhiJJValue, subJtGammaPtVal, mixWeight);
+			photonPtJtDRJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMix(dRJJValue, subJtGammaPtVal, mixWeight);
 		      }
 		    }//end for(barrelECFill){
 		  }//end for(jI2 < passingJets2.size()){
 		}//end for(jI < passingJets1.size()){
+
+		if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 		
 		//Now do mixed event crossed w/ current event i.e. one real one fake jet	    
 		for(unsigned int jI = 0; jI < goodRecoJets.size(); ++jI){
@@ -3131,17 +2996,20 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		    
 		    Float_t dPhiJJValue = TMath::Abs(getDPHI(signalJet.Phi(), mixJet.Phi()));
 		    Float_t dRJJValue = getDR(signalJet.Eta(), signalJet.Phi(), mixJet.Eta(), mixJet.Phi());
+
+		    Float_t subJtGammaPtVal = -999.0;
+		    if(isGoodReco) subJtGammaPtVal = subJtGammaPtBinFlattener.GetGlobalBinCenterFromBin12Val(photon_pt_p->at(pI), mixJet.Pt(), __LINE__);
 		    
 		    mixJet += signalJet;
 		    //enforce multijetdphi cut
 		    Float_t multiJtDPhi = TMath::Abs(getDPHI(mixJet.Phi(), photon_phi_p->at(pI)));
-		    
+
 		    for(auto const barrelEC : barrelECFill){
 		      if(isGoodRecoSignal){
-			photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMix(multiJtDPhi, photon_pt_p->at(pI), mixWeight);
+			photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMix(multiJtDPhi, subJtGammaPtVal, mixWeight);
 		      }
 		      else if(isGoodRecoSideband){
-			photonPtJtDPhiJJGVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMix(multiJtDPhi, photon_pt_p->at(pI), mixWeight);
+			photonPtJtDPhiJJGVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMix(multiJtDPhi, subJtGammaPtVal, mixWeight);
 		      }
 		    }		
 		    
@@ -3152,18 +3020,18 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		    
 		    for(auto const barrelEC : barrelECFill){
 		      if(isGoodRecoSignal){
-			if(xJJValueGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMix(xJJValue, photon_pt_p->at(pI), mixWeight);		  
-			if(aJJValueGood) photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMix(aJJValue, photon_pt_p->at(pI), mixWeight);
+			if(xJJValueGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMix(xJJValue, subJtGammaPtVal, mixWeight);		  
+			if(aJJValueGood) photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMix(aJJValue, subJtGammaPtVal, mixWeight);
 			
-			photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMix(dPhiJJValue, photon_pt_p->at(pI), mixWeight);
-			photonPtJtDRJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMix(dRJJValue, photon_pt_p->at(pI), mixWeight);
+			photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMix(dPhiJJValue, subJtGammaPtVal, mixWeight);
+			photonPtJtDRJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMix(dRJJValue, subJtGammaPtVal, mixWeight);
 		      }
 		      else if(isGoodRecoSideband){
-			if(xJJValueGood) photonPtJtXJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMix(xJJValue, photon_pt_p->at(pI), mixWeight);
-			if(aJJValueGood) photonPtJtAJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMix(aJJValue, photon_pt_p->at(pI), mixWeight);
+			if(xJJValueGood) photonPtJtXJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMix(xJJValue, subJtGammaPtVal, mixWeight);
+			if(aJJValueGood) photonPtJtAJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMix(aJJValue, subJtGammaPtVal, mixWeight);
 			
-			photonPtJtDPhiJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMix(dPhiJJValue, photon_pt_p->at(pI), mixWeight);
-			photonPtJtDRJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMix(dRJJValue, photon_pt_p->at(pI), mixWeight);
+			photonPtJtDPhiJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMix(dPhiJJValue, subJtGammaPtVal, mixWeight);
+			photonPtJtDRJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMix(dRJJValue, subJtGammaPtVal, mixWeight);
 		      }
 		    }//end for(barrelECFill){
 		  }//end for(jI2<passingJets1.size){
@@ -3174,8 +3042,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		  TLorentzVector jet1 = passingJets1[jI];
 		  
 		  for(unsigned int jI2 = 0; jI2 < passingJets2.size(); ++jI2){
-		    TLorentzVector jet2 = passingJets2[jI2];
-		    
+		    TLorentzVector jet2 = passingJets2[jI2];	
+	    
 		    //enforce dR exclusion region
 		    Float_t dR = getDR(jet1.Eta(), jet1.Phi(), jet2.Eta(), jet2.Phi());
 		    if(dR < mixJetExclusionDR) continue;
@@ -3186,16 +3054,18 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		    Float_t dPhiJJValue = TMath::Abs(getDPHI(jet1.Phi(), jet2.Phi()));
 		    Float_t dRJJValue = getDR(jet1.Eta(), jet1.Phi(), jet2.Eta(), jet2.Phi());
 		    
+		    Float_t subJtGammaPtVal = -999.0;
+		    if(isGoodReco) subJtGammaPtVal = subJtGammaPtBinFlattener.GetGlobalBinCenterFromBin12Val(photon_pt_p->at(pI), jet2.Pt(), __LINE__);
+
 		    jet2 += jet1;
 		    //enforce multijetdphi cut
-		    Float_t multiJtDPhi = TMath::Abs(getDPHI(jet2.Phi(), photon_phi_p->at(pI)));
-		    
+		    Float_t multiJtDPhi = TMath::Abs(getDPHI(jet2.Phi(), photon_phi_p->at(pI)));		    
 		    for(auto const barrelEC : barrelECFill){
 		      if(isGoodRecoSignal){
-			photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMixCorrection(multiJtDPhi, photon_pt_p->at(pI), mixWeight);
+			photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMixCorrection(multiJtDPhi, subJtGammaPtVal, mixWeight);
 		      }
 		      else if(isGoodRecoSideband){
-			photonPtJtDPhiJJGVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMixCorrection(multiJtDPhi, photon_pt_p->at(pI), mixWeight);
+			photonPtJtDPhiJJGVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMixCorrection(multiJtDPhi, subJtGammaPtVal, mixWeight);
 		      }
 		    }//end for(barrelECFill){
 		    
@@ -3206,20 +3076,20 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		    
 		    for(auto const barrelEC : barrelECFill){
 		      if(isGoodRecoSignal){
-			if(xJJValueGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMixCorrection(xJJValue, photon_pt_p->at(pI), mixWeight);
-			if(aJJValueGood) photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMixCorrection(aJJValue, photon_pt_p->at(pI), mixWeight);
+			if(xJJValueGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMixCorrection(xJJValue, subJtGammaPtVal, mixWeight);
+			if(aJJValueGood) photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMixCorrection(aJJValue, subJtGammaPtVal, mixWeight);
 			
-			photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMixCorrection(dPhiJJValue, photon_pt_p->at(pI), mixWeight);
-			photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMixCorrection(multiJtDPhi, photon_pt_p->at(pI), mixWeight);
-			photonPtJtDRJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMixCorrection(dRJJValue, photon_pt_p->at(pI), mixWeight);
+			photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMixCorrection(dPhiJJValue, subJtGammaPtVal, mixWeight);
+			photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMixCorrection(multiJtDPhi, subJtGammaPtVal, mixWeight);
+			photonPtJtDRJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYMixCorrection(dRJJValue, subJtGammaPtVal, mixWeight);
 		      }
 		      else if(isGoodRecoSideband){
-			if(xJJValueGood) photonPtJtXJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMixCorrection(xJJValue, photon_pt_p->at(pI), mixWeight);
-			if(aJJValueGood) photonPtJtAJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMixCorrection(aJJValue, photon_pt_p->at(pI), mixWeight);
+			if(xJJValueGood) photonPtJtXJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMixCorrection(xJJValue, subJtGammaPtVal, mixWeight);
+			if(aJJValueGood) photonPtJtAJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMixCorrection(aJJValue, subJtGammaPtVal, mixWeight);
 			
-			photonPtJtDPhiJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMixCorrection(dPhiJJValue, photon_pt_p->at(pI), mixWeight);
-			photonPtJtDPhiJJGVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMixCorrection(multiJtDPhi, photon_pt_p->at(pI), mixWeight);
-			photonPtJtDRJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMixCorrection(dRJJValue, photon_pt_p->at(pI), mixWeight);
+			photonPtJtDPhiJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMixCorrection(dPhiJJValue, subJtGammaPtVal, mixWeight);
+			photonPtJtDPhiJJGVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMixCorrection(multiJtDPhi, subJtGammaPtVal, mixWeight);
+			photonPtJtDRJJVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYMixCorrection(dRJJValue, subJtGammaPtVal, mixWeight);
 		      }
 		    }//end for(barrelECFill){
 		  }
@@ -4680,6 +4550,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
   config_p->SetValue("SYSTNAMES", systStrForConfig.c_str());
   config_p->SetValue("SYSTTYPES", systTypeForConfig.c_str());
+
+  config_p->SetValue("SUBJTGAMMAPTMIN", 0.0);
+  config_p->SetValue("SUBJTGAMMAPTMAX", subJtGammaPtMax);
   
   config_p->Write("config", TObject::kOverwrite);
 
@@ -4704,8 +4577,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
   delete vzPassing_p;  
   delete centPassing_p;
-  delete truPhoPtPassing_p;
-  delete leadingPhoPtPassing_p;
+  delete truPhoPtPassing_p;  delete leadingPhoPtPassing_p;
   delete leadingPhoEtaPassing_p;
   delete leadingPhoIsoPassing_p;
   delete leadingPhoTightPassing_p;

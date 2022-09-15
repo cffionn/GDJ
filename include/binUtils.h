@@ -283,7 +283,7 @@ h in coarser binning. returning"  << std::endl;
   return;
 }
 
-bool checkMinBinWidth(std::vector<float> bins, float minBinWidth)
+inline bool checkMinBinWidth(std::vector<float> bins, float minBinWidth)
 {
   bool allBinsGood = true;
   for(int bI = 0; bI < ((int)bins.size())-1; ++bI){
@@ -296,7 +296,7 @@ bool checkMinBinWidth(std::vector<float> bins, float minBinWidth)
 }
 
 template <typename T>
-bool checkHistContainsBins(std::vector<float> bins, T* hist_p, float deltaValue, bool isYAxis)
+inline bool checkHistContainsBins(std::vector<float> bins, T* hist_p, float deltaValue, bool isYAxis)
 {
   bool allBinsFound = true;
   std::string xyStr = "X";
@@ -347,7 +347,7 @@ bool checkHistContainsBins(std::vector<float> bins, T* hist_p, float deltaValue,
   return allBinsFound;
 }
 
-bool checkHistContainsBins(std::vector<float> bins, TH1F* hist_p, float deltaValue)
+inline bool checkHistContainsBins(std::vector<float> bins, TH1F* hist_p, float deltaValue)
 {
   bool allBinsFound = true;
   std::string xyStr = "X";
@@ -394,7 +394,7 @@ bool checkHistContainsBins(std::vector<float> bins, TH1F* hist_p, float deltaVal
   return allBinsFound;
 }
 
-bool checkHistContainsBins(std::vector<float> bins, Int_t nHistBins, Double_t histBins[], float deltaValue)
+inline bool checkHistContainsBins(std::vector<float> bins, Int_t nHistBins, Double_t histBins[], float deltaValue)
 {
   std::string binsStr = "";
   for(Int_t hI = 0; hI < nHistBins+1; ++hI){
@@ -444,13 +444,13 @@ bool checkHistContainsBins(std::vector<float> bins, Int_t nHistBins, Double_t hi
   return allBinsFound;
 }
 
-bool isFloatSame(float float1, float float2, float deltaValue)
+inline bool isFloatSame(float float1, float float2, float deltaValue)
 { 
   return TMath::Abs(float1 - float2) < deltaValue;
 }
 
 
-Int_t truncateBinRange(Int_t inNBins, Double_t inBins[], Double_t low, Double_t high, Double_t deltaVal, Double_t outBins[])
+inline Int_t truncateBinRange(Int_t inNBins, Double_t inBins[], Double_t low, Double_t high, Double_t deltaVal, Double_t outBins[])
 {
   Int_t outNBins = -1;
   bool hitLow = false;
@@ -476,7 +476,7 @@ Int_t truncateBinRange(Int_t inNBins, Double_t inBins[], Double_t low, Double_t 
 
 
 template <typename T>
-int hist1BinToHist2(T* inHist_p, bool isX, Int_t inBinPos, Float_t deltaVal, TH1F* outHist_p)
+inline int hist1BinToHist2(T* inHist_p, bool isX, Int_t inBinPos, Float_t deltaVal, TH1F* outHist_p)
 {
   int binPos = -1;
 
@@ -509,5 +509,25 @@ int hist1BinToHist2(T* inHist_p, bool isX, Int_t inBinPos, Float_t deltaVal, TH1
   return binPos;
 }
 
+inline int getBinPosFromValue(double value, std::vector<double> bins)
+{
+  int binPos = -1;
+  if(bins.size() <= 1){
+    std::cout << "binUtils.h getBinPosFromValue error: Given bins have size \'" << bins.size() << "\', less than the minimum necessary 2. return -1" << std::endl;
+  }
+  else if(value < bins[0] || value >= bins[bins.size()-1]){
+    std::cout << "binUtils.h getBinPosFromValue error: Value \'" << value << "\' is outside of given bins, range \'" << bins[0] << "-" << bins[bins.size()-1] << "\'. return -1" << std::endl;
+  }
+  else{
+    for(unsigned int bI = 0; bI < bins.size()-1; ++bI){
+      if(value >= bins[bI] && value < bins[bI+1]){
+	binPos = bI;
+	break;
+      }
+    }
+  }
+
+  return binPos;
+}
 
 #endif
