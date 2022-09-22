@@ -3185,6 +3185,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	      
 	      if(dRJJValue < mixJetExclusionDR) continue;
 	      
+	      
+	      Float_t subLeadingJetPt = goodTruthJet1.Pt();
+	      if(goodTruthJet2.Pt() < subLeadingJetPt) subLeadingJetPt = goodTruthJet2.Pt();
+	      Float_t subJtGammaPtValTruth = subJtGammaPtBinFlattener.GetGlobalBinCenterFromBin12Val(truthPhotonPt, subLeadingJetPt, __LINE__);
+	      
 	      goodTruthJet2 += goodTruthJet1;
 	      
 	      Float_t multiJtDPhiValue = TMath::Abs(getDPHI(truthPhotonPhi, goodTruthJet2.Phi()));
@@ -3192,41 +3197,41 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	      Bool_t xJJValueGood = xJJValue >= xjjBinsLow && xJJValue < xjjBinsHigh;
 	      
 	      for(auto const barrelECTruth : barrelECFillTruth){
-		photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruth(multiJtDPhiValue, truthPhotonPt, fullWeight);
+		photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruth(multiJtDPhiValue, subJtGammaPtValTruth, fullWeight);
 		
 		bool truthFillWithRecoPos = photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelECTruth][systI]->IsInTrackingMap(truthCompID1) || photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelECTruth][systI]->IsInTrackingMap(truthCompID2);
-		
-		if(truthFillWithRecoPos) photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruthWithRecoMatch(multiJtDPhiValue, truthPhotonPt, fullWeight);
-		else photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruthNoRecoMatch(multiJtDPhiValue, truthPhotonPt, fullWeight);
-	    }	  
+			      
+		if(truthFillWithRecoPos) photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruthWithRecoMatch(multiJtDPhiValue, subJtGammaPtValTruth, fullWeight);
+		else photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruthNoRecoMatch(multiJtDPhiValue, subJtGammaPtValTruth, fullWeight);
+	      }	  
 	      
 	      if(multiJtDPhiValue < gammaMultiJtDPhiCut) continue; //We dont fill truth that fails this cut
 	      
 	      for(auto const barrelECTruth : barrelECFillTruth){
 	      
 		bool truthFillWithRecoPos = photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->IsInTrackingMap(truthCompID1) || photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->IsInTrackingMap(truthCompID2);
-		photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruth(xJJValue, truthPhotonPt, fullWeight);
-		if(truthFillWithRecoPos) photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruthWithRecoMatch(xJJValue, truthPhotonPt, fullWeight);
+		photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruth(xJJValue, subJtGammaPtValTruth, fullWeight);
+		if(truthFillWithRecoPos) photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruthWithRecoMatch(xJJValue, subJtGammaPtValTruth, fullWeight);
 		else{
-		  photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruthNoRecoMatch(xJJValue, truthPhotonPt, fullWeight);
+		  photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruthNoRecoMatch(xJJValue, subJtGammaPtValTruth, fullWeight);
 		}
 		
 		truthFillWithRecoPos = photonPtJtAJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->IsInTrackingMap(truthCompID1) || photonPtJtAJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->IsInTrackingMap(truthCompID2);
-		photonPtJtAJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruth(aJJValue, truthPhotonPt, fullWeight);
-		if(truthFillWithRecoPos) photonPtJtAJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruthWithRecoMatch(aJJValue, truthPhotonPt, fullWeight);
-		else photonPtJtAJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruthNoRecoMatch(aJJValue, truthPhotonPt, fullWeight);
+		photonPtJtAJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruth(aJJValue, subJtGammaPtValTruth, fullWeight);
+		if(truthFillWithRecoPos) photonPtJtAJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruthWithRecoMatch(aJJValue, subJtGammaPtValTruth, fullWeight);
+		else photonPtJtAJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruthNoRecoMatch(aJJValue, subJtGammaPtValTruth, fullWeight);
 	      
 		
 		truthFillWithRecoPos = photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->IsInTrackingMap(truthCompID1) || photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->IsInTrackingMap(truthCompID2);
-		photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruth(dPhiJJValue, truthPhotonPt, fullWeight);
-		if(truthFillWithRecoPos) photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruthWithRecoMatch(dPhiJJValue, truthPhotonPt, fullWeight);
-		else photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruthNoRecoMatch(dPhiJJValue, truthPhotonPt, fullWeight);
+		photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruth(dPhiJJValue, subJtGammaPtValTruth, fullWeight);
+		if(truthFillWithRecoPos) photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruthWithRecoMatch(dPhiJJValue, subJtGammaPtValTruth, fullWeight);
+		else photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruthNoRecoMatch(dPhiJJValue, subJtGammaPtValTruth, fullWeight);
 		
 		
 		truthFillWithRecoPos = photonPtJtDRJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->IsInTrackingMap(truthCompID1) || photonPtJtDRJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->IsInTrackingMap(truthCompID2);
-		photonPtJtDRJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruth(dRJJValue, truthPhotonPt, fullWeight);
-		if(truthFillWithRecoPos) photonPtJtDRJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruthWithRecoMatch(dRJJValue, truthPhotonPt, fullWeight);
-		else photonPtJtDRJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruthNoRecoMatch(dRJJValue, truthPhotonPt, fullWeight);
+		photonPtJtDRJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruth(dRJJValue, subJtGammaPtValTruth, fullWeight);
+		if(truthFillWithRecoPos) photonPtJtDRJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruthWithRecoMatch(dRJJValue, subJtGammaPtValTruth, fullWeight);
+		else photonPtJtDRJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruthNoRecoMatch(dRJJValue, subJtGammaPtValTruth, fullWeight);
 	      }	  
 	    }
 	  }      
