@@ -259,6 +259,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 					      "SAVEEXT",
 					      "DOLOGX",
 					      "DOLOGY",
+					      "DOJTPTCUT",
 					      "JETVARMIN.GLOBAL",
 					      "JETVARMAX.GLOBAL",
 					      "JETVARLEGX.GLOBAL.0",
@@ -319,6 +320,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 
   const bool doLogX = config_p->GetValue("DOLOGX", 0);
   const bool doLogY = config_p->GetValue("DOLOGY", 0);
+
+  const bool doJtPtCut = config_p->GetValue("DOJTPTCUT", 0);
   
   std::vector<std::string> validExt = {"pdf", "png"};
 
@@ -424,6 +427,13 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 							"JTPTBINSHIGH",
 							"JTPTBINSDOLOG",
 							"JTPTBINSDOCUSTOM",
+							"NSUBJTPTBINS",
+							"SUBJTPTBINSLOW",
+							"SUBJTPTBINSHIGH",
+							"SUBJTPTBINSDOLOG",
+							"SUBJTPTBINSDOCUSTOM",
+							"SUBJTGAMMAPTMIN",
+							"SUBJTGAMMAPTMAX",
 							"ISPP",
 							"NITER",
 							"JETR",
@@ -461,6 +471,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   const Bool_t isMultijet = isStrSame(varNameLower, "xjj") || isStrSame(varNameLower, "dphijjg") || isStrSame(varNameLower, "ajj") || isStrSame(varNameLower, "dphijj") || isStrSame(varNameLower, "drjj");
   
   const Float_t jtPtBinsLow = inUnfoldFileConfig_p->GetValue("JTPTBINSLOW", -999.0);
+  const Float_t jtPtBinsLowReco = inUnfoldFileConfig_p->GetValue("JTPTBINSLOWRECO", -999.0);
   const Float_t jtPtBinsHigh = inUnfoldFileConfig_p->GetValue("JTPTBINSHIGH", -999.0);
   
   //Add to global labels
@@ -573,6 +584,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   Double_t width2D = height2D*(1.0 - topMargin2D* - bottomMargin2D)/(1.0 - leftMargin2D - rightMargin2D);
   
   const Int_t nMaxPtBins = 200;
+
+  //GammaPt Bin Handling
   const Int_t nGammaPtBins = inUnfoldFileConfig_p->GetValue("NGAMMAPTBINS", 0);
   const Float_t gammaPtBinsLow = inUnfoldFileConfig_p->GetValue("GAMMAPTBINSLOW", 80.0);
   const Float_t gammaPtBinsHigh = inUnfoldFileConfig_p->GetValue("GAMMAPTBINSHIGH", 280.0);
@@ -581,10 +594,6 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   const Bool_t gammaPtBinsDoLog = (bool)inUnfoldFileConfig_p->GetValue("GAMMAPTBINSDOLOG", 1);
   const Bool_t gammaPtBinsDoCustom = (bool)inUnfoldFileConfig_p->GetValue("GAMMAPTBINSDOCUSTOM", 1);
   Double_t gammaPtBins[nMaxPtBins+1];
-
-  std::vector<Float_t> jetVarMax, jetVarMin;
-
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
   if(gammaPtBinsDoLog) getLogBins(gammaPtBinsLow, gammaPtBinsHigh, nGammaPtBins, gammaPtBins);
   else if(gammaPtBinsDoCustom){
@@ -611,10 +620,80 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   }
   else getLinBins(gammaPtBinsLow, gammaPtBinsHigh, nGammaPtBins, gammaPtBins);
 
+  //SubJtPt Bin Handling
+  const Int_t nSubJtPtBins = inUnfoldFileConfig_p->GetValue("NSUBJTPTBINS", 0);
+  const Float_t subJtPtBinsLow = inUnfoldFileConfig_p->GetValue("SUBJTPTBINSLOW", -1.0);
+  const Float_t subJtPtBinsHigh = inUnfoldFileConfig_p->GetValue("SUBJTPTBINSHIGH", -1.0);
+  const Bool_t subJtPtBinsDoLog = (bool)inUnfoldFileConfig_p->GetValue("SUBJTPTBINSDOLOG", 1);
+  const Bool_t subJtPtBinsDoCustom = (bool)inUnfoldFileConfig_p->GetValue("SUBJTPTBINSDOCUSTOM", 1);
+  Double_t subJtPtBins[nMaxPtBins+1];
+  Double_t subJtGammaPtMin = inUnfoldFileConfig_p->GetValue("SUBJTGAMMAPTMIN", -1000.0);
+  Double_t subJtGammaPtMax = inUnfoldFileConfig_p->GetValue("SUBJTGAMMAPTMAX", -1000.0);
+  Double_t subJtGammaPtBins[nMaxPtBins+1];
+  
+  if(subJtPtBinsDoLog) getLogBins(subJtPtBinsLow, subJtPtBinsHigh, nSubJtPtBins, subJtPtBins);
+  else if(subJtPtBinsDoCustom){
+    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
+    std::string subJtPtBinsStr = inUnfoldFileConfig_p->GetValue("SUBJTPTBINSCUSTOM", "");
+    if(subJtPtBinsStr.size() == 0){
+      std::cout << "No custom bins given. return 1" << std::endl;
+      return 1;
+    }
+    std::vector<float> subJtPtBinsTemp = strToVectF(subJtPtBinsStr);
+    Int_t nSubJtPtBinsTemp = ((Int_t)subJtPtBinsTemp.size()) - 1;
+    if(nSubJtPtBins != nSubJtPtBinsTemp){      
+      std::cout << "nSubJtPtBins dont match - by stored value \'" << nSubJtPtBins << "\', via vector \'" << nSubJtPtBinsTemp << "\'" << std::endl;
+      return 1;
+    }
+
+    for(unsigned int gI = 0; gI < subJtPtBinsTemp.size(); ++gI){
+      subJtPtBins[gI] = subJtPtBinsTemp[gI];
+    }
+
+    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
+  }
+  else getLinBins(subJtPtBinsLow, subJtPtBinsHigh, nSubJtPtBins, subJtPtBins);
+
+  binFlattener subJtGammaPtBinFlattener;
+  //Now create your flattened bins using the binFlattener class
+  if(!subJtGammaPtBinFlattener.Init("subJtGammaPtBinFlattener", nGammaPtBins, gammaPtBins, nSubJtPtBins, subJtPtBins)){
+    std::cout << "Error gdjNTupleToHist: Failure to init binFlattener, L" << __LINE__ << ". return 1" << std::endl;
+    return 1;
+  }
+  std::vector<double> subJtGammaPtBinsV = subJtGammaPtBinFlattener.GetFlattenedBins(subJtGammaPtMin, subJtGammaPtMax);
+  for(unsigned int sgI = 0; sgI < subJtGammaPtBinsV.size(); ++sgI){
+    subJtGammaPtBins[sgI] = subJtGammaPtBinsV[sgI];
+  }  
+
+
+  return 1;
+  
+  if(doJtPtCut){
+    bool jtPtCutFound = false;
+    double deltaVal = 0.001;
+    for(Int_t sI = 0; sI < nSubJtPtBins; ++sI){
+      if(TMath::Abs(subJtPtBins[sI] - jtPtBinsLowReco) < deltaVal){
+	jtPtCutFound = true;
+	break;
+      }
+    }
+
+    if(!jtPtCutFound){
+      std::cout << "doJtPtCut is on but jtPtCut, " << jtPtBinsLowReco << " is not found in bins, ";
+      for(Int_t sI = 0; sI < nSubJtPtBins; ++sI){
+	std::cout << subJtPtBins[sI] << ", ";
+      }      
+      std::cout << subJtPtBins[nSubJtPtBins] << ". return 1" << std::endl;
+      return 1;
+    }
+  }
+  
   gStyle->SetOptStat(0);
 
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-  
+  //Jet Var Bin Handling
+  std::vector<Float_t> jetVarMax, jetVarMin;
   std::string jtVar = inUnfoldFileConfig_p->GetValue("VARNAME", "");
   if(jtVar.size() == 0){
     std::cout << "Varname: \'" << jtVar << "\' is invalid. return 1" << std::endl;
@@ -705,8 +784,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
     }
 
     //two iterations of processing - one is pure photon, other is photon+jet 2d
-    const Int_t nProc = 2;
-    
+    const Int_t nProc = 2;    
     for(Int_t pI = 0; pI < nProc; ++pI){
       //pI = 0; Photon-pt processing
       //pI = 1; Photon+Jet Var processing
@@ -816,7 +894,9 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	}
 	else if(pI == 1){
 	  reco2D_p = (TH2D*)inUnfoldFile_p->Get(recoHistNames[cI].c_str());
-	  getIterativeHists2D(reco2D_p, unfoldedHists2D_p, statsDelta_p, iterDelta_p, totalDelta_p, doRelativeTerm, varBinsLowReco, varBinsHighReco, gammaPtBinsLowReco, gammaPtBinsHighReco);
+
+	  if(isMultijet) getIterativeHists2D(reco2D_p, unfoldedHists2D_p, statsDelta_p, iterDelta_p, totalDelta_p, doRelativeTerm, varBinsLowReco, varBinsHighReco, subJtGammaPtMin, subJtGammaPtMax);
+ 	  else getIterativeHists2D(reco2D_p, unfoldedHists2D_p, statsDelta_p, iterDelta_p, totalDelta_p, doRelativeTerm, varBinsLowReco, varBinsHighReco, gammaPtBinsLowReco, gammaPtBinsHighReco);
 	}
 	
 	TCanvas* canv_p = new TCanvas("canv_p", "", width, height*3.0/4.0);
@@ -889,11 +969,9 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  if(truthHistNames[cI].find("TRUTH_COMBINED") == std::string::npos || isMC) truth2D_p = (TH2D*)inUnfoldFile_p->Get(truthHistNames[cI].c_str());
 	  else if(!isMC) truth2D_p = (TH2D*)inUnfoldFile_p->Get(truthHistNames[cI].c_str());
 	}
-	
+      
 	int nGammaPtBinsForUnfold = 1;
 	if(pI == 1) nGammaPtBinsForUnfold = nGammaPtBins;
-	
-	if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	
 	std::vector<TH1D*> reco_p = {reco1D_p};
 	std::vector<TH1D*> truth_p = {truth1D_p};
@@ -923,16 +1001,64 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	    truth_p.push_back(new TH1D(("truth_GammaPt" + std::to_string(gI) + "_h").c_str(), ";;", nVarBins, varBins));
 	    
 	    reco_p[gI]->GetXaxis()->SetTitle(reco2D_p->GetXaxis()->GetTitle());
-	    	  
 	    for(Int_t bIX = 0; bIX < reco2D_p->GetXaxis()->GetNbins(); ++bIX){
-	      reco_p[gI]->SetBinContent(bIX+1, reco2D_p->GetBinContent(bIX+1, gI+1));
-	      reco_p[gI]->SetBinError(bIX+1, reco2D_p->GetBinError(bIX+1, gI+1));
+	      if(isMultijet){
+		//Y-axis no longer necessarily gammaPtBins if isMultijet		
+		for(Int_t bIY = 0; bIY < reco2D_p->GetYaxis()->GetNbins(); ++bIY){
+		  int gammaPtBinPos = subJtGammaPtBinFlattener.GetBin1PosFromGlobal(bIY);
+		  if(gammaPtBinPos != gI) continue;
+
+		  if(doJtPtCut){
+		    int subJtPtBinPos = subJtGammaPtBinFlattener.GetBin2PosFromGlobal(bIY);
+		    Float_t subJtPtBinCenter = (subJtPtBins[subJtPtBinPos] + subJtPtBins[subJtPtBinPos+1])/2.0;
+		    if(subJtPtBinCenter < jtPtBinsLowReco) continue;
+		  }
+		  
+		  Float_t value = reco_p[gI]->GetBinContent(bIX+1);
+		  Float_t error = reco_p[gI]->GetBinError(bIX+1);
+		  
+		  value += reco2D_p->GetBinContent(bIX+1, bIY+1);
+		  error = TMath::Sqrt(error*error + reco2D_p->GetBinError(bIX+1, bIY+1)*reco2D_p->GetBinError(bIX+1, bIY+1));
+		  
+		  reco_p[gI]->SetBinContent(bIX+1, value);
+		  reco_p[gI]->SetBinError(bIX+1, error);
+		}
+	      }
+	      else{
+		reco_p[gI]->SetBinContent(bIX+1, reco2D_p->GetBinContent(bIX+1, gI+1));
+		reco_p[gI]->SetBinError(bIX+1, reco2D_p->GetBinError(bIX+1, gI+1));
+	      }
 	    }
-	    
+
+	    //Repeat for Truth
 	    for(Int_t bIX = 0; bIX < truth2D_p->GetXaxis()->GetNbins(); ++bIX){
-	      truth_p[gI]->SetBinContent(bIX+1, truth2D_p->GetBinContent(bIX+1, gI+1));
-	      truth_p[gI]->SetBinError(bIX+1, truth2D_p->GetBinError(bIX+1, gI+1));
-	    }
+	      if(isMultijet){
+		//Y-axis no longer necessarily gammaPtBins if isMultijet
+                for(Int_t bIY = 0; bIY < truth2D_p->GetYaxis()->GetNbins(); ++bIY){
+		  int gammaPtBinPos = subJtGammaPtBinFlattener.GetBin1PosFromGlobal(bIY);
+		  if(gammaPtBinPos != gI) continue;
+
+		  if(doJtPtCut){
+		    int subJtPtBinPos = subJtGammaPtBinFlattener.GetBin2PosFromGlobal(bIY);
+		    Float_t subJtPtBinCenter = (subJtPtBins[subJtPtBinPos] + subJtPtBins[subJtPtBinPos+1])/2.0;
+		    if(subJtPtBinCenter < jtPtBinsLowReco) continue;
+		  }
+		  
+		  Float_t value = truth_p[gI]->GetBinContent(bIX+1);
+		  Float_t error = truth_p[gI]->GetBinError(bIX+1);
+		  
+		  value += truth2D_p->GetBinContent(bIX+1, bIY+1);
+		  error = TMath::Sqrt(error*error + truth2D_p->GetBinError(bIX+1, bIY+1)*truth2D_p->GetBinError(bIX+1, bIY+1));
+
+		  truth_p[gI]->SetBinContent(bIX+1, truth2D_p->GetBinContent(bIX+1, gI+1));
+		  truth_p[gI]->SetBinError(bIX+1, truth2D_p->GetBinError(bIX+1, gI+1));
+		}
+	      }
+	      else{
+		truth_p[gI]->SetBinContent(bIX+1, truth2D_p->GetBinContent(bIX+1, gI+1));
+		truth_p[gI]->SetBinError(bIX+1, truth2D_p->GetBinError(bIX+1, gI+1));		
+	      }
+	    }	    
 	    
 	    unfold_p.push_back({});
 	    refold_p.push_back({});
@@ -943,15 +1069,62 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	    for(int i = 1; i < nIter+1; ++i){
 	      unfold_p[gI].push_back(new TH1D(("unfold_GammaPt" + std::to_string(gI) + "_Iter" + std::to_string(i) + "_h").c_str(), "", nVarBins, varBins));
 	      refold_p[gI].push_back(new TH1D(("refold_GammaPt" + std::to_string(gI) + "_Iter" + std::to_string(i) + "_h").c_str(), "", nVarBins, varBins));
-	      
+	    
 	      for(Int_t bIX = 0; bIX < unfold2D_p[i]->GetXaxis()->GetNbins(); ++bIX){
-		unfold_p[gI][i]->SetBinContent(bIX+1, unfold2D_p[i]->GetBinContent(bIX+1, gI+1));
-		unfold_p[gI][i]->SetBinError(bIX+1, unfold2D_p[i]->GetBinError(bIX+1, gI+1));
+		if(isMultijet){
+		  for(Int_t bIY = 0; bIY < unfold2D_p[i]->GetYaxis()->GetNbins(); ++bIY){
+		    int gammaPtBinPos = subJtGammaPtBinFlattener.GetBin1PosFromGlobal(bIY);
+		    if(gammaPtBinPos != gI) continue;
+
+		    
+		    if(doJtPtCut){
+		      int subJtPtBinPos = subJtGammaPtBinFlattener.GetBin2PosFromGlobal(bIY);
+		      Float_t subJtPtBinCenter = (subJtPtBins[subJtPtBinPos] + subJtPtBins[subJtPtBinPos+1])/2.0;
+		      if(subJtPtBinCenter < jtPtBinsLowReco) continue;
+		    }
+		    
+		    Float_t value = unfold_p[gI][i]->GetBinContent(bIX+1);
+		    Float_t error = unfold_p[gI][i]->GetBinError(bIX+1);
+		    
+		    value += unfold2D_p[i]->GetBinContent(bIX+1, bIY+1);
+		    error = TMath::Sqrt(error*error + unfold2D_p[i]->GetBinError(bIX+1, bIY+1)*unfold2D_p[i]->GetBinError(bIX+1, bIY+1));
+		    
+		    unfold_p[gI][i]->SetBinContent(bIX+1, value);
+		    unfold_p[gI][i]->SetBinError(bIX+1, error);
+		  }
+		}
+		else{
+		  unfold_p[gI][i]->SetBinContent(bIX+1, unfold2D_p[i]->GetBinContent(bIX+1, gI+1));
+		  unfold_p[gI][i]->SetBinError(bIX+1, unfold2D_p[i]->GetBinError(bIX+1, gI+1));
+		}	      
 	      }
 	      
 	      for(Int_t bIX = 0; bIX < refold2D_p[i]->GetXaxis()->GetNbins(); ++bIX){
-		refold_p[gI][i]->SetBinContent(bIX+1, refold2D_p[i]->GetBinContent(bIX+1, gI+1));
-		refold_p[gI][i]->SetBinError(bIX+1, refold2D_p[i]->GetBinError(bIX+1, gI+1));
+		if(isMultijet){
+		  for(Int_t bIY = 0; bIY < refold2D_p[i]->GetYaxis()->GetNbins(); ++bIY){
+		    int gammaPtBinPos = subJtGammaPtBinFlattener.GetBin1PosFromGlobal(bIY);
+		    if(gammaPtBinPos != gI) continue;
+
+		    if(doJtPtCut){
+		      int subJtPtBinPos = subJtGammaPtBinFlattener.GetBin2PosFromGlobal(bIY);
+		      Float_t subJtPtBinCenter = (subJtPtBins[subJtPtBinPos] + subJtPtBins[subJtPtBinPos+1])/2.0;
+		      if(subJtPtBinCenter < jtPtBinsLowReco) continue;
+		    }
+		    
+		    Float_t value = refold_p[gI][i]->GetBinContent(bIX+1);
+		    Float_t error = refold_p[gI][i]->GetBinError(bIX+1);
+		    
+		    value += refold2D_p[i]->GetBinContent(bIX+1, bIY+1);
+		    error = TMath::Sqrt(error*error + refold2D_p[i]->GetBinError(bIX+1, bIY+1)*refold2D_p[i]->GetBinError(bIX+1, bIY+1));
+		  		  
+		    refold_p[gI][i]->SetBinContent(bIX+1, value);
+		    refold_p[gI][i]->SetBinError(bIX+1, error);
+		  }
+		}
+		else{
+		  refold_p[gI][i]->SetBinContent(bIX+1, refold2D_p[i]->GetBinContent(bIX+1, gI+1));
+		  refold_p[gI][i]->SetBinError(bIX+1, refold2D_p[i]->GetBinError(bIX+1, gI+1));
+		}
 	      }
 	    }
 	  }
@@ -962,7 +1135,6 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  if(pI == 1 && gI == 0) continue;
 	  if(pI == 1 && gI == nGammaPtBinsForUnfold-1) continue;
 	  
-	  
 	  //New TCanvs, set of pads, and set margins
 	  canv_p = new TCanvas("canv_p", "", width, height);
 	  TCanvas* canvBest_p = new TCanvas("canvBest_p", "", width, height);
@@ -970,9 +1142,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  TPad* padsBest_p[nPad];
 	  setMargins(canv_p, noMargin, noMargin, noMargin, noMargin);
 	  setMargins(canvBest_p, noMargin, noMargin, noMargin, noMargin);
-	  
-	  if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
-	  
+	  	  
 	  pads_p[0] = new TPad("pad0", "", 0.0, padSplit1, 1.0, 1.0);	       
 	  padsBest_p[0] = new TPad("padBest0", "", 0.0, padSplit1, 1.0, 1.0);
 	  setMargins(pads_p[0], leftMargin, topMargin, rightMargin, noMargin);

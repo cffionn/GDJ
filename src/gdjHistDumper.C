@@ -186,7 +186,7 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::str
     label_p->DrawLatex(xPos, yPos, labelName.c_str());
     gStyle->SetOptStat(0);
 
-    saveName = "pdfDir/" + dateStr + "/" + saveName + "_" + dateStr + ".pdf";
+    saveName = "pdfDir/" + dateStr + "/" + saveName + "_" + dateStr + ".png";
     quietSaveAs(canv_p, saveName);
     delete canv_p;
   }
