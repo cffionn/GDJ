@@ -28,6 +28,7 @@
 #include "TTree.h"
 
 //Local
+#include "include/binFlattener.h"
 #include "include/binUtils.h"
 #include "include/centralityFromInput.h"
 #include "include/checkMakeDir.h"
