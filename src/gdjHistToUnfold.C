@@ -2493,11 +2493,37 @@ int gdjHistToUnfold(std::string inConfigFileName)
       TH1D* xjRecoProjection_TRUTH_COMBINED_p = new TH1D((varNameLower + "Reco_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_TRUTH_COMBINED_h").c_str(), (";" + varNameStyle + ";Arbitrary").c_str(), nVarBins, varBins);
 
       for(int xI = 0; xI < nVarBins; ++xI){
-	xjRecoProjection_PURCORR_COMBINED_p->SetBinContent(xI+1, photonPtJetVarReco_PURCORR_COMBINED_p[cI][0]->GetBinContent(xI+1, gI+1));
-	xjRecoProjection_PURCORR_COMBINED_p->SetBinError(xI+1, photonPtJetVarReco_PURCORR_COMBINED_p[cI][0]->GetBinError(xI+1, gI+1));
+	if(isMultijet){
+	  for(int yI = 0; yI < photonPtJetVarReco_PURCORR_COMBINED_p[cI][0]->GetYaxis()->GetNbins(); ++yI){	    
+	    int gammaPtBinPos = subJtGammaPtBinFlattener.GetBin1PosFromGlobal(yI);
+	    if(gammaPtBinPos != gI) continue;
+	    
+	    Float_t value = xjRecoProjection_PURCORR_COMBINED_p->GetBinContent(xI+1);
+	    Float_t error = xjRecoProjection_PURCORR_COMBINED_p->GetBinError(xI+1);
 
-	xjRecoProjection_TRUTH_COMBINED_p->SetBinContent(xI+1, photonPtJetVarReco_TRUTH_COMBINED_p[cI][0]->GetBinContent(xI+1, gI+1));       
-	xjRecoProjection_TRUTH_COMBINED_p->SetBinError(xI+1, photonPtJetVarReco_TRUTH_COMBINED_p[cI][0]->GetBinError(xI+1, gI+1));
+	    value += photonPtJetVarReco_PURCORR_COMBINED_p[cI][0]->GetBinContent(xI+1, yI+1);
+	    error = TMath::Sqrt(error*error + photonPtJetVarReco_PURCORR_COMBINED_p[cI][0]->GetBinError(xI+1, yI+1)*photonPtJetVarReco_PURCORR_COMBINED_p[cI][0]->GetBinError(xI+1, yI+1));
+	    
+	    xjRecoProjection_PURCORR_COMBINED_p->SetBinContent(xI+1, value);
+	    xjRecoProjection_PURCORR_COMBINED_p->SetBinError(xI+1, error);
+
+	    value = xjRecoProjection_TRUTH_COMBINED_p->GetBinContent(xI+1);
+	    error = xjRecoProjection_TRUTH_COMBINED_p->GetBinError(xI+1);
+
+	    value += photonPtJetVarReco_TRUTH_COMBINED_p[cI][0]->GetBinContent(xI+1, yI+1);
+	    error = TMath::Sqrt(error*error + photonPtJetVarReco_TRUTH_COMBINED_p[cI][0]->GetBinError(xI+1, yI+1)*photonPtJetVarReco_TRUTH_COMBINED_p[cI][0]->GetBinError(xI+1, yI+1));
+	    
+	    xjRecoProjection_TRUTH_COMBINED_p->SetBinContent(xI+1, value);       
+	    xjRecoProjection_TRUTH_COMBINED_p->SetBinError(xI+1, error);
+	  }
+	}
+	else{
+	  xjRecoProjection_PURCORR_COMBINED_p->SetBinContent(xI+1, photonPtJetVarReco_PURCORR_COMBINED_p[cI][0]->GetBinContent(xI+1, gI+1));
+	  xjRecoProjection_PURCORR_COMBINED_p->SetBinError(xI+1, photonPtJetVarReco_PURCORR_COMBINED_p[cI][0]->GetBinError(xI+1, gI+1));
+	  
+	  xjRecoProjection_TRUTH_COMBINED_p->SetBinContent(xI+1, photonPtJetVarReco_TRUTH_COMBINED_p[cI][0]->GetBinContent(xI+1, gI+1));       
+	  xjRecoProjection_TRUTH_COMBINED_p->SetBinError(xI+1, photonPtJetVarReco_TRUTH_COMBINED_p[cI][0]->GetBinError(xI+1, gI+1));	  
+	}	  
       }
       
       xjRecoProjection_PURCORR_COMBINED_p->Write("", TObject::kOverwrite);
@@ -2507,8 +2533,6 @@ int gdjHistToUnfold(std::string inConfigFileName)
       delete xjRecoProjection_TRUTH_COMBINED_p;
     }
 
-    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;  
-      
     //Write the full histograms at reco level to file
     photonPtReco_PURCORR_COMBINED_p[cI]->Write(("photonPtReco_PreUnfold_" + centBinsStr[cI] + "_PURCORR_COMBINED_h").c_str(), TObject::kOverwrite);
     if(doReweightVar){

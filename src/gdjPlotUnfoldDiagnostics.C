@@ -666,10 +666,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   for(unsigned int sgI = 0; sgI < subJtGammaPtBinsV.size(); ++sgI){
     subJtGammaPtBins[sgI] = subJtGammaPtBinsV[sgI];
   }  
-
-
-  return 1;
-  
+   
   if(doJtPtCut){
     bool jtPtCutFound = false;
     double deltaVal = 0.001;
@@ -1050,8 +1047,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 		  value += truth2D_p->GetBinContent(bIX+1, bIY+1);
 		  error = TMath::Sqrt(error*error + truth2D_p->GetBinError(bIX+1, bIY+1)*truth2D_p->GetBinError(bIX+1, bIY+1));
 
-		  truth_p[gI]->SetBinContent(bIX+1, truth2D_p->GetBinContent(bIX+1, gI+1));
-		  truth_p[gI]->SetBinError(bIX+1, truth2D_p->GetBinError(bIX+1, gI+1));
+		  truth_p[gI]->SetBinContent(bIX+1, value);
+		  truth_p[gI]->SetBinError(bIX+1, error);
 		}
 	      }
 	      else{
@@ -1492,6 +1489,14 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	      tempLabels[tI] = prettyString(gammaPtBins[gI], 1, false) + " <" + tempLabels[tI] + "< " + prettyString(gammaPtBins[gI+1], 1, false);
 	    }
 	    
+
+	    if(doJtPtCut){
+	      if(tempLabels[tI].find("p_{T,jet}") != std::string::npos){
+		tempLabels[tI].replace(0, tempLabels[tI].find("<"), "");
+		tempLabels[tI] = prettyString(jtPtBinsLowReco, 1, false) + tempLabels[tI];
+		//		std::cout << "RELEVANT LABEL: " << tempLabels[tI] << std::endl;
+	      }
+	    }
 	    
 	    label_p->DrawLatex(jetVarLabelXGlobal, jetVarLabelYGlobal - pos*0.077*0.55/topPanelFrac, tempLabels[tI].c_str());
 	    ++pos;
