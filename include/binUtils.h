@@ -222,12 +222,14 @@ h in coarser binning. returning"  << std::endl;
   return;
 }
 
-inline void fineTH2ToCoarseTH1(TH2* fineHist_p, TH1* coarseHist_p, Int_t yPos)
+inline void fineTH2ToCoarseTH1(TH2* fineHist_p, TH1* coarseHist_p, Int_t yPos, Bool_t doSum = false)
 {
-  //Initialize coarse histogram to 0                                                                  
-  for(Int_t bIX = 0; bIX < coarseHist_p->GetXaxis()->GetNbins(); ++bIX){
-    coarseHist_p->SetBinContent(bIX+1, 0.0);
-    coarseHist_p->SetBinError(bIX+1, 0.0);
+  //Initialize coarse histogram to 0 if we are not summing over it
+  if(!doSum){
+    for(Int_t bIX = 0; bIX < coarseHist_p->GetXaxis()->GetNbins(); ++bIX){
+      coarseHist_p->SetBinContent(bIX+1, 0.0);
+      coarseHist_p->SetBinError(bIX+1, 0.0);
+    }
   }
 
   //Declare our bin maps
@@ -278,6 +280,16 @@ h in coarser binning. returning"  << std::endl;
     
     coarseHist_p->SetBinContent(coarsePosX+1, newValue);
     coarseHist_p->SetBinError(coarsePosX+1, newError);          
+  }
+  
+  return;
+}
+
+inline void fineTH2ToCoarseTH1(TH2* fineHist_p, TH1* coarseHist_p, std::vector<Int_t> yPos, Bool_t doSum = false)
+{
+  for(unsigned int yI = 0; yI < yPos.size(); ++yI){
+    if(yI == 0) fineTH2ToCoarseTH1(fineHist_p, coarseHist_p, yPos[yI], doSum);
+    else fineTH2ToCoarseTH1(fineHist_p, coarseHist_p, yPos[yI], true);     
   }
   
   return;

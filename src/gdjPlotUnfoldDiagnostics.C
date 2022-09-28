@@ -667,7 +667,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
     subJtGammaPtBins[sgI] = subJtGammaPtBinsV[sgI];
   }  
    
-  if(doJtPtCut){
+ if(doJtPtCut){
     bool jtPtCutFound = false;
     double deltaVal = 0.001;
     for(Int_t sI = 0; sI < nSubJtPtBins; ++sI){
@@ -704,16 +704,26 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 
   std::string binVarStr = varPrefix + jtVarUpper;
   if(isStrSame(binVarStr, "AJJ")) binVarStr = "AJ";
+  else if(isStrSame(binVarStr, "DRJJ")) binVarStr = "DR";
   
   Int_t nVarBins = inUnfoldFileConfig_p->GetValue(("N" + binVarStr + "BINS").c_str(), -1);
   Float_t varBinsLow = inUnfoldFileConfig_p->GetValue((binVarStr + "BINSLOW").c_str(), -1.0);
   Float_t varBinsHigh = inUnfoldFileConfig_p->GetValue((binVarStr + "BINSHIGH").c_str(), -1.0);
   Bool_t varBinsDoLog = inUnfoldFileConfig_p->GetValue((binVarStr + "BINSDOLOG").c_str(), 0);
   Bool_t varBinsDoCustom = inUnfoldFileConfig_p->GetValue((binVarStr + "BINSDOCUSTOM").c_str(), 0);
-  Float_t varBinsLowReco = inUnfoldFileConfig_p->GetValue((binVarStr + "BINSLOWRECO").c_str(), -1.0);
-  Float_t varBinsHighReco = inUnfoldFileConfig_p->GetValue((binVarStr + "BINSHIGHRECO").c_str(), -1.0);
+  Float_t varBinsLowReco = inUnfoldFileConfig_p->GetValue((binVarStr + "BINSLOWRECO").c_str(), varBinsLow);
+  Float_t varBinsHighReco = inUnfoldFileConfig_p->GetValue((binVarStr + "BINSHIGHRECO").c_str(), varBinsHigh);
   Double_t varBins[nMaxPtBins+1];
 
+  /*
+  std::cout << "VarbinsLow: " << (binVarStr + "BINSLOW") << ", " << varBinsLow << std::endl;
+  std::cout << "VarbinsHigh: " << (binVarStr + "BINSHIGH") << ", " << varBinsHigh << std::endl;
+
+  std::cout << "VarbinsLowReco: " << (binVarStr + "BINSLOWRECO") << ", " << varBinsLowReco << std::endl;
+  std::cout << "VarbinsHighReco: " << (binVarStr + "BINSHIGHRECO") << ", " << varBinsHighReco << std::endl;
+  return 1;
+  */
+  
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   if(varBinsDoLog) getLogBins(varBinsLow, varBinsHigh, nVarBins, varBins);
