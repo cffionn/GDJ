@@ -1088,7 +1088,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   createMixMachineTEnv(&photonPtJtDPhiJJVCent_Config, true, isMC, nDPhiBins, dPhiBinsStrForConfig, "Jet #Delta#phi_{JJ}", nSubJtGammaPtBins, subJtGammaPtBinsStrForConfig, "Sub. Jet x Photon p_{T}");
 
   TEnv photonPtJtDRJJVCent_Config;
-  createMixMachineTEnv(&photonPtJtDRJJVCent_Config, true, isMC, nDRBins, drBinsStrForConfig, "Jet #DeltaR_{JJ}", nSubJtGammaPtBins, subJtGammaPtBinsStrForConfig, "Sub. Jet x Photon p_{T}");
+ createMixMachineTEnv(&photonPtJtDRJJVCent_Config, true, isMC, nDRBins, drBinsStrForConfig, "Jet #DeltaR_{JJ}", nSubJtGammaPtBins, subJtGammaPtBinsStrForConfig, "Sub. Jet x Photon p_{T}");
 
   const Int_t nMaxSyst = 100;
   mixMachine* photonPtJtPtVCent_MixMachine_p[nMaxCentBins][nBarrelAndEC][nMaxSyst];
@@ -2742,7 +2742,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		  //If it fails the reco cut we do not fill
 		  if(multiJtDPhiReco < gammaMultiJtDPhiCut) continue;	    
 
-	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 		  
 		  if(isGoodRecoSignal){
 		    if(xJJValueGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRaw(xJJValue, subJtGammaPtValReco, fullWeight);
