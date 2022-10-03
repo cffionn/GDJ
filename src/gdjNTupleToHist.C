@@ -2300,7 +2300,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       const Float_t truthPhoRecoDR = 0.2;
       Int_t truthPhoRecoPos = -1;
       Bool_t truthPhoHasGoodReco = false;
-      
+          
       //Clean and re-new the vector for corrected isolated
       if(photon_correctedIso_p != nullptr){
 	photon_correctedIso_p->clear();
@@ -2323,15 +2323,18 @@ int gdjNTupleToHist(std::string inConfigFileName)
       for(unsigned int systI = 0; systI < systStrVect.size(); ++systI){
 	//Go thru the photons to find the reco. match of truthPhoton + calc corrected iso
 	for(unsigned int pI = 0; pI < photon_pt_p->size(); ++pI){
-	  Float_t correctedIso = photon_etcone_p->at(pI);
-	  
-	  if(doPtIsoCorrection){
-	    if(doCentIsoCorrection) correctedIso = getCorrectedPhotonIsolation(isPP, correctedIso, photon_pt_p->at(pI), photon_eta_p->at(pI), cent);
-	    else correctedIso = getPtCorrectedPhotonIsolation(correctedIso, photon_pt_p->at(pI), photon_eta_p->at(pI));
-	  }       
-	  
-	  photon_correctedIso_p->push_back(correctedIso);
-	  
+	  //Should only be done once - get the correctedIso and populate the vector
+	  if(systI == 0){
+	    Float_t correctedIso = photon_etcone_p->at(pI);
+	    
+	    if(doPtIsoCorrection){
+	      if(doCentIsoCorrection) correctedIso = getCorrectedPhotonIsolation(isPP, correctedIso, photon_pt_p->at(pI), photon_eta_p->at(pI), cent);
+	      else correctedIso = getPtCorrectedPhotonIsolation(correctedIso, photon_pt_p->at(pI), photon_eta_p->at(pI));
+	    }       
+	    
+	    photon_correctedIso_p->push_back(correctedIso);
+	  }
+
 	  if(isMC){
 	  //Continue on anything < 15
 	    if(photon_pt_p->at(pI) < 15.0) continue;
@@ -2352,9 +2355,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	      truthPhoHasGoodReco = true;
 	    }
 	  }
-	}
-	
-	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+	}//End first photon loop after finding reco match for truth and doing good iso calc
 	
 	//Check the reco is good
 	if(truthPhoRecoPos >= 0){
@@ -2369,11 +2370,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  else if(recoGammaPt_ >= gammaPtBinsHighReco) truthPhoHasGoodReco = false;          
 	}
 	
-	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-	
 	//Response TTree filling
 	if(isMC && systI == 0){
 	  bool isSignal = false;
+
 	  if(truthPhoRecoPos >= 0){
 	    isSignal = photon_tight_p->at(truthPhoRecoPos);
 	    isSignal = isSignal && isIsolatedPhoton(isPP, doPtIsoCorrection, photon_correctedIso_p->at(truthPhoRecoPos));
@@ -2436,23 +2436,17 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    }
 	    unfoldTree_p->Fill();
 	  }
-
+	
 	  for(auto const barrelEC : barrelECFillTruth){
 	    fillTH1(photonPtVCent_TRUTH_p[centPos][barrelEC], truthPhotonPt, fullWeight);
 	    if(truthPhoHasGoodReco) fillTH1(photonPtVCent_TRUTHWithRecoMatch_p[centPos][barrelEC], truthPhotonPt, fullWeight);
 	    else fillTH1(photonPtVCent_TRUTHNoRecoMatch_p[centPos][barrelEC], truthPhotonPt, fullWeight);
 	  }
-	}
-	//End response filling
-	
-	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+	}//End response filling	
 
 	//Now we populate the histograms
 	//All photons passing requirements must be included
 	//If no reco match exists just fill
-	
-	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-			
 	for(unsigned int pI = 0; pI < photon_pt_p->size(); ++pI){
 	  //Passes basic fiducial cuts
 	  bool isGoodReco = photonEtaIsGood(photon_eta_p->at(pI));
@@ -2504,14 +2498,13 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    
 	    //Now produce photon+jet observables
 	    for(unsigned int jI = 0; jI < aktRhi_insitu_jet_pt_p->size(); ++jI){
-	      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 	      Float_t jtPtToUse = aktRhi_insitu_jet_pt_p->at(jI);
 	      Float_t jtPhiToUse = aktRhi_insitu_jet_phi_p->at(jI);
 	      Float_t jtEtaToUse = aktRhi_insitu_jet_eta_p->at(jI);	  
 	      
 	      bool isGoodTruthJet = false;
 	      int truthPos = -1;
-	      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+
 	      if(isMC){
 		//MC corrections only apply to PYTHIA jets inserted in overlay
 		if(aktRhi_truthpos_p->at(jI) >= 0){
@@ -2659,7 +2652,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    }//End reco jet loop
 	    
 	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
-	    
+	  
 	    //Now we start another loop but one for multijet events
 	    for(unsigned int gI = 0; gI < goodRecoJets.size(); ++gI){
 	      TLorentzVector goodRecoJet1 = goodRecoJets[gI];
@@ -2810,7 +2803,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		}//End barrelECFill	      
 	      }//for(goodRecoJets2)
 	    }//End multijet loop, for(goodRecoJets)
-
+	  
 	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 	    
 	    //If doMix, begin running the mixing
@@ -3115,7 +3108,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    }//End if(doMix){
 	  }//End fills for pure photon good reco   
 	}//End Photon loop
-    
+      
 	if(isMC){
 	  std::vector<TLorentzVector> goodTruthJets;
 	  std::vector<int> goodTruthJetsPos, goodTruthJetsRecoPos;
