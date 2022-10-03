@@ -503,8 +503,6 @@ int gdjHistToUnfold(std::string inConfigFileName)
   const bool doGlobalDebug = gDebug.GetDoGlobalDebug();
 
   //Global debug default spits out file and line as follows
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
   //Get the configuration file defining this job
   TEnv* config_p = new TEnv(inConfigFileName.c_str());
 
@@ -1928,7 +1926,10 @@ int gdjHistToUnfold(std::string inConfigFileName)
     else centPos = ghostPos(centBinsF, unfoldCent_, true, doGlobalDebug);
     if(centPos < 0) continue;
 
+    //Only process photons passing truth pt, eta, and isolation cuts
+    //Note these are enforced online already, double checking here
     bool truthGammaOutOfBounds = truthGammaPt_ < gammaPtBinsLow || truthGammaPt_ >= gammaPtBinsHigh;
+    truthGammaOutOfBounds = truthGammaOutOfBounds || !photonEtaIsGood(truthGammaEta_);
     if(truthGammaOutOfBounds) continue;
 
     Double_t phoWeight = 1.0;
@@ -1941,7 +1942,8 @@ int gdjHistToUnfold(std::string inConfigFileName)
     
     //Construct 1-D unfold response matrix for gamma-pt (required in normalization)
     bool recoGammaOutOfBounds = recoGammaPt_ < gammaPtBinsLowReco || recoGammaPt_ >= gammaPtBinsHighReco;   
-
+    recoGammaOutOfBounds = recoGammaOutOfBounds || !photonEtaIsGood(recoGammaEta_);
+  
     if(recoGammaOutOfBounds){
       rooResGamma_p[centPos]->Miss(truthGammaPt_, unfoldWeight_*phoWeight);
       rooResGammaMisses_p[centPos]->Fill(truthGammaPt_, unfoldWeight_*phoWeight);

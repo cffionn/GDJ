@@ -467,8 +467,12 @@ int gdjPlotResults(std::string inConfigFileName)
     return 1;
   }
   const std::string varNameUpper = strLowerToUpper(varName);
+  const std::string varNameLower = returnAllLowercaseString(varName);
   const std::string varNameLabel = varNameToLabel(varName);
 
+  const Bool_t isMultijet = isStrSame(varNameLower, "xjj") || isStrSame(varNameLower, "dphijjg") || isStrSame(varNameLower, "ajj") || isStrSame(varNameLower, "dphijj") || isStrSame(varNameLower, "drjj");
+
+  
   //Now that we have the varName, fix necessaryVarParams and check our input config has them before getting the values
   for(unsigned int vI = 0; vI < necessaryVarParams.size(); ++vI){
     std::string repStr = necessaryVarParams[vI];
@@ -810,7 +814,7 @@ int gdjPlotResults(std::string inConfigFileName)
 
     binWidthAndScaleNorm(ppHist_p, scaledTotalPP);
     std::vector<std::vector<Double_t > > ppSyst = getSyst(inPPFile_p, ppHist_p, ppSystHistNames, gammaMatchedBins, scaledTotalPP);
-
+ 
     //    ppHist_p->Scale(1./ppHist_p->Integral());
     HIJet::Style::EquipHistogram(ppHist_p, 2); 
     ppHist_p->GetXaxis()->SetTitleFont(titleFont);
@@ -827,8 +831,9 @@ int gdjPlotResults(std::string inConfigFileName)
     
     ppHist_p->GetYaxis()->SetNdivisions(505);
     
-    ppHist_p->GetYaxis()->SetTitle("#frac{1}{N_{#gamma}*}#frac{dN_{#vec{JJ}#gamma}}{d#vec{x}_{JJ#gamma}}");
-    ppHist_p->GetXaxis()->SetTitle("#vec{x}_{JJ#gamma}");
+    if(isMultijet) ppHist_p->GetYaxis()->SetTitle(("#frac{1}{N_{#gamma}*}#frac{dN_{JJ#gamma}}{d" + varNameLabel + "}").c_str());
+    else ppHist_p->GetYaxis()->SetTitle(("#frac{1}{N_{#gamma}*}#frac{dN_{J#gamma}}{d" + varNameLabel + "}}").c_str());
+    ppHist_p->GetXaxis()->SetTitle(varNameLabel.c_str());
 
   
     for(unsigned int cI = 0; cI < centBinsStr.size(); ++cI){   
