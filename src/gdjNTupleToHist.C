@@ -2568,20 +2568,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		    photonPtJtDPhiVCent_MixMachine_Sideband_p[centPos][barrelEC][systI]->FillXYRaw(dPhiRecoGammaJet, photon_pt_p->at(pI), fullWeight);
 		  }
 		}//End reco barrelECFill
-		
-		
-		if(isMC){
-		  if(isTruthPhotonMatched && isGoodTruthJet){
-		    Float_t gammaJtDPhiTruth = TMath::Abs(getDPHI(truthPhotonPhi, aktR_truth_jet_phi_p->at(truthPos)));
-		    for(auto const barrelECTruth : barrelECFillTruth){
-		      if(isGoodRecoSignal){
-			//		    photonPtJtDPhiVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruthWithRecoMatch(gammaJtDPhiTruth, truthPhotonPt, fullWeight);
-		      }
-		      
-		      //		  photonPtJtDPhiVCent_MixMachine_p[centPos][barrelECTruth]->FillXYTruth(gammaJtDPhiTruth, truthPhotonPt, fullWeight);
-		    }
-		  }//End barrelECFfillTruth loop for truth w/ good reco match
-		}//End if(isMC)
 	      }//end if(isGoodRecoJet)
 	      
 	      if(isMC && isGoodTruthJet){
@@ -2655,32 +2641,37 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  
 	    //Now we start another loop but one for multijet events
 	    for(unsigned int gI = 0; gI < goodRecoJets.size(); ++gI){
+	      //Get first  reco jet + corresponding truth info
 	      TLorentzVector goodRecoJet1 = goodRecoJets[gI];
 	      int truthPos1 = goodRecoJetsTruthPos[gI];
 	      bool isTruthMatched1 = truthPos1 >= 0;	  
 	    
 	      for(unsigned int gI2 = gI+1; gI2 < goodRecoJets.size(); ++gI2){
+		//Get second reco jet + corresponding truth info
 		TLorentzVector goodRecoJet2 = goodRecoJets[gI2];
 		int truthPos2 = goodRecoJetsTruthPos[gI2];
 		bool isTruthMatched2 = truthPos2 >= 0;
-		
-		bool isTruthMatched = isTruthMatched1 && isTruthMatched2;
-		
+
+		//combine truth info
+		bool isTruthMatched = isTruthMatched1 && isTruthMatched2;       	
 		int truthID1 = truthPos1*1000 + truthPos2;
 		int truthID2 = truthPos2*1000 + truthPos1;
-	      
+
+		//Construct variables before 4-vector sum of jets
 		Float_t aJJValue = TMath::Abs(goodRecoJet1.Pt() - goodRecoJet2.Pt())/photon_pt_p->at(pI);
-		Bool_t aJJValueGood = aJJValue >= ajBinsLowReco && aJJValue < ajBinsHighReco;
 		Float_t dPhiJJValue = TMath::Abs(getDPHI(goodRecoJet1.Phi(), goodRecoJet2.Phi()));
 		Float_t dRJJValue = getDR(goodRecoJet1.Eta(), goodRecoJet1.Phi(), goodRecoJet2.Eta(), goodRecoJet2.Phi());
+
+		//Construct Booleans from existing variables
+		Bool_t aJJValueGood = aJJValue >= ajBinsLowReco && aJJValue < ajBinsHighReco;
 		Bool_t dRJJPasses = dRJJValue >= mixJetExclusionDR;	     	      
 
-		//Use the binflattener for mixmachines
-		if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+		//Use the binflattener for mixmachines before 4-vector sum of jets
 		Float_t subJtGammaPtValReco = -999.0;
 		if(isGoodReco) subJtGammaPtValReco = subJtGammaPtBinFlattener.GetGlobalBinCenterFromBin12Val(photon_pt_p->at(pI), goodRecoJet2.Pt(), __LINE__);
 		Float_t subJtGammaPtValTruth = -999.0;
 
+		//4-vector sum of the two jets
 		goodRecoJet2 += goodRecoJet1;
 		
 		if(!dRJJPasses) continue;
@@ -3108,7 +3099,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    }//End if(doMix){
 	  }//End fills for pure photon good reco   
 	}//End Photon loop
-      
+            
 	if(isMC){
 	  std::vector<TLorentzVector> goodTruthJets;
 	  std::vector<int> goodTruthJetsPos, goodTruthJetsRecoPos;

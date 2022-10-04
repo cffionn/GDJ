@@ -598,6 +598,16 @@ int gdjPlotResults(std::string inConfigFileName)
   Int_t nSyst = inPPFileConfig_p->GetValue("NSYST", -1);
   std::vector<std::string> systStrVect = strToVect(inPPFileConfig_p->GetValue("SYST", ""));
 
+  //Temp for jtptcut
+  for(unsigned int sI = 0; sI < systStrVect.size(); ++sI){
+    if(systStrVect[sI].find("JTPTCUT") != std::string::npos){
+      systStrVect.erase(systStrVect.begin() + sI);
+      --nSyst;
+      std::cout << "REMOVING JTPTCUT" << std::endl;
+      break;
+    }
+  }
+  
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
   
