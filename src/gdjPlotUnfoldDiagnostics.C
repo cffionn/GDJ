@@ -177,7 +177,7 @@ bool drawBoxAdjacentIter(TPad* pad_p, std::vector<TH1*> hists_p, Float_t opacity
     Double_t yLow = hists_p[1]->GetBinContent(bIX+1) - yDelta;
     Double_t yHigh = hists_p[1]->GetBinContent(bIX+1) + yDelta;
 
-    if(deltaVals != nullptr){
+   if(deltaVals != nullptr){
       if(hists_p[1]->GetBinContent(bIX+1) < TMath::Power(10,-50)) deltaVals->push_back(0.0);
       else deltaVals->push_back(yDelta/(double)hists_p[1]->GetBinContent(bIX+1));
     }
@@ -1320,17 +1320,15 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	    
 	    if(termPos == i){
 	      Float_t tempOpacity = HIJet::Style::GetOpacity(i-1);	  
+
+	      Int_t minVal = TMath::Max(i-1, 1);
+	      Int_t maxVal = TMath::Min(i+1, nIter-1);
 	      
-	      //Just give it the same thing if there is no lower iteration
-	      if(i == 1) drawBoxAdjacentIter(padsBest_p[0], {unfold_p[gI][i], unfold_p[gI][i], unfold_p[gI][i+1]}, tempOpacity, &deltaVals);
-	      else drawBoxAdjacentIter(padsBest_p[0], {unfold_p[gI][i-1], unfold_p[gI][i], unfold_p[gI][i+1]}, tempOpacity, &deltaVals);
+	      //Just give it the same thing if there is no lower iteration/higher iterations via minVal/maxVal
+	      drawBoxAdjacentIter(padsBest_p[0], {unfold_p[gI][minVal], unfold_p[gI][i], unfold_p[gI][maxVal]}, tempOpacity, &deltaVals);
 	    }
-	    
-	    if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold, i/nIter: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIter << std::endl;
 	  }
-	  
-	  if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
-	  
+
 	  canv_p->cd();
 	  pads_p[1]->cd();    
 	  
@@ -1352,20 +1350,24 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	    else unfoldClone_p->DrawCopy("HIST E1 P SAME");
 	    
 	    delete unfoldClone_p;
-	  }    
+	  }  
 	  if(doLogX || pI == 0) gPad->SetLogx();
 	  
 	  std::cout << "OUT OF UNFOLD DRAW INTO LOGX" << std::endl;
 	  
 	  canvBest_p->cd();
 	  padsBest_p[1]->cd();
+
+	  if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
 	  
 	  bool hasDrawn = false;
 	  for(Int_t i = 1; i < nIter+1; ++i){
 	    bool isGood = false;
 	    if(i == termPos) isGood = true;
 	    if(!isGood) continue;
-	    
+	    	    
+	    if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIter+1 << std::endl;
+
 	    TH1D* unfoldClone_p = (TH1D*)unfold_p[gI][i]->Clone("tempClone");
 	    unfoldClone_p->Divide(reco_p[gI]);
 	    
@@ -1374,6 +1376,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	    
 	    unfoldClone_p->SetTitle("");
 	    refoldClone_p->SetTitle("");
+
+	    if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIter+1 << std::endl;
 	    
 	    if(!hasDrawn){
 	      refoldClone_p->GetYaxis()->SetTitle("#frac{Refold}{Reco.}");
@@ -1389,16 +1393,25 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	      hasDrawn = true;
 	    }
 	    else refoldClone_p->DrawCopy("HIST E1 P SAME");
+
+	    if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIter+1 << std::endl;
 	    
 	    if(i == termPos){
+	      if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIter+1 << std::endl;
 	      Float_t tempOpacity = HIJet::Style::GetOpacity(i-1);
+	      if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIter+1 << std::endl;
+	      std::cout << padsBest_p[1] << ", " << unfoldClone_p << ", " << tempOpacity << ", " << deltaVals.size() << std::endl;
 	      drawBoxAdjacentIterRel(padsBest_p[1], unfoldClone_p, tempOpacity, &deltaVals);
 	    }
+
+	    if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIter+1 << std::endl;
 	    
 	    delete refoldClone_p;
 	    delete unfoldClone_p;
 	  }
-	
+
+	  if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
+	  
 	  if(doLogX || pI == 0) gPad->SetLogx();
 	  
 	  //Third panel, divide by truth

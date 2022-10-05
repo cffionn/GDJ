@@ -2505,8 +2505,14 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
     photonPtReco_TRUTH_COMBINED_p[cI]->Write(("photonPtTruth_PreUnfold_" + centBinsStr[cI] + "_TRUTH_COMBINED_h").c_str(), TObject::kOverwrite);
 
+
     
     photonPtJetVarReco_PURCORR_COMBINED_p[cI][0]->Write(("photonPtJet" + varName + "Reco_PreUnfold_" + centBinsStr[cI] + "_PURCORR_COMBINED_h").c_str(), TObject::kOverwrite);
+
+    for(unsigned int sI = 0; sI < inSystStrVect.size(); ++sI){
+      photonPtJetVarReco_PURCORR_COMBINED_p[cI][sI]->Write(("photonPtJet" + varName + "Reco_PreUnfold_" + centBinsStr[cI] + "_" + inSystStrVect[sI] + "_PURCORR_COMBINED_h").c_str(), TObject::kOverwrite);
+    }
+
     if(doReweightVar){
       photonPtJetVarReco_PURCORR_COMBINED_ForReweight_p[cI][0]->Write(("photonPtJet" + varName + "Reco_PreUnfold_" + centBinsStr[cI] + "_PURCORR_COMBINED_ForReweight_h").c_str(), TObject::kOverwrite);
       photonPtJetVarReco_PURCORR_COMBINED_Reweighted_p[cI][0]->Write(("photonPtJet" + varName + "Reco_PreUnfold_" + centBinsStr[cI] + "_PURCORR_COMBINED_Reweighted_h").c_str(), TObject::kOverwrite);
@@ -2525,6 +2531,17 @@ int gdjHistToUnfold(std::string inConfigFileName)
     
     TH2D* tempRecoHist_p = (TH2D*)rooResGammaJetVar_p[cI][0]->Hmeasured();
     tempRecoHist_p->Write(("photonPtJet" + varName + "Reco_PreUnfold_" + centBinsStr[cI] + "_PURCORR2_COMBINED_h").c_str(), TObject::kOverwrite);     
+
+    for(unsigned int sI = 0; sI < inSystStrVect.size(); ++sI){
+      photonPtJetVarReco_TRUTH_COMBINED_p[cI][sI]->Write(("photonPtJet" + varName + "Truth_PreUnfold_" + centBinsStr[cI] + "_" + inSystStrVect[sI] + "_TRUTH_COMBINED_h").c_str(), TObject::kOverwrite);
+
+      tempTruthHist_p = (TH2D*)rooResGammaJetVar_p[cI][sI]->Htruth();
+      tempTruthHist_p->Write(("photonPtJet" + varName + "Truth_PreUnfold_" + centBinsStr[cI] + "_" + inSystStrVect[sI] + "_TRUTH2_COMBINED_h").c_str(), TObject::kOverwrite); 
+    
+      tempRecoHist_p = (TH2D*)rooResGammaJetVar_p[cI][sI]->Hmeasured();
+      tempRecoHist_p->Write(("photonPtJet" + varName + "Reco_PreUnfold_" + centBinsStr[cI] + "_" + inSystStrVect[sI] + "_PURCORR2_COMBINED_h").c_str(), TObject::kOverwrite);           
+    }
+
     
     rooResGammaMatrix_p[cI]->Write("", TObject::kOverwrite);
     rooResGammaMisses_p[cI]->Write("", TObject::kOverwrite);
