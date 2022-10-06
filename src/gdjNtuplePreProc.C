@@ -397,8 +397,10 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   Int_t photon_n_;
   std::vector<float>* photon_pt_p=nullptr;
   std::vector<float>* photon_pt_precali_p=nullptr;
+  //Sys1 and 2 correspond to Scale variation up and down
   std::vector<float>* photon_pt_sys1_p=nullptr;
   std::vector<float>* photon_pt_sys2_p=nullptr;
+  //Sys2 and 3 correspond to resolution variation up and down
   std::vector<float>* photon_pt_sys3_p=nullptr;
   std::vector<float>* photon_pt_sys4_p=nullptr;  
   std::vector<float>* photon_eta_p=nullptr;

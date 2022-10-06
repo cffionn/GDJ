@@ -913,6 +913,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
   TFile* outFile_p = new TFile(outFileName.c_str(), "RECREATE");
 
+  //Define some numbers and names for photon es/er systematics
+  const Int_t nGESSys = 2;
+  const Int_t nGERSys = 2;
+
+  const Int_t nGammaSysAndNom = 1 + nGESSys + nGERSys;
+  std::string gammaSysAndNomStr[nGammaSysAndNom] = {"Nominal", "GES0", "GES1", "GER0", "GER1"};
+
+  //Define some numbers and names for jet es/er systematics
   const Int_t nJESSys = 18;
   const Int_t nJERSys = 9;
 
@@ -944,7 +952,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
   const Int_t nMaxJets = 100;
 
-  Float_t recoGammaPt_;
+  Float_t recoGammaPt_[nGammaSysAndNom];
   Float_t recoGammaPhi_;
   Float_t recoGammaEta_;
 
@@ -980,7 +988,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
     unfoldTree_p->Branch("lumiBlock", &lumiBlock, "lumiBlock/i");
     unfoldTree_p->Branch("eventNumber", &eventNumber, "eventNumber/l");
 
-    unfoldTree_p->Branch("recoGammaPt", &recoGammaPt_, "recoGammaPt/F"); 
+    unfoldTree_p->Branch("recoGammaPt", recoGammaPt_, ("recoGammaPt[" + std::to_string(nGammaSysAndNom) + "]/F").c_str()); 
     unfoldTree_p->Branch("recoGammaPhi", &recoGammaPhi_, "recoGammaPhi/F"); 
     unfoldTree_p->Branch("recoGammaEta", &recoGammaEta_, "recoGammaEta/F"); 
     unfoldTree_p->Branch("truthGammaPt", &truthGammaPt_, "truthGammaPt/F"); 
@@ -1674,6 +1682,12 @@ int gdjNTupleToHist(std::string inConfigFileName)
   Float_t truthPhotonPt, truthPhotonPhi, truthPhotonEta, truthPhotonIso4;
   
   std::vector<float>* photon_pt_p=nullptr;
+  //Sys1 and 2 correspond to Photon ES variations up and down
+  std::vector<float>* photon_pt_sys1_p=nullptr;
+  std::vector<float>* photon_pt_sys2_p=nullptr;
+  //Sys3 and 4 correspond to Photon ER variations up and down
+  std::vector<float>* photon_pt_sys3_p=nullptr;
+  std::vector<float>* photon_pt_sys4_p=nullptr;
   std::vector<float>* photon_eta_p=nullptr;
   std::vector<float>* photon_phi_p=nullptr;
   std::vector<bool>* photon_tight_p=nullptr;  
@@ -2116,6 +2130,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
     inTree_p->SetBranchAddress("vert_z", &vert_z_p);
     
     inTree_p->SetBranchAddress("photon_pt", &photon_pt_p);
+    inTree_p->SetBranchAddress("photon_pt_sys1", &photon_pt_sys1_p);
+    inTree_p->SetBranchAddress("photon_pt_sys2", &photon_pt_sys2_p);
+    inTree_p->SetBranchAddress("photon_pt_sys3", &photon_pt_sys3_p);
+    inTree_p->SetBranchAddress("photon_pt_sys4", &photon_pt_sys4_p);
     inTree_p->SetBranchAddress("photon_eta", &photon_eta_p);
     inTree_p->SetBranchAddress("photon_phi", &photon_phi_p);
     inTree_p->SetBranchAddress("photon_tight", &photon_tight_p);
@@ -2359,15 +2377,20 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	
 	//Check the reco is good
 	if(truthPhoRecoPos >= 0){
-	  recoGammaPt_ = photon_pt_p->at(truthPhoRecoPos);
+	  recoGammaPt_[0] = photon_pt_p->at(truthPhoRecoPos);
+	  recoGammaPt_[1] = photon_pt_sys1_p->at(truthPhoRecoPos);
+	  recoGammaPt_[2] = photon_pt_sys2_p->at(truthPhoRecoPos);
+	  recoGammaPt_[3] = photon_pt_sys3_p->at(truthPhoRecoPos);
+	  recoGammaPt_[4] = photon_pt_sys4_p->at(truthPhoRecoPos);
+
 	  recoGammaEta_ = photon_eta_p->at(truthPhoRecoPos);
 	  Float_t tempCorrectedIso = photon_correctedIso_p->at(truthPhoRecoPos);
 	  
 	  if(!photonEtaIsGood(recoGammaEta_)) truthPhoHasGoodReco = false;
 	  else if(!photon_tight_p->at(truthPhoRecoPos)) truthPhoHasGoodReco = false;
 	  else if(!isIsolatedPhoton(isPP, doPtIsoCorrection, tempCorrectedIso)) truthPhoHasGoodReco = false;    
-	  else if(recoGammaPt_ < gammaPtBinsLowReco) truthPhoHasGoodReco = false;    
-	  else if(recoGammaPt_ >= gammaPtBinsHighReco) truthPhoHasGoodReco = false;          
+	  else if(recoGammaPt_[0] < gammaPtBinsLowReco) truthPhoHasGoodReco = false;    
+	  else if(recoGammaPt_[0] >= gammaPtBinsHighReco) truthPhoHasGoodReco = false;          
 	}
 	
 	//Response TTree filling
@@ -2378,17 +2401,23 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    isSignal = photon_tight_p->at(truthPhoRecoPos);
 	    isSignal = isSignal && isIsolatedPhoton(isPP, doPtIsoCorrection, photon_correctedIso_p->at(truthPhoRecoPos));
 	  }
-	  
+      	  
 	  if(keepResponseTree){
-	    recoGammaPt_ = -999;//photon_pt_p->at(phoPos);
-	    recoGammaPhi_ = -999;//photon_phi_p->at(phoPos);
+	    for(Int_t gI = 0; gI < nGammaSysAndNom; ++gI){
+	      recoGammaPt_[gI] = -999;
+	    }	    
+	    recoGammaPhi_ = -999;
 	    recoGammaEta_ = -999;//photon_phi_p->at(phoPos);
 	    truthGammaPt_ = truthPhotonPt;	
 	    truthGammaPhi_ = truthPhotonPhi;
 	    truthGammaEta_ = truthPhotonEta;
 	    
 	    if(truthPhoRecoPos >= 0 && truthPhoHasGoodReco && isSignal){	  	  
-	      recoGammaPt_ = photon_pt_p->at(truthPhoRecoPos);
+	      recoGammaPt_[0] = photon_pt_p->at(truthPhoRecoPos);
+	      recoGammaPt_[1] = photon_pt_sys1_p->at(truthPhoRecoPos);
+	      recoGammaPt_[2] = photon_pt_sys2_p->at(truthPhoRecoPos);
+	      recoGammaPt_[3] = photon_pt_sys3_p->at(truthPhoRecoPos);
+	      recoGammaPt_[4] = photon_pt_sys4_p->at(truthPhoRecoPos);
 	      recoGammaPhi_ = photon_phi_p->at(truthPhoRecoPos);
 	      recoGammaEta_ = photon_eta_p->at(truthPhoRecoPos);
 	    }
@@ -4505,6 +4534,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
   outFile_p->cd();
   config_p->SetValue("RECOJTPTMIN", prettyString(recoJtPtMin, 1, false).c_str());
+
+  config_p->SetValue("NGAMMASYSANDNOM", nGammaSysAndNom);
+  std::string gammaSysAndNom = "";
+  for(Int_t sI = 0; sI < nGammaSysAndNom; ++sI){
+    gammaSysAndNom = gammaSysAndNom + gammaSysAndNomStr[sI] + ",";
+  }
+  if(gammaSysAndNom.find(",") != std::string::npos) gammaSysAndNom.replace(gammaSysAndNom.size()-1, 1, "");
+  config_p->SetValue("GAMMASYSANDNOM", gammaSysAndNom.c_str());
 
   config_p->SetValue("NJETSYSANDNOM", nJetSysAndNom);
   std::string jetSysAndNom = "";
