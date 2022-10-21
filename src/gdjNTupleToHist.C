@@ -968,11 +968,13 @@ int gdjNTupleToHist(std::string inConfigFileName)
   Float_t truthJtPt_[nMaxJets];
   Float_t truthJtPhi_[nMaxJets];
   Float_t truthJtEta_[nMaxJets];
+  Int_t truthJtFlavor_[nMaxJets];
 
   Int_t nTruthJtUnmatched_;
   Float_t truthJtUnmatchedPt_[nMaxJets];
   Float_t truthJtUnmatchedPhi_[nMaxJets];
   Float_t truthJtUnmatchedEta_[nMaxJets];
+  Int_t truthJtUnmatchedFlavor_[nMaxJets];
 
   Double_t unfoldWeight_;
   Float_t unfoldCent_;
@@ -1003,11 +1005,13 @@ int gdjNTupleToHist(std::string inConfigFileName)
     unfoldTree_p->Branch("truthJtPt", truthJtPt_, "truthJtPt[nRecoJt]/F"); 
     unfoldTree_p->Branch("truthJtPhi", truthJtPhi_, "truthJtPhi[nRecoJt]/F"); 
     unfoldTree_p->Branch("truthJtEta", truthJtEta_, "truthJtEta[nRecoJt]/F"); 
+    unfoldTree_p->Branch("truthJtFlavor", truthJtFlavor_, "truthJtFlavor[nRecoJt]/I"); 
 
     unfoldTree_p->Branch("nTruthJtUnmatched", &nTruthJtUnmatched_, "nTruthJtUnmatched/I");
     unfoldTree_p->Branch("truthJtUnmatchedPt", truthJtUnmatchedPt_, "truthJtUnmatchedPt[nTruthJtUnmatched]/F"); 
     unfoldTree_p->Branch("truthJtUnmatchedPhi", truthJtUnmatchedPhi_, "truthJtUnmatchedPhi[nTruthJtUnmatched]/F"); 
     unfoldTree_p->Branch("truthJtUnmatchedEta", truthJtUnmatchedEta_, "truthJtUnmatchedEta[nTruthJtUnmatched]/F"); 
+    unfoldTree_p->Branch("truthJtUnmatchedFlavor", truthJtUnmatchedFlavor_, "truthJtUnmatchedFlavor[nTruthJtUnmatched]/I"); 
 
     unfoldTree_p->Branch("unfoldWeight", &unfoldWeight_, "unfoldWeight/D"); 
     unfoldTree_p->Branch("unfoldCent", &unfoldCent_, "unfoldCent/F"); 
@@ -1715,6 +1719,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   std::vector<float>* aktR_truth_jet_eta_p=nullptr;
   std::vector<float>* aktR_truth_jet_phi_p=nullptr;
   std::vector<int>* aktR_truth_jet_recopos_p=nullptr;
+  std::vector<int>* aktR_truth_jet_partonid_p=nullptr;
 
   TFile* mixFile_p = nullptr;
   TTree* mixTree_p = nullptr;
@@ -2057,6 +2062,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
     inTree_p->SetBranchStatus("vert_z", 1);
     
     inTree_p->SetBranchStatus("photon_pt", 1);
+    inTree_p->SetBranchStatus("photon_pt_sys1", 1);
+    inTree_p->SetBranchStatus("photon_pt_sys2", 1);
+    inTree_p->SetBranchStatus("photon_pt_sys3", 1);
+    inTree_p->SetBranchStatus("photon_pt_sys4", 1);
     inTree_p->SetBranchStatus("photon_eta", 1);
     inTree_p->SetBranchStatus("photon_phi", 1);
     inTree_p->SetBranchStatus("photon_tight", 1);
@@ -2086,6 +2095,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
       inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "_truth_jet_eta").c_str(), 1);
       inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "_truth_jet_phi").c_str(), 1);
       inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "_truth_jet_recopos").c_str(), 1);
+      inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "_truth_jet_partonid").c_str(), 1);
     }
     
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
@@ -2162,7 +2172,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
       inTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "_truth_jet_pt").c_str(), &aktR_truth_jet_pt_p);
       inTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "_truth_jet_eta").c_str(), &aktR_truth_jet_eta_p);
       inTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "_truth_jet_phi").c_str(), &aktR_truth_jet_phi_p);
-      inTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "_truth_jet_recopos").c_str(), &aktR_truth_jet_recopos_p);
+      inTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "_truth_jet_recopos").c_str(), &aktR_truth_jet_recopos_p); 
+      inTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "_truth_jet_partonid").c_str(), &aktR_truth_jet_partonid_p);
     }
     
     ULong64_t nEntriesTemp = inTree_p->GetEntries();
@@ -2452,6 +2463,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		truthJtPt_[nRecoJt_] = aktR_truth_jet_pt_p->at(jI);
 		truthJtPhi_[nRecoJt_] = aktR_truth_jet_phi_p->at(jI);
 		truthJtEta_[nRecoJt_] = aktR_truth_jet_eta_p->at(jI);
+		truthJtFlavor_[nRecoJt_] = aktR_truth_jet_partonid_p->at(jI);
 		
 		++nRecoJt_;
 	      }
@@ -2459,6 +2471,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		truthJtUnmatchedPt_[nTruthJtUnmatched_] = aktR_truth_jet_pt_p->at(jI);
 		truthJtUnmatchedPhi_[nTruthJtUnmatched_] = aktR_truth_jet_phi_p->at(jI);
 		truthJtUnmatchedEta_[nTruthJtUnmatched_] = aktR_truth_jet_eta_p->at(jI);
+		truthJtUnmatchedFlavor_[nTruthJtUnmatched_] = aktR_truth_jet_partonid_p->at(jI);
 		
 		++nTruthJtUnmatched_;
 	      }
@@ -3195,7 +3208,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	      Float_t dPhiJJValue = TMath::Abs(getDPHI(goodTruthJet1.Phi(), goodTruthJet2.Phi()));
 	      Float_t dRJJValue = getDR(goodTruthJet1.Eta(), goodTruthJet1.Phi(), goodTruthJet2.Eta(), goodTruthJet2.Phi());
 	      
-	      if(dRJJValue < mixJetExclusionDR) continue;
+	      //	      if(dRJJValue < mixJetExclusionDR) continue;
 	      
 	      
 	      Float_t subLeadingJetPt = goodTruthJet1.Pt();
