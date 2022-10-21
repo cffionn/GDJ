@@ -24,6 +24,7 @@
 #include "TStyle.h"
 
 //Local
+#include "include/binFlattener.h"
 #include "include/binUtils.h"
 #include "include/checkMakeDir.h"
 #include "include/configParser.h"
@@ -40,7 +41,7 @@
 //Based on file provided by YJ 2021.04.27
 //See input/yjDPhi for pdf and C file
 
-void fillYJHist(TH1F* inHist_p)
+void fillYJHist(TH1D* inHist_p)
 {
   const Int_t nBins = 16;
   const Double_t binVals[nBins] = {0.04494337, 0.05285863, 0.06226765, 0.09007777, 0.08434847, 0.07955648, 0.08816509, 0.09671815, 0.1008858, 0.1199762, 0.1605424, 0.2304045, 0.3904447, 0.6729873, 1.310041, 3.538677};
@@ -61,7 +62,7 @@ void fillYJHist(TH1F* inHist_p)
 
 
 /*
-std::vector<std::string> getLabels(TEnv* plotConfig_p, TH1F* histForLabels_p, std::map<std::string, std::string>* labelMap, std::vector<std::string>* labelsForSaveStr = nullptr)
+std::vector<std::string> getLabels(TEnv* plotConfig_p, TH1D* histForLabels_p, std::map<std::string, std::string>* labelMap, std::vector<std::string>* labelsForSaveStr = nullptr)
 {
   std::vector<std::string> labelVect;
   Int_t nGlobalLabels = 0;
@@ -149,7 +150,7 @@ std::vector<std::string> getLabels(TEnv* plotConfig_p, TH1F* histForLabels_p, st
 }
 */
 
-std::string plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>* labelMap, TEnv* plotConfig_p, std::string envStr, std::string dateStr, std::string saveTag,  std::vector<TH1F*> hists_p, std::vector<std::string> legStrs, std::vector<TH1F*> refHist_p, std::vector<std::string> refLegStr, std::vector<std::string> yLabels, std::vector<bool> yLogs, bool doReducedLabel)
+std::string plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>* labelMap, TEnv* plotConfig_p, std::string envStr, std::string dateStr, std::string saveTag,  std::vector<TH1D*> hists_p, std::vector<std::string> legStrs, std::vector<TH1D*> refHist_p, std::vector<std::string> refLegStr, std::vector<std::string> yLabels, std::vector<bool> yLogs, bool doReducedLabel)
 {
   if(hists_p.size() == 0){
     std::cout << "No hists given to plotMixClosure - return" << std::endl;
@@ -204,13 +205,6 @@ std::string plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::
   const double min = plotConfig_p->GetValue(("MIXEDEVTPLOT." + envStr + "MIN").c_str(), -0.05);
   const double zoomMax = plotConfig_p->GetValue(("MIXEDEVTPLOT." + envStr + "ZOOMMAX").c_str(), 0.05);
   const double zoomMin = plotConfig_p->GetValue(("MIXEDEVTPLOT." + envStr + "ZOOMMIN").c_str(), -0.05);
-
-  /*
-  std::cout << "ENVSTR: " << envStr << std::endl;
-  std::cout << " doVaryMax: " << doVaryMax << std::endl;
-  std::cout << " max: " << max << std::endl;
-  std::cout << " min: " << min << std::endl;
-  */  
 
   const bool isMC = plotConfig_p->GetValue("ISMC", 0);
   const bool doLogX = plotConfig_p->GetValue(("MIXEDEVTPLOT." + envStr + "DOLOGX").c_str(), 0);
@@ -389,7 +383,7 @@ std::string plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::
 	if(histName.find("yjHist_p") != std::string::npos) continue;
 	if(refHist_p[hI] == hists_p[cI]) continue;
        	
-	TH1F* tempHist_p = new TH1F("tempHist_p", "", nBinsTemp, binsTemp);	
+	TH1D* tempHist_p = new TH1D("tempHist_p", "", nBinsTemp, binsTemp);	
 	tempHist_p->Divide(hists_p[cI], refHist_p[hI]);
 
 	
@@ -465,7 +459,7 @@ std::string plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::
       canv_p->cd();
       pads_p[hI+1]->cd();
 
-      TH1F* tempHist_p = new TH1F("tempHist_p", "", nBinsTemp, binsTemp);
+      TH1D* tempHist_p = new TH1D("tempHist_p", "", nBinsTemp, binsTemp);
       tempHist_p->GetXaxis()->SetTitle(hists_p[cI]->GetXaxis()->GetTitle());
 
       
@@ -561,7 +555,7 @@ std::string plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::
       if(cI < 2) continue;
       if(cI == 3) continue;
 
-      TH1F* tempHist_p = new TH1F("tempHist_p", "", nBinsTemp, binsTemp);
+      TH1D* tempHist_p = new TH1D("tempHist_p", "", nBinsTemp, binsTemp);
       tempHist_p->GetXaxis()->SetTitle(hists_p[cI]->GetXaxis()->GetTitle());            
       
       
@@ -819,7 +813,22 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
   std::map<std::string, std::string> configMap = configs.GetConfigMap();
   
   std::vector<std::string> necessaryParams = {"ISMC",
-					      "NGAMMAPTBINSSUB",
+					      "NGAMMAPTBINS",
+					      "GAMMAPTBINSLOW",
+					      "GAMMAPTBINSHIGH",
+					      "GAMMAPTBINSLOWRECO",
+					      "GAMMAPTBINSHIGHRECO",
+					      "GAMMAPTBINSDOLOG",
+					      "GAMMAPTBINSDOCUSTOM",
+					      "NSUBJTPTBINS",
+					      "SUBJTPTBINSLOW",
+					      "SUBJTPTBINSHIGH",
+					      "SUBJTPTBINSLOWRECO",
+					      "SUBJTPTBINSHIGHRECO",
+					      "SUBJTPTBINSDOLOG",
+					      "SUBJTPTBINSDOCUSTOM",
+					      "SUBJTGAMMAPTMIN",
+					      "SUBJTGAMMAPTMAX",
 					      "ISPP",
 					      "JETR"};
 
@@ -830,7 +839,6 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
   
   plotConfig_p->SetValue("ISMC", isMC);
  
-  //  const int nGammaPtBinsSub = std::stoi(configs.GetConfigVal("NGAMMAPTBINSSUB"));
   const bool isPP = std::stoi(configs.GetConfigVal("ISPP"));
   
   int nCentBins = 1;
@@ -842,22 +850,93 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
     nCentBins = centBins.size()-1;
   }
 
-  //  std::vector<std::string> observables1 = {"JtXJ", "JtXJJ", "JtAJJ", "JtDPhiJJG", "JtDPhiJJ", "JtDRJJ", "JtPt", "JtDPhi"};
-  //  std::vector<std::string> mixStrings = {"MIX", "MIXCORRECTED", "MIXCORRECTED", "MIXCORRECTED", "MIXCORRECTED", "MIXCORRECTED", "MIX", "MIX"};
-  //  std::vector<std::string> barrelECStr = {"Barrel", "EC", "BarrelAndEC"};
+  const Int_t nMaxBins = 200;
+  //Grab the gammaPtBins and the subjtPtbins to correctly handle flattened bins  
+  const Int_t nGammaPtBins = config_p->GetValue("NGAMMAPTBINS", -1);
+  const Float_t gammaPtBinsLow = config_p->GetValue("GAMMAPTBINSLOW", 80.0);
+  const Float_t gammaPtBinsHigh = config_p->GetValue("GAMMAPTBINSHIGH", 280.0);
+  const Float_t gammaPtBinsLowReco = config_p->GetValue("GAMMAPTBINSLOWRECO", 1000.0);
+  const Float_t gammaPtBinsHighReco = config_p->GetValue("GAMMAPTBINSHIGHRECO", -1000.0);
+  const Bool_t gammaPtBinsDoLog = (bool)config_p->GetValue("GAMMAPTBINSDOLOG", 1);
+  const Bool_t gammaPtBinsDoCustom = (bool)config_p->GetValue("GAMMAPTBINSDOCUSTOM", 1);
+  Double_t gammaPtBins[nMaxBins+1];
+  std::string gammaPtBinsStr = "";
+
+  if(gammaPtBinsDoLog) getLogBins(gammaPtBinsLow, gammaPtBinsHigh, nGammaPtBins, gammaPtBins);
+  else if(gammaPtBinsDoCustom){
+    gammaPtBinsStr = config_p->GetValue("GAMMAPTBINSCUSTOM", "");
+    if(gammaPtBinsStr.size() == 0){
+      std::cout << "gammaPtBinsDoCustom is true but gammaPtBinsCustom is empty. return 1" << std::endl;
+      return 1;
+    }
+    
+    std::vector<float> gammaPtBinsTemp = strToVectF(gammaPtBinsStr);
+    Int_t nGammaPtBinsTemp = ((Int_t)gammaPtBinsTemp.size()) - 1;
+    if(nGammaPtBinsTemp != nGammaPtBins){
+      std::cout << "Number of gamma pt custom bins doesnt match specified number; return 1" << std::endl;
+      return 1;
+    }
+
+    for(unsigned int gI = 0; gI < gammaPtBinsTemp.size(); ++gI){
+      gammaPtBins[gI] = gammaPtBinsTemp[gI];
+    }
+  }
+  else getLinBins(gammaPtBinsLow, gammaPtBinsHigh, nGammaPtBins, gammaPtBins);
+
+
+  const Int_t nSubJtPtBins = config_p->GetValue("NSUBJTPTBINS", -1);    
+  const Float_t subJtPtBinsLow = config_p->GetValue("SUBJTPTBINSLOW", 80.0);
+  const Float_t subJtPtBinsHigh = config_p->GetValue("SUBJTPTBINSHIGH", 280.0);
+  const Float_t subJtPtBinsLowReco = config_p->GetValue("SUBJTPTBINSLOWRECO", 1000.0);
+  const Float_t subJtPtBinsHighReco = config_p->GetValue("SUBJTPTBINSHIGHRECO", -1000.0);
+  const Bool_t subJtPtBinsDoLog = (bool)config_p->GetValue("SUBJTPTBINSDOLOG", 1);
+  const Bool_t subJtPtBinsDoCustom = (bool)config_p->GetValue("SUBJTPTBINSDOCUSTOM", 1);
+  Double_t subJtPtBins[nMaxBins+1];
+  std::string subJtPtBinsStr = "";
+
+  if(subJtPtBinsDoLog) getLogBins(subJtPtBinsLow, subJtPtBinsHigh, nGammaPtBins, subJtPtBins);
+  else if(subJtPtBinsDoCustom){
+    subJtPtBinsStr = config_p->GetValue("SUBJTPTBINSCUSTOM", "");
+    if(subJtPtBinsStr.size() == 0){
+      std::cout << "subJtPtBinsDoCustom is true but subJtPtBinsCustom is empty. return 1" << std::endl;
+      return 1;
+    }
+    
+    std::vector<float> subJtPtBinsTemp = strToVectF(subJtPtBinsStr);
+    Int_t nSubJtPtBinsTemp = ((Int_t)subJtPtBinsTemp.size()) - 1;
+    if(nSubJtPtBinsTemp != nSubJtPtBins){
+      std::cout << "Number of subJt pt custom bins doesnt match specified number; return 1" << std::endl;
+      return 1;
+    }
+
+    for(unsigned int gI = 0; gI < subJtPtBinsTemp.size(); ++gI){
+      subJtPtBins[gI] = subJtPtBinsTemp[gI];
+    }
+  }
+  else getLinBins(subJtPtBinsLow, subJtPtBinsHigh, nGammaPtBins, subJtPtBins);
+  
+  //We need the flattened bin array to correctly construct the mixed event hists
+  const Int_t nSubJtGammaPtBins = nGammaPtBins*nSubJtPtBins;
+  const Float_t subJtGammaPtMin = config_p->GetValue("SUBJTGAMMAPTMIN", -1.0);
+  const Float_t subJtGammaPtMax = config_p->GetValue("SUBJTGAMMAPTMAX", -1.0);
+  Double_t subJtGammaPtBins[nMaxBins+1];
+
+  //Now construct the flattened subjt pt-gamma pt bins
+  binFlattener subJtGammaPtBinFlattener;
+  //Now create your flattened bins using the binFlattener class
+  if(!subJtGammaPtBinFlattener.Init("subJtGammaPtBinFlattener", nGammaPtBins, gammaPtBins, nSubJtPtBins, subJtPtBins)){
+    std::cout << "Error gdjNTupleToHist: Failure to init binFlattener, L" << __LINE__ << ". return 1" << std::endl;
+    return 1;
+  }
+  std::vector<double> subJtGammaPtBinsV = subJtGammaPtBinFlattener.GetFlattenedBins(subJtGammaPtMin, subJtGammaPtMax);
+  for(unsigned int sgI = 0; sgI < subJtGammaPtBinsV.size(); ++sgI){
+    subJtGammaPtBins[sgI] = subJtGammaPtBinsV[sgI];
+  }
+
+
+  
   std::vector<std::string> barrelECStr = {"BarrelAndEC"};
 
-  /*
-  std::vector<std::string> normYAxisTitle = {"#frac{1}{N_{#gamma}}#frac{dN_{J#gamma}}{dx_{J#gamma}}",
-					     "#frac{1}{N_{#gamma}}#frac{dN_{JJ#gamma}}{dx_{JJ#gamma}}",
-					     "#frac{1}{N_{#gamma}}#frac{dN_{JJ#gamma}}{dA_{JJ#gamma}}",
-					     "#frac{1}{N_{#gamma}}#frac{dN_{JJ#gamma}}{d#Delta#phi_{JJ#gamma}}",
-					     "#frac{1}{N_{#gamma}}#frac{dN_{JJ}}{d#Delta#phi_{JJ}}",
-					     "#frac{1}{N_{#gamma}}#frac{dN_{JJ}}{d#DeltaR_{JJ}}",
-					     "#frac{1}{N_{#gamma}}#frac{dN_{J#gamma}}{dp_{T,J#gamma}}",
-					     "#frac{1}{N_{#gamma}}#frac{dN_{J#gamma}}{d#Delta#phi_{J#gamma}}"};
-  */
-  
   std::vector<std::string> observables1 = {"JtPt", "JtXJ", "JtDPhi", "JtXJJ", "JtDRJJ", "JtDPhiJJG", "JtDPhiJJ", "JtAJJ"};
   std::vector<std::string> mixStrings = {"MIX", "MIX", "MIX", "MIXCORRECTED", "MIXCORRECTED", "MIXCORRECTED", "MIXCORRECTED", "MIXCORRECTED"};
   std::vector<std::string> normYAxisTitle = {"#frac{1}{N_{#gamma}}#frac{dN_{J#gamma}}{dp_{T}^{Jet}}",
@@ -891,11 +970,7 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
   plotConfig_p->SetValue("JTETABINSHIGH", config_p->GetValue("JTETABINSHIGH", ""));
   plotConfig_p->SetValue("MIXJETEXCLUSIONDR", config_p->GetValue("MIXJETEXCLUSIONDR", ""));
 
-  //We need gamma pt bins to know which y axis positions to exclude
-  const Float_t gammaPtBinsLowReco = config_p->GetValue("GAMMAPTBINSLOWRECO", 1000.0);
-  const Float_t gammaPtBinsHighReco = config_p->GetValue("GAMMAPTBINSHIGHRECO", -1000.0);
   
-  const Int_t nMaxBins = 100;
   for(Int_t cI = 0; cI < nCentBins; ++cI){
     std::string centStr = "PP";
     if(!isPP) centStr = "Cent" + centBins[cI] + "to" + centBins[cI+1];
@@ -908,22 +983,22 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 
       std::string phoName = centStr + "/photonPtVCent_" + centStr + "_" + mainBarrelECStr + "_RAW_h";
       if(doGlobalDebug) std::cout << "FILE, LINE, PHONAME: " << __FILE__ << ", " << __LINE__ << ", " << phoName << std::endl;
-      TH1F* photonHist_p = (TH1F*)inFile_p->Get(phoName.c_str());
-      TH1F* photonHistMC_p = nullptr;
-      if(mcFileName.size() != 0) photonHistMC_p = (TH1F*)mcFile_p->Get(phoName.c_str());
+      TH1D* photonHist_p = (TH1D*)inFile_p->Get(phoName.c_str());
+      TH1D* photonHistMC_p = nullptr;
+      if(mcFileName.size() != 0) photonHistMC_p = (TH1D*)mcFile_p->Get(phoName.c_str());
 
       //Commenting out all references to EC
-      //      TH1F* photonHistEC_p = nullptr;
-      //      TH1F* photonHistMCEC_p = nullptr;
+      //      TH1D* photonHistEC_p = nullptr;
+      //      TH1D* photonHistMCEC_p = nullptr;
       /*
       if(isBarrelAndEC){	
 	if(!strReplace(&phoName, "Barrel", "EC")) return 1;
 	//	phoName.replace(phoName.find("Barrel"), 6, "EC");
-	//        photonHistEC_p = (TH1F*)inFile_p->Get(phoName.c_str());
+	//        photonHistEC_p = (TH1D*)inFile_p->Get(phoName.c_str());
 	//	photonHist_p->Add(photonHistEC_p);
 
 	if(mcFileName.size() != 0){
-	  //	  photonHistMCEC_p = (TH1F*)mcFile_p->Get(phoName.c_str());
+	  //	  photonHistMCEC_p = (TH1D*)mcFile_p->Get(phoName.c_str());
 	  //	  photonHistMC_p->Add(photonHistMCEC_p);
 	}	
       }      
@@ -940,11 +1015,11 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	bool doRebin = doRebinX || doRebinY;
 	
 	bool isMultijet = isStrSame(observables1[oI], "JtXJJ") || isStrSame(observables1[oI], "JtAJJ") || isStrSame(observables1[oI], "JtDPhiJJG") || isStrSame(observables1[oI], "JtDPhiJJ") || isStrSame(observables1[oI], "JtDRJJ");
-
+      
 	std::string mixMode = "MIXMODE1";
 	if(isMultijet) mixMode = "MIXMODE2";
 
-	std::string rawName = centStr + "/photonPt" + observables1[oI] + "VCent_" + centStr + "_" + mainBarrelECStr + "_DPhi0_Fine_" + mixMode + "_RAW_h";
+	std::string rawName = centStr + "/photonPt" + observables1[oI] + "VCent_" + centStr + "_" + mainBarrelECStr + "_NOMINAL_DPhi0_Fine_" + mixMode + "_RAW_h";
 	if(!doRebin) rawName.replace(rawName.find("_Fine"), 5, "");
 
 	std::string mixName = rawName;
@@ -964,37 +1039,37 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	*/
 	
 	//Big block declaring all histograms
-	TH2F* raw_p = nullptr;
-	TH2F* mix_p = nullptr;
-	TH2F* sub_p = nullptr;
+	TH2D* raw_p = nullptr;
+	TH2D* mix_p = nullptr;
+	TH2D* sub_p = nullptr;
       
 	/*
-	TH2F* raw_p = (TH2F*)inFile_p->Get(rawName.c_str());
-	TH2F* mix_p = (TH2F*)inFile_p->Get(mixName.c_str());
-	TH2F* sub_p = (TH2F*)inFile_p->Get(subName.c_str());
+	TH2D* raw_p = (TH2D*)inFile_p->Get(rawName.c_str());
+	TH2D* mix_p = (TH2D*)inFile_p->Get(mixName.c_str());
+	TH2D* sub_p = (TH2D*)inFile_p->Get(subName.c_str());
 	*/
-	TH2F* mc_p = nullptr;
+	TH2D* mc_p = nullptr;
        
-	TH2F* mixUncorrected_p = nullptr;
-	TH2F* mixCorrection_p = nullptr;
+	TH2D* mixUncorrected_p = nullptr;
+	TH2D* mixCorrection_p = nullptr;
 	
-	TH2F* pureBkgdMC_p = nullptr;
-	TH2F* pureBkgd_p = nullptr;
+	TH2D* pureBkgdMC_p = nullptr;
+	TH2D* pureBkgd_p = nullptr;
 
-	TH2F* mixBkgdMC_p = nullptr;
-	TH2F* mixBkgd_p = nullptr;
-	TH2F* mixBkgdUncorr_p = nullptr;
+	TH2D* mixBkgdMC_p = nullptr;
+	TH2D* mixBkgd_p = nullptr;
+	TH2D* mixBkgdUncorr_p = nullptr;
 	  
-	TH2F* rawEC_p = nullptr;
-	TH2F* mixEC_p = nullptr;
-	TH2F* subEC_p = nullptr;
-	TH2F* mcEC_p = nullptr;
+	TH2D* rawEC_p = nullptr;
+	TH2D* mixEC_p = nullptr;
+	TH2D* subEC_p = nullptr;
+	TH2D* mcEC_p = nullptr;
 
-	TH2F* subMC_p = nullptr;
-	TH2F* subMCEC_p = nullptr;
+	TH2D* subMC_p = nullptr;
+	TH2D* subMCEC_p = nullptr;
 
-	TH2F* singleTruthToMultiFake_p = nullptr;
-	TH2F* singleTruthToMultiFakeMix_p = nullptr;
+	TH2D* singleTruthToMultiFake_p = nullptr;
+	TH2D* singleTruthToMultiFakeMix_p = nullptr;
 	
 	std::string mixUncorrectedName = mixName;
 	std::string mixCorrectionName = mixName;
@@ -1051,7 +1126,7 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	  }
 
 	  //Grab a histogram for bin checks 
-	  TH2F* temp_p = (TH2F*)inFile_p->Get(rawName.c_str());
+	  TH2D* temp_p = (TH2D*)inFile_p->Get(rawName.c_str());
 	  std::vector<float> rebinXVect = strToVectF(rebinXStr);
 	  std::vector<float> rebinYVect = strToVectF(rebinYStr);
 	  Float_t deltaValue = 0.001;
@@ -1093,7 +1168,7 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	
 	  //CFM EDITING HERE 2021.11.04
 	  //Double pointer since we are newing in the loop
-	  std::vector<TH2F**> histsToRebin_p = {&raw_p, &mix_p, &sub_p};	  
+	  std::vector<TH2D**> histsToRebin_p = {&raw_p, &mix_p, &sub_p};	  
 	  std::vector<std::string> rebinHistsName = {rawName, mixName, subName};
 
 	  if(mcFileName.size() != 0){
@@ -1165,69 +1240,60 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	      
 	  for(unsigned int i = 0; i < histsToRebin_p.size(); ++i){
 	    std::string tempName = rebinHistsName[i];
-	    TH2F* temp2_p = (TH2F*)inFile_p->Get(tempName.c_str());
+	    TH2D* temp2_p = (TH2D*)inFile_p->Get(tempName.c_str());
 	    if(!strReplace(&tempName, "_h", "_Rebin_h")) return 1;
 	    while(tempName.find("/") != std::string::npos){tempName.replace(0, tempName.find("/")+1, "");}
 	    std::string xTitle = temp2_p->GetXaxis()->GetTitle();
 	    std::string yTitle = temp2_p->GetYaxis()->GetTitle();
 	    std::string titleStr = ";" + xTitle + ";" + yTitle;
 	    
-	    (*histsToRebin_p[i]) = new TH2F(tempName.c_str(), titleStr.c_str(), nBinsX, newBinsX, nBinsY, newBinsY);	    
+	    (*histsToRebin_p[i]) = new TH2D(tempName.c_str(), titleStr.c_str(), nBinsX, newBinsX, nBinsY, newBinsY);	    
 	    fineHistToCoarseHist(temp2_p, *(histsToRebin_p[i]));  
 	  }
 	}
 	else{
-	  raw_p = (TH2F*)inFile_p->Get(rawName.c_str());
-	  mix_p = (TH2F*)inFile_p->Get(mixName.c_str());
-	  sub_p = (TH2F*)inFile_p->Get(subName.c_str());
-	  if(mcFileName.size() != 0) subMC_p = (TH2F*)mcFile_p->Get(subName.c_str());	  	  
+	  raw_p = (TH2D*)inFile_p->Get(rawName.c_str());
+	  mix_p = (TH2D*)inFile_p->Get(mixName.c_str());
+	  sub_p = (TH2D*)inFile_p->Get(subName.c_str());
+	  if(mcFileName.size() != 0) subMC_p = (TH2D*)mcFile_p->Get(subName.c_str());	  	  
 
 	  /*	    
 	  if(isBarrelAndEC){
-	    rawEC_p = (TH2F*)inFile_p->Get(rawNameEC.c_str());
-	    mixEC_p = (TH2F*)inFile_p->Get(mixNameEC.c_str());
-	    subEC_p = (TH2F*)inFile_p->Get(subNameEC.c_str());
+	    rawEC_p = (TH2D*)inFile_p->Get(rawNameEC.c_str());
+	    mixEC_p = (TH2D*)inFile_p->Get(mixNameEC.c_str());
+	    subEC_p = (TH2D*)inFile_p->Get(subNameEC.c_str());
 
-	    if(mcFileName.size() != 0) subMCEC_p = (TH2F*)mcFile_p->Get(subNameEC.c_str());
+	    if(mcFileName.size() != 0) subMCEC_p = (TH2D*)mcFile_p->Get(subNameEC.c_str());
 	  }
 	  */
 	  
 	  if(isMC){
 	    if(doGlobalDebug) std::cout << "FILE, LINE, mcNAME: " << __FILE__ << ", " << __LINE__ << ", " << mcName << std::endl;
-	    mc_p = (TH2F*)inFile_p->Get(mcName.c_str());
-	    //	    if(isBarrelAndEC) mcEC_p = (TH2F*)inFile_p->Get(mcNameEC.c_str());	      
+	    mc_p = (TH2D*)inFile_p->Get(mcName.c_str());
+	    //	    if(isBarrelAndEC) mcEC_p = (TH2D*)inFile_p->Get(mcNameEC.c_str());	      
 	  }
 
 	  if(isMultijet){	  
-	    mixUncorrected_p = (TH2F*)inFile_p->Get(mixUncorrectedName.c_str());
-	    mixCorrection_p = (TH2F*)inFile_p->Get(mixCorrectionName.c_str());
+	    mixUncorrected_p = (TH2D*)inFile_p->Get(mixUncorrectedName.c_str());
+	    mixCorrection_p = (TH2D*)inFile_p->Get(mixCorrectionName.c_str());
 	    
-	    //	    pureBkgd_p = (TH2F*)inFile_p->Get(pureBkgdName.c_str());
-	    //	    mixBkgd_p = (TH2F*)inFile_p->Get(mixBkgdName.c_str());
-	    //      mixBkgdUncorr_p = (TH2F*)inFile_p->Get(mixBkgdUncorrName.c_str());
+	    //	    pureBkgd_p = (TH2D*)inFile_p->Get(pureBkgdName.c_str());
+	    //	    mixBkgd_p = (TH2D*)inFile_p->Get(mixBkgdName.c_str());
+	    //      mixBkgdUncorr_p = (TH2D*)inFile_p->Get(mixBkgdUncorrName.c_str());
 	    
 	    if(isMC){
-	      //	      pureBkgdMC_p = (TH2F*)inFile_p->Get(pureBkgdMCName.c_str());	  
-	      //	      mixBkgdMC_p = (TH2F*)inFile_p->Get(mixBkgdMCName.c_str());
+	      //	      pureBkgdMC_p = (TH2D*)inFile_p->Get(pureBkgdMCName.c_str());	  
+	      //	      mixBkgdMC_p = (TH2D*)inFile_p->Get(mixBkgdMCName.c_str());
 
 	      if(isStrSame(observables1[oI], "JtDRJJ")){
-		singleTruthToMultiFake_p = (TH2F*)inFile_p->Get(singleTruthToMultiFakeName.c_str());
-		singleTruthToMultiFakeMix_p = (TH2F*)inFile_p->Get(singleTruthToMultiFakeMixName.c_str());
+		singleTruthToMultiFake_p = (TH2D*)inFile_p->Get(singleTruthToMultiFakeName.c_str());
+		singleTruthToMultiFakeMix_p = (TH2D*)inFile_p->Get(singleTruthToMultiFakeMixName.c_str());
 	      }
 	    }
 	  }	  
 	}
 
-	/*
-	if(isBarrelAndEC){
-	  raw_p->Add(rawEC_p);
-	  mix_p->Add(mixEC_p);
-	  sub_p->Add(subEC_p);
-	  
-	  if(mcFileName.size() != 0) subMC_p->Add(subMCEC_p);
-	  if(isMC) mc_p->Add(mcEC_p);
-	}
-	*/
+	if(doGlobalDebug) std::cout << "FILE, LINE, mcNAME: " << __FILE__ << ", " << __LINE__ << std::endl;	
  		        
 	const Int_t nBinsTemp = raw_p->GetXaxis()->GetNbins();
 	if(doGlobalDebug) std::cout << "FILE, LINE, nBinsTemp: " << __FILE__ << ", " << __LINE__ << ", " << nBinsTemp << std::endl;
@@ -1245,13 +1311,29 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	
 	for(Int_t bIY = 0; bIY < raw_p->GetYaxis()->GetNbins(); ++bIY){	
 	  Float_t binCenter = raw_p->GetYaxis()->GetBinCenter(bIY+1);
+	  Int_t gammaPtBinPos = bIY;
+	  Float_t gammaBinCenter = binCenter;
+	  
+	  if(isMultijet){
+	    gammaPtBinPos = subJtGammaPtBinFlattener.GetBin1PosFromGlobal(bIY);
+	    gammaBinCenter = (gammaPtBins[gammaPtBinPos] + gammaPtBins[gammaPtBinPos+1])/2.0;
+	    
+	    if(gammaBinCenter < gammaPtBinsLowReco) continue;
+	    if(gammaBinCenter >= gammaPtBinsHighReco) continue;
 
-	  if(binCenter < gammaPtBinsLowReco) continue;
-	  if(binCenter >= gammaPtBinsHighReco) continue;
+	    Int_t subJtPtBinPos = subJtGammaPtBinFlattener.GetBin2PosFromGlobal(bIY);
+	    Float_t subJtBinCenter = (subJtPtBins[subJtPtBinPos] + subJtPtBins[subJtPtBinPos+1])/2.0;
 
+	    if(subJtBinCenter < subJtPtBinsLowReco) continue;
+	  }
+	  else{
+	    if(binCenter < gammaPtBinsLowReco) continue;
+	    if(binCenter >= gammaPtBinsHighReco) continue;
+	  }
+	  
 	  //Calculate photon integral of this bin
-	  Float_t lowEdge = raw_p->GetYaxis()->GetBinLowEdge(bIY+1);
-	  Float_t highEdge = raw_p->GetYaxis()->GetBinLowEdge(bIY+2);
+	  Float_t lowEdge = gammaPtBins[gammaPtBinPos];
+	  Float_t highEdge = gammaPtBins[gammaPtBinPos+1];
 
 	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	  if(doGlobalDebug) std::cout << "FILE, LINE, photonHistName: " << __FILE__ << ", " << __LINE__ << ", " << photonHist_p->GetName() << std::endl;
@@ -1279,32 +1361,34 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	  
 	  std::string axisStr = ";" + std::string(raw_p->GetXaxis()->GetTitle()) + ";Counts";
 	  std::string newName = rawName.substr(0, rawName.rfind("_RAW"));
-	  newName = newName + "_GammaPt" + std::to_string(bIY) + "_h";
+	  newName = newName + "_GammaPt" + std::to_string(gammaPtBinPos) + "_h";
+
+	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+	
+	  std::cout << "CONTSRUCTING HIST FOR OBSERVABLE: " << observables1[oI] << std::endl;;
+	  
+	  TH1D* rawTemp_p = new TH1D(newName.c_str(), axisStr.c_str(), nBinsTemp, binsTemp);
+	  TH1D* mixTemp_p = new TH1D("mixTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
+	  TH1D* subTemp_p = new TH1D("subTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
+	  TH1D* mcTemp_p = nullptr;
+	  TH1D* mixUncorrectedTemp_p = nullptr;
+	  TH1D* mixCorrectionTemp_p = nullptr;
 
 	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	  
-	  TH1F* rawTemp_p = new TH1F(newName.c_str(), axisStr.c_str(), nBinsTemp, binsTemp);
-	  TH1F* mixTemp_p = new TH1F("mixTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
-	  TH1F* subTemp_p = new TH1F("subTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
-	  TH1F* mcTemp_p = nullptr;
-	  TH1F* mixUncorrectedTemp_p = nullptr;
-	  TH1F* mixCorrectionTemp_p = nullptr;
+	  TH1D* pureBkgdTemp_p = nullptr;
+	  TH1D* pureBkgdMCTemp_p = nullptr;
+	  TH1D* mixBkgdTemp_p = nullptr;
+	  TH1D* mixBkgdUncorrTemp_p = nullptr;
+	  TH1D* mixBkgdMCTemp_p = nullptr;
 
-	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+	  TH1D* singleTruthToMultiFakeTemp_p = nullptr;
+	  TH1D* singleTruthToMultiFakeMixTemp_p = nullptr;
 	  
-	  TH1F* pureBkgdTemp_p = nullptr;
-	  TH1F* pureBkgdMCTemp_p = nullptr;
-	  TH1F* mixBkgdTemp_p = nullptr;
-	  TH1F* mixBkgdUncorrTemp_p = nullptr;
-	  TH1F* mixBkgdMCTemp_p = nullptr;
+	  TH1D* subMCTemp_p = nullptr;
+	  if(mcFileName.size() != 0) subMCTemp_p = new TH1D("subMCTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
 
-	  TH1F* singleTruthToMultiFakeTemp_p = nullptr;
-	  TH1F* singleTruthToMultiFakeMixTemp_p = nullptr;
-	  
-	  TH1F* subMCTemp_p = nullptr;
-	  if(mcFileName.size() != 0) subMCTemp_p = new TH1F("subMCTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
-
-	  if(isMC) mcTemp_p = new TH1F("mcTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
+	  if(isMC) mcTemp_p = new TH1D("mcTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
 	  
 	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	  //	  if(isStrSame(observables1[oI], "JtXJJ") || isStrSame(observables1[oI], "JtDPhiJJG")){
@@ -1312,23 +1396,23 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	    newName = mixUncorrectedName.substr(0, mixUncorrectedName.rfind("_MIX"));
 	    newName = newName + "_Alt_GammaPt" + std::to_string(bIY) + "_h";
 
-	    mixUncorrectedTemp_p = new TH1F(newName.c_str(), axisStr.c_str(), nBinsTemp, binsTemp);
- 	    mixCorrectionTemp_p = new TH1F("mixCorrectionTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
+	    mixUncorrectedTemp_p = new TH1D(newName.c_str(), axisStr.c_str(), nBinsTemp, binsTemp);
+ 	    mixCorrectionTemp_p = new TH1D("mixCorrectionTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
 
 	    if(!strReplace(&newName, "Alt", "Alt2")) return 1;
-	    //	    pureBkgdTemp_p = new TH1F(newName.c_str(), axisStr.c_str(), nBinsTemp, binsTemp);
+	    //	    pureBkgdTemp_p = new TH1D(newName.c_str(), axisStr.c_str(), nBinsTemp, binsTemp);
 
 	    if(!strReplace(&newName, "Alt2", "Alt3")) return 1;
-	    //	    mixBkgdTemp_p = new TH1F(newName.c_str(), axisStr.c_str(), nBinsTemp, binsTemp);
-	    //	    mixBkgdUncorrTemp_p = new TH1F("mixBkgdUncorrTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
+	    //	    mixBkgdTemp_p = new TH1D(newName.c_str(), axisStr.c_str(), nBinsTemp, binsTemp);
+	    //	    mixBkgdUncorrTemp_p = new TH1D("mixBkgdUncorrTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
 
 	    if(isMC){
-	      //	      mixBkgdMCTemp_p = new TH1F("mixBkgdMCTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
-	      //	      pureBkgdMCTemp_p = new TH1F("pureBkgdMCTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
+	      //	      mixBkgdMCTemp_p = new TH1D("mixBkgdMCTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
+	      //	      pureBkgdMCTemp_p = new TH1D("pureBkgdMCTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
 
 	      if(isStrSame(observables1[oI], "JtDRJJ")){
-		singleTruthToMultiFakeTemp_p = new TH1F("singleTruthToMultiFakeTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
-		singleTruthToMultiFakeMixTemp_p = new TH1F("singleTruthToMultiFakeMixTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
+		singleTruthToMultiFakeTemp_p = new TH1D("singleTruthToMultiFakeTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
+		singleTruthToMultiFakeMixTemp_p = new TH1D("singleTruthToMultiFakeMixTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
 	      }
 	    }	    
 	  }
@@ -1423,11 +1507,11 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 		      
 
 	  
-	  std::vector<TH1F*> hists_p = {rawTemp_p, subTemp_p};
+	  std::vector<TH1D*> hists_p = {rawTemp_p, subTemp_p};
 	  std::vector<std::string> legStrs = {"Raw", "Raw - Mixed"};
 
 	  int equipPos = 2;
-	  TH1F* yjHist_p = nullptr;
+	  TH1D* yjHist_p = nullptr;
 
 	  
 	  
@@ -1448,7 +1532,7 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	    hists_p[0]->GetYaxis()->SetTitle("#frac{1}{N_{#gamma}#frac{dN_{J#gamma}}{d#Delta#phi_{J#gamma}}");
 	    */
 	    
-	    yjHist_p = new TH1F("yjHist_p", "", 16, hists_p[0]->GetXaxis()->GetBinLowEdge(1), hists_p[0]->GetXaxis()->GetBinLowEdge(hists_p[0]->GetXaxis()->GetNbins()+1));
+	    yjHist_p = new TH1D("yjHist_p", "", 16, hists_p[0]->GetXaxis()->GetBinLowEdge(1), hists_p[0]->GetXaxis()->GetBinLowEdge(hists_p[0]->GetXaxis()->GetNbins()+1));
 	    HIJet::Style::EquipHistogram(yjHist_p, equipPos);
 	    fillYJHist(yjHist_p);
 	    ++equipPos;
@@ -1481,7 +1565,7 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	  HIJet::Style::EquipHistogram(mixTemp_p, equipPos);    
 	  ++equipPos;
 	  
-	  std::vector<TH1F*> refHists_p = {mixTemp_p};
+	  std::vector<TH1D*> refHists_p = {mixTemp_p};
 	  std::vector<std::string> refLegStrs = {"Mixed"};
 	  std::vector<std::string> yLabels = {"", ("X/#color[" + std::to_string(mixTemp_p->GetMarkerColor()) + "]{Bkgd}").c_str()};
 	  std::vector<bool> yLogs = {false, true};

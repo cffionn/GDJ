@@ -95,23 +95,25 @@ inline void binWidthAndSelfNorm(TH1* inHist_p)
 }
 
 template <typename T>
-void fineHistToCoarseHist(T* fineHist_p, T* coarseHist_p)
+void fineHistToCoarseHist(T* fineHist_p, T* coarseHist_p, bool doSum=false)
 {
   std::string histClassName = fineHist_p->ClassName();
   bool isTH2 = histClassName.find("TH2") != std::string::npos;
   
-  //Initialize coarse histogram to 0                                                                  
-  for(Int_t bIX = 0; bIX < coarseHist_p->GetXaxis()->GetNbins(); ++bIX){
-
-    if(isTH2){
-      for(Int_t bIY = 0; bIY < coarseHist_p->GetYaxis()->GetNbins(); ++bIY){
-	coarseHist_p->SetBinContent(bIX+1, bIY+1, 0.0);
-	coarseHist_p->SetBinError(bIX+1, bIY+1, 0.0);
+  //Initialize coarse histogram to 0
+  if(!doSum){
+    for(Int_t bIX = 0; bIX < coarseHist_p->GetXaxis()->GetNbins(); ++bIX){
+      
+      if(isTH2){
+	for(Int_t bIY = 0; bIY < coarseHist_p->GetYaxis()->GetNbins(); ++bIY){
+	  coarseHist_p->SetBinContent(bIX+1, bIY+1, 0.0);
+	  coarseHist_p->SetBinError(bIX+1, bIY+1, 0.0);
+	}
       }
-    }
-    else{
-      coarseHist_p->SetBinContent(bIX+1, 0.0);
-      coarseHist_p->SetBinError(bIX+1, 0.0);
+      else{
+	coarseHist_p->SetBinContent(bIX+1, 0.0);
+	coarseHist_p->SetBinError(bIX+1, 0.0);
+      }
     }
   }
 
