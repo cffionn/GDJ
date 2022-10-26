@@ -1365,8 +1365,6 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 
 	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	
-	  std::cout << "CONTSRUCTING HIST FOR OBSERVABLE: " << observables1[oI] << std::endl;;
-	  
 	  TH1D* rawTemp_p = new TH1D(newName.c_str(), axisStr.c_str(), nBinsTemp, binsTemp);
 	  TH1D* mixTemp_p = new TH1D("mixTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
 	  TH1D* subTemp_p = new TH1D("subTemp_h", axisStr.c_str(), nBinsTemp, binsTemp);
