@@ -422,10 +422,11 @@ void getIterativeHists(TH1D* reco_p, std::vector<TH1D*> inUnfoldedHists_p, TH1D*
       deltaStat += tempDeltaStat*tempDeltaStat;    
       
       if(doPrint) std::cout << "TEMPDELTASTAT: " << bIX << ": " << tempDeltaStat << std::endl;
-    }
-
+    }    
     Float_t deltaTot = deltaIter + deltaStat;
 
+    if(doPrint) std::cout << "DELTA TOT, STAT, ITER: " << deltaTot << ", " << deltaStat << ", " << deltaIter << std::endl;
+    
     statDelta_p->SetBinContent(i+1, TMath::Sqrt(deltaStat));
     statDelta_p->SetBinError(i+1, 0.0);
     
@@ -440,7 +441,7 @@ void getIterativeHists(TH1D* reco_p, std::vector<TH1D*> inUnfoldedHists_p, TH1D*
 }
 
 
-void getIterativeHists2D(TH2D* reco_p, std::vector<TH2D*> inUnfoldedHists_p, TH1D* statDelta_p, TH1D* iterDelta_p, TH1D* totalDelta_p, bool doRelative, float xLow, float xHigh, float yLow, float yHigh)
+void getIterativeHists2D(TH2D* reco_p, std::vector<TH2D*> inUnfoldedHists_p, TH1D* statDelta_p, TH1D* iterDelta_p, TH1D* totalDelta_p, bool doRelative, float xLow, float xHigh, float yLow, float yHigh, bool doPrint = false)
 {
   const Float_t deltaCheck = 0.0001;
   const Int_t nIter = inUnfoldedHists_p.size();
@@ -557,6 +558,11 @@ void getIterativeHists2D(TH2D* reco_p, std::vector<TH2D*> inUnfoldedHists_p, TH1
     Float_t deltaIter = 0.0;
     Float_t deltaStat = 0.0;
 
+    if(doPrint){
+      std::cout << "Iter i=" << i << std::endl;
+      inUnfoldedHists_p[i]->Print("ALL");
+    }
+    
     for(Int_t bIX = 0; bIX < inUnfoldedHists_p[i]->GetXaxis()->GetNbins(); ++bIX){
       Float_t binCenterX = inUnfoldedHists_p[0]->GetXaxis()->GetBinCenter(bIX+1);
       //Only calculate the unfolding termination in the region of your acceptance
@@ -582,11 +588,15 @@ void getIterativeHists2D(TH2D* reco_p, std::vector<TH2D*> inUnfoldedHists_p, TH1
 	double tempDeltaStat = inUnfoldedHists_p[i]->GetBinError(bIX+1, bIY+1);///inUnfoldedHists_p[i]->GetBinContent(bIX+1, bIY+1);
 	if(doRelative) tempDeltaStat /= inUnfoldedHists_p[i]->GetBinContent(bIX+1, bIY+1);
 	deltaStat += tempDeltaStat*tempDeltaStat;    
+
+	if(doPrint) std::cout << " bIX, bIY, value: " << bIX << ", " << bIY << ", " << tempDeltaStat << std::endl;
       }
     }
     
     Float_t deltaTot = deltaIter + deltaStat;
 
+    if(doPrint) std::cout << "DELTA TOT, STAT, ITER: " << deltaTot << ", " << deltaStat << ", " << deltaIter << std::endl;
+    
     statDelta_p->SetBinContent(i+1, TMath::Sqrt(deltaStat));
     statDelta_p->SetBinError(i+1, 0.0);
     

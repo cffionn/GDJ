@@ -174,8 +174,8 @@ bool drawBoxAdjacentIter(TPad* pad_p, std::vector<TH1*> hists_p, Float_t opacity
     Double_t yDelta2 = TMath::Abs(hists_p[1]->GetBinContent(bIX+1) - hists_p[2]->GetBinContent(bIX+1));
     Double_t yDelta = TMath::Max(yDelta1, yDelta2);
     
-    Double_t yLow = hists_p[1]->GetBinContent(bIX+1) - yDelta;
-    Double_t yHigh = hists_p[1]->GetBinContent(bIX+1) + yDelta;
+    Double_t yLow = TMath::Max(hists_p[1]->GetBinContent(bIX+1) - yDelta, hists_p[1]->GetMinimum());
+    Double_t yHigh = TMath::Min(hists_p[1]->GetBinContent(bIX+1) + yDelta, hists_p[1]->GetMaximum());
 
    if(deltaVals != nullptr){
       if(hists_p[1]->GetBinContent(bIX+1) < TMath::Power(10,-50)) deltaVals->push_back(0.0);
@@ -211,8 +211,11 @@ bool drawBoxAdjacentIterRel(TPad* pad_p, TH1* hist_p, Float_t opacity, std::vect
   for(Int_t bIX = 0; bIX < hist_p->GetNbinsX(); ++bIX){
     Double_t x1 = hist_p->GetBinLowEdge(bIX+1);
     Double_t x2 = hist_p->GetBinLowEdge(bIX+2);
- 
-    box_p->DrawBox(x1, 1.0 - deltaVals->at(bIX), x2, 1.0 + deltaVals->at(bIX));
+
+    Double_t yLow = TMath::Max(1.0 - deltaVals->at(bIX), hist_p->GetMinimum());
+    Double_t yHigh = TMath::Min(1.0 + deltaVals->at(bIX), hist_p->GetMaximum());
+    
+    box_p->DrawBox(x1, yLow, x2, yHigh);
   }
   delete box_p;
   
@@ -388,7 +391,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   const Float_t diagLabelXGlobal = config_p->GetValue("DIAGLABELX.GLOBAL", -1000.);
   const Float_t diagLabelYGlobal = config_p->GetValue("DIAGLABELY.GLOBAL", -1000.);
   const Bool_t diagLabelAlignRightGlobal = config_p->GetValue("DIAGLABELALIGNRIGHT.GLOBAL", 0);
-
+  const Float_t diagMinimum = config_p->GetValue("DIAGMINIMUM", 0.05);
+  
   //Get global labels
   std::vector<std::string> globalLabels;
   std::vector<std::string> globalLabelsDataOverrides;
@@ -791,7 +795,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       iterDeltaPhoPtJetVarNames.push_back("iterDelta_PhoPtJet" + jtVar + "_" + centBinsStr[cI] + "_" + systStrVect[systI] + "_PURCORR_COMBINED_h");
       totalDeltaPhoPtJetVarNames.push_back("totalDelta_PhoPtJet" + jtVar + "_" + centBinsStr[cI] + "_" + systStrVect[systI] + "_PURCORR_COMBINED_h");
     
-      for(Int_t uI = 0; uI < nIter+1; ++uI){
+      for(Int_t uI = 0; uI < nIterForLoop+1; ++uI){
 	unfoldNamesPhoPt[cI].push_back("photonPtReco_Iter" + std::to_string(uI) + "_" + centBinsStr[cI] + "_" + phoSystStr + "_PURCORR_COMBINED_h");
 	refoldNamesPhoPt[cI].push_back("photonPtReco_Iter" + std::to_string(uI) + "_" + centBinsStr[cI] + "_" + phoSystStr + "_PURCORR_COMBINED_Refolded_h");
 
@@ -831,9 +835,9 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       for(unsigned int cI = 0; cI < statsDeltaNames.size(); ++cI){
 	//photon pt alone unfolding result eval
 	//Declare both new histograms and define/initialize null histograms we will grab from file
-	TH1D* statsDelta_p = new TH1D(statsDeltaNames[cI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIter, 0.5, ((double)nIter)+0.5);
-	TH1D* iterDelta_p = new TH1D(iterDeltaNames[cI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIter, 0.5, ((double)nIter)+0.5);
-	TH1D* totalDelta_p = new TH1D(totalDeltaNames[cI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIter, 0.5, ((double)nIter)+0.5);
+	TH1D* statsDelta_p = new TH1D(statsDeltaNames[cI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIterForLoop, 0.5, ((double)nIterForLoop)+0.5);
+	TH1D* iterDelta_p = new TH1D(iterDeltaNames[cI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIterForLoop, 0.5, ((double)nIterForLoop)+0.5);
+	TH1D* totalDelta_p = new TH1D(totalDeltaNames[cI].c_str(), (";Number of Iterations;#sqrt{#Sigma #delta^{2}_{" + deltaStr + "}}").c_str(), nIterForLoop, 0.5, ((double)nIterForLoop)+0.5);
 	TH1D* unfold1D_p[nIterMax];
 	TH1D* refold1D_p[nIterMax];
 	TH2D* unfold2D_p[nIterMax];
@@ -876,13 +880,13 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	
 	std::vector<TH1D*> unfoldedHists1D_p, refoldedHists1D_p;
 	std::vector<TH2D*> unfoldedHists2D_p, refoldedHists2D_p;
-	unfoldedHists1D_p.reserve(nIter);
-	refoldedHists1D_p.reserve(nIter);
-	unfoldedHists2D_p.reserve(nIter);
-	refoldedHists2D_p.reserve(nIter);
+	unfoldedHists1D_p.reserve(nIterForLoop);
+	refoldedHists1D_p.reserve(nIterForLoop);
+	unfoldedHists2D_p.reserve(nIterForLoop);
+	refoldedHists2D_p.reserve(nIterForLoop);
 	
 	std::cout << "Check unfold/refold" << std::endl;
-	for(Int_t i = 1; i < nIter+1; ++i){
+	for(Int_t i = 1; i < nIterForLoop+1; ++i){
 	  if(pI == 0){
 	    unfold1D_p[i] = (TH1D*)inUnfoldFile_p->Get(unfoldNames[cI][i].c_str());  
 	    unfoldedHists1D_p.push_back(unfold1D_p[i]);
@@ -894,27 +898,25 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	    unfold2D_p[i] = (TH2D*)inUnfoldFile_p->Get(unfoldNames[cI][i].c_str());  
 	    unfoldedHists2D_p.push_back(unfold2D_p[i]);
 	    
-	    std::cout << "UNFOLD: " << unfoldNames[cI][i] << std::endl;
-	    std::cout << "REFOLD: " << refoldNames[cI][i] << std::endl;
-	    
 	    refold2D_p[i] = (TH2D*)inUnfoldFile_p->Get(refoldNames[cI][i].c_str());  
 	    refoldedHists2D_p.push_back(refold2D_p[i]);
 	  }
 	}
 	
 	if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << pI << std::endl;
+
+	bool doIterPrint = centBinsStr[cI].find("Cent0to10") != std::string::npos && pI == 1 && systI == 0;
 	
 	TH1D* reco1D_p = nullptr;
 	TH2D* reco2D_p = nullptr;
 	if(pI == 0){
-	  std::cout << "RECOhISTNAME: " << recoHistNames[cI] << std::endl;
 	  reco1D_p = (TH1D*)inUnfoldFile_p->Get(recoHistNames[cI].c_str());
 	  getIterativeHists(reco1D_p, unfoldedHists1D_p, statsDelta_p, iterDelta_p, totalDelta_p, doRelativeTerm, gammaPtBinsLowReco, gammaPtBinsHighReco);
 	}
 	else if(pI == 1){
 	  reco2D_p = (TH2D*)inUnfoldFile_p->Get(recoHistNames[cI].c_str());
 
-	  if(isMultijet) getIterativeHists2D(reco2D_p, unfoldedHists2D_p, statsDelta_p, iterDelta_p, totalDelta_p, doRelativeTerm, varBinsLowReco, varBinsHighReco, subJtGammaPtMin, subJtGammaPtMax);
+	  if(isMultijet) getIterativeHists2D(reco2D_p, unfoldedHists2D_p, statsDelta_p, iterDelta_p, totalDelta_p, doRelativeTerm, varBinsLowReco, varBinsHighReco, subJtGammaPtMin, subJtGammaPtMax, doIterPrint);
  	  else getIterativeHists2D(reco2D_p, unfoldedHists2D_p, statsDelta_p, iterDelta_p, totalDelta_p, doRelativeTerm, varBinsLowReco, varBinsHighReco, gammaPtBinsLowReco, gammaPtBinsHighReco);
 	}
 	
@@ -926,11 +928,16 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	HIJet::Style::EquipHistogram(statsDelta_p, 1);
 	HIJet::Style::EquipHistogram(totalDelta_p, 0);
 	
-	totalDelta_p->SetMinimum(0.05);	
+	totalDelta_p->SetMinimum(diagMinimum);	
 	totalDelta_p->DrawCopy("HIST E1 P");
 	statsDelta_p->DrawCopy("HIST E1 P SAME");
 	iterDelta_p->DrawCopy("HIST E1 P SAME");
 	totalDelta_p->DrawCopy("HIST E1 P SAME");    
+      
+	if(doIterPrint){
+	  totalDelta_p->Print("ALL");
+	}
+
 	
 	gPad->SetLogy();
 	//Draw Legends
@@ -966,7 +973,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	if(pI == 1) configStr = varNameUpper + "_" + configStr;
 
 	int termPos = -1;
-	for(Int_t i = 1; i < nIter+1; ++i){
+	for(Int_t i = 1; i < nIterForLoop+1; ++i){
 	  Double_t totalDelta = totalDelta_p->GetBinContent(i);
 	  Double_t statsDelta = statsDelta_p->GetBinContent(i);
 	
@@ -1008,7 +1015,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  unfold_p[0].push_back(nullptr);
 	  refold_p[0].push_back(nullptr);
 	  
-	  for(int i = 1; i < nIter+1; ++i){
+	  for(int i = 1; i < nIterForLoop+1; ++i){
 	    unfold_p[0].push_back(unfold1D_p[i]);
 	    refold_p[0].push_back(refold1D_p[i]);
 	  }
@@ -1087,7 +1094,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	    unfold_p[gI].push_back(nullptr);
 	    refold_p[gI].push_back(nullptr);
 	    
-	    for(int i = 1; i < nIter+1; ++i){
+	    for(int i = 1; i < nIterForLoop+1; ++i){
 	      unfold_p[gI].push_back(new TH1D(("unfold_GammaPt" + std::to_string(gI) + "_Iter" + std::to_string(i) + "_h").c_str(), "", nVarBins, varBins));
 	      refold_p[gI].push_back(new TH1D(("refold_GammaPt" + std::to_string(gI) + "_Iter" + std::to_string(i) + "_h").c_str(), "", nVarBins, varBins));
 	    
@@ -1295,7 +1302,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  
 	  if(truth_p[gI] != nullptr) truth_p[gI]->DrawCopy("HIST E1 SAME");
 	  	  
-	  for(Int_t i = 1; i < nIter+1; ++i){
+	  for(Int_t i = 1; i < nIterForLoop+1; ++i){
 	    HIJet::Style::EquipHistogram(unfold_p[gI][i], i-1);
 	    binWidthAndSelfNorm(unfold_p[gI][i]);
 	    
@@ -1316,10 +1323,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  if(doLogX || pI == 0) gPad->SetLogx();
 	  if(doLogY || pI == 0) gPad->SetLogy();
 	
-	  std::cout << "TERMPOS: " << termPos << std::endl;
-	  
 	  std::vector<double> deltaVals;
-	  for(Int_t i = 1; i < nIter; ++i){
+	  for(Int_t i = 1; i < nIterForLoop; ++i){
 	    bool isGood = false;
 	    if(i == termPos) isGood = true;	    
 	    if(!isGood) continue;
@@ -1336,7 +1341,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	      Float_t tempOpacity = HIJet::Style::GetOpacity(i-1);	  
 
 	      Int_t minVal = TMath::Max(i-1, 1);
-	      Int_t maxVal = TMath::Min(i+1, nIter-1);
+	      Int_t maxVal = TMath::Min(i+1, nIterForLoop-1);
 	      
 	      //Just give it the same thing if there is no lower iteration/higher iterations via minVal/maxVal
 	      drawBoxAdjacentIter(padsBest_p[0], {unfold_p[gI][minVal], unfold_p[gI][i], unfold_p[gI][maxVal]}, tempOpacity, &deltaVals);
@@ -1375,12 +1380,12 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
 	  
 	  bool hasDrawn = false;
-	  for(Int_t i = 1; i < nIter+1; ++i){
+	  for(Int_t i = 1; i < nIterForLoop+1; ++i){
 	    bool isGood = false;
 	    if(i == termPos) isGood = true;
 	    if(!isGood) continue;
 	    	    
-	    if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIter+1 << std::endl;
+	    if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIterForLoop+1 << std::endl;
 
 	    TH1D* unfoldClone_p = (TH1D*)unfold_p[gI][i]->Clone("tempClone");
 	    unfoldClone_p->Divide(reco_p[gI]);
@@ -1391,7 +1396,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	    unfoldClone_p->SetTitle("");
 	    refoldClone_p->SetTitle("");
 
-	    if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIter+1 << std::endl;
+	    if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIterForLoop+1 << std::endl;
 	    
 	    if(!hasDrawn){
 	      refoldClone_p->GetYaxis()->SetTitle("#frac{Refold}{Reco.}");
@@ -1408,12 +1413,12 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	    }
 	    else refoldClone_p->DrawCopy("HIST E1 P SAME");
 
-	    if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIter+1 << std::endl;
+	    if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIterForLoop+1 << std::endl;
 	    
 	    if(i == termPos){
-	      if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIter+1 << std::endl;
+	      if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIterForLoop+1 << std::endl;
 	      Float_t tempOpacity = HIJet::Style::GetOpacity(i-1);
-	      drawBoxAdjacentIterRel(padsBest_p[1], unfoldClone_p, tempOpacity, &deltaVals);
+	      drawBoxAdjacentIterRel(padsBest_p[1], refoldClone_p, tempOpacity, &deltaVals);
 	    }
 
 	    delete refoldClone_p;
@@ -1460,7 +1465,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  padsBest_p[2]->cd();
 	
 	  hasDrawn = false;
-	  for(Int_t i = 1; i < nIter+1; ++i){
+	  for(Int_t i = 1; i < nIterForLoop+1; ++i){
 	    bool isGood = false;
 	    if(i == termPos) isGood = true;
 	    if(!isGood) continue;

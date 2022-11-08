@@ -111,7 +111,7 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::str
 	tempHist_p->SetMaximum(0.5);
 	tempHist_p->SetMinimum(-0.02);
       }
-      
+         
       tempHist_p->DrawCopy("HIST E1 P");
 
       if(name.find("JtDPhi") != std::string::npos) line_p->DrawLine(tempHist_p->GetBinLowEdge(1), 0.0, tempHist_p->GetBinLowEdge(tempHist_p->GetXaxis()->GetNbins()+1), 0.0);
@@ -140,10 +140,28 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::str
     else if(isStrSame(className, "TH2D")){
       TH2D* tempHist_p = (TH2D*)key->ReadObj();
       tempHist_p->DrawCopy("COLZ");
+
+      if(name.find("rooResJtPtGammaM") != std::string::npos){
+	gPad->SetLogx();
+	gPad->SetLogy();
+	gPad->SetLogz();
+      }
+      else if(name.find("rooResJtXJJGammaM") != std::string::npos){
+	gPad->SetLogz();
+      }
     }
     else{
       TH2F* tempHist_p = (TH2F*)key->ReadObj();
       tempHist_p->DrawCopy("COLZ");
+
+      if(name.find("rooResJtPtGammaM") != std::string::npos){
+	gPad->SetLogx();
+	gPad->SetLogy();
+	gPad->SetLogz();
+      }
+      else if(name.find("rooResJtXJJGammaM") != std::string::npos){
+	gPad->SetLogz();
+      }
     }
 
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;

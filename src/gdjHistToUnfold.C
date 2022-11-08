@@ -517,6 +517,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 					      "DOREWEIGHTVAR",
 					      "DOREWEIGHTDR",
 					      "UNFOLDERRTYPE",
+					      "SYSTUNFOLDERRTYPE",
 					      "NTOYS",
 					      "DOREBIN",
 					      "UNFOLD"};
@@ -597,13 +598,18 @@ int gdjHistToUnfold(std::string inConfigFileName)
   //My preference is toys - simple to understand, precision well defined by number of toys
   //Downside: Not exact, significant CPU time increase 
   const int unfoldErrType = config_p->GetValue("UNFOLDERRTYPE", 0);
+  const int systUnfoldErrType = config_p->GetValue("SYSTUNFOLDERRTYPE", 2);
   const int nToys = config_p->GetValue("NTOYS", 0);
-  if(unfoldErrType < 0 || unfoldErrType > 1){//Valid error types are 0: default kErrors bin-by-bin errors (diagonal covariance matrix), 1: toys
+  if(unfoldErrType < 0 || unfoldErrType > 2){//Valid error types are 0: default kErrors bin-by-bin errors (diagonal covariance matrix), 1: toys, 2: no errors
     std::cout << "Given UNFOLDERRTYPE, " << unfoldErrType << ", is invalid. Please give valid type, return 1" << std::endl;    
     return 1;
   }
   if(nToys <= 0 && unfoldErrType == 1){
     std::cout << "NTOYS given \'" << nToys << "\' is invalid. return 1" << std::endl;
+    return 1;
+  }
+  if(systUnfoldErrType < 0 || systUnfoldErrType > 2){//Valid error types are 0: default kErrors bin-by-bin errors (diagonal covariance matrix), 1: toys, 2: no errors
+    std::cout << "Given SYSTUNFOLDERRTYPE, " << systUnfoldErrType << ", is invalid. Please give valid type, return 1" << std::endl;    
     return 1;
   }
 
@@ -1105,6 +1111,8 @@ int gdjHistToUnfold(std::string inConfigFileName)
   const Float_t drBinsHigh = inResponseFileConfig_p->GetValue("DRBINSHIGH", TMath::Pi());
   const Bool_t drBinsDoCustom = inResponseFileConfig_p->GetValue("DRBINSDOCUSTOM", 0);
   Double_t drBins[nMaxBins+1];
+  const Float_t drBinsLowReco = inResponseFileConfig_p->GetValue("DRBINSLOWRECO", drBinsLow);
+  const Float_t drBinsHighReco = inResponseFileConfig_p->GetValue("DRBINSHIGHRECO", drBinsHigh);
   if(!drBinsDoCustom) getLinBins(drBinsLow, drBinsHigh, nDRBins, drBins);
   else{
     std::string drBinsCustomStr = inResponseFileConfig_p->GetValue("DRBINSCUSTOM", "");
@@ -1209,8 +1217,8 @@ int gdjHistToUnfold(std::string inConfigFileName)
     varBinsLow = drBinsLow;
     varBinsHigh = drBinsHigh;
 
-    varBinsLowReco = mixJtDRExclusionCut;
-    varBinsHighReco = drBinsHigh;
+    varBinsLowReco = TMath::Max(mixJtDRExclusionCut, drBinsLowReco);
+    varBinsHighReco = drBinsHighReco;
   }
 
   
@@ -2642,12 +2650,16 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	RooUnfoldBayes* rooBayes_p = new RooUnfoldBayes(rooResGamma_p[cI][sysI], photonPtReco_PURCORR_COMBINED_p[cI], i);
 	rooBayes_p->SetVerbose(0);
 	
-	TH1D* unfolded_p = nullptr;
-	if(unfoldErrType == 0) unfolded_p = (TH1D*)rooBayes_p->Hreco()->Clone(("photonPtReco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_h").c_str());
-	else if(unfoldErrType == 1){
+	TH1D* unfolded_p = nullptr;	
+	Int_t currErrType = unfoldErrType;
+	if(!isStrSame(systStrVect[sysI], "Nominal")) currErrType = systUnfoldErrType;
+	
+	if(currErrType == 0) unfolded_p = (TH1D*)rooBayes_p->Hreco()->Clone(("photonPtReco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_h").c_str());
+	else if(currErrType == 1){
 	  rooBayes_p->SetNToys(nToys);
 	  unfolded_p = (TH1D*)rooBayes_p->Hreco(RooUnfold::kCovToy)->Clone(("photonPtReco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_h").c_str());
 	}
+	else if(currErrType == 2) unfolded_p = (TH1D*)rooBayes_p->Hreco(RooUnfold::kNoError)->Clone(("photonPtReco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_h").c_str());
 	
 	TH1D* refolded_p = (TH1D*)rooResGamma_p[cI][sysI]->ApplyToTruth(unfolded_p)->Clone(("photonPtReco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_Refolded_h").c_str());
 	
@@ -2677,11 +2689,15 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	rooBayes_p->SetVerbose(0);
 
 	TH2D* unfolded_p = nullptr;
-	if(unfoldErrType == 0) unfolded_p = (TH2D*)rooBayes_p->Hreco()->Clone(("photonPtJetVarReco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_h").c_str());
-	else if(unfoldErrType == 1){
+	Int_t currErrType = unfoldErrType;
+	if(!isStrSame(systStrVect[sysI], "Nominal")) currErrType = systUnfoldErrType;
+
+	if(currErrType == 0) unfolded_p = (TH2D*)rooBayes_p->Hreco()->Clone(("photonPtJetVarReco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_h").c_str());
+	else if(currErrType == 1){
 	  rooBayes_p->SetNToys(nToys);
 	  unfolded_p = (TH2D*)rooBayes_p->Hreco(RooUnfold::kCovToy)->Clone(("photonPtJetVarReco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_h").c_str());
 	}
+	else if(currErrType == 2) unfolded_p = (TH2D*)rooBayes_p->Hreco(RooUnfold::kNoError)->Clone(("photonPtJetVarReco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_h").c_str());
 		
 	TH2D* refolded_p = (TH2D*)rooResGammaJetVar_p[cI][sysI]->ApplyToTruth(unfolded_p)->Clone(("photonPtReco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_Refolded_h").c_str());
 	
@@ -2854,6 +2870,15 @@ int gdjHistToUnfold(std::string inConfigFileName)
   delete outFile_p;
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;  
+
+  globalTimer.stop();
+  double globalTimeCPU = globalTimer.totalCPU();
+  double globalTimeWall = globalTimer.totalWall();
+
+  std::cout << "FINAL TIME: " << std::endl;
+  std::cout << " WALL: " << globalTimeWall << std::endl;
+  std::cout << " CPU:  " << globalTimeCPU << std::endl;
+
   
   std::cout << "GDJHISTTOUNFOLD COMPLETE. return 0." << std::endl;
   return 0;
