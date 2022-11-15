@@ -13,6 +13,8 @@
 
 void getIterativeHists(TH1F* reco_p, std::vector<TH1F*> inUnfoldedHists_p, TH1F* statDelta_p, TH1F* iterDelta_p, TH1F* totalDelta_p, bool doRelative, float xLow, float xHigh, bool doPrint = false)
 {
+  std::cout << "RUNNING ITER " << __LINE__ << std::endl;
+  
   const Float_t deltaCheck = 0.0001;
 
   const Int_t nIter = inUnfoldedHists_p.size();
@@ -146,8 +148,10 @@ void getIterativeHists(TH1F* reco_p, std::vector<TH1F*> inUnfoldedHists_p, TH1F*
 }
 
 
-void getIterativeHists2D(TH2F* reco_p, std::vector<TH2F*> inUnfoldedHists_p, TH1F* statDelta_p, TH1F* iterDelta_p, TH1F* totalDelta_p, bool doRelative, float xLow, float xHigh, float yLow, float yHigh, Int_t excludeYPos = -1)
+void getIterativeHists2D(TH2F* reco_p, std::vector<TH2F*> inUnfoldedHists_p, TH1F* statDelta_p, TH1F* iterDelta_p, TH1F* totalDelta_p, bool doRelative, std::map<int, std::map<int, bool> > goodBinMap, Int_t excludeYPos = -1)
 {
+  std::cout << "RUNNING ITER " << __LINE__ << std::endl;
+
   const Float_t deltaCheck = 0.0001;
   
   const Int_t nIter = inUnfoldedHists_p.size();
@@ -172,50 +176,21 @@ void getIterativeHists2D(TH2F* reco_p, std::vector<TH2F*> inUnfoldedHists_p, TH1
     }
   }
 
-  //Check our x-bounds are bins
-  bool xLowFound = false;
-  bool xHighFound = false;
-  for(Int_t bIX = 0; bIX < inUnfoldedHists_p[0]->GetXaxis()->GetNbins()+1; ++bIX){
-    Float_t binEdge = inUnfoldedHists_p[0]->GetXaxis()->GetBinLowEdge(bIX+1);
-
-    if(TMath::Abs(binEdge - xLow) < deltaCheck) xLowFound = true;
-    if(TMath::Abs(binEdge - xHigh) < deltaCheck) xHighFound = true;
-  }
-
-  if(!xLowFound || !xHighFound){
-    std::cout << "getIterativeHists ERROR: x-bounds not found!" << std::endl;
-    std::cout << " xLow, isFound: " << xLow << ", " << xLowFound << std::endl;
-    std::cout << " xHigh, isFound: " << xHigh << ", " << xHighFound << std::endl;
-    std::cout << " Bins: ";
-    for(Int_t bIX = 0; bIX < inUnfoldedHists_p[0]->GetXaxis()->GetNbins(); ++bIX){
-      std::cout << inUnfoldedHists_p[0]->GetXaxis()->GetBinLowEdge(bIX+1) << ", ";
-    }
-    std::cout << inUnfoldedHists_p[0]->GetXaxis()->GetBinLowEdge(inUnfoldedHists_p[0]->GetXaxis()->GetNbins()+1) << ".";
-    std::cout << " return w/o creating iterative hists" << std::endl;
-    return;
-  }
-
-  //Check our y-bounds are bins
-  bool yLowFound = false;
-  bool yHighFound = false;
-  for(Int_t bIY = 0; bIY < inUnfoldedHists_p[0]->GetYaxis()->GetNbins()+1; ++bIY){
-    Float_t binEdge = inUnfoldedHists_p[0]->GetYaxis()->GetBinLowEdge(bIY+1);
-
-    if(TMath::Abs(binEdge - yLow) < deltaCheck) yLowFound = true;
-    if(TMath::Abs(binEdge - yHigh) < deltaCheck) yHighFound = true;
-  }
-
-  if(!yLowFound || !yHighFound){
-    std::cout << "getIterativeHists ERROR: y-bounds not found!" << std::endl;
-    std::cout << " yLow, isFound: " << yLow << ", " << yLowFound << std::endl;
-    std::cout << " yHigh, isFound: " << yHigh << ", " << yHighFound << std::endl;
-    std::cout << " Bins: ";
+  //Check our bin map completely covers our inputs
+  for(Int_t bIX = 0; bIX < inUnfoldedHists_p[0]->GetXaxis()->GetNbins(); ++bIX){
     for(Int_t bIY = 0; bIY < inUnfoldedHists_p[0]->GetYaxis()->GetNbins(); ++bIY){
-      std::cout << inUnfoldedHists_p[0]->GetYaxis()->GetBinLowEdge(bIY+1) << ", ";
-    }
-    std::cout << inUnfoldedHists_p[0]->GetYaxis()->GetBinLowEdge(inUnfoldedHists_p[0]->GetYaxis()->GetNbins()+1) << ".";
-    std::cout << " return w/o creating iterative hists" << std::endl;
-    return;
+
+      if(goodBinMap.count(bIX) == 0){
+	std::cout << "BINX \'" << bIX << "\' not found in goodBinMap, return false" << std::endl;
+	return;
+      }
+      else{
+	if(goodBinMap[bIX].count(bIY) == 0){
+	  std::cout << "BINY \'" << bIY << "\' not found in goodBinMap, return false" << std::endl;
+	  return;
+	}	
+      }      
+    }    
   }
   
   //We start be doing first iteration, which is a special iteration because we have to do it w/ respect to pre-unfold reco. rather than a previous iteration
@@ -224,17 +199,11 @@ void getIterativeHists2D(TH2F* reco_p, std::vector<TH2F*> inUnfoldedHists_p, TH1
 
   if(reco_p != nullptr){
     for(Int_t bIX = 0; bIX < inUnfoldedHists_p[0]->GetXaxis()->GetNbins(); ++bIX){
-      Float_t binCenterX = inUnfoldedHists_p[0]->GetXaxis()->GetBinCenter(bIX+1);
-      //Only calculate the unfolding termination in the region of your acceptance
-      if(binCenterX < xLow) continue;
-      if(binCenterX >= xHigh) continue;
-
       for(Int_t bIY = 0; bIY < inUnfoldedHists_p[0]->GetYaxis()->GetNbins(); ++bIY){
-	Float_t binCenterY = inUnfoldedHists_p[0]->GetYaxis()->GetBinCenter(bIY+1);
-	//Only calculate the unfolding termination in the region of your acceptance
-	if(binCenterY < yLow) continue;
-	if(binCenterY >= yHigh) continue;
-	
+	//Throw away bins not in map
+	if(!(goodBinMap[bIX][bIY])) continue;
+
+	//Throw away the zeroes if doing a relative calc
 	if(doRelative){
 	  if(inUnfoldedHists_p[0]->GetBinContent(bIX+1, bIY+1) < TMath::Power(10, -50)) continue;
 	}
@@ -264,18 +233,11 @@ void getIterativeHists2D(TH2F* reco_p, std::vector<TH2F*> inUnfoldedHists_p, TH1
     Float_t deltaStat = 0.0;
 
     for(Int_t bIX = 0; bIX < inUnfoldedHists_p[i]->GetXaxis()->GetNbins(); ++bIX){
-      Float_t binCenterX = inUnfoldedHists_p[0]->GetXaxis()->GetBinCenter(bIX+1);
-      //Only calculate the unfolding termination in the region of your acceptance
-      if(binCenterX < xLow) continue;
-      if(binCenterX >= xHigh) continue;
+      for(Int_t bIY = 0; bIY < inUnfoldedHists_p[i]->GetYaxis()->GetNbins(); ++bIY){	
+	//Throw away bins not in map
+	if(!(goodBinMap[bIX][bIY])) continue;
 
-      for(Int_t bIY = 0; bIY < inUnfoldedHists_p[i]->GetYaxis()->GetNbins(); ++bIY){
-	Float_t binCenterY = inUnfoldedHists_p[0]->GetYaxis()->GetBinCenter(bIY+1);
-	//Only calculate the unfolding termination in the region of your acceptance
-	if(binCenterY < yLow) continue;
-	if(binCenterY >= yHigh) continue;
-
-	//Throw away the zeroes
+	//Throw away the zeroes if doing a relative calc
 	if(doRelative){
 	  if(inUnfoldedHists_p[i]->GetBinContent(bIX+1, bIY+1) < TMath::Power(10, -50)) continue;
 	}
@@ -309,6 +271,8 @@ void getIterativeHists2D(TH2F* reco_p, std::vector<TH2F*> inUnfoldedHists_p, TH1
 
 void getIterativeHists(TH1D* reco_p, std::vector<TH1D*> inUnfoldedHists_p, TH1D* statDelta_p, TH1D* iterDelta_p, TH1D* totalDelta_p, bool doRelative, float xLow, float xHigh, bool doPrint = false)
 {
+  std::cout << "RUNNING ITER " << __LINE__ << std::endl;
+
   const Float_t deltaCheck = 0.0001;
 
   const Int_t nIter = inUnfoldedHists_p.size();
@@ -441,60 +405,16 @@ void getIterativeHists(TH1D* reco_p, std::vector<TH1D*> inUnfoldedHists_p, TH1D*
 }
 
 
-void getIterativeHists2D(TH2D* reco_p, std::vector<TH2D*> inUnfoldedHists_p, TH1D* statDelta_p, TH1D* iterDelta_p, TH1D* totalDelta_p, bool doRelative, float xLow, float xHigh, float yLow, float yHigh, bool doPrint = false)
+void getIterativeHists2D(TH2D* reco_p, std::vector<TH2D*> inUnfoldedHists_p, TH1D* statDelta_p, TH1D* iterDelta_p, TH1D* totalDelta_p, bool doRelative, std::map<int, std::map<int, bool> > goodBinMap, bool doPrint = false)
 {
+  std::cout << "RUNNING ITER " << __LINE__ << std::endl;
+
   const Float_t deltaCheck = 0.0001;
   const Int_t nIter = inUnfoldedHists_p.size();
   const Int_t nBins = nIter;
 
   if(nBins == 0){
     std::cout << "getIterativeHists Error: Given unfolding histogram vector has size \'" << nIter << "\', must have at least 2 iterations to eval. return" << std::endl;
-    return;
-  }
-
-  //Check our x-bounds are bins
-  bool xLowFound = false;
-  bool xHighFound = false;
-  for(Int_t bIX = 0; bIX < inUnfoldedHists_p[0]->GetXaxis()->GetNbins()+1; ++bIX){
-    Float_t binEdge = inUnfoldedHists_p[0]->GetXaxis()->GetBinLowEdge(bIX+1);
-
-    if(TMath::Abs(binEdge - xLow) < deltaCheck) xLowFound = true;
-    if(TMath::Abs(binEdge - xHigh) < deltaCheck) xHighFound = true;
-  }
-
-  if(!xLowFound || !xHighFound){
-    std::cout << "getIterativeHists ERROR: x-bounds not found!" << std::endl;
-    std::cout << " xLow, isFound: " << xLow << ", " << xLowFound << std::endl;
-    std::cout << " xHigh, isFound: " << xHigh << ", " << xHighFound << std::endl;
-    std::cout << " Bins: ";
-    for(Int_t bIX = 0; bIX < inUnfoldedHists_p[0]->GetXaxis()->GetNbins(); ++bIX){
-      std::cout << inUnfoldedHists_p[0]->GetXaxis()->GetBinLowEdge(bIX+1) << ", ";
-    }
-    std::cout << inUnfoldedHists_p[0]->GetXaxis()->GetBinLowEdge(inUnfoldedHists_p[0]->GetXaxis()->GetNbins()+1) << ".";
-    std::cout << " return w/o creating iterative hists" << std::endl;
-    return;
-  }
-
-  //Check our y-bounds are bins
-  bool yLowFound = false;
-  bool yHighFound = false;
-  for(Int_t bIY = 0; bIY < inUnfoldedHists_p[0]->GetYaxis()->GetNbins()+1; ++bIY){
-    Float_t binEdge = inUnfoldedHists_p[0]->GetYaxis()->GetBinLowEdge(bIY+1);
-
-    if(TMath::Abs(binEdge - yLow) < deltaCheck) yLowFound = true;
-    if(TMath::Abs(binEdge - yHigh) < deltaCheck) yHighFound = true;
-  }
-
-  if(!yLowFound || !yHighFound){
-    std::cout << "getIterativeHists ERROR: y-bounds not found!" << std::endl;
-    std::cout << " yLow, isFound: " << yLow << ", " << yLowFound << std::endl;
-    std::cout << " yHigh, isFound: " << yHigh << ", " << yHighFound << std::endl;
-    std::cout << " Bins: ";
-    for(Int_t bIY = 0; bIY < inUnfoldedHists_p[0]->GetYaxis()->GetNbins(); ++bIY){
-      std::cout << inUnfoldedHists_p[0]->GetYaxis()->GetBinLowEdge(bIY+1) << ", ";
-    }
-    std::cout << inUnfoldedHists_p[0]->GetYaxis()->GetBinLowEdge(inUnfoldedHists_p[0]->GetYaxis()->GetNbins()+1) << ".";
-    std::cout << " return w/o creating iterative hists" << std::endl;
     return;
   }
   
@@ -512,22 +432,40 @@ void getIterativeHists2D(TH2D* reco_p, std::vector<TH2D*> inUnfoldedHists_p, TH1
     }
   }
 
+  //Check our bin map completely covers our inputs
+  for(Int_t bIX = 0; bIX < inUnfoldedHists_p[0]->GetXaxis()->GetNbins(); ++bIX){
+    for(Int_t bIY = 0; bIY < inUnfoldedHists_p[0]->GetYaxis()->GetNbins(); ++bIY){
+
+      if(goodBinMap.count(bIX) == 0){
+	std::cout << "BINX \'" << bIX << "\' not found in goodBinMap, return false" << std::endl;
+	return;
+      }
+      else{
+	if(goodBinMap[bIX].count(bIY) == 0){
+	  std::cout << "BINY \'" << bIY << "\' not found in goodBinMap, return false" << std::endl;
+	  return;
+	}	
+      }      
+    }    
+  }
+  
+  
   //We start be doing first iteration, which is a special iteration because we have to do it w/ respect to pre-unfold reco. rather than a previous iteration
   Float_t deltaIterReco = 0.0;
   Float_t deltaStatReco = 0.0;
 
+  std::vector<std::vector<double> > deltaIterPerIterPerYBin = {{}};
+  std::vector<std::vector<double> > deltaStatPerIterPerYBin = {{}};
+  for(Int_t bIY = 0; bIY < inUnfoldedHists_p[0]->GetYaxis()->GetNbins(); ++bIY){
+    deltaIterPerIterPerYBin[0].push_back(0.0);
+    deltaStatPerIterPerYBin[0].push_back(0.0);
+  }
+    
   if(reco_p != nullptr){
     for(Int_t bIX = 0; bIX < inUnfoldedHists_p[0]->GetXaxis()->GetNbins(); ++bIX){
-      Float_t binCenterX = inUnfoldedHists_p[0]->GetXaxis()->GetBinCenter(bIX+1);
-      //Only calculate the unfolding termination in the region of your acceptance
-      if(binCenterX < xLow) continue;
-      if(binCenterX >= xHigh) continue;
-
       for(Int_t bIY = 0; bIY < inUnfoldedHists_p[0]->GetYaxis()->GetNbins(); ++bIY){
-	Float_t binCenterY = inUnfoldedHists_p[0]->GetYaxis()->GetBinCenter(bIY+1);
-        //Only calculate the unfolding termination in the region of your acceptance
-        if(binCenterY < yLow) continue;
-        if(binCenterY >= yHigh) continue;
+	//Throw away bins not in map
+	if(!(goodBinMap[bIX][bIY])) continue;
 
 	if(doRelative){
 	  if(inUnfoldedHists_p[0]->GetBinContent(bIX+1, bIY+1) < TMath::Power(10, -50)) continue;
@@ -536,10 +474,14 @@ void getIterativeHists2D(TH2D* reco_p, std::vector<TH2D*> inUnfoldedHists_p, TH1
 	Float_t tempDeltaIter = (inUnfoldedHists_p[0]->GetBinContent(bIX+1, bIY+1) - reco_p->GetBinContent(bIX+1, bIY+1));
 	if(doRelative) tempDeltaIter /= inUnfoldedHists_p[0]->GetBinContent(bIX+1, bIY+1);
 	deltaIterReco += tempDeltaIter*tempDeltaIter;
+
+	deltaIterPerIterPerYBin[0][bIY] += tempDeltaIter*tempDeltaIter;
 	
 	double tempDeltaStat = inUnfoldedHists_p[0]->GetBinError(bIX+1, bIY+1);
 	if(doRelative) tempDeltaStat /= inUnfoldedHists_p[0]->GetBinContent(bIX+1, bIY+1);
 	deltaStatReco += tempDeltaStat*tempDeltaStat;
+
+	deltaStatPerIterPerYBin[0][bIY] += tempDeltaStat*tempDeltaStat;
       }
     }
   }
@@ -562,18 +504,19 @@ void getIterativeHists2D(TH2D* reco_p, std::vector<TH2D*> inUnfoldedHists_p, TH1
       std::cout << "Iter i=" << i << std::endl;
       inUnfoldedHists_p[i]->Print("ALL");
     }
+
+    deltaIterPerIterPerYBin.push_back({});
+    deltaStatPerIterPerYBin.push_back({});
+
+    for(Int_t bIY = 0; bIY < inUnfoldedHists_p[i]->GetYaxis()->GetNbins(); ++bIY){
+      deltaIterPerIterPerYBin[deltaIterPerIterPerYBin.size()-1].push_back(0.0);
+      deltaStatPerIterPerYBin[deltaStatPerIterPerYBin.size()-1].push_back(0.0);
+    }
     
     for(Int_t bIX = 0; bIX < inUnfoldedHists_p[i]->GetXaxis()->GetNbins(); ++bIX){
-      Float_t binCenterX = inUnfoldedHists_p[0]->GetXaxis()->GetBinCenter(bIX+1);
-      //Only calculate the unfolding termination in the region of your acceptance
-      if(binCenterX < xLow) continue;
-      if(binCenterX >= xHigh) continue;
-
       for(Int_t bIY = 0; bIY < inUnfoldedHists_p[i]->GetYaxis()->GetNbins(); ++bIY){
-        Float_t binCenterY = inUnfoldedHists_p[0]->GetYaxis()->GetBinCenter(bIY+1);
-        //Only calculate the unfolding termination in the region of your acceptance
-        if(binCenterY < yLow) continue;
-        if(binCenterY >= yHigh) continue;       
+	//Throw away bins not in map
+	if(!(goodBinMap[bIX][bIY])) continue;
 
 	//Throw away the zeroes
 	if(doRelative){
@@ -585,14 +528,18 @@ void getIterativeHists2D(TH2D* reco_p, std::vector<TH2D*> inUnfoldedHists_p, TH1
 	if(doRelative) tempDeltaIter /= inUnfoldedHists_p[i]->GetBinContent(bIX+1, bIY+1);
 	deltaIter += tempDeltaIter*tempDeltaIter;
 	
+	deltaIterPerIterPerYBin[deltaIterPerIterPerYBin.size()-1][bIY] += tempDeltaIter*tempDeltaIter;
+
 	double tempDeltaStat = inUnfoldedHists_p[i]->GetBinError(bIX+1, bIY+1);///inUnfoldedHists_p[i]->GetBinContent(bIX+1, bIY+1);
 	if(doRelative) tempDeltaStat /= inUnfoldedHists_p[i]->GetBinContent(bIX+1, bIY+1);
 	deltaStat += tempDeltaStat*tempDeltaStat;    
 
+	deltaStatPerIterPerYBin[deltaStatPerIterPerYBin.size()-1][bIY] += tempDeltaStat*tempDeltaStat;
+	
 	if(doPrint) std::cout << " bIX, bIY, value: " << bIX << ", " << bIY << ", " << tempDeltaStat << std::endl;
       }
     }
-    
+      
     Float_t deltaTot = deltaIter + deltaStat;
 
     if(doPrint) std::cout << "DELTA TOT, STAT, ITER: " << deltaTot << ", " << deltaStat << ", " << deltaIter << std::endl;
@@ -606,7 +553,36 @@ void getIterativeHists2D(TH2D* reco_p, std::vector<TH2D*> inUnfoldedHists_p, TH1
     totalDelta_p->SetBinContent(i+1, TMath::Sqrt(deltaTot));
     totalDelta_p->SetBinError(i+1, 0.0);
   }
+
+  //If trying to debug the dominant sources in each system  
+  if(doPrint){
+    for(unsigned int i = 0; i < deltaStatPerIterPerYBin.size(); ++i){
+      Double_t deltaTotal = 0.0;
+      Double_t deltaIter = 0.0;
+      Double_t deltaStat = 0.0;
+      
+      for(unsigned int bIY = 0; bIY < deltaStatPerIterPerYBin[i].size(); ++bIY){
+	deltaTotal += (deltaStatPerIterPerYBin[i][bIY] + deltaIterPerIterPerYBin[i][bIY]);
+	deltaIter += deltaIterPerIterPerYBin[i][bIY];
+	deltaStat += deltaStatPerIterPerYBin[i][bIY];
+      }
+
+      deltaStat = TMath::Sqrt(deltaStat);
+      deltaIter = TMath::Sqrt(deltaIter);
+      deltaTotal = TMath::Sqrt(deltaTotal);
+      std::cout << "Iteration: " << i << ", iter+stat=total, " << deltaIter << " quadSum " << deltaStat <<  " = " << deltaTotal << std::endl;      
+
+      for(unsigned int bIY = 0; bIY < deltaStatPerIterPerYBin[i].size(); ++bIY){
+	Double_t total = TMath::Sqrt(deltaIterPerIterPerYBin[i][bIY] + deltaStatPerIterPerYBin[i][bIY]);
+
+	std::cout << " " << bIY << " iter+stat=total: " << TMath::Sqrt(deltaIterPerIterPerYBin[i][bIY]) << " quadSum " << TMath::Sqrt(deltaStatPerIterPerYBin[i][bIY]) << " = " << total << std::endl;
+      }
+      
+    }
     
+  }
+
+  
   return;
 }
 

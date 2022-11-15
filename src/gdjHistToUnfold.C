@@ -7,6 +7,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <utility> //for std::pair
 
 //ROOT
 #include "TDirectoryFile.h"
@@ -53,7 +54,8 @@
 #include "include/varUtil.h"
 
 
-void makeReweightHist(TH1* weightHist_p, TH1* numHist_p, TH1* denomHist_p, std::string saveName)
+template <typename T>
+void makeReweightHist(T* weightHist_p, T* numHist_p, T* denomHist_p, std::string saveName, std::map<int, std::map<int, std::pair<int, int> > >* binMap_p = nullptr)
 {
   Double_t zeroThresh = TMath::Power(10, -100);
   
@@ -69,21 +71,9 @@ void makeReweightHist(TH1* weightHist_p, TH1* numHist_p, TH1* denomHist_p, std::
   std::vector<double> weightVals;
   Int_t nYBins = 1;
   if(!isTH1) nYBins = numHist_p->GetYaxis()->GetNbins();
-
-  std::cout << "Num Hist Print: " << std::endl;
-  numHist_p->Print("ALL");
-  std::cout << std::endl;
-  std::cout << "Denom Hist Print: " << std::endl;
-  denomHist_p->Print("ALL");
-  std::cout << std::endl;
   
-  std::cout << "BINS: " << std::endl;
   for(Int_t bIX = 0; bIX < numHist_p->GetXaxis()->GetNbins(); ++bIX){
-    std::cout << " bIX=" << bIX << "/" << numHist_p->GetXaxis()->GetNbins() << std::endl;
-
     for(Int_t bIY = 0; bIY < nYBins; ++bIY){
-      std::cout << "  bIY=" << bIY << "/" << nYBins << std::endl;
-
       Float_t ratioVal = 0.0;
       Float_t numeratorVal = 0.0;
       Float_t denominatorVal = 0.0;
@@ -97,7 +87,7 @@ void makeReweightHist(TH1* weightHist_p, TH1* numHist_p, TH1* denomHist_p, std::
 	denominatorVal = denomHist_p->GetBinContent(bIX+1, bIY+1);	
       }
 
-      std::cout << "   Num, denom: " << numeratorVal << ", " << denominatorVal << std::endl;
+      //      std::cout << "   Num, denom: " << numeratorVal << ", " << denominatorVal << std::endl;
 	
       if(denominatorVal > zeroThresh){
 	ratioVal = numeratorVal/denominatorVal;
@@ -122,89 +112,27 @@ void makeReweightHist(TH1* weightHist_p, TH1* numHist_p, TH1* denomHist_p, std::
   else scaleVal = (weightVals[weightVals.size()/2] + weightVals[weightVals.size()/2 - 1])/2.0;
   
   weightHist_p->Scale(1.0/scaleVal);
-
-  Int_t minXFill = -1;
-  Int_t maxXFill = 100000;
-  Int_t minYFill = -1;
-  Int_t maxYFill = 100000;
-
-  for(Int_t bIX = 0; bIX < weightHist_p->GetXaxis()->GetNbins(); ++bIX){
-    bool allBinsZero = true;
-
-    if(isTH1){
-      if(weightHist_p->GetBinContent(bIX+1) > zeroThresh) allBinsZero = false;
-    }
-    else{
-      for(Int_t bIY = 0; bIY < nYBins; ++bIY){
-	if(weightHist_p->GetBinContent(bIX+1, bIY+1) > zeroThresh){allBinsZero = false; break;}
-      }
-    }
-
-    if(!allBinsZero){minXFill = bIX; break;}
-  }
-
-  for(Int_t bIX = weightHist_p->GetXaxis()->GetNbins()-1; bIX >= 0; --bIX){
-    bool allBinsZero = true;
-
-    if(isTH1){
-      if(weightHist_p->GetBinContent(bIX+1) > zeroThresh) allBinsZero = false;
-    }
-    else{
-      for(Int_t bIY = 0; bIY < nYBins; ++bIY){
-	if(weightHist_p->GetBinContent(bIX+1, bIY+1) > zeroThresh){allBinsZero = false; break;}
-      }
-    }
-
-    if(!allBinsZero){maxXFill = bIX; break;}
-  }
-
-  std::cout << "L" << __LINE__ << std::endl;
   
-  if(!isTH1){
-    for(Int_t bIY = 0; bIY < nYBins; ++bIY){
-      bool allBinsZero = true;
-
-      for(Int_t bIX = 0; bIX < weightHist_p->GetXaxis()->GetNbins(); ++bIX){
-	if(weightHist_p->GetBinContent(bIX+1, bIY+1) > zeroThresh){allBinsZero = false; break;}
+  if(binMap_p != nullptr){
+    for(Int_t bIX = 0; bIX < weightHist_p->GetXaxis()->GetNbins()+1; ++bIX){
+      for(Int_t bIY = 0; bIY < nYBins; ++bIY){
+	if(isTH1){
+	  if((*binMap_p)[bIX][bIY].first != bIX){
+	    Double_t weightVal = weightHist_p->GetBinContent((*binMap_p)[bIX][bIY].first+1);
+	    weightHist_p->SetBinContent(bIX+1, weightVal);
+	  }	  
+	}
+	else{
+	  if((*binMap_p)[bIX][bIY].first != bIX || (*binMap_p)[bIX][bIY].second != bIY){
+	    Double_t weightVal = weightHist_p->GetBinContent((*binMap_p)[bIX][bIY].first+1, (*binMap_p)[bIX][bIY].second+1);
+	    weightHist_p->SetBinContent(bIX+1, bIY+1, weightVal);
+	  }
+	}	
       }      
-      
-      if(!allBinsZero){minYFill = bIY; break;}
     }
-    
-    for(Int_t bIY = nYBins-1; bIY >= 0; --bIY){
-      bool allBinsZero = true;
-      
-      for(Int_t bIX = 0; bIX < weightHist_p->GetXaxis()->GetNbins(); ++bIX){
-	if(weightHist_p->GetBinContent(bIX+1, bIY+1) > zeroThresh){allBinsZero = false; break;}
-      }    
-      
-      if(!allBinsZero){maxYFill = bIY; break;}
-    }    
   }
-
-  std::cout << "L" << __LINE__ << std::endl;
   
-  //Having found the range of fills on the weighting hist - need to reweight globally
-  for(Int_t bIX = 0; bIX < weightHist_p->GetXaxis()->GetNbins(); ++bIX){
-    if(bIX >= minXFill && bIX <= maxXFill) continue;
-
-    for(Int_t bIY = 0; bIY < nYBins; ++bIY){                                                  
-      if(bIY < minYFill || bIY > maxYFill) continue;
-
-      if(bIX < minXFill) weightHist_p->SetBinContent(bIX+1, bIY+1, weightHist_p->GetBinContent(minXFill+1, bIY+1));
-      else if(bIX > maxXFill) weightHist_p->SetBinContent(bIX+1, bIY+1, weightHist_p->GetBinContent(maxXFill+1, bIY+1));                                                         
-    }                                                                                               
-  }                                                                                                 
-                                                                                                       
-  for(Int_t bIY = 0; bIY < nYBins; ++bIY){                                                    
-    if(bIY >= minYFill && bIY <= maxYFill) continue;
-    
-    for(Int_t bIX = 0; bIX < weightHist_p->GetXaxis()->GetNbins(); ++bIX){
-      if(bIY < minYFill) weightHist_p->SetBinContent(bIX+1, bIY+1, weightHist_p->GetBinContent(bIX+1, minYFill+1));                                                              
-      else if(bIY > maxYFill) weightHist_p->SetBinContent(bIX+1, bIY+1, weightHist_p->GetBinContent(bIX+1, maxYFill+1));                                                         
-    }                                                                                               
-  }   
-
+  
   //Dump the reweighting matrix to a canvas
   const int titleFont = 42;
   const double titleSize = 0.03;
@@ -212,15 +140,15 @@ void makeReweightHist(TH1* weightHist_p, TH1* numHist_p, TH1* denomHist_p, std::
   const double yOffset = 0.9;
 
   const Float_t height = 1200.0;
-  const Float_t width = 942.831;
+  const Float_t width = 1200.0;
   const Double_t leftMargin = 0.16;
   const Double_t bottomAbsFracOfLeft = 0.8;
 
   const Double_t bottomMarginFracHeight = bottomAbsFracOfLeft*leftMargin*width/height;
 
   const Double_t bottomMargin = bottomMarginFracHeight;
-  const Double_t topMargin = 0.02;
-  const Double_t rightMargin = 0.02;
+  const Double_t topMargin = 0.03;
+  const Double_t rightMargin = 0.03;
 
   TCanvas* canv_p = new TCanvas("canv_p", "", width, height);
   setMargins(canv_p, leftMargin, topMargin, rightMargin, bottomMargin);
@@ -234,12 +162,12 @@ void makeReweightHist(TH1* weightHist_p, TH1* numHist_p, TH1* denomHist_p, std::
     weightHist_p->DrawCopy("COLZ");
   }
 
+  gPad->SetTicks();
+  
   gStyle->SetOptStat(0);
   
   quietSaveAs(canv_p, saveName);
   delete canv_p;
-
-  std::cout << "L" << __LINE__ << std::endl;
   
   return;
 }
@@ -1221,6 +1149,156 @@ int gdjHistToUnfold(std::string inConfigFileName)
     varBinsHighReco = drBinsHighReco;
   }
 
+  //We will need a bin map for the reweighting scheme  
+  std::map<int, std::map<int, bool> > goodBinMapPho;
+  std::map<int, std::map<int, std::pair<int, int> > > binWeightMapPho;
+  std::map<int, std::map<int, bool> > goodBinMap;
+  std::map<int, std::map<int, std::pair<int, int> > > binWeightMap;
+
+  //Photon bin isgood map
+  for(Int_t bIY = 0; bIY < nGammaPtBins; ++bIY){
+    Double_t gammaBinCenter = (gammaPtBins[bIY] + gammaPtBins[bIY+1])/2.0;
+
+    if(gammaBinCenter < gammaPtBinsLowReco) goodBinMapPho[bIY][0] = false;
+    else if(gammaBinCenter > gammaPtBinsHighReco) goodBinMapPho[bIY][0] = false;
+    else goodBinMapPho[bIY][0] = true;
+  }
+  //photon bin mapping for weights
+  for(Int_t bIY = 0; bIY < nGammaPtBins; ++bIY){
+    binWeightMapPho[bIY][0] = {bIY, 0};
+    Int_t xPos = binWeightMapPho[bIY][0].first;
+
+    while(!goodBinMapPho[xPos][0]){      
+      Double_t gammaBinCenter = (gammaPtBins[xPos] + gammaPtBins[xPos+1])/2.0;
+      bool gammaBinLow = gammaBinCenter < gammaPtBinsLowReco;
+      bool gammaBinHigh = gammaBinCenter > gammaPtBinsHighReco;
+
+      if(gammaBinLow) ++xPos;
+      else if(gammaBinHigh) --xPos;      
+    }
+
+    binWeightMapPho[bIY][0] = {xPos, 0};
+  }  
+  
+  //First pass for rewighting to fill out the goodBinMap
+  for(Int_t bIX = 0; bIX < nVarBins; ++bIX){
+    if(isMultijet){//Yaxis is a flattened 2-D array, handle as follows                                 
+      for(Int_t bIY = 0; bIY < nGammaPtBins*nSubJtPtBins; ++bIY){
+        bool isBinGood = true;
+        Double_t binCenterX = (varBins[bIX] + varBins[bIX+1])/2.0;
+
+        Int_t gammaBinPos = subJtGammaPtBinFlattener.GetBin1PosFromGlobal(bIY);
+        Int_t subJtPtBinPos = subJtGammaPtBinFlattener.GetBin2PosFromGlobal(bIY);
+        Double_t gammaBinCenter = (gammaPtBins[gammaBinPos] + gammaPtBins[gammaBinPos+1])/2.0;
+        Double_t subJtPtBinCenter = (subJtPtBins[subJtPtBinPos] + subJtPtBins[subJtPtBinPos+1])/2.0;
+        if(binCenterX < varBinsLowReco) isBinGood = false;
+        else if(binCenterX > varBinsHighReco) isBinGood = false;
+
+        if(isBinGood){
+          if(gammaBinCenter < gammaPtBinsLowReco) isBinGood = false;
+          else if(gammaBinCenter > gammaPtBinsHighReco) isBinGood = false;
+          else if(subJtPtBinCenter < jtPtBinsLowReco) isBinGood = false;
+        }
+        goodBinMap[bIX][bIY] = isBinGood;
+      }
+    }
+    else{//y-axis defined by gamma pt bins
+      for(Int_t gI = 0; gI < nGammaPtBins; ++gI){ 
+        bool isBinGood = true;
+        Double_t binCenterX = (varBins[bIX] + varBins[bIX+1])/2.0;
+	Double_t binCenterY = (gammaPtBins[gI] + gammaPtBins[gI+1])/2.0;
+
+	if(binCenterX < varBinsLowReco) isBinGood = false;
+        else if(binCenterX > varBinsHighReco) isBinGood = false;
+	
+	if(binCenterY < gammaPtBinsLowReco) isBinGood = false;
+	else if(binCenterY > gammaPtBinsHighReco) isBinGood = false;
+
+        goodBinMap[bIX][gI] = isBinGood;
+      }            
+    }
+  }
+  //Now convert the goodbinmap to a weight maps
+  for(Int_t bIX = 0; bIX < nVarBins; ++bIX){
+    if(isMultijet){//Yaxis is a flattened 2-D array, handle as follows                                 
+      for(Int_t bIY = 0; bIY < nGammaPtBins*nSubJtPtBins; ++bIY){
+	binWeightMap[bIX][bIY] = {bIX, bIY};
+
+	Int_t xPos = binWeightMap[bIX][bIY].first;
+	Int_t yPos = binWeightMap[bIX][bIY].second;
+
+	while(!goodBinMap[xPos][yPos]){
+	  Double_t binCenterX = (varBins[xPos] + varBins[xPos+1])/2.0;
+	  
+	  Int_t gammaBinPos = subJtGammaPtBinFlattener.GetBin1PosFromGlobal(yPos);
+	  Int_t subJtPtBinPos = subJtGammaPtBinFlattener.GetBin2PosFromGlobal(yPos);
+	  Double_t gammaBinCenter = (gammaPtBins[gammaBinPos] + gammaPtBins[gammaBinPos+1])/2.0;
+	  Double_t subJtPtBinCenter = (subJtPtBins[subJtPtBinPos] + subJtPtBins[subJtPtBinPos+1])/2.0;
+
+	  bool binXLow = binCenterX < varBinsLowReco;
+	  bool binXHigh = binCenterX > varBinsHighReco;	
+
+	  bool subJtPtBinLow = subJtPtBinCenter < jtPtBinsLowReco;
+
+	  bool gammaPtBinsLow = gammaBinCenter < gammaPtBinsLowReco;
+	  bool gammaPtBinsHigh = gammaBinCenter > gammaPtBinsHighReco;
+
+	  if(binXLow) ++xPos;
+	  else if(binXHigh) --xPos;
+	  else if(subJtPtBinLow){
+	    ++subJtPtBinPos;
+	    yPos = subJtGammaPtBinFlattener.GetGlobalFromBin12Pos(gammaBinPos, subJtPtBinPos);
+	  }
+	  else if(gammaPtBinsLow){
+	    ++gammaBinPos;
+	    yPos = subJtGammaPtBinFlattener.GetGlobalFromBin12Pos(gammaBinPos, subJtPtBinPos);
+	  }
+	  else if(gammaPtBinsHigh){
+	    --gammaBinPos;
+	    yPos = subJtGammaPtBinFlattener.GetGlobalFromBin12Pos(gammaBinPos, subJtPtBinPos);
+	  }
+	  binWeightMap[bIX][bIY] = {xPos, yPos};	
+	}
+      }
+    }
+    else{//y-axis defined by gamma pt bins
+      for(Int_t gI = 0; gI < nGammaPtBins; ++gI){ 
+	binWeightMap[bIX][gI] = {bIX, gI};
+
+	Int_t xPos = binWeightMap[bIX][gI].first;
+	Int_t yPos = binWeightMap[bIX][gI].second;
+	
+	while(!goodBinMap[xPos][yPos]){	  
+	  Double_t binCenterX = (varBins[xPos] + varBins[xPos+1])/2.0;
+	  Double_t binCenterY = (gammaPtBins[yPos] + gammaPtBins[yPos+1])/2.0;
+
+	  bool binXLow = binCenterX < varBinsLowReco;
+	  bool binXHigh = binCenterX > varBinsHighReco;	
+	  bool binYLow = binCenterY < gammaPtBinsLowReco;
+	  bool binYHigh = binCenterY > gammaPtBinsHighReco;
+
+	  if(binXLow) ++xPos;
+	  else if(binXHigh) --xPos;
+	  else if(binYLow) ++yPos;
+	  else if(binYHigh) --yPos;
+	}      
+	binWeightMap[bIX][gI] = {xPos, yPos};
+      }
+    }
+  }
+
+  /*
+  std::cout << "MATRIX MAP CHECK: " << std::endl;
+  for(unsigned int bIX = 0; bIX < nVarBins; ++bIX){
+    std::cout << "BIX: " << bIX << std::endl;
+    if(isMultijet){
+      for(Int_t bIY = 0; bIY < nGammaPtBins*nSubJtPtBins; ++bIY){
+	std::cout << " bIY, goodBin, matchBin: " << bIY << ", " << goodBinMap[bIX][bIY] << ", " << binWeightMap[bIX][bIY].first << ", " << binWeightMap[bIX][bIY].second << std::endl;
+      }
+    }
+  }  
+  return 1;
+  */
   
   //Construct matrices
   TFile* outFile_p = new TFile(outFileName.c_str(), "RECREATE");  
@@ -1752,8 +1830,6 @@ int gdjHistToUnfold(std::string inConfigFileName)
   TH2D* reweightPhoPtJetVar_p[nMaxCentBins][nMaxSyst];
   TH2D* reweightPhoPtDRJJ_p[nMaxCentBins];
   TH2D* reweightPhoPtAJJ_p[nMaxCentBins];
-
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
   if(!isMC){
     if(doReweightVar){
@@ -1769,7 +1845,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	}
 	
 	std::string saveName = pdfStr + "/reweightPhoPt_" + centBinsStr[cI] + "_" + dateStr + ".png";
-	makeReweightHist(reweightPhoPt_p[cI], photonPtReco_PURCORR_COMBINED_p[cI], photonPtReco_PURCORR_COMBINED_ForReweight_p[cI], saveName);
+	makeReweightHist(reweightPhoPt_p[cI], photonPtReco_PURCORR_COMBINED_p[cI], photonPtReco_PURCORR_COMBINED_ForReweight_p[cI], saveName, &binWeightMapPho);
 
 	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << cI << "/" << nCentBins << std::endl;
      
@@ -1777,18 +1853,10 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << cI << "/" << nCentBins << ", " << systI << "/" << inSystStrVect.size() << std::endl;
 
 	  saveName = pdfStr + "/reweightPhoPtJt" + varName + "_" + centBinsStr[cI] + "_" + inSystStrVect[systI] + "_" + dateStr + ".png";	      
+
+	  makeReweightHist(reweightPhoPtJetVar_p[cI][systI], photonPtJetVarReco_PURCORR_COMBINED_p[cI][systI], photonPtJetVarReco_PURCORR_COMBINED_ForReweight_p[cI][systI], saveName, &binWeightMap);
 	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << cI << "/" << nCentBins << ", " << systI << "/" << inSystStrVect.size() << std::endl;
-	  std::cout << reweightPhoPtJetVar_p[cI][systI] << std::endl;
-	  std::cout << reweightPhoPtJetVar_p[cI][systI]->GetName() << std::endl;
 
-	  std::cout << photonPtJetVarReco_PURCORR_COMBINED_p[cI][systI] << std::endl;
-	  std::cout << photonPtJetVarReco_PURCORR_COMBINED_p[cI][systI]->GetName() << std::endl;
-
-	  std::cout << photonPtJetVarReco_PURCORR_COMBINED_ForReweight_p[cI][systI] << std::endl;
-	  std::cout << photonPtJetVarReco_PURCORR_COMBINED_ForReweight_p[cI][systI]->GetName() << std::endl;
-
-	  makeReweightHist(reweightPhoPtJetVar_p[cI][systI], photonPtJetVarReco_PURCORR_COMBINED_p[cI][systI], photonPtJetVarReco_PURCORR_COMBINED_ForReweight_p[cI][systI], saveName);
-	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << cI << "/" << nCentBins << ", " << systI << "/" << inSystStrVect.size() << std::endl;
 	}
       }     
     }

@@ -670,9 +670,11 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   std::vector<double> subJtGammaPtBinsV = subJtGammaPtBinFlattener.GetFlattenedBins(subJtGammaPtMin, subJtGammaPtMax);
   for(unsigned int sgI = 0; sgI < subJtGammaPtBinsV.size(); ++sgI){
     subJtGammaPtBins[sgI] = subJtGammaPtBinsV[sgI];
-  }  
-   
- if(doJtPtCut){
+  }
+ 
+  
+  
+  if(doJtPtCut){
     bool jtPtCutFound = false;
     double deltaVal = 0.001;
     for(Int_t sI = 0; sI < nSubJtPtBins; ++sI){
@@ -749,6 +751,67 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
     }
   }
   else getLinBins(varBinsLow, varBinsHigh, nVarBins, varBins);
+
+  //We need to create a map of bins to exclude in judging the iterative convergence
+  //Map xBin, yBin, bool true false use in deltaAbs = deltaIter quadSum deltaStat 
+  std::map<int, std::map<int, bool> > goodBinMap;
+  for(Int_t bIX = 0; bIX < nVarBins; ++bIX){
+     if(isMultijet){//Yaxis is a flattened 2-D array, handle as follows
+      for(Int_t bIY = 0; bIY < nGammaPtBins*nSubJtPtBins; ++bIY){
+	Int_t gammaBinPos = subJtGammaPtBinFlattener.GetBin1PosFromGlobal(bIY);
+	Int_t subJtPtBinPos = subJtGammaPtBinFlattener.GetBin2PosFromGlobal(bIY);
+
+	Double_t gammaBinCenter = (gammaPtBins[gammaBinPos] + gammaPtBins[gammaBinPos+1])/2.0;
+	Double_t subJtPtBinCenter = (subJtPtBins[subJtPtBinPos] + subJtPtBins[subJtPtBinPos+1])/2.0;
+
+	bool isBinGood = true;    
+	Double_t binCenterX = (varBins[bIX] + varBins[bIX+1])/2.0;
+	
+	if(binCenterX < varBinsLowReco) isBinGood = false;
+	else if(binCenterX > varBinsHighReco) isBinGood = false;	
+
+	//	std::cout << "bIX, bIY, varBinCenter, gammaBinCenter, subJtPtBinCenter, goodBin: " << bIX << ", " << bIY  << ", " << binCenterX << ", " << gammaBinCenter << ", " << subJtPtBinCenter << ", " << isBinGood << std::endl;
+	
+	if(isBinGood){
+	  if(gammaBinCenter < gammaPtBinsLowReco) isBinGood = false;
+	  else if(gammaBinCenter > gammaPtBinsHighReco) isBinGood = false;
+	  else if(subJtPtBinCenter < jtPtBinsLowReco) isBinGood = false;
+	}	
+	goodBinMap[bIX][bIY] = isBinGood;
+      }      
+    }
+    else{//y-axis defined by gamma pt bins
+      for(Int_t gI = 0; gI < nGammaPtBins; ++gI){
+	Double_t binCenterY = (gammaPtBins[gI] + gammaPtBins[gI+1])/2.0;
+
+	bool isBinGood = true;    
+	Double_t binCenterX = (varBins[bIX] + varBins[bIX+1])/2.0;
+	if(binCenterX < varBinsLowReco) isBinGood = false;
+	else if(binCenterX > varBinsHighReco) isBinGood = false;
+	
+	if(isBinGood){
+	  if(binCenterY < gammaPtBinsLowReco) isBinGood = false;
+	  else if(binCenterY > gammaPtBinsHighReco) isBinGood = false;
+	}	
+	goodBinMap[bIX][gI] = isBinGood;
+      }      
+    }    
+  }
+
+  /*
+  std::cout << "GAMMA PT LOW HIGH : " << gammaPtBinsLowReco << "-" << gammaPtBinsHighReco << std::endl;
+  std::cout << "SUBJET PT LOW HIGH : " << jtPtBinsLowReco << std::endl;
+  std::cout << "VAR BINS LOW HIGH: " << varBinsLowReco << ", " << varBinsHighReco << std::endl;
+  
+  for(Int_t bIX = 0; bIX < nVarBins; ++bIX){
+    std::cout << "bIX: " << bIX << std::endl;
+    for(Int_t bIY = 0; bIY < nGammaPtBins*nSubJtPtBins; ++bIY){
+      std::cout << " bIY, value: " << bIY << ", " << goodBinMap[bIX][bIY] << std::endl;
+    
+    }
+  }
+  return 1;
+  */
 
   //Loop over all jet systematics
   for(Int_t systI = 0; systI < nSyst; ++systI){   
@@ -916,8 +979,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	else if(pI == 1){
 	  reco2D_p = (TH2D*)inUnfoldFile_p->Get(recoHistNames[cI].c_str());
 
-	  if(isMultijet) getIterativeHists2D(reco2D_p, unfoldedHists2D_p, statsDelta_p, iterDelta_p, totalDelta_p, doRelativeTerm, varBinsLowReco, varBinsHighReco, subJtGammaPtMin, subJtGammaPtMax, doIterPrint);
- 	  else getIterativeHists2D(reco2D_p, unfoldedHists2D_p, statsDelta_p, iterDelta_p, totalDelta_p, doRelativeTerm, varBinsLowReco, varBinsHighReco, gammaPtBinsLowReco, gammaPtBinsHighReco);
+	  if(isMultijet) getIterativeHists2D(reco2D_p, unfoldedHists2D_p, statsDelta_p, iterDelta_p, totalDelta_p, doRelativeTerm, goodBinMap, doIterPrint);
+ 	  else getIterativeHists2D(reco2D_p, unfoldedHists2D_p, statsDelta_p, iterDelta_p, totalDelta_p, doRelativeTerm, goodBinMap);
 	}
 	
 	TCanvas* canv_p = new TCanvas("canv_p", "", width, height*3.0/4.0);
