@@ -1715,6 +1715,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   std::vector<float>* photon_phi_p=nullptr;
   std::vector<bool>* photon_tight_p=nullptr;  
   std::vector<float>* photon_etcone_p=nullptr;
+  std::vector<unsigned int>* photon_isEM_p=nullptr;
   std::vector<float>* photon_correctedIso_p=nullptr;
   
   std::vector<float>* aktRhi_etajes_jet_pt_p=nullptr;
@@ -2092,6 +2093,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
     inTree_p->SetBranchStatus("photon_phi", 1);
     inTree_p->SetBranchStatus("photon_tight", 1);
     inTree_p->SetBranchStatus(("photon_etcone" + std::to_string(isolationR) + "0").c_str(), 1);
+    inTree_p->SetBranchStatus("photon_isem", 1);
     
     if(isMC){
       inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_etajes_jet_pt").c_str(), 1);
@@ -2172,6 +2174,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
     inTree_p->SetBranchAddress("photon_phi", &photon_phi_p);
     inTree_p->SetBranchAddress("photon_tight", &photon_tight_p);
     inTree_p->SetBranchAddress(("photon_etcone" + std::to_string(isolationR) + "0").c_str(), &photon_etcone_p);
+    inTree_p->SetBranchAddress("photon_isem", &photon_isEM_p);
     
     if(isMC){
       inTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "hi_etajes_jet_pt").c_str(), &aktRhi_etajes_jet_pt_p);
@@ -2523,7 +2526,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  bool isSignal = photon_tight_p->at(pI);
 	  isSignal = isSignal && isIsolatedPhoton(isPP, doPtIsoCorrection, photon_correctedIso_p->at(pI));
 	  //Sideband is not orthogonal to isGoodRecoSignal and definition can change - use function
-	  bool isSideband = isSidebandPhoton(isPP, doPtIsoCorrection, sidebandType, photon_tight_p->at(pI), photon_correctedIso_p->at(pI));
+	  bool isSideband = isSidebandPhoton(isPP, doPtIsoCorrection, sidebandType, photon_tight_p->at(pI), photon_isEM_p->at(pI), photon_correctedIso_p->at(pI));
 	  
 	  //goodreco signal
 	  bool isGoodRecoSignal = isGoodReco && isSignal;

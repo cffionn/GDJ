@@ -43,9 +43,9 @@ std::string getPhotonTypeString(photonType inPhotonType)
   else if(inPhotonType == NONTIGHT_NONISO) return "NONTIGHT_NONISO";
   else if(inPhotonType == NONISO) return "NONISO";
   else if(inPhotonType == NONTIGHT) return "NONTIGHT";
-  else if(inPhotonType == TIGHT_NONISO_EMBIT0) return "TIGHT_NONISO_EMBIT0";
-  else if(inPhotonType == TIGHT_NONISO_EMBIT1) return "TIGHT_NONISO_EMBIT1";
-  else if(inPhotonType == TIGHT_NONISO_EMBIT2) return "TIGHT_NONISO_EMBIT2";
+  else if(inPhotonType == NONTIGHT_ISO_EMBIT0) return "NONTIGHT_ISO_EMBIT0";
+  else if(inPhotonType == NONTIGHT_ISO_EMBIT1) return "NONTIGHT_ISO_EMBIT1";
+  else if(inPhotonType == NONTIGHT_ISO_EMBIT2) return "NONTIGHT_ISO_EMBIT2";
   else if(inPhotonType == OTHER) return "OTHER";
 
   std::cout << "getPhotonTypeString: Given photonType \'" << inPhotonType << "\' is not valid. return empty string" << std::endl;
@@ -117,7 +117,7 @@ inline bool isSidebandPhoton(bool isPP, bool isCorrected, photonType sidebandTyp
 
 //NOTE THAT THIS IS RE-OPTIMIZED BY YEONJU
 //ISOLATION CUT SHOULD BE 3 GeV for Pb+Pb and p+p after correction, R=0.3
-inline bool isGoodPhoton(bool isPP, bool isCorrected, photonType sidebandType, bool phoTight, float phoIso, float phoEta)
+inline bool isGoodPhoton(bool isPP, bool isCorrected, photonType sidebandType, bool phoTight, unsigned int phoIsEMBit, float phoIso, float phoEta)
 {
   phoEta = TMath::Abs(phoEta);
   //Always
@@ -125,7 +125,7 @@ inline bool isGoodPhoton(bool isPP, bool isCorrected, photonType sidebandType, b
 
   bool isIsolated = isIsolatedPhoton(isPP, isCorrected, phoIso);
   bool isNonIsolated = isNonIsolatedPhoton(isPP, isCorrected, phoIso);
-  bool isSideband = isSidebandPhoton(isIsolated, isNonIsolated, phoTight, sidebandType);
+  bool isSideband = isSidebandPhoton(isIsolated, isNonIsolated, phoTight, phoIsEMBit, sidebandType);
   bool retVal = (isIsolated && phoTight) || isSideband;
 
   return retVal;
