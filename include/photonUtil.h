@@ -17,13 +17,23 @@
 //SIDEBAND TYPE 3: non-tight and non-isolated
 //SIDEBAND TYPE 4: non-isolated
 //SIDEBAND TYPE 5: non-tight
+//2022.11.16 - adding new sidebands
+//Based on isEM bit definitions here: https://github.com/YeonjuGo/GDJ/blob/master/src/phoTaggedJetRaa_jetPt.C#L149
+//SIDEBAND TYPE 6: non-tight and isolated w/ nominal isEM bit - 0x45fc01, fracm+weta1+deltaE+Eratio
+//SIDEBAND TYPE 7: non-tight and isolated w/ nominal isEM bit - 0x67fc01, fracm+weta1 -> looser
+//SIDEBAND TYPE 8: non-tight and isolated w/ nominal isEM bit - 0x41fc01, fracm+weta1+deltaE+Eratio+ws -> tighter
+//SIDEBAND TYPE 9: other
+
 enum photonType{TIGHT_ISO = 0,
 		TIGHT_NONISO = 1,
 		NONTIGHT_ISO = 2,
 		NONTIGHT_NONISO = 3,
 		NONISO = 4,
 		NONTIGHT = 5,
-		OTHER = 6};
+		NONTIGHT_ISO_EMBIT0 = 6,
+		NONTIGHT_ISO_EMBIT1 = 7,
+		NONTIGHT_ISO_EMBIT2 = 8,
+		OTHER = 9};
 
 std::string getPhotonTypeString(photonType inPhotonType)
 {
@@ -33,6 +43,9 @@ std::string getPhotonTypeString(photonType inPhotonType)
   else if(inPhotonType == NONTIGHT_NONISO) return "NONTIGHT_NONISO";
   else if(inPhotonType == NONISO) return "NONISO";
   else if(inPhotonType == NONTIGHT) return "NONTIGHT";
+  else if(inPhotonType == TIGHT_NONISO_EMBIT0) return "TIGHT_NONISO_EMBIT0";
+  else if(inPhotonType == TIGHT_NONISO_EMBIT1) return "TIGHT_NONISO_EMBIT1";
+  else if(inPhotonType == TIGHT_NONISO_EMBIT2) return "TIGHT_NONISO_EMBIT2";
   else if(inPhotonType == OTHER) return "OTHER";
 
   std::cout << "getPhotonTypeString: Given photonType \'" << inPhotonType << "\' is not valid. return empty string" << std::endl;
@@ -68,7 +81,7 @@ inline bool isNonIsolatedPhoton(bool isPP, bool isCorrected, float phoIso)
   return isNonIsolated;
 }
 
-inline bool isSidebandPhoton(bool isIsolated, bool isNonIsolated, bool isTight, photonType sidebandType)
+inline bool isSidebandPhoton(bool isIsolated, bool isNonIsolated, bool isTight, unsigned int isEMBit, photonType sidebandType)
 {
   if(sidebandType < TIGHT_NONISO || sidebandType > OTHER){
     std::cout << "ERROR IN ISSIDEBANDPHOTON: sidebandType \'" << sidebandType << "\' is not valid please choose a valid type: " << std::endl;
@@ -87,15 +100,19 @@ inline bool isSidebandPhoton(bool isIsolated, bool isNonIsolated, bool isTight, 
   else if(sidebandType == 3 && !isTight && isNonIsolated) isSB = true;
   else if(sidebandType == 4 && isNonIsolated) isSB = true;
   else if(sidebandType == 5 && !isTight) isSB = true;
+  else if(sidebandType == 5 && !isTight) isSB = true;
+  else if(sidebandType == 6 && !isTight && isIsolated && (isEMBit & 0x45fc01) == 0) isSB = true;
+  else if(sidebandType == 7 && !isTight && isIsolated && (isEMBit & 0x67fc01) == 0) isSB = true;
+  else if(sidebandType == 8 && !isTight && isIsolated && (isEMBit & 0x41fc01) == 0) isSB = true;
   
   return isSB;
 }
 
-inline bool isSidebandPhoton(bool isPP, bool isCorrected, photonType sidebandType, bool phoTight, float phoIso)
+inline bool isSidebandPhoton(bool isPP, bool isCorrected, photonType sidebandType, bool phoTight, unsigned int isEMBit, float phoIso)
 {
   bool isIsolated = isIsolatedPhoton(isPP, isCorrected, phoIso);
   bool isNonIsolated = isNonIsolatedPhoton(isPP, isCorrected, phoIso);
-  return isSidebandPhoton(isIsolated, isNonIsolated, phoTight, sidebandType);
+  return isSidebandPhoton(isIsolated, isNonIsolated, phoTight, isEMBit, sidebandType);
 }
 
 //NOTE THAT THIS IS RE-OPTIMIZED BY YEONJU
