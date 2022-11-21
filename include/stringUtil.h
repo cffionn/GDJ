@@ -243,7 +243,7 @@ inline std::vector<int> strToVectI(std::string inStr)
   std::vector<int> retVect;
   std::vector<std::string> strVect = strToVect(inStr);
   for(auto const & iter : strVect){
-    retVect.push_back(std::stod(iter));
+    retVect.push_back(std::stoi(iter));
   }
   return retVect;
 }

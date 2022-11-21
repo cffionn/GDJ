@@ -392,6 +392,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   const Float_t diagLabelYGlobal = config_p->GetValue("DIAGLABELY.GLOBAL", -1000.);
   const Bool_t diagLabelAlignRightGlobal = config_p->GetValue("DIAGLABELALIGNRIGHT.GLOBAL", 0);
   const Float_t diagMinimum = config_p->GetValue("DIAGMINIMUM", 0.05);
+  const Float_t diagMaximum = config_p->GetValue("DIAGMAXIMUM", 0.05);
   
   //Get global labels
   std::vector<std::string> globalLabels;
@@ -992,6 +993,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	HIJet::Style::EquipHistogram(totalDelta_p, 0);
 	
 	totalDelta_p->SetMinimum(diagMinimum);	
+	totalDelta_p->SetMaximum(diagMaximum);	
 	totalDelta_p->DrawCopy("HIST E1 P");
 	statsDelta_p->DrawCopy("HIST E1 P SAME");
 	iterDelta_p->DrawCopy("HIST E1 P SAME");
