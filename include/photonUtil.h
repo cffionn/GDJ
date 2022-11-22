@@ -35,7 +35,7 @@ enum photonType{TIGHT_ISO = 0,
 		NONTIGHT_ISO_EMBIT2 = 8,
 		OTHER = 9};
 
-std::string getPhotonTypeString(photonType inPhotonType)
+inline std::string getPhotonTypeString(photonType inPhotonType)
 {
   if(inPhotonType == TIGHT_ISO) return "TIGHT_ISO";
   else if(inPhotonType == TIGHT_NONISO) return "TIGHT_NONISO";
@@ -52,6 +52,22 @@ std::string getPhotonTypeString(photonType inPhotonType)
 
   return "";
 }
+
+inline Bool_t photonEtaIsBarrel(Float_t photonEta)
+{
+  return TMath::Abs(photonEta) < 1.37;
+}
+
+inline Bool_t photonEtaIsEC(Float_t photonEta)
+{
+  return TMath::Abs(photonEta) > 1.52 && TMath::Abs(photonEta) < 2.37;
+}
+
+inline Bool_t photonEtaIsGood(Float_t photonEta)
+{
+  return photonEtaIsBarrel(photonEta) || photonEtaIsEC(photonEta);
+}
+
 
 inline bool isIsolatedPhoton(bool isPP, bool isCorrected, float phoIso)
 {
@@ -121,7 +137,7 @@ inline bool isGoodPhoton(bool isPP, bool isCorrected, photonType sidebandType, b
 {
   phoEta = TMath::Abs(phoEta);
   //Always
-  if(phoEta >= 1.37 && phoEta < 1.52) return false;
+  if(!photonEtaIsGood(phoEta)) return false;
 
   bool isIsolated = isIsolatedPhoton(isPP, isCorrected, phoIso);
   bool isNonIsolated = isNonIsolatedPhoton(isPP, isCorrected, phoIso);
@@ -137,12 +153,12 @@ double getCorrectedPhotonIsolation(bool isPP, float phoIso, float phoPt, float p
 
   ////////// These correction is optimized for the correctedIso < 3 GeV cut for both pp and PbPb /////////
   double correctedIso = phoIso;
-  if(phoEta < 1.37) correctedIso = correctedIso - 0.021049*phoPt - 2.855968 + 3.0;
-  else if(phoEta >= 1.52 && phoEta < 2.37) correctedIso = correctedIso - 0.038043*phoPt - 2.860857 + 3.0;
+  if(photonEtaIsBarrel(phoEta)) correctedIso = correctedIso - 0.021049*phoPt - 2.855968 + 3.0;
+  else if(photonEtaIsEC(phoEta)) correctedIso = correctedIso - 0.038043*phoPt - 2.860857 + 3.0;
   else return 999; 
 
   if(!isPP){
-      if(phoEta < 1.37) correctedIso = correctedIso + 0.163862*cent - 0.000797*cent*cent - 10.268763 + 3.0;
+    if(photonEtaIsBarrel(phoEta)) correctedIso = correctedIso + 0.163862*cent - 0.000797*cent*cent - 10.268763 + 3.0;
       else correctedIso = correctedIso + 0.155623*cent - 0.000789*cent*cent - 9.301528 + 3.0;
   }
 
@@ -155,8 +171,8 @@ double getPtCorrectedPhotonIsolation(float phoIso, float phoPt, float phoEta)
 
   ////////// These correction is optimized for the correctedIso < 3 GeV cut for both pp and PbPb /////////
   double correctedIso = phoIso;
-  if(phoEta < 1.37) correctedIso = correctedIso - 0.021049*phoPt - 2.855968 + 3.0;
-  else if(phoEta >= 1.52 && phoEta < 2.37) correctedIso = correctedIso - 0.038043*phoPt - 2.860857 + 3.0;
+  if(photonEtaIsBarrel(phoEta)) correctedIso = correctedIso - 0.021049*phoPt - 2.855968 + 3.0;
+  else if(photonEtaIsEC(phoEta)) correctedIso = correctedIso - 0.038043*phoPt - 2.860857 + 3.0;
   else return 999; 
 
   return correctedIso;
@@ -168,8 +184,8 @@ double getCentCorrectedPhotonIsolation(float phoIso, float phoEta, float cent)
 
   ////////// These correction is optimized for the correctedIso < 3 GeV cut for both pp and PbPb /////////
   double correctedIso = phoIso;
-  if(phoEta < 1.37) correctedIso = correctedIso + 0.163862*cent - 0.000797*cent*cent - 10.268763 + 3.0;
-  else if(phoEta >= 1.52 && phoEta < 2.37) correctedIso = correctedIso + 0.155623*cent - 0.000789*cent*cent - 9.301528 + 3.0;
+  if(photonEtaIsBarrel(phoEta)) correctedIso = correctedIso + 0.163862*cent - 0.000797*cent*cent - 10.268763 + 3.0;
+  else if(photonEtaIsEC(phoEta)) correctedIso = correctedIso + 0.155623*cent - 0.000789*cent*cent - 9.301528 + 3.0;
   else return 999; 
 
   return correctedIso;

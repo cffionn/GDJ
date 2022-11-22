@@ -936,8 +936,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
   }
 
   //We need to declare some systematics (like jet pt cut unfolding variation)
-  std::vector<std::string> systStrVect = {"NOMINAL", "JTPTCUT"};
-  std::vector<std::string> systTypeVect = {"NOMINAL", "UNFOLDING"};
+  std::vector<std::string> systStrVect = {"NOMINAL", "JTPTCUT", "PHOISOANDPUR"};
+  std::vector<std::string> systTypeVect = {"NOMINAL", "UNFOLDING", "PURBINORFIT"};
 
   if(systStrVect.size() != systTypeVect.size()){
     std::cout << "ERROR: systStrVect size \'" << systStrVect.size() << "\' does not match size of systTypeVect, \'" << systTypeVect.size() << "\'. All declared syst must have corresponding type. return 1" << std::endl;

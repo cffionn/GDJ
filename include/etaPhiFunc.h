@@ -28,6 +28,7 @@ inline Float_t getDR(Float_t eta1, Float_t phi1, Float_t eta2, Float_t phi2, std
   return TMath::Sqrt(theDphi*theDphi + theDeta*theDeta);
 }
 
+/*
 inline Bool_t photonEtaIsBarrel(Float_t photonEta)
 {
   return TMath::Abs(photonEta) < 1.37;
@@ -42,6 +43,6 @@ inline Bool_t photonEtaIsGood(Float_t photonEta)
 {
   return photonEtaIsBarrel(photonEta) || photonEtaIsEC(photonEta);
 }
-
+*/
 
 #endif
