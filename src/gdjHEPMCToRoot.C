@@ -108,6 +108,7 @@ int gdjHEPMCToRoot(std::string inConfigFileName)
   Float_t jtpt_[nMaxJetRs][nMaxJets];
   Float_t jtphi_[nMaxJetRs][nMaxJets];
   Float_t jteta_[nMaxJetRs][nMaxJets];
+  Float_t jtm_[nMaxJetRs][nMaxJets];
       
   TFile* outFile_p = new TFile(outROOTFileName.c_str(), "RECREATE");
   TTree* jewelTree_p = new TTree("jewelTree", "");
@@ -120,13 +121,21 @@ int gdjHEPMCToRoot(std::string inConfigFileName)
   jewelTree_p->Branch("m", m_, "m[nPart]/F");
   jewelTree_p->Branch("pid", pid_, "pid[nPart]/I");  				  
 
-  for(Int_t jI = 0; jI < jetRVect.size(); ++jI){
+  for(unsigned int jI = 0; jI < jetRVect.size(); ++jI){
     std::string jetR = std::to_string(jetRVect[jI]);
     
     jewelTree_p->Branch(("nJtR" + jetR).c_str(), &nJt_[jI], ("nJtR" + jetR + "/I").c_str());
     jewelTree_p->Branch(("jtptR" + jetR).c_str(), jtpt_[jI], ("jtptR" + jetR + "[nJtR" + jetR + "]/F").c_str());
     jewelTree_p->Branch(("jtetaR" + jetR).c_str(), jteta_[jI], ("jtetaR" + jetR + "[nJtR" + jetR + "]/F").c_str());
     jewelTree_p->Branch(("jtphiR" + jetR).c_str(), jtphi_[jI], ("jtphiR" + jetR + "[nJtR" + jetR + "]/F").c_str());
+    jewelTree_p->Branch(("jtmR" + jetR).c_str(), jtm_[jI], ("jtmR" + jetR + "[nJtR" + jetR + "]/F").c_str());
+  }
+
+  //Quickly analyze hep file name for centrality
+  std::string centStr = "PP";
+  if(inHEPFileName.find("Cent") != std::string::npos){
+    centStr = inHEPFileName.substr(inHEPFileName.find("Cent"), inHEPFileName.size());
+    centStr = centStr.substr(0, centStr.rfind("."));
   }
   
   //Following hepmc example_EventSelection.cc
@@ -179,6 +188,7 @@ int gdjHEPMCToRoot(std::string inConfigFileName)
 	jtpt_[rI][jI] = jets[jI].pt();
 	jtphi_[rI][jI] = jets[jI].phi();
 	jteta_[rI][jI] = jets[jI].eta();
+	jtm_[rI][jI] = jets[jI].m();
 
 	++nJt_[rI];
       }
@@ -201,6 +211,7 @@ int gdjHEPMCToRoot(std::string inConfigFileName)
   jewelTree_p->Write("", TObject::kOverwrite);
   delete jewelTree_p;
 
+  config_p->SetValue("CENT", centStr.c_str());
   config_p->Write("config", TObject::kOverwrite);
   
   outFile_p->Close();
@@ -208,7 +219,8 @@ int gdjHEPMCToRoot(std::string inConfigFileName)
   
   //Clean all news
   delete config_p;  
-  
+
+  std::cout << "GDJHEPMCTOROOT complete. return 0" << std::endl;
   return 0;
 }
 

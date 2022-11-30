@@ -7,6 +7,9 @@
 #include "TH1F.h"
 #include "TH2F.h"
 
+#include "TCanvas.h"
+#include "TPad.h"
+
 void centerTitles(TH1* hist_p)
 {
   hist_p->GetXaxis()->CenterTitle();

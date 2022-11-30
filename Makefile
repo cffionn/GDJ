@@ -42,7 +42,7 @@ MKDIR_OBJ=mkdir -p $(GDJDIR)/obj
 MKDIR_OUTPUT=mkdir -p $(GDJDIR)/output
 MKDIR_PDF=mkdir -p $(GDJDIR)/pdfDir
 
-all: mkdirBin mkdirLib mkdirObj mkdirOutput mkdirPdf obj/binFlattener.o obj/centralityFromInput.o obj/checkMakeDir.o obj/configParser.o obj/globalDebugHandler.o obj/keyHandler.o obj/sampleHandler.o obj/mixMachine.o lib/libATLASGDJ.so bin/gdjNtuplePreProc.exe bin/gdjAnalyzeTxtOut.exe bin/gdjToyMultiMix.exe bin/gdjPlotToy.exe bin/gdjNTupleToHist.exe bin/gdjNTupleToMBHist.exe bin/gdjHistDumper.exe bin/gdjGammaJetResponsePlot.exe bin/gdjMixedEventPlotter.exe bin/gdjPurityPlotter.exe bin/gdjControlPlotter.exe bin/gdjResponsePlotter.exe bin/gdjDataMCRawPlotter.exe bin/gdjPbPbOverPPRawPlotter.exe bin/gdjRCPRawPlotter.exe bin/gdjR4OverR2RawPlotter.exe bin/grlToTex.exe bin/testKeyHandler.exe bin/testSampleHandler.exe bin/gdjPlotMBHist.exe bin/gdjHistToUnfold.exe bin/gdjHistToGenVarPlots.exe bin/gdjPlotUnfoldReweight.exe bin/gdjPlotUnfoldDiagnostics.exe bin/gdjPlotResults.exe bin/gdjHistDQM.exe bin/gdjHEPMCToRoot.exe
+all: mkdirBin mkdirLib mkdirObj mkdirOutput mkdirPdf obj/binFlattener.o obj/centralityFromInput.o obj/checkMakeDir.o obj/configParser.o obj/globalDebugHandler.o obj/keyHandler.o obj/sampleHandler.o obj/mixMachine.o lib/libATLASGDJ.so bin/gdjNtuplePreProc.exe bin/gdjAnalyzeTxtOut.exe bin/gdjToyMultiMix.exe bin/gdjPlotToy.exe bin/gdjNTupleToHist.exe bin/gdjNTupleToMBHist.exe bin/gdjHistDumper.exe bin/gdjGammaJetResponsePlot.exe bin/gdjMixedEventPlotter.exe bin/gdjPurityPlotter.exe bin/gdjControlPlotter.exe bin/gdjResponsePlotter.exe bin/gdjDataMCRawPlotter.exe bin/gdjPbPbOverPPRawPlotter.exe bin/gdjRCPRawPlotter.exe bin/gdjR4OverR2RawPlotter.exe bin/grlToTex.exe bin/testKeyHandler.exe bin/testSampleHandler.exe bin/gdjPlotMBHist.exe bin/gdjHistToUnfold.exe bin/gdjHistToGenVarPlots.exe bin/gdjPlotUnfoldReweight.exe bin/gdjPlotUnfoldDiagnostics.exe bin/gdjPlotResults.exe bin/gdjHistDQM.exe bin/gdjHEPMCToRoot.exe bin/gdjHEPMCAna.exe bin/gdjHEPMCPlot.exe
 #bin/gdjNTupleToSignalHist.exe bin/gdjPlotSignalHist.exe bin/gdjToyMultiMix.exe bin/gdjPlotToy.exe
 
 mkdirBin:
@@ -179,6 +179,12 @@ bin/gdjHistDQM.exe: src/gdjHistDQM.C
 
 bin/gdjHEPMCToRoot.exe: src/gdjHEPMCToRoot.C
 	$(CXX) $(CXXFLAGS) src/gdjHEPMCToRoot.C -o bin/gdjHEPMCToRoot.exe $(ROOT) $(FASTJET) $(INCLUDE) $(LIB) -lATLASGDJ
+
+bin/gdjHEPMCAna.exe: src/gdjHEPMCAna.C
+	$(CXX) $(CXXFLAGS) src/gdjHEPMCAna.C -o bin/gdjHEPMCAna.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
+
+bin/gdjHEPMCPlot.exe: src/gdjHEPMCPlot.C
+	$(CXX) $(CXXFLAGS) src/gdjHEPMCPlot.C -o bin/gdjHEPMCPlot.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
 
 clean:
 	rm -f ./*~

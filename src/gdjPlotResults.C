@@ -432,6 +432,49 @@ int gdjPlotResults(std::string inConfigFileName)
     std::cout << "Given SAVEEXT \'" << saveExt << "\' is not valid. return 1" << std::endl;
     return 1;
   }  
+
+  //We should check the file for possible other inputs, like JEWEL for overlay
+  std::string inJEWELPPFileName = config_p->GetValue("JEWELPPFILENAME", "");
+  std::vector<std::string> inJEWELPbPbFileNames;
+  //Just cap it at ten to check for inputs - should never be more than that
+  const Int_t nMaxPbPbJEWELFiles = 10;
+  for(Int_t i = 0; i < nMaxPbPbJEWELFiles; ++i){
+    std::string inJEWELPbPbFileName = config_p->GetValue(("JEWELPBPBFILENAME." + std::to_string(i)).c_str(), "");
+    if(check.checkFileExt(inJEWELPbPbFileName, ".root")) inJEWELPbPbFileNames.push_back(inJEWELPbPbFileName);
+  }
+  //Do jewel overlay only if pp and at least one valid Pb+Pb file exist
+  bool doJEWEL = check.checkFileExt(inJEWELPPFileName, ".root") && inJEWELPbPbFileNames.size() > 0;
+  //Check that the jewel inputs are matched to our input files (this guarantees things like same-binning
+  TFile* ppJEWELFile_p = nullptr;
+  TEnv* ppJEWELConfig_p = nullptr;
+  TFile* pbpbJEWELFile_p[nMaxPbPbJEWELFiles];
+  TEnv* pbpbJEWELConfig_p[nMaxPbPbJEWELFiles];
+  if(doJEWEL){
+    ppJEWELFile_p = new TFile(inJEWELPPFileName.c_str(), "READ");
+    ppJEWELConfig_p = (TEnv*)ppJEWELFile_p->Get("config");
+
+    std::string ppUnfoldFileFromJEWEL = ppJEWELConfig_p->GetValue("INUNFOLDFILENAME", "");
+    if(!isStrSame(ppUnfoldFileFromJEWEL, inPPFileName)){
+      std::cout << "Given JEWEL file was created from unfold file \'" << ppUnfoldFileFromJEWEL << "\' does not match input unfold file \'" << inPPFileName << "\'. Fix for JEWEL overlay. doJEWEL set to false"  << std::endl;
+      doJEWEL = false;
+    }    
+
+    if(doJEWEL){
+      for(unsigned int jI = 0; jI < inJEWELPbPbFileNames.size(); ++jI){
+	pbpbJEWELFile_p[jI] = new TFile(inJEWELPbPbFileNames[jI].c_str(), "READ");
+	pbpbJEWELConfig_p[jI] = (TEnv*)pbpbJEWELFile_p[jI]->Get("config");
+
+	std::string pbpbUnfoldFileFromJEWEL = pbpbJEWELConfig_p[jI]->GetValue("INUNFOLDFILENAME", "");
+
+	if(!isStrSame(pbpbUnfoldFileFromJEWEL, inPbPbFileName)){
+	  std::cout << "Given JEWEL file was created from unfold file \'" << pbpbUnfoldFileFromJEWEL << "\' does not match input unfold file \'" << inPbPbFileName << "\'. Fix for JEWEL overlay.  doJEWEL set to false" << std::endl;
+	  doJEWEL = false;
+	}
+      }
+    }
+  }
+
+  
   
   //Get global labels
   std::vector<std::string> globalLabels;
@@ -671,6 +714,8 @@ int gdjPlotResults(std::string inConfigFileName)
     centBinsStr.push_back("Cent" + tempCentBinsStr[cI] + "to" + tempCentBinsStr[cI+1]);
     centBinsLabel.push_back("#bf{Pb+Pb, " + tempCentBinsStr[cI] + "-" + tempCentBinsStr[cI+1] + "%}");
   }  
+
+  
   
   //Define a bunch of parameters for the TCanvas
   const Int_t nPad = 2;
@@ -897,7 +942,21 @@ int gdjPlotResults(std::string inConfigFileName)
     else ppHist_p->GetYaxis()->SetTitle(("#frac{1}{N_{#gamma}*}#frac{dN_{J#gamma}}{d" + varNameLabel + "}}").c_str());
     ppHist_p->GetXaxis()->SetTitle(varNameLabel.c_str());
 
-  
+    //JEWEL handling for pp
+    TH1D* inJEWELPPHist_p = nullptr;
+    TH1D* jewelPPHist_p = nullptr;
+    if(doJEWEL){
+      inJEWELPPHist_p = (TH1D*)ppJEWELFile_p->Get((varNameLower + "_R" + std::to_string(jetR) + "_GammaPt" + std::to_string(gI) + "_h").c_str());
+      if(!doXTrunc) jewelPPHist_p = new TH1D("jewelPPHist_h", ";;", nVarBins, varBins);
+      else jewelPPHist_p = new TH1D("jewelPPHist_h", ";;", nVarBinsTrunc, varBinsTrunc);
+
+      fineHistToCoarseHist(inJEWELPPHist_p, jewelPPHist_p);
+
+      //For the tlegend
+      inJEWELPPHist_p->SetLineColor(1);
+      inJEWELPPHist_p->SetLineStyle(1);
+    }        
+    
     for(unsigned int cI = 0; cI < centBinsStr.size(); ++cI){   
       if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
  
@@ -991,6 +1050,45 @@ int gdjPlotResults(std::string inConfigFileName)
 	systTypeToSystValsPbPb[val.first] = tempVectVals;
       }  
 
+
+      //JEWEL handling for pbpb
+      TH1D* inJEWELPbPbHist_p = nullptr;
+      TH1D* jewelPbPbHist_p = nullptr;
+      TLegend* jewelLeg_p = nullptr;
+      if(doJEWEL){      
+	Int_t jewelCentPos = -1;
+	for(unsigned int jewelI = 0; jewelI < inJEWELPbPbFileNames.size(); ++jewelI){
+	  std::string jewelCent = pbpbJEWELConfig_p[jewelI]->GetValue("CENT", "");
+
+	  if(isStrSame(centBinsStr[cI], jewelCent)){
+	    jewelCentPos = jewelI;
+	    break;
+	  }
+	}
+
+	//Grab legend parameters for jewel
+	Double_t jewelLegX = config_p->GetValue("JEWELLEGX", -1.0);
+	Double_t jewelLegY = config_p->GetValue("JEWELLEGY", -1.0);
+
+	if(jewelCentPos == -1){
+	  std::cout << "JEWEL CENT STR MATCHING \'" << centBinsStr[cI] << "\' not found. Pb+Pb in this bin will not be plotted, please fix for overlay" << std::endl;
+	  //	  doJEWEL = false;
+	}
+	else{
+	  inJEWELPbPbHist_p = (TH1D*)pbpbJEWELFile_p[jewelCentPos]->Get((varNameLower + "_R" + std::to_string(jetR) + "_GammaPt" + std::to_string(gI) + "_h").c_str());
+	  if(!doXTrunc) jewelPbPbHist_p = new TH1D("jewelPbPbHist_h", ";;", nVarBins, varBins);
+	  else jewelPbPbHist_p = new TH1D("jewelPbPbHist_h", ";;", nVarBinsTrunc, varBinsTrunc);
+	  
+	  fineHistToCoarseHist(inJEWELPbPbHist_p, jewelPbPbHist_p);
+
+	}
+
+	jewelLeg_p = new TLegend(jewelLegX, jewelLegY - 0.065*2, jewelLegX+0.25, jewelLegY);
+	jewelLeg_p->SetTextFont(42);
+	jewelLeg_p->SetTextSize(0.035/(1.0 - padSplit));
+	jewelLeg_p->SetBorderSize(0);
+	jewelLeg_p->SetFillStyle(0);	
+      }
       
       TCanvas* canv_p = new TCanvas("canv_p", "", width, height);
       TPad* pads_p[nPad];
@@ -1028,7 +1126,30 @@ int gdjPlotResults(std::string inConfigFileName)
       
       ppHist_p->DrawCopy("HIST E1 P");
       pbpbHist_p->DrawCopy("HIST E1 P SAME");
+       
+      if(doJEWEL){
+	HIJet::Style::EquipHistogram(jewelPPHist_p, 2);
+	jewelPPHist_p->SetLineStyle(2);
 
+	if(jewelPbPbHist_p != nullptr){
+	  HIJet::Style::EquipHistogram(jewelPbPbHist_p, 1);
+	  jewelPbPbHist_p->SetLineStyle(2);
+	}
+	
+	pads_p[0]->cd();
+	jewelPPHist_p->DrawCopy("HIST SAME");
+
+	//Change the line color to black for the tlegend and add both jewels
+	jewelPPHist_p->SetLineColor(1);
+	jewelLeg_p->AddEntry(inJEWELPPHist_p, "Data", "L");
+	jewelLeg_p->AddEntry(jewelPPHist_p, "JEWEL", "L");
+
+	jewelLeg_p->Draw("SAME");
+	
+	if(jewelPbPbHist_p != nullptr) jewelPbPbHist_p->DrawCopy("HIST SAME");
+      }
+      pads_p[0]->cd();
+      
       drawSyst(pads_p[0], ppHist_p, ppSyst);
       drawSyst(pads_p[0], pbpbHist_p, pbpbSyst);
 
@@ -1266,6 +1387,11 @@ int gdjPlotResults(std::string inConfigFileName)
       pbpbHist_p->GetXaxis()->SetTitle(varNameLabel.c_str());
       pbpbHist_p->DrawCopy("HIST E1 P");
 
+      if(doJEWEL && jewelPbPbHist_p != nullptr){
+	jewelPbPbHist_p->Divide(jewelPPHist_p);
+	jewelPbPbHist_p->Draw("HIST SAME");
+      }
+      
       //drawSyst here returns the quadrature sum of the syst error for convenience just put it right in the push_back
       ratioSystsPerCentrality.push_back(drawSyst(pads_p[1], pbpbHist_p, ratSyst));
       pbpbHist_p->DrawCopy("HIST E1 P SAME");      
@@ -1330,6 +1456,10 @@ int gdjPlotResults(std::string inConfigFileName)
       if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
 
       delete pbpbHist_p;
+      if(doJEWEL){
+	delete jewelLeg_p;
+	if(jewelPbPbHist_p != nullptr) delete jewelPbPbHist_p;
+      }
     }
 
     Float_t integral = 0.0;
@@ -1455,6 +1585,10 @@ int gdjPlotResults(std::string inConfigFileName)
     delete integralPerCentrality_h;
     delete meanPerCentrality_h;
     delete ppHist_p;
+
+    if(doJEWEL){
+      delete jewelPPHist_p;
+    }
   }
   
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;

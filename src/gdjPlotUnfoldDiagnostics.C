@@ -714,7 +714,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   if(isStrSame(binVarStr, "AJJ")) binVarStr = "AJ";
   else if(isStrSame(binVarStr, "DRJJ")) binVarStr = "DR";
   
-  Int_t nVarBins = inUnfoldFileConfig_p->GetValue(("N" + binVarStr + "BINS").c_str(), -1);
+   Int_t nVarBins = inUnfoldFileConfig_p->GetValue(("N" + binVarStr + "BINS").c_str(), -1);
   Float_t varBinsLow = inUnfoldFileConfig_p->GetValue((binVarStr + "BINSLOW").c_str(), -1.0);
   Float_t varBinsHigh = inUnfoldFileConfig_p->GetValue((binVarStr + "BINSHIGH").c_str(), -1.0);
   Bool_t varBinsDoLog = inUnfoldFileConfig_p->GetValue((binVarStr + "BINSDOLOG").c_str(), 0);

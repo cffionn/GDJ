@@ -635,6 +635,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 						    "JTETABINSLOW",
 						    "JTETABINSHIGH",
 						    "GAMMAJTDPHI",
+						    "GAMMAMULTIJTDPHI",
 						    "ISPP",
 						    "SYSTNAMES",
 						    "SYSTTYPES"};
@@ -665,6 +666,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 					      "JTPTBINSHIGHRECO",
 					      "JTPTBINSLOWRECOSYST",
 					      "GAMMAJTDPHI",
+					      "GAMMAMULTIJTDPHI",
 					      "NXJBINS",
 					      "XJBINSLOW",
 					      "XJBINSHIGH",
