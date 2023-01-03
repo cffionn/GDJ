@@ -2545,7 +2545,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  isSignal = isSignal && isIsolatedPhoton(isPP, doPtIsoCorrection, photon_correctedIso_p->at(pI));
 	  //Sideband is not orthogonal to isGoodRecoSignal and definition can change - use function
 
-	  std::string sidebandTypeIn = sidebandType;	  
+	  photonType sidebandTypeIn = sidebandType;	  
 	  if(sidebandTypeIn != NONTIGHT_ISO_EMBIT0){
 	    std::cout << "SIDEBANDTYPE NOMINAL DOESNT MATCH REQUIRED NONTIGHT_ISO_EMBIT0 \'" << NONTIGHT_ISO_EMBIT0 << "\', IS INSTEAD \'" << sidebandTypeIn << "\'. IF YOU WISH TO USE THIS PLEASE REMOVE THIS BLOCK IN CODE. return 1" << std::endl;
 	    return 1;
@@ -3673,9 +3673,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    
 	    rawPerGammaBin.push_back(denomVal);
 	    
-	    double sidebandVal = 0.0;
-	    if(isPhoSyst[systI]) sidebandVal = photonPtVCent_RAWSideband_p[cI][barrelAndECComboPos][systI]->GetBinContent(gI+1);
-	    else sidebandVal = photonPtVCent_RAWSideband_p[cI][barrelAndECComboPos][0]->GetBinContent(gI+1);
+	    double sidebandVal = photonPtVCentRAWSideband_p->GetBinContent(gI+1);
 	    
 	    if(sidebandVal < TMath::Power(10,-100)) sidebandPerGammaBin.push_back(0.0);
 	    else sidebandPerGammaBin.push_back(sidebandVal);
@@ -3700,39 +3698,39 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    binFlattener* tempFlat_p = nullptr;
 	    if(isMultijet_p[hI]) tempFlat_p = &subJtGammaPtBinFlattener;
 	  	  
-	    if(isStrSame("PURBINORFIT", systStrVect[systI])) doPurityCorr(photonPtVCent_RAW_p[cI][barrelAndECComboPos], photonPtVCent_ValXWeightSum_p[cI][barrelAndECComboPos], photonPtVCent_RAWSideband_p[cI][barrelAndECComboPos], inMixMachines_p[hI]->GetTH2DPtr("SUB"), inMixMachines_Sideband_p[hI]->GetTH2DPtr("SUB"), outHists_p[hI], tempFlat_p, purityHist_p, outBkgdHists_p[hI]);
-	    else doPurityCorr(photonPtVCent_RAW_p[cI][barrelAndECComboPos], photonPtVCent_ValXWeightSum_p[cI][barrelAndECComboPos], photonPtVCent_RAWSideband_p[cI][barrelAndECComboPos], inMixMachines_p[hI]->GetTH2DPtr("SUB"), inMixMachines_Sideband_p[hI]->GetTH2DPtr("SUB"), outHists_p[hI], tempFlat_p, purityFit_p, outBkgdHists_p[hI]);
+	    if(isStrSame("PURBINORFIT", systStrVect[systI])) doPurityCorr(photonPtVCent_RAW_p[cI][barrelAndECComboPos], photonPtVCent_ValXWeightSum_p[cI][barrelAndECComboPos], photonPtVCentRAWSideband_p, inMixMachines_p[hI]->GetTH2DPtr("SUB"), inMixMachines_Sideband_p[hI]->GetTH2DPtr("SUB"), outHists_p[hI], tempFlat_p, purityHist_p, outBkgdHists_p[hI]);
+	    else doPurityCorr(photonPtVCent_RAW_p[cI][barrelAndECComboPos], photonPtVCent_ValXWeightSum_p[cI][barrelAndECComboPos], photonPtVCentRAWSideband_p, inMixMachines_p[hI]->GetTH2DPtr("SUB"), inMixMachines_Sideband_p[hI]->GetTH2DPtr("SUB"), outHists_p[hI], tempFlat_p, purityFit_p, outBkgdHists_p[hI]);
 	  }
-	}	
-
-	for(Int_t bIX = 0; bIX < photonPtVCent_RAW_p[cI][barrelAndECComboPos]->GetXaxis()->GetNbins(); ++bIX){
-	  Float_t purity = purityFit_p->Eval(meanValPerGammaBin[bIX]);
-	  if(isStrSame("PURBINORFIT", systTypeVect[systI])){
-	    Int_t purityBin = purityHist_p->FindBin(meanValPerGammaBin[bIX]);
-	    purity = purityHist_p->GetBinContent(purityBin);
-	  }
-
-	  
-	  Float_t binContent = photonPtVCent_RAW_p[cI][barrelAndECComboPos]->GetBinContent(bIX+1);
-	  Float_t binError = photonPtVCent_RAW_p[cI][barrelAndECComboPos]->GetBinError(bIX+1);
-	  
-	  Float_t binSidebandContent = photonPtVCent_RAWSideband_p[cI][barrelAndECComboPos]->GetBinContent(bIX+1);
-	  
-	  if(binContent < TMath::Power(10,-50) && binSidebandContent < TMath::Power(10,-50)){
-	    photonPtVCent_PURCORR_p[cI][barrelAndECComboPos]->SetBinContent(bIX+1, 0.0);
-	    photonPtVCent_PURCORR_p[cI][barrelAndECComboPos]->SetBinError(bIX+1, 0.0);
+		
+	  for(Int_t bIX = 0; bIX < photonPtVCent_RAW_p[cI][barrelAndECComboPos]->GetXaxis()->GetNbins(); ++bIX){
+	    Float_t purity = purityFit_p->Eval(meanValPerGammaBin[bIX]);
+	    if(isStrSame("PURBINORFIT", systTypeVect[systI])){
+	      Int_t purityBin = purityHist_p->FindBin(meanValPerGammaBin[bIX]);
+	      purity = purityHist_p->GetBinContent(purityBin);
+	    }
 	    
-	    continue;
-	  }
+	    Float_t binContent = photonPtVCent_RAW_p[cI][barrelAndECComboPos]->GetBinContent(bIX+1);
+	    Float_t binError = photonPtVCent_RAW_p[cI][barrelAndECComboPos]->GetBinError(bIX+1);
 	    
-	  binSidebandContent = (1.0 - purity)*binSidebandContent*binContent/binSidebandContent;	  
-	  binContent -= binSidebandContent;
-	  
-	  photonPtVCent_PURCORR_p[cI][barrelAndECComboPos]->SetBinContent(bIX+1, binContent);
-	  photonPtVCent_PURCORR_p[cI][barrelAndECComboPos]->SetBinError(bIX+1, binError);
+	    Float_t binSidebandContent = photonPtVCentRAWSideband_p->GetBinContent(bIX+1);
+	    
+	    if(binContent < TMath::Power(10,-50) && binSidebandContent < TMath::Power(10,-50)){
+	      photonPtVCent_PURCORR_p[cI][barrelAndECComboPos][systI]->SetBinContent(bIX+1, 0.0);
+	      photonPtVCent_PURCORR_p[cI][barrelAndECComboPos][systI]->SetBinError(bIX+1, 0.0);
+	    
+	      continue;
+	    }
+	    
+	    binSidebandContent = (1.0 - purity)*binSidebandContent*binContent/binSidebandContent;	  
+	    binContent -= binSidebandContent;
+	    
+	    photonPtVCent_PURCORR_p[cI][barrelAndECComboPos][systI]->SetBinContent(bIX+1, binContent);
+	    photonPtVCent_PURCORR_p[cI][barrelAndECComboPos][systI]->SetBinError(bIX+1, binError);
+	  }	  
 	}
-
       }
+      //2023.01.03 fix - commenting out else for dounifiedpurity, dont event have something valid anymore
+      /*
       else{	
 	for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
 	  if(isStrSame(barrelAndECStr[eI], "BarrelAndEC")) continue;
@@ -3847,21 +3845,19 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    photonPtJtDRJJVCent_PURCORR_p[cI][barrelAndECComboPos][systI]->Add(photonPtJtDRJJVCent_PURCORR_p[cI][eI][systI]);
 	  }
 	}
-      }
+	}*/
     }
     else{
       //If its MC we just pass thru; Purity correction goes on data only
-      std::cout << "PASS THRU" << std::endl;
-
-      for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){	
-	
-	//Do Photons, then follow up with mixmachines
-	for(Int_t bIX = 0; bIX < photonPtVCent_RAW_p[cI][eI]->GetXaxis()->GetNbins(); ++bIX){
-	  photonPtVCent_PURCORR_p[cI][eI]->SetBinContent(bIX+1, photonPtVCent_RAW_p[cI][eI]->GetBinContent(bIX+1));
-	  photonPtVCent_PURCORR_p[cI][eI]->SetBinError(bIX+1, photonPtVCent_RAW_p[cI][eI]->GetBinError(bIX+1));
-	}
-	
+      for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){		
 	for(unsigned int systI = 0; systI < systStrVect.size(); ++systI){
+
+	  //Do Photons, then follow up with mixmachines
+	  for(Int_t bIX = 0; bIX < photonPtVCent_RAW_p[cI][eI]->GetXaxis()->GetNbins(); ++bIX){
+	    photonPtVCent_PURCORR_p[cI][eI][systI]->SetBinContent(bIX+1, photonPtVCent_RAW_p[cI][eI]->GetBinContent(bIX+1));
+	    photonPtVCent_PURCORR_p[cI][eI][systI]->SetBinError(bIX+1, photonPtVCent_RAW_p[cI][eI]->GetBinError(bIX+1));
+	  }	
+
 	  std::vector<mixMachine*> inMixMachines_p = {photonPtJtPtVCent_MixMachine_p[cI][eI][systI], photonPtJtXJVCent_MixMachine_p[cI][eI][systI], photonPtJtDPhiVCent_MixMachine_p[cI][eI][systI], photonPtJtXJJVCent_MixMachine_p[cI][eI][systI], photonPtJtAJJVCent_MixMachine_p[cI][eI][systI], photonPtJtDPhiJJGVCent_MixMachine_p[cI][eI][systI], photonPtJtDPhiJJVCent_MixMachine_p[cI][eI][systI], photonPtJtDRJJVCent_MixMachine_p[cI][eI][systI]};
 	  std::vector<TH2D*> outHists_p = {photonPtJtPtVCent_PURCORR_p[cI][eI][systI], photonPtJtXJVCent_PURCORR_p[cI][eI][systI], photonPtJtDPhiVCent_PURCORR_p[cI][eI][systI], photonPtJtXJJVCent_PURCORR_p[cI][eI][systI], photonPtJtAJJVCent_PURCORR_p[cI][eI][systI], photonPtJtDPhiJJGVCent_PURCORR_p[cI][eI][systI], photonPtJtDPhiJJVCent_PURCORR_p[cI][eI][systI], photonPtJtDRJJVCent_PURCORR_p[cI][eI][systI]};
 	  
@@ -3878,8 +3874,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
       }
     }
   }
-
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   purityFile_p->Close();
   delete purityFile_p;
@@ -4077,7 +4071,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	photonPtVCent_RAWWithTruthMatch_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtVCent_RAWNoTruthMatch_p[cI][eI]->Write("", TObject::kOverwrite);
       }
-      photonPtVCent_RAWSideband_p[cI][eI]->Write("", TObject::kOverwrite);      
+      for(unsigned int systI = 0; systI < systStrVect.size(); ++systI){
+	photonPtVCent_RAWSideband_p[cI][eI][systI]->Write("", TObject::kOverwrite);      
+      }
       if(isMC){
 	photonPtVCent_TRUTH_p[cI][eI]->Write("", TObject::kOverwrite);
 	photonPtVCent_TRUTHWithRecoMatch_p[cI][eI]->Write("", TObject::kOverwrite);
@@ -4150,7 +4146,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	photonPtJtDRJJVCent_MixMachine_Sideband_p[cI][eI][systI]->Clean();
       }
 
-      photonPtVCent_PURCORR_p[cI][eI]->Write("", TObject::kOverwrite);
+      
+      for(unsigned int systI = 0; systI < systStrVect.size(); ++systI){
+	photonPtVCent_PURCORR_p[cI][eI][systI]->Write("", TObject::kOverwrite);
+      }
 
       if(doMix){
 	for(unsigned int systI = 0; systI < systStrVect.size(); ++systI){
