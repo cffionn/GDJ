@@ -600,6 +600,13 @@ int gdjNTupleToHist(std::string inConfigFileName)
   //SIDEBAND TYPE 3: non-tight and non-isolated
   //SIDEBAND TYPE 4: non-isolated
   //SIDEBAND TYPE 5: non-tight
+  //2022.12.20 - adding new sidebands here that were added to photonUtil.h 2022.11.16
+  //Based on isEM bit definitions here: https://github.com/YeonjuGo/GDJ/blob/master/src/phoTaggedJetRaa_jetPt.C#L149
+  //SIDEBAND TYPE 6: non-tight and isolated w/ nominal isEM bit - 0x45fc01, fracm+weta1+deltaE+Eratio
+  //SIDEBAND TYPE 7: non-tight and isolated w/ nominal isEM bit - 0x67fc01, fracm+weta1 -> looser
+  //SIDEBAND TYPE 8: non-tight and isolated w/ nominal isEM bit - 0x41fc01, fracm+weta1+deltaE+Eratio+ws -> tighter
+  //SIDEBAND TYPE 9: other
+  //6 should be our nominal, 7 and 8 are syst. variations
   if(!vectContainsInt(isolationR, &validIsoR)){
     std::cout << "Given ISOLATIONR \'" << isolationR << "\' is not valid. Please pick from:" << std::endl;
     for(auto const & isoRs : validIsoR){
@@ -936,8 +943,13 @@ int gdjNTupleToHist(std::string inConfigFileName)
   }
 
   //We need to declare some systematics (like jet pt cut unfolding variation)
-  std::vector<std::string> systStrVect = {"NOMINAL", "JTPTCUT", "PHOISOANDPUR"};
-  std::vector<std::string> systTypeVect = {"NOMINAL", "UNFOLDING", "PURBINORFIT"};
+  std::vector<std::string> systStrVect = {"NOMINAL", "JTPTCUT", "PURSIDEBANDLOOSE", "PURSIDEBANDTIGHT", "PURBINORFIT"};
+  std::vector<std::string> systTypeVect = {"NOMINAL", "UNFOLDING", "PHOISOANDPUR", "PHOISOANDPUR", "PHOISOANDPUR"};
+  std::vector<bool> isPhoSyst;
+  for(unsigned int systI = 0; systI < systTypeVect.size(); ++ systI){
+    if(isStrSame(systTypeVect[systI], "PHOISOANDPUR")) isPhoSyst.push_back(true);
+    else isPhoSyst.push_back(true);
+  }
 
   if(systStrVect.size() != systTypeVect.size()){
     std::cout << "ERROR: systStrVect size \'" << systStrVect.size() << "\' does not match size of systTypeVect, \'" << systTypeVect.size() << "\'. All declared syst must have corresponding type. return 1" << std::endl;
@@ -1129,7 +1141,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
   TH1D* photonPtVCent_RAWNoTruthMatch_p[nMaxCentBins][nBarrelAndEC];
   TH1D* photonPtVCent_RAWWithTruthMatch_p[nMaxCentBins][nBarrelAndEC];
-  TH1D* photonPtVCent_RAWSideband_p[nMaxCentBins][nBarrelAndEC];
+  TH1D* photonPtVCent_RAWSideband_p[nMaxCentBins][nBarrelAndEC][nMaxSyst];
 
   TH1D* photonPtVCent_TRUTH_p[nMaxCentBins][nBarrelAndEC];
   TH1D* photonPtVCent_TRUTHWithRecoMatch_p[nMaxCentBins][nBarrelAndEC];
@@ -1162,7 +1174,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   TH1D* photonSubJtMultModVCentPt_p[nMaxCentBins][nMaxSubBins+1];
 
   //2-D histograms to be unfolded  
-  TH1D* photonPtVCent_PURCORR_p[nMaxCentBins][nBarrelAndEC];
+  TH1D* photonPtVCent_PURCORR_p[nMaxCentBins][nBarrelAndEC][nMaxSyst];
   TH2D* photonPtJtPtVCent_PURCORR_p[nMaxCentBins][nBarrelAndEC][nMaxSyst];
   TH2D* photonPtJtXJVCent_PURCORR_p[nMaxCentBins][nBarrelAndEC][nMaxSyst];
   TH2D* photonPtJtDPhiVCent_PURCORR_p[nMaxCentBins][nBarrelAndEC][nMaxSyst];
@@ -1172,7 +1184,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   TH2D* photonPtJtDPhiJJVCent_PURCORR_p[nMaxCentBins][nBarrelAndEC][nMaxSyst];
   TH2D* photonPtJtDRJJVCent_PURCORR_p[nMaxCentBins][nBarrelAndEC][nMaxSyst];
 
-  TH1D* photonPtVCent_PURCORRBkgd_p[nMaxCentBins][nBarrelAndEC];
+  TH1D* photonPtVCent_PURCORRBkgd_p[nMaxCentBins][nBarrelAndEC][nMaxSyst];
   TH2D* photonPtJtPtVCent_PURCORRBkgd_p[nMaxCentBins][nBarrelAndEC][nMaxSyst];
   TH2D* photonPtJtXJVCent_PURCORRBkgd_p[nMaxCentBins][nBarrelAndEC][nMaxSyst];
   TH2D* photonPtJtDPhiVCent_PURCORRBkgd_p[nMaxCentBins][nBarrelAndEC][nMaxSyst];
@@ -1423,7 +1435,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	photonPtJtDPhiJJGVCent_MixMachine_Sideband_p[cI][eI][systI] = new mixMachine("photonPtJtDPhiJJGVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + systStrVect[systI] + "_" + gammaJtDPhiStr + "_Sideband", multiFlag, &photonPtJtDPhiJJGVCent_Config);
 	photonPtJtDPhiJJVCent_MixMachine_Sideband_p[cI][eI][systI] = new mixMachine("photonPtJtDPhiJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + systStrVect[systI] + "_" + gammaJtDPhiStr + "_Sideband", multiFlag, &photonPtJtDPhiJJVCent_Config);
 	photonPtJtDRJJVCent_MixMachine_Sideband_p[cI][eI][systI] = new mixMachine("photonPtJtDRJJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + systStrVect[systI] + "_" + gammaJtDPhiStr + "_Sideband", multiFlag, &photonPtJtDRJJVCent_Config);       
-      }               
+      }
       photonPtVCent_RAW_p[cI][eI] = new TH1D(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_RAW_h").c_str(), ";Photon p_{T};Counts (Weighted)", nGammaPtBins, gammaPtBins);
       photonPtVCent_ValXWeightSum_p[cI][eI] = new TH1D(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_ValXWeightSum_h").c_str(), ";Photon p_{T};Weight x Value", nGammaPtBins, gammaPtBins);
       
@@ -1432,7 +1444,12 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	photonPtVCent_RAWNoTruthMatch_p[cI][eI] = new TH1D(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_RAWNoTruthMatch_h").c_str(), ";Photon p_{T};Counts (Weighted)", nGammaPtBins, gammaPtBins);
       }
 
-      photonPtVCent_RAWSideband_p[cI][eI] = new TH1D(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_RAWSideband_h").c_str(), ";Photon p_{T};Counts (Weighted)", nGammaPtBins, gammaPtBins);
+      for(Int_t systI = 0; systI < systStrVect.size(); ++systI){
+	if(!isPhoSyst[systI]) continue;
+
+	photonPtVCent_RAWSideband_p[cI][eI][systI] = new TH1D(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + systStrVect[systI] + "_RAWSideband_h").c_str(), ";Photon p_{T};Counts (Weighted)", nGammaPtBins, gammaPtBins);
+	setSumW2(photonPtVCent_RAWSideband_p[cI][eI][systI]);
+      }
 
 
       if(isMC){
@@ -1441,13 +1458,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	photonPtVCent_TRUTHNoRecoMatch_p[cI][eI] = new TH1D(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_TRUTHNoRecoMatch_h").c_str(), ";Photon p_{T};Counts (Weighted)", nGammaPtBins, gammaPtBins);
       }
       
-      setSumW2({photonPtVCent_RAW_p[cI][eI], photonPtVCent_ValXWeightSum_p[cI][eI], photonPtVCent_RAWSideband_p[cI][eI]});
+      setSumW2({photonPtVCent_RAW_p[cI][eI], photonPtVCent_ValXWeightSum_p[cI][eI]});
       if(isMC) setSumW2({photonPtVCent_RAWWithTruthMatch_p[cI][eI], photonPtVCent_RAWNoTruthMatch_p[cI][eI], photonPtVCent_TRUTH_p[cI][eI], photonPtVCent_TRUTHWithRecoMatch_p[cI][eI], photonPtVCent_TRUTHNoRecoMatch_p[cI][eI]});	       
       
       if(/*doMix*/true || isPP){
-	photonPtVCent_PURCORR_p[cI][eI] = new TH1D(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_PURCORR_h").c_str(), ";Photon p_{T};Counts (Weighted)", nGammaPtBins, gammaPtBins);
-
+       
 	for(unsigned int systI = 0; systI < systStrVect.size(); ++systI){
+	  if(isPhoSyst[systI]) photonPtVCent_PURCORR_p[cI][eI][systI] = new TH1D(("photonPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + systStrVect[systI] + "_PURCORR_h").c_str(), ";Photon p_{T};Counts (Weighted)", nGammaPtBins, gammaPtBins);
+
 	  photonPtJtPtVCent_PURCORR_p[cI][eI][systI] = new TH2D(("photonPtJtPtVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + systStrVect[systI] + "_" + gammaJtDPhiStr + "_PURCORR_h").c_str(), ";Reco. Jet p_{T};Reco. Photon p_{T}", nJtPtBins, jtPtBins, nGammaPtBins, gammaPtBins);
 
 	  photonPtJtXJVCent_PURCORR_p[cI][eI][systI] = new TH2D(("photonPtJtXJVCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI] + "_" + systStrVect[systI] + "_" + gammaJtDPhiStr + "_PURCORR_h").c_str(), ";Reco. x_{J};Reco. Photon p_{T}", nXJBins, xjBins, nGammaPtBins, gammaPtBins);
@@ -2512,7 +2530,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    else fillTH1(photonPtVCent_TRUTHNoRecoMatch_p[centPos][barrelEC], truthPhotonPt, fullWeight);
 	  }
 	}//End response filling	
-
+      
 	//Now we populate the histograms
 	//All photons passing requirements must be included
 	//If no reco match exists just fill
@@ -2526,7 +2544,17 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  bool isSignal = photon_tight_p->at(pI);
 	  isSignal = isSignal && isIsolatedPhoton(isPP, doPtIsoCorrection, photon_correctedIso_p->at(pI));
 	  //Sideband is not orthogonal to isGoodRecoSignal and definition can change - use function
-	  bool isSideband = isSidebandPhoton(isPP, doPtIsoCorrection, sidebandType, photon_tight_p->at(pI), photon_isEM_p->at(pI), photon_correctedIso_p->at(pI));
+
+	  std::string sidebandTypeIn = sidebandType;	  
+	  if(sidebandTypeIn != NONTIGHT_ISO_EMBIT0){
+	    std::cout << "SIDEBANDTYPE NOMINAL DOESNT MATCH REQUIRED NONTIGHT_ISO_EMBIT0 \'" << NONTIGHT_ISO_EMBIT0 << "\', IS INSTEAD \'" << sidebandTypeIn << "\'. IF YOU WISH TO USE THIS PLEASE REMOVE THIS BLOCK IN CODE. return 1" << std::endl;
+	    return 1;
+	  }
+	  //Syst. variations
+	  if(isStrSame(systStrVect[systI], "PURSIDEBANDLOOSE")) sidebandTypeIn = NONTIGHT_ISO_EMBIT1;
+	  else if(isStrSame(systStrVect[systI], "PURSIDEBANDTIGHT")) sidebandTypeIn = NONTIGHT_ISO_EMBIT2;
+
+	  bool isSideband = isSidebandPhoton(isPP, doPtIsoCorrection, sidebandTypeIn, photon_tight_p->at(pI), photon_isEM_p->at(pI), photon_correctedIso_p->at(pI));
 	  
 	  //goodreco signal
 	  bool isGoodRecoSignal = isGoodReco && isSignal;
@@ -2546,20 +2574,19 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	      return 1;
 	    }
 
-	    if(systI == 0){	    
-	      for(auto const barrelEC : barrelECFill){
-		if(isGoodRecoSignal){
-		  fillTH1(photonPtVCent_RAW_p[centPos][barrelEC], photon_pt_p->at(pI), fullWeight);
-		  fillTH1(photonPtVCent_ValXWeightSum_p[centPos][barrelEC], photon_pt_p->at(pI), fullWeight*photon_pt_p->at(pI));
-		  
-		  if(isMC){
-		    if(isTruthPhotonMatched) fillTH1(photonPtVCent_RAWWithTruthMatch_p[centPos][barrelEC], photon_pt_p->at(pI), fullWeight);
-		    else fillTH1(photonPtVCent_RAWNoTruthMatch_p[centPos][barrelEC], photon_pt_p->at(pI), fullWeight);
-		  }
+	    for(auto const barrelEC : barrelECFill){
+	      if(isGoodRecoSignal && systI == 0){
+		fillTH1(photonPtVCent_RAW_p[centPos][barrelEC], photon_pt_p->at(pI), fullWeight);
+		fillTH1(photonPtVCent_ValXWeightSum_p[centPos][barrelEC], photon_pt_p->at(pI), fullWeight*photon_pt_p->at(pI));
+		
+		if(isMC){
+		  if(isTruthPhotonMatched) fillTH1(photonPtVCent_RAWWithTruthMatch_p[centPos][barrelEC], photon_pt_p->at(pI), fullWeight);
+		  else fillTH1(photonPtVCent_RAWNoTruthMatch_p[centPos][barrelEC], photon_pt_p->at(pI), fullWeight);
 		}
-		else if(isGoodRecoSideband) fillTH1(photonPtVCent_RAWSideband_p[centPos][barrelEC], photon_pt_p->at(pI), fullWeight);
-	      }
+	      }	
+	      else if(isGoodRecoSideband) fillTH1(photonPtVCent_RAWSideband_p[centPos][barrelEC][systI], photon_pt_p->at(pI), fullWeight);
 	    }
+	    
 
 	    //We will keep collections of jets passing cuts for multijet observable construction
 	    std::vector<TLorentzVector> goodRecoJets;
@@ -3621,29 +3648,39 @@ int gdjNTupleToHist(std::string inConfigFileName)
       if(doUnifiedPurity){	
 	//The unified purity cannot do barrel and endcap corrections separately 
 	std::string purityFitStr = "fit_purity_" + centBinsStr[cI] + "_Eta0p00to2p37";
-	if(isStrSame(centBinsStr[cI], "Cent30to50")) purityFitStr = "fit_purity_Cent30to80_Eta0p00to2p37";
-	else if(isStrSame(centBinsStr[cI], "Cent50to80")) purityFitStr = "fit_purity_Cent30to80_Eta0p00to2p37";
+	std::string purityHistStr = "h1D_photon_purity_vs_pt_" + centBinsStr[cI] + "_Eta0p00to2p37_h";
+	if(isStrSame(centBinsStr[cI], "Cent30to50") || isStrSame(centBinsStr[cI], "Cent50to80")){
+	  purityFitStr = "fit_purity_Cent30to80_Eta0p00to2p37";
+	  purityHistStr = "h1D_photon_purity_vs_pt_Cent30to80_Eta0p00to2p37_h";
+	}
 	
 	TF1* purityFit_p = (TF1*)purityFile_p->Get(purityFitStr.c_str());      
+	TH1D* purityHist_p = (TH1D*)purityFile_p->Get(purityHistStr.c_str());
+
 	std::vector<double> meanValPerGammaBin, rawPerGammaBin, sidebandPerGammaBin;
+
+	for(unsigned int systI = 0; systI < systStrVect.size(); ++systI){	
+
+	  TH1D* photonPtVCentRAWSideband_p = photonPtVCent_RAWSideband_p[cI][barrelAndECComboPos][0];
+	  if(isPhoSyst[systI]) photonPtVCentRAWSideband_p = photonPtVCent_RAWSideband_p[cI][barrelAndECComboPos][systI];
+
+	  for(Int_t gI = 0; gI < nGammaPtBins; ++gI){
+	    double numVal = photonPtVCent_ValXWeightSum_p[cI][barrelAndECComboPos]->GetBinContent(gI+1);
+	    double denomVal = photonPtVCent_RAW_p[cI][barrelAndECComboPos]->GetBinContent(gI+1);
+	    
+	    if(numVal < TMath::Power(10,-100)) meanValPerGammaBin.push_back(0.0);
+	    else meanValPerGammaBin.push_back(numVal/denomVal);
+	    
+	    rawPerGammaBin.push_back(denomVal);
+	    
+	    double sidebandVal = 0.0;
+	    if(isPhoSyst[systI]) sidebandVal = photonPtVCent_RAWSideband_p[cI][barrelAndECComboPos][systI]->GetBinContent(gI+1);
+	    else sidebandVal = photonPtVCent_RAWSideband_p[cI][barrelAndECComboPos][0]->GetBinContent(gI+1);
+	    
+	    if(sidebandVal < TMath::Power(10,-100)) sidebandPerGammaBin.push_back(0.0);
+	    else sidebandPerGammaBin.push_back(sidebandVal);
+	  }	  
 	
-	for(Int_t gI = 0; gI < nGammaPtBins; ++gI){
-	  double numVal = photonPtVCent_ValXWeightSum_p[cI][barrelAndECComboPos]->GetBinContent(gI+1);
-	  double denomVal = photonPtVCent_RAW_p[cI][barrelAndECComboPos]->GetBinContent(gI+1);
-
-	  if(numVal < TMath::Power(10,-100)) meanValPerGammaBin.push_back(0.0);
-	  else meanValPerGammaBin.push_back(numVal/denomVal);
-
-	  rawPerGammaBin.push_back(denomVal);
-
-	  double sidebandVal = photonPtVCent_RAWSideband_p[cI][barrelAndECComboPos]->GetBinContent(gI+1);
-
-	  if(sidebandVal < TMath::Power(10,-100)) sidebandPerGammaBin.push_back(0.0);
-	  else sidebandPerGammaBin.push_back(sidebandVal);
-	}
-		  	  
-	
-	for(unsigned int systI = 0; systI < systStrVect.size(); ++systI){
 	  std::vector<mixMachine*> inMixMachines_p = {photonPtJtPtVCent_MixMachine_p[cI][barrelAndECComboPos][systI], photonPtJtXJVCent_MixMachine_p[cI][barrelAndECComboPos][systI], photonPtJtDPhiVCent_MixMachine_p[cI][barrelAndECComboPos][systI], photonPtJtXJJVCent_MixMachine_p[cI][barrelAndECComboPos][systI], photonPtJtAJJVCent_MixMachine_p[cI][barrelAndECComboPos][systI], photonPtJtDPhiJJGVCent_MixMachine_p[cI][barrelAndECComboPos][systI], photonPtJtDPhiJJVCent_MixMachine_p[cI][barrelAndECComboPos][systI], photonPtJtDRJJVCent_MixMachine_p[cI][barrelAndECComboPos][systI]};
 
 	  std::vector<mixMachine*> inMixMachines_Sideband_p = {photonPtJtPtVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos][systI], photonPtJtXJVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos][systI], photonPtJtDPhiVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos][systI], photonPtJtXJJVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos][systI], photonPtJtAJJVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos][systI], photonPtJtDPhiJJGVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos][systI], photonPtJtDPhiJJVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos][systI], photonPtJtDRJJVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos][systI]};
@@ -3662,54 +3699,19 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  for(unsigned int hI = 0; hI < inMixMachines_p.size(); ++hI){
 	    binFlattener* tempFlat_p = nullptr;
 	    if(isMultijet_p[hI]) tempFlat_p = &subJtGammaPtBinFlattener;
-
-	    doPurityCorr(photonPtVCent_RAW_p[cI][barrelAndECComboPos], photonPtVCent_ValXWeightSum_p[cI][barrelAndECComboPos], photonPtVCent_RAWSideband_p[cI][barrelAndECComboPos], inMixMachines_p[hI]->GetTH2DPtr("SUB"), inMixMachines_Sideband_p[hI]->GetTH2DPtr("SUB"), outHists_p[hI], tempFlat_p, purityFit_p, outBkgdHists_p[hI]);
-	    /*	    
-	    TH2D* subHist_p = inMixMachines_p[hI]->GetTH2DPtr("SUB");
-	    TH2D* subHist_Sideband_p = inMixMachines_Sideband_p[hI]->GetTH2DPtr("SUB");	
-	    bool isMultijet = isMultijet_p[hI];
-
-	    for(Int_t bIX = 0; bIX < subHist_p->GetXaxis()->GetNbins(); ++bIX){
-	      for(Int_t bIY = 0; bIY < subHist_p->GetYaxis()->GetNbins(); ++bIY){
-		Float_t binContent = subHist_p->GetBinContent(bIX+1, bIY+1);
-		Float_t binError = subHist_p->GetBinError(bIX+1, bIY+1);
-		
-		Float_t binSidebandContent = subHist_Sideband_p->GetBinContent(bIX+1, bIY+1);
-		Float_t binSidebandError = subHist_Sideband_p->GetBinError(bIX+1, bIY+1);
-
-		//Continue on a zero bin
-		if(binContent < TMath::Power(10,-50) && binSidebandContent < TMath::Power(10,-50)){
-		  outHists_p[hI]->SetBinContent(bIX+1, bIY+1, 0.0);
-		  outHists_p[hI]->SetBinError(bIX+1, bIY+1, 0.0);
-		  
-		  continue;
-		}
-	
-		//Non-multijet, y-axis should just track gammaPtBins i.e.
-		Int_t gammaPtBin = bIY;
-		if(isMultijet){//Multijet need to find the appropriate gammaPtBin for purity
-		  gammaPtBin = subJtGammaPtBinFlattener.GetBin1PosFromGlobal(bIY);
-		}
-		
-		Float_t purity = purityFit_p->Eval(meanValPerGammaBin[gammaPtBin]);
-		
-		binSidebandContent = (1.0 - purity)*binSidebandContent*rawPerGammaBin[gammaPtBin]/sidebandPerGammaBin[gammaPtBin];
-		binSidebandError = (1.0 - purity)*binSidebandError*rawPerGammaBin[gammaPtBin]/sidebandPerGammaBin[gammaPtBin];
-		
-		binContent -= binSidebandContent;
-		
-		binError = TMath::Sqrt(binError*binError + binSidebandError*binSidebandError);
-		
-		outHists_p[hI]->SetBinContent(bIX+1, bIY+1, binContent);
-		outHists_p[hI]->SetBinError(bIX+1, bIY+1, binError);
-	      }
-	    }
-	    */
+	  	  
+	    if(isStrSame("PURBINORFIT", systStrVect[systI])) doPurityCorr(photonPtVCent_RAW_p[cI][barrelAndECComboPos], photonPtVCent_ValXWeightSum_p[cI][barrelAndECComboPos], photonPtVCent_RAWSideband_p[cI][barrelAndECComboPos], inMixMachines_p[hI]->GetTH2DPtr("SUB"), inMixMachines_Sideband_p[hI]->GetTH2DPtr("SUB"), outHists_p[hI], tempFlat_p, purityHist_p, outBkgdHists_p[hI]);
+	    else doPurityCorr(photonPtVCent_RAW_p[cI][barrelAndECComboPos], photonPtVCent_ValXWeightSum_p[cI][barrelAndECComboPos], photonPtVCent_RAWSideband_p[cI][barrelAndECComboPos], inMixMachines_p[hI]->GetTH2DPtr("SUB"), inMixMachines_Sideband_p[hI]->GetTH2DPtr("SUB"), outHists_p[hI], tempFlat_p, purityFit_p, outBkgdHists_p[hI]);
 	  }
-	}
-	
+	}	
+
 	for(Int_t bIX = 0; bIX < photonPtVCent_RAW_p[cI][barrelAndECComboPos]->GetXaxis()->GetNbins(); ++bIX){
 	  Float_t purity = purityFit_p->Eval(meanValPerGammaBin[bIX]);
+	  if(isStrSame("PURBINORFIT", systTypeVect[systI])){
+	    Int_t purityBin = purityHist_p->FindBin(meanValPerGammaBin[bIX]);
+	    purity = purityHist_p->GetBinContent(purityBin);
+	  }
+
 	  
 	  Float_t binContent = photonPtVCent_RAW_p[cI][barrelAndECComboPos]->GetBinContent(bIX+1);
 	  Float_t binError = photonPtVCent_RAW_p[cI][barrelAndECComboPos]->GetBinError(bIX+1);
@@ -3735,7 +3737,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
 	  if(isStrSame(barrelAndECStr[eI], "BarrelAndEC")) continue;
 	  
-	  std::string purityFitStr = "fit_purity_" + centBinsStr[cI] + "_" + barrelAndECFitStr[eI];
+	  std::string purityFitStr = "fit_purity_" + centBinsStr[cI] + "_" + barrelAndECFitStr[eI];;
 	  TF1* purityFit_p = (TF1*)purityFile_p->Get(purityFitStr.c_str());
 	  std::vector<double> meanValPerGammaBin, rawPerGammaBin, sidebandPerGammaBin;
 
