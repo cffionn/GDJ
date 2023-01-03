@@ -594,7 +594,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
   const photonType sidebandType = (photonType)config_p->GetValue("SIDEBANDTYPE", 2);
 
   std::vector<int> validIsoR = {2,3,4};
-  std::vector<int> validSidebandType = {1,2,3,4,5};
+  std::vector<int> validSidebandType = {1,2,3,4,5,6,7,8};
   //SIDEBAND TYPE 1: tight and non-isolated
   //SIDEBAND TYPE 2: non-tight and isolated
   //SIDEBAND TYPE 3: non-tight and non-isolated
@@ -4487,14 +4487,18 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	delete photonPtVCent_RAWWithTruthMatch_p[cI][eI];
 	delete photonPtVCent_RAWNoTruthMatch_p[cI][eI];
       }
-      delete photonPtVCent_RAWSideband_p[cI][eI];
+      for(unsigned int systI = 0; systI < systStrVect.size(); ++systI){
+	delete photonPtVCent_RAWSideband_p[cI][eI][systI];
+      }
       if(isMC){
 	delete photonPtVCent_TRUTH_p[cI][eI];
 	delete photonPtVCent_TRUTHWithRecoMatch_p[cI][eI];
 	delete photonPtVCent_TRUTHNoRecoMatch_p[cI][eI];
       }
-      delete photonPtVCent_PURCORR_p[cI][eI];
-      
+      for(unsigned int systI = 0; systI < systStrVect.size(); ++systI){
+	delete photonPtVCent_PURCORR_p[cI][eI][systI];
+      }
+
       for(unsigned int systI = 0; systI < systStrVect.size(); ++systI){
 	delete photonPtJtPtVCent_MixMachine_p[cI][eI][systI];
         delete photonPtJtXJVCent_MixMachine_p[cI][eI][systI];
