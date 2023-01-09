@@ -239,6 +239,7 @@ int gdjHEPMCAna(std::string inConfigFileName)
   Float_t pt_[nMaxPart];
   Float_t eta_[nMaxPart];
   Float_t phi_[nMaxPart];
+  Float_t m_[nMaxPart];
   Int_t pid_[nMaxPart];
 
   const Int_t nMaxJets = 100;
@@ -254,6 +255,7 @@ int gdjHEPMCAna(std::string inConfigFileName)
   jewelTree_p->SetBranchStatus("pt", 1);  
   jewelTree_p->SetBranchStatus("eta", 1);  
   jewelTree_p->SetBranchStatus("phi", 1);  
+  jewelTree_p->SetBranchStatus("m", 1);  
   jewelTree_p->SetBranchStatus("pid", 1);  
 
   jewelTree_p->SetBranchAddress("evtWeight", &evtWeight_);
@@ -261,6 +263,7 @@ int gdjHEPMCAna(std::string inConfigFileName)
   jewelTree_p->SetBranchAddress("pt", pt_);
   jewelTree_p->SetBranchAddress("eta", eta_);
   jewelTree_p->SetBranchAddress("phi", phi_);
+  jewelTree_p->SetBranchAddress("m", m_);
   jewelTree_p->SetBranchAddress("pid", pid_);
 
   for(unsigned int rI = 0; rI < jetRVect.size(); ++rI){
@@ -323,6 +326,31 @@ int gdjHEPMCAna(std::string inConfigFileName)
       if(pt_[pI] > gammaPtBinsHighReco) continue;
       //Gamma Eta Cuts
       if(!photonEtaIsGood(eta_[pI])) continue;
+
+      //We need to impose isolation condition
+      Float_t genEtSum4 = 0.0;
+      for(Int_t pI2 = 0; pI2 < nPart_; ++pI2){
+	//Skip the particle itself
+	if(pI == pI2) continue;
+
+	//Skip muons and all neutrinos
+	if(TMath::Abs(pid_[pI2]) == 13) continue;
+	if(TMath::Abs(pid_[pI2]) == 12) continue;
+	if(TMath::Abs(pid_[pI2]) == 14) continue;
+	if(TMath::Abs(pid_[pI2]) == 16) continue;
+
+	//Only keep particles w/ dR < 0.4 (just hard-code it)
+	Float_t dR = getDR(eta_[pI], phi_[pI], eta_[pI2], phi_[pI2]);
+	if(dR > 0.4) continue;
+
+	//Add to the sumEtive
+	TLorentzVector temp;
+	temp.SetPtEtaPhiM(pt_[pI2], eta_[pI2], phi_[pI2], m_[pI2]);
+
+	genEtSum4 += temp.Et();
+      }
+      if(genEtSum4 > 5.0) continue;
+
       TLorentzVector tL;
       tL.SetPtEtaPhiM(pt_[pI], eta_[pI], phi_[pI], 0.0);
       goodPhotons.push_back(tL);

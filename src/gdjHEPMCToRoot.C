@@ -186,7 +186,7 @@ int gdjHEPMCToRoot(std::string inConfigFileName)
 
       for(unsigned int jI = 0; jI < jets.size(); ++jI){
 	jtpt_[rI][jI] = jets[jI].pt();
-	jtphi_[rI][jI] = jets[jI].phi();
+	jtphi_[rI][jI] = jets[jI].phi_std();
 	jteta_[rI][jI] = jets[jI].eta();
 	jtm_[rI][jI] = jets[jI].m();
 
