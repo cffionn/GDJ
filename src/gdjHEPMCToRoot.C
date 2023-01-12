@@ -155,15 +155,19 @@ int gdjHEPMCToRoot(std::string inConfigFileName)
     nPart_ = 0;
     std::vector<fastjet::PseudoJet> particlesForCluster;
     for(auto const & particle : finalStateParticles){
+      TLorentzVector tL;
+      tL.SetPtEtaPhiM(particle->momentum().perp(), particle->momentum().eta(), particle->momentum().phi(), particle->momentum().m());
+      particlesForCluster.push_back(fastjet::PseudoJet(tL.Px(), tL.Py(), tL.Pz(), tL.E()));
+
+      //keep 10 gev photons only
+      if(particle->pdg_id() != 22) continue;
+      if(particle->momentum().perp() < 10.0) continue;
+
       pt_[nPart_] = particle->momentum().perp();
       eta_[nPart_] = particle->momentum().eta();
       phi_[nPart_] = particle->momentum().phi();
       m_[nPart_] = particle->momentum().m();
       pid_[nPart_] = particle->pdg_id();
-
-      TLorentzVector tL;
-      tL.SetPtEtaPhiM(pt_[nPart_], eta_[nPart_], phi_[nPart_], m_[nPart_]);
-      particlesForCluster.push_back(fastjet::PseudoJet(tL.Px(), tL.Py(), tL.Pz(), tL.E()));
       
       ++nPart_;
     }
