@@ -2096,7 +2096,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
   }
 
   std::cout << "Constructing response matrices..." << std::endl;
-  const ULong64_t nEntriesUnfold = 100000;//(ULong64_t)unfoldTree_p->GetEntries();
+  const ULong64_t nEntriesUnfold = (ULong64_t)unfoldTree_p->GetEntries();
   const ULong64_t nDiv = TMath::Max((ULong64_t)1, nEntriesUnfold/20);
 
   //Check we don't have duplicate events
