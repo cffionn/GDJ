@@ -2860,7 +2860,6 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	    if(isMultijet) gammaPtBinPos = subJtGammaPtBinFlattener.GetBin1PosFromGlobal(bIY);
 	    std::string histName = "photonPtJt" + varName + "VCent_" + centBinsStr[cI] + "_BarrelAndEC_GammaPt" + std::to_string(gammaPtBinPos) + "_h";
 
-	    std::cout << "HISTNAME : " << histName << std::endl;
 	    TH1D* nonClosure_p = (TH1D*)inMixNonClosureFile_p->Get(histName.c_str());
 		
 	    for(Int_t bIX = 0; bIX < histForUnfold_p->GetXaxis()->GetNbins(); ++bIX){	
