@@ -43,6 +43,8 @@
 #include "include/plotUtilities.h"
 #include "include/purityUtil.h"
 #include "include/returnFileList.h"
+//Added run->lumi handler 2023.01.17, numbers via Y. Go, at request of cut stability by run plot
+#include "include/runByRunLumiHandler.h"
 #include "include/sampleHandler.h"
 #include "include/stringUtil.h"
 #include "include/treeUtil.h"
@@ -1671,6 +1673,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
   std::vector<std::string> hltListPres;
   std::string hltStr = "HLT_";
   std::string prescaleStr = "_prescale";
+  //Gonna keep track in all events which hlt fired for check purposes
+  std::vector<std::vector<Bool_t> > hltFired;
+  std::map<int, int> runNumberToCount;
 
   //Close file and delete now that we have our branch list
   inFile_p->Close();
@@ -1689,6 +1694,12 @@ int gdjNTupleToHist(std::string inConfigFileName)
     if(isStrSame(branchStr, hltName)){
       hltPos = hltList.size()-1;
     }
+  }
+
+  //Build bool tracker
+  for(unsigned int hI = 0; hI < hltList.size(); ++hI){
+    hltFired.push_back({});
+    hltFired[hI].reserve(nEntriesAllFiles);
   }
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
@@ -2534,6 +2545,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	//Now we populate the histograms
 	//All photons passing requirements must be included
 	//If no reco match exists just fill
+
 	for(unsigned int pI = 0; pI < photon_pt_p->size(); ++pI){
 	  //Passes basic fiducial cuts
 	  bool isGoodReco = photonEtaIsGood(photon_eta_p->at(pI));
@@ -2561,6 +2573,16 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  //goodreco sideband
 	  bool isGoodRecoSideband = isGoodReco && isSideband;
 	  	  
+	  if(isGoodReco){
+	    for(unsigned int hI = 0; hI < hltList.size(); ++hI){
+	      if(hltVect[hI]) hltFired[hI].push_back(true);
+	      else hltFired[hI].push_back(true);
+	    }	    
+
+	    if(runNumberToCount.count(runNumber) == 0) runNumberToCount[runNumber] = 1;
+	    else ++(runNumberToCount[runNumber]);
+	  }
+
 	  //Check if this reco is the truth match
 	  bool isTruthPhotonMatched = isMC && pI == truthPhoRecoPos && truthPhoHasGoodReco;
 	  if(isGoodReco){
@@ -4272,6 +4294,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
     centDir_p->Close();
     delete centDir_p;
   }
+  
+  outFile_p->cd();
+  std::cout << "runNumberSize = " << runNumberToCount.size() << std::endl;
+  for(auto const & runN : runNumberToCount){
+    std::cout << " " << runN.first << ", " << runN.second << std::endl;
+  }
+  
+
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
