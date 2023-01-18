@@ -38,6 +38,12 @@ int gdjRunStabilityPlotter(std::string inConfigFileName)
   TEnv* config_p = new TEnv(inConfigFileName.c_str());
   //Define necessary params for the input config file  
   std::vector<std::string> necessaryParams = {"INFILENAME",
+					      "LABELALIGNRIGHT1",
+					      "LABELALIGNRIGHT2",
+					      "LABELX1",
+					      "LABELX2",
+					      "LABELY1",
+					      "LABELY2",
                                               "SAVEEXT"};
 
   //Check all params exist
@@ -45,6 +51,15 @@ int gdjRunStabilityPlotter(std::string inConfigFileName)
 
   //Grab input params
   const std::string inFileName = config_p->GetValue("INFILENAME", "");
+
+  const Double_t labelX1 = config_p->GetValue("LABELX1", -1.0);
+  const Double_t labelX2 = config_p->GetValue("LABELX2", -1.0);
+  const Double_t labelY1 = config_p->GetValue("LABELY1", -1.0);
+  const Double_t labelY2 = config_p->GetValue("LABELY2", -1.0);
+
+  const Bool_t labelAlignRight1 = (Bool_t)config_p->GetValue("LABELALIGNRIGHT1", 0);
+  const Bool_t labelAlignRight2 = (Bool_t)config_p->GetValue("LABELALIGNRIGHT2", 0);
+  
   const std::string saveExt = config_p->GetValue("SAVEEXT", "");
 
   //Check file exists
@@ -64,7 +79,11 @@ int gdjRunStabilityPlotter(std::string inConfigFileName)
   Bool_t isMC = (Bool_t)inConfig_p->GetValue("ISMC", 0);
   Bool_t isPP = (Bool_t)inConfig_p->GetValue("ISPP", 0);
   std::string ppPbPbStr = "PP";
-  if(!isPP) ppPbPbStr = "PbPb";
+  std::string ppPbPbLabel = "pp 2017 Data";
+  if(!isPP){
+    ppPbPbStr = "PbPb";
+    ppPbPbLabel = "Pb+Pb 2018 Data";
+  }
   
   std::vector<std::string> runNumList = strToVect(inConfig_p->GetValue("RUNSLIST", ""));
 
@@ -78,6 +97,10 @@ int gdjRunStabilityPlotter(std::string inConfigFileName)
 
   std::vector<TH1D*> hists_p = {hist_p, hist_LumiScaled_p};
   std::vector<std::string> labels = {"NotLumiScaled", "LumiScaled"};
+  std::vector<std::string> labels2 = {"Not Lumi. Scaled", "Lumi. Scaled"};
+  std::vector<Double_t> labelXs = {labelX1, labelX2};
+  std::vector<Double_t> labelYs = {labelY1, labelY2};
+  std::vector<Bool_t> labelAligns = {labelAlignRight1, labelAlignRight2};
   
   //Define a bunch of parameters for the TCanvas
   const Int_t nPad = 2;
@@ -124,6 +147,20 @@ int gdjRunStabilityPlotter(std::string inConfigFileName)
 
     hists_p[hI]->DrawCopy("HIST E1 P");
 
+    
+    TLatex* label_p = new TLatex();
+    label_p->SetNDC();
+    label_p->SetTextFont(titleFont);
+    label_p->SetTextSize(titleSize/(1.0 - padSplit));
+    if(labelAligns[hI]) label_p->SetTextAlign(31);
+
+    std::vector<std::string> tempLabels = {"#bf{#it{ATLAS Internal}}", ppPbPbLabel, "After #gamma selection", labels2[hI]};
+    for(Int_t tI = 0; tI < tempLabels.size(); ++tI){
+      label_p->DrawLatex(labelXs[hI], labelYs[hI] - 0.06*tI, tempLabels[tI].c_str());
+    }
+
+    delete label_p;
+    
     gPad->SetTicks();
 
     std::vector<Double_t> vals;

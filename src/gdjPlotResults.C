@@ -864,6 +864,7 @@ int gdjPlotResults(std::string inConfigFileName)
     
     std::string ppHistName = "photonPtJet" + varNameUpper + "Reco_Iter" + std::to_string(iterPP) + "_PP_Nominal_PURCORR_COMBINED_h";
     std::string pyt8TruthName = "photonPtJet" + varNameUpper + "Truth_PreUnfold_PP_NOMINAL_TRUTH_COMBINED_h";
+    
     std::vector<std::string> ppSystHistNames;
     std::vector<bool> isSystCorrelated;
     std::vector<std::string> systNames;
@@ -915,6 +916,7 @@ int gdjPlotResults(std::string inConfigFileName)
     }
       
     std::cout << "PYT8NAME: " << pyt8TruthName << std::endl;
+    TH1D* pyt8TruthPhoPt_p = (TH1D*)inPPFile_p->Get("photonPtTruth_PreUnfold_PP_TRUTH_COMBINED_h");
     TH2D* pyt8Truth2D_p = (TH2D*)inPPFile_p->Get(pyt8TruthName.c_str());
     TH2D* ppHist2D_p = (TH2D*)inPPFile_p->Get(ppHistName.c_str());
     TH1D* ppHist_p = nullptr;
@@ -957,8 +959,8 @@ int gdjPlotResults(std::string inConfigFileName)
     
     ppHist_p->GetYaxis()->SetNdivisions(505);
     
-    if(isMultijet) ppHist_p->GetYaxis()->SetTitle(("#frac{1}{N_{#gamma}*}#frac{dN_{JJ#gamma}}{d" + varNameLabel + "}").c_str());
-    else ppHist_p->GetYaxis()->SetTitle(("#frac{1}{N_{#gamma}*}#frac{dN_{J#gamma}}{d" + varNameLabel + "}}").c_str());
+    if(isMultijet) ppHist_p->GetYaxis()->SetTitle(("#frac{1}{N_{#gamma}}#frac{dN_{JJ#gamma}}{d" + varNameLabel + "}").c_str());
+    else ppHist_p->GetYaxis()->SetTitle(("#frac{1}{N_{#gamma}}#frac{dN_{J#gamma}}{d" + varNameLabel + "}}").c_str());
     ppHist_p->GetXaxis()->SetTitle(varNameLabel.c_str());
 
     //JEWEL handling for pp
@@ -974,6 +976,8 @@ int gdjPlotResults(std::string inConfigFileName)
       else pyt8Truth_p = new TH1D("pyt8Truth1D_h", ";;", nVarBinsTrunc, varBinsTrunc);
       fineTH2ToCoarseTH1(pyt8Truth2D_p, pyt8Truth_p, gammaMatchedBins);
 
+      binWidthAndScaleNorm(pyt8Truth_p, pyt8TruthPhoPt_p->GetBinContent(gI+1));
+      
       TH1D* jewelPPHist_p = nullptr;
       if(doJEWEL){
 	if(!doXTrunc) jewelPPHist_p = new TH1D("jewelPPHist_h", ";;", nVarBins, varBins);
@@ -1210,6 +1214,8 @@ int gdjPlotResults(std::string inConfigFileName)
 
 	if(doJEWEL) jewelPPHist_p->DrawCopy("C HIST SAME");
 
+	gPad->SetTicks();
+	
 	jewelPPHist_p->SetLineColor(1);
       }
       
@@ -1403,7 +1409,7 @@ int gdjPlotResults(std::string inConfigFileName)
     
       //We need to save the ratio histograms for plotting all centrality together
       std::string ratioHistName = "ratioHist_" + centBinsStr[cI];
-      std::string ratioHistTitle = ";" + varNameLabel + ";Pb+Pb/p+p";
+      std::string ratioHistTitle = ";" + varNameLabel + ";Pb+Pb/pp";
       if(!doXTrunc) ratioHistsPerCentrality.push_back(new TH1D(ratioHistName.c_str(), ratioHistTitle.c_str(), nVarBins, varBins));
       else ratioHistsPerCentrality.push_back(new TH1D(ratioHistName.c_str(), ratioHistTitle.c_str(), nVarBinsTrunc, varBinsTrunc));
 
@@ -1425,7 +1431,7 @@ int gdjPlotResults(std::string inConfigFileName)
       pbpbHist_p->GetXaxis()->SetLabelSize(labelSize/(padSplit));
       pbpbHist_p->GetYaxis()->SetLabelSize(labelSize/(padSplit));     
       
-      pbpbHist_p->GetYaxis()->SetTitle("Pb+Pb/p+p");
+      pbpbHist_p->GetYaxis()->SetTitle("Pb+Pb/pp");
       pbpbHist_p->GetYaxis()->SetTitleOffset(yOffset*padSplit/(1.0 - padSplit));
 
       pbpbHist_p->SetMinimum(minRatVal);
@@ -1452,6 +1458,7 @@ int gdjPlotResults(std::string inConfigFileName)
 	padsPP_p[1]->cd();
 	if(doJEWEL){
 	  jewelPPHist_p->Divide(ppHist_p);
+	  pyt8Truth_p->Divide(ppHist_p);
 
 	  HIJet::Style::EquipHistogram(jewelPPHist_p, 2);
 	  jewelPPHist_p->SetLineStyle(2);
@@ -1472,10 +1479,19 @@ int gdjPlotResults(std::string inConfigFileName)
 	  jewelPPHist_p->GetXaxis()->SetLabelSize(labelSize/(padSplit));
 	  jewelPPHist_p->GetYaxis()->SetLabelSize(labelSize/(padSplit));     
 	  
-	  jewelPPHist_p->GetYaxis()->SetTitle("Pb+Pb/p+p");
+	  jewelPPHist_p->GetYaxis()->SetTitle("Theory/Data");
 	  jewelPPHist_p->GetYaxis()->SetTitleOffset(yOffset*padSplit/(1.0 - padSplit));
+
+	  jewelPPHist_p->GetXaxis()->SetTitle(ppHist_p->GetXaxis()->GetTitle());
+
+	  Double_t max = TMath::Max(jewelPPHist_p->GetMaximum(), pyt8Truth_p->GetMaximum());
+	  Double_t min = TMath::Min(jewelPPHist_p->GetMinimum(), pyt8Truth_p->GetMinimum());
+
+	  jewelPPHist_p->SetMaximum(max + 0.1*(max-min));
+	  jewelPPHist_p->SetMinimum(min - 0.1*(max-min));
 	  
 	  jewelPPHist_p->DrawCopy("HIST C");
+	  pyt8Truth_p->DrawCopy("HIST C SAME");
 
 	  gPad->SetTicks();
 	  
@@ -1543,8 +1559,43 @@ int gdjPlotResults(std::string inConfigFileName)
 	delete pads_p[pI];
       }      
       delete canv_p;      
+    
+      if(cI == 0){	
+	Int_t nLegEntriesPP = 2;
+	if(doJEWEL) nLegEntriesPP = 3;
+	padsPP_p[0]->cd();
+	
+	TLegend* legPP_p = new TLegend(legX, legY - 0.065*nLegEntriesPP, legX+0.25, legY);
+	legPP_p->SetTextFont(42);
+	legPP_p->SetTextSize(0.035/(1.0 - padSplit));
+	legPP_p->SetBorderSize(0);
+	leg_p->SetFillStyle(0);
 
-      if(cI == 0){
+	HIJet::Style::EquipHistogram(jewelPPHist_p, 2);
+		
+	legPP_p->AddEntry(ppHist_p, "p+p", "P L");
+	legPP_p->AddEntry(pyt8Truth_p, "PYTHIA 8", "L");
+	if(doJEWEL) legPP_p->AddEntry(jewelPPHist_p, "PYTHIA 6", "L");
+	  
+	legPP_p->Draw("SAME");
+
+	TLatex* label_p = new TLatex();
+	label_p->SetNDC();
+	label_p->SetTextFont(42);
+	label_p->SetTextSize(0.035/(1.0 - padSplit));
+	label_p->SetTextAlign(31);
+	
+	std::vector<std::string> tempLabels;
+	for(unsigned int i = 0; i < labels.size(); ++i){
+	  std::string label = labels[i];
+	  if(label.find("Pb+Pb, ") != std::string::npos){
+	    label.replace(0, label.find(" ")+1, "");
+	  }
+	  
+	  label_p->DrawLatex(labelX, labelY - 0.083*i, label.c_str());
+	}
+	delete label_p;
+	
 	quietSaveAs(canvPP_p, "pdfDir/" + dateStr + "/" + varName + "Unfolded_GammaPt" + std::to_string(gI) + "_PPTheory_" + saveTag + "_" + dateStr + "." + saveExt);
 	for(Int_t pI = 0; pI < nPad; ++pI){
 	  delete padsPP_p[pI];
