@@ -150,7 +150,7 @@ std::vector<std::string> getLabels(TEnv* plotConfig_p, TH1D* histForLabels_p, st
 }
 */
 
-std::string plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>* labelMap, TEnv* plotConfig_p, std::string envStr, std::string dateStr, std::string saveTag,  std::vector<TH1D*> hists_p, std::vector<std::string> legStrs, std::vector<TH1D*> refHist_p, std::vector<std::string> refLegStr, std::vector<std::string> yLabels, std::vector<bool> yLogs, bool doReducedLabel)
+std::string plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::string>* labelMap, TEnv* plotConfig_p, std::string envStr, std::string dateStr, std::string saveTag,  std::vector<TH1D*> hists_p, std::vector<std::string> legStrs, std::vector<TH1D*> refHist_p, std::vector<std::string> refLegStr, std::vector<std::string> yLabels, std::vector<bool> yLogs, bool doReducedLabel, TFile* outFile_p)
 {
   if(hists_p.size() == 0){
     std::cout << "No hists given to plotMixClosure - return" << std::endl;
@@ -448,9 +448,8 @@ std::string plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::
     gStyle->SetOptStat(0);
     if(doLogX) gPad->SetLogx();
     if(doLogY) gPad->SetLogy();
-    
+  
     //editing here
-
     for(unsigned int hI = 0; hI < refHist_p.size(); ++hI){
       if(refHist_p[hI] == hists_p[cI]) continue;
       std::string histName = hists_p[cI]->GetName();
@@ -459,12 +458,30 @@ std::string plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::
       canv_p->cd();
       pads_p[hI+1]->cd();
 
+      //      std::cout << "hI, num, denom: " << hI << ", " << hists_p[cI]->GetName() << "/" << refHist_p[hI]->GetName() << std::endl;      
       TH1D* tempHist_p = new TH1D("tempHist_p", "", nBinsTemp, binsTemp);
-      tempHist_p->GetXaxis()->SetTitle(hists_p[cI]->GetXaxis()->GetTitle());
-
-      
+      tempHist_p->GetXaxis()->SetTitle(hists_p[cI]->GetXaxis()->GetTitle());      
       tempHist_p->Divide(hists_p[cI], refHist_p[hI]);
-    
+
+      //If isMC, write out the relative non-closure to outFile_p
+      if(isMC){
+	std::string numName = hists_p[cI]->GetName();
+	std::string denomName = refHist_p[hI]->GetName();
+	std::string saveName = hists_p[0]->GetName();
+	while(saveName.find("/") != std::string::npos){
+	  saveName.replace(0,saveName.find("/")+1, "");	  
+	}
+	
+	
+	if(isStrSame(numName, "subTemp_h") && isStrSame(denomName, "mcTemp_h")){	  
+	  outFile_p->cd();
+	  tempHist_p->Write(saveName.c_str(), TObject::kOverwrite);	
+	  
+	  pads_p[hI+1]->cd();		
+	}
+      }
+      
+      
       if(yLogs[hI+1]){
 	tempHist_p->SetMaximum(refMaxIfLog[hI]*10.);
 	tempHist_p->SetMinimum(refMinIfLog[hI]/10.);
@@ -529,7 +546,10 @@ std::string plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::
       tempHist_p->SetLineColor(hists_p[cI]->GetLineColor());
     
       if(yLabels[hI+1].size() == 0) tempHist_p->GetYaxis()->SetTitle(yTitle.c_str());
-      else tempHist_p->GetYaxis()->SetTitle(yLabels[hI+1].c_str());
+      else{
+
+	tempHist_p->GetYaxis()->SetTitle(yLabels[hI+1].c_str());
+      }
         
       if(hI == 0) tempHist_p->GetYaxis()->SetNdivisions(404);
       else tempHist_p->GetYaxis()->SetNdivisions(505);
@@ -771,12 +791,13 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 
   TEnv* plotConfig_p = new TEnv(inConfigFileName.c_str());
 
-  std::vector<std::string> reqConfigParams = {"MIXEDEVTPLOT.INFILENAME", "SAVETAG", "SAVEEXT", "DOREDUCEDLABEL"};
+  std::vector<std::string> reqConfigParams = {"MIXEDEVTPLOT.INFILENAME", "SAVETAG", "SAVEEXT", "DOREDUCEDLABEL", "MIXEDEVTPLOT.OUTFILENAME"};
   if(!checkEnvForParams(plotConfig_p, reqConfigParams)) return 1;
 
   const std::string globalSaveTag = plotConfig_p->GetValue("SAVETAG", "");
   const bool doReducedLabel = plotConfig_p->GetValue("DOREDUCEDLABEL", 0);
-  
+
+  //Grab and check the relevant filenames
   std::string inFileName = plotConfig_p->GetValue("MIXEDEVTPLOT.INFILENAME", "");
   if(!check.checkFileExt(inFileName, "root")) return 1;
 
@@ -785,6 +806,9 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
     if(!check.checkFileExt(mcFileName, "root")) return 1;
   }
 
+  std::string outFileName = plotConfig_p->GetValue("MIXEDEVTPLOT.OUTFILENAME", "");
+
+  //Grab and check the requested output extension
   const std::string extStr = plotConfig_p->GetValue("SAVEEXT", "");
   std::vector<std::string> validExt = {"pdf", "png"};
   if(!vectContainsStr(extStr, &validExt)){
@@ -795,11 +819,26 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
     std::cout << "return 1. " << std::endl;
     return 1;
   }
-  
-  const std::string dateStr = getDateStr();
-  check.doCheckMakeDir("pdfDir");
-  check.doCheckMakeDir("pdfDir/" + dateStr);
 
+  //Check/create necessary output dirs exist
+  const std::string dateStr = getDateStr();
+  const std::string outputStr = "output/" + dateStr;
+  const std::string pdfStr = "pdfDir/" + dateStr;
+  check.doCheckMakeDir("pdfDir");
+  check.doCheckMakeDir(pdfStr); 
+  check.doCheckMakeDir("output");
+  check.doCheckMakeDir(outputStr); 
+
+  //Modify the output file name for missing bits (.root, output directory, etc)
+  if(outFileName.find(".root") != std::string::npos){
+    outFileName.replace(outFileName.rfind(".root"), 5, "");
+    outFileName = outFileName + "_" + dateStr + ".root";
+  }
+  if(outFileName.find("/") == std::string::npos) outFileName = outputStr + "/" + outFileName;
+
+  //Create/grab all the necessary TFiles
+  TFile* outFile_p = new TFile(outFileName.c_str(), "RECREATE");
+  
   TFile* mcFile_p = nullptr;
   if(mcFileName.size() != 0) mcFile_p = new TFile(mcFileName.c_str(), "READ");
   
@@ -1358,9 +1397,9 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	  }
 
 	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-	  
+       
 	  std::string axisStr = ";" + std::string(raw_p->GetXaxis()->GetTitle()) + ";Counts";
-	  std::string newName = rawName.substr(0, rawName.rfind("_RAW"));
+	  std::string newName = rawName.substr(0, rawName.rfind("_NOMINAL"));
 	  newName = newName + "_GammaPt" + std::to_string(gammaPtBinPos) + "_h";
 
 	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
@@ -1540,26 +1579,13 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	  }
 
 	  for(unsigned int hI = 0; hI < hists_p.size(); ++hI){
-	    for(int bIX = 0; bIX < hists_p[hI]->GetXaxis()->GetNbins(); ++bIX){
-	      Double_t val = hists_p[hI]->GetBinContent(bIX+1);
-	      Double_t err = hists_p[hI]->GetBinError(bIX+1);
-	      Double_t width = hists_p[hI]->GetBinWidth(bIX+1);
-	      
-	      hists_p[hI]->SetBinContent(bIX+1, val/width);
-	      hists_p[hI]->SetBinError(bIX+1, err/width);
-	    }
+	    std::string histName = hists_p[hI]->GetName();
+	    if(histName.find("yjHist_p") != std::string::npos) continue;
 
+            binWidthAndScaleNorm(hists_p[hI], photonIntegral);
 	    hists_p[hI]->GetYaxis()->SetTitle(normYAxisTitle[oI].c_str());
 	  }	  
 	  
-	  if(bIY == 5 && false){
-	    std::cout << "PRINTING rawTemp_p" << std::endl;
-	    std::cout << "SCALING PHOTON INTEGRAL '" << photonIntegral << "' (" << lowEdge << "-" << highEdge << ")" << std::endl;
-	    std::cout << "PHOTON HIST: " << photonHist_p->GetName() << std::endl;
-	    
-	    rawTemp_p->Print("ALL");
-	  }
-
 	  HIJet::Style::EquipHistogram(mixTemp_p, equipPos);    
 	  ++equipPos;
 	  
@@ -1577,17 +1603,6 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	    yLogs.push_back(false);
 	  }
 
-	  for(unsigned int hI = 0; hI < hists_p.size(); ++hI){
-	    std::string histName = hists_p[hI]->GetName();
-	    if(histName.find("yjHist_p") != std::string::npos) continue;
-	    
-	    hists_p[hI]->Scale(1.0/photonIntegral);
-	  }
-
-	  for(unsigned int hI = 0; hI < refHists_p.size(); ++hI){
-	    refHists_p[hI]->Scale(1.0/photonIntegral);
-	  }
-
 	  if(!isMC && mcFileName.size() != 0){ //EDITING HERE FOR PHOTON INTEGRAL, PUSHBACK, AND SCALING
  	    subMCTemp_p->Scale(1.0/photonIntegralMC);
 
@@ -1597,6 +1612,11 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	    refHists_p.push_back(subMCTemp_p);
 	    refLegStrs.push_back("Raw - Mixed MC");
 	    yLabels.push_back("Data/#color[" + std::to_string(subMCTemp_p->GetMarkerColor()) + "]{MC}");	    
+	  }
+
+	  for(unsigned int hI = 0; hI < refHists_p.size(); ++hI){
+	    binWidthAndScaleNorm(refHists_p[hI], photonIntegral);
+	    refHists_p[hI]->GetYaxis()->SetTitle(normYAxisTitle[oI].c_str());
 	  }
 	  
 	  if(yjHist_p != nullptr){
@@ -1614,42 +1634,16 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	    */
 	  }
 		  
-
-	  for(unsigned int hI = 0; hI < refHists_p.size(); ++hI){
-	    for(int bIX = 0; bIX < refHists_p[hI]->GetXaxis()->GetNbins(); ++bIX){
-	      Double_t val = refHists_p[hI]->GetBinContent(bIX+1);
-	      Double_t err = refHists_p[hI]->GetBinError(bIX+1);
-	      Double_t width = refHists_p[hI]->GetBinWidth(bIX+1);
-	      
-	      refHists_p[hI]->SetBinContent(bIX+1, val/width);
-	      refHists_p[hI]->SetBinError(bIX+1, err/width);
-	    }
-	    
-	    refHists_p[hI]->GetYaxis()->SetTitle(normYAxisTitle[oI].c_str());
-	  }
-
 	  std::map<std::string, std::string> labelMapTemp = labelMap;
 	  if(isBarrelAndEC){
 	    labelMapTemp["Barrel"] = "Barrel+EC";
 	    labelMapTemp["BarrelAndEC"] = "Barrel+EC";
 	  }
-
-	  /*
-	  std::cout << "STARTING PLOTMIXCLOSURE (GammaPt: " << lowEdge << "-" << highEdge << ")" << std::endl;
-
-	  for(unsigned int hI = 0; hI < hists_p.size(); ++hI){
-	    std::cout << "VECTOR HIST " << hI << std::endl;
-	    hists_p[hI]->Print("ALL");
-	  }
-	  */	  
-
-	  std::string firstPlotName = plotMixClosure(doGlobalDebug, &labelMapTemp, plotConfig_p, strLowerToUpper(observables1[oI]), dateStr, globalSaveTag, hists_p, legStrs, refHists_p, refLegStrs, yLabels, yLogs, doReducedLabel);
+	  
+	  std::string firstPlotName = plotMixClosure(doGlobalDebug, &labelMapTemp, plotConfig_p, strLowerToUpper(observables1[oI]), dateStr, globalSaveTag, hists_p, legStrs, refHists_p, refLegStrs, yLabels, yLogs, doReducedLabel, outFile_p);
 	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-	  //	  std::cout << "ENDING PLOTMIXCLOSURE" << std::endl;
 	  
-	  if(yjHist_p != nullptr) delete yjHist_p;
-	  //	  if(bIY == 5) return 1;
-	  
+	  if(yjHist_p != nullptr) delete yjHist_p;	  
 	  
 	  if((isStrSame(observables1[oI], "JtXJJ") || isStrSame(observables1[oI], "JtDPhiJJG")) && !isBarrelAndEC && false){
 	    hists_p.clear();
@@ -1676,7 +1670,7 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	      HIJet::Style::EquipHistogram(mixBkgdMCTemp_p, 2);
 	      
 	      
-	      plotMixClosure(doGlobalDebug, &labelMap, plotConfig_p, strLowerToUpper(observables1[oI]), dateStr, "MixBkgdCheck_" + globalSaveTag, hists_p, legStrs, {mixBkgdMCTemp_p}, {"Truth Sig.+Fake Bkgd."}, {"", ("Reco./#color[" + std::to_string(mixBkgdMCTemp_p->GetMarkerColor()) + "]{Truth}").c_str()}, {false, false}, doReducedLabel);
+	      plotMixClosure(doGlobalDebug, &labelMap, plotConfig_p, strLowerToUpper(observables1[oI]), dateStr, "MixBkgdCheck_" + globalSaveTag, hists_p, legStrs, {mixBkgdMCTemp_p}, {"Truth Sig.+Fake Bkgd."}, {"", ("Reco./#color[" + std::to_string(mixBkgdMCTemp_p->GetMarkerColor()) + "]{Truth}").c_str()}, {false, false}, doReducedLabel, outFile_p);
 	    
 	      hists_p.clear();
 	      legStrs.clear();
@@ -1692,7 +1686,7 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 
 
 	    
-	      plotMixClosure(doGlobalDebug, &labelMap, plotConfig_p, strLowerToUpper(observables1[oI]), dateStr, "PureBkgdCheck_" + globalSaveTag, hists_p, legStrs, refHists_p, refLegStrs, {"", ("Reco./#color[" + std::to_string(pureBkgdMCTemp_p->GetMarkerColor()) + "]{Truth}").c_str()}, {false, false}, doReducedLabel);
+	      plotMixClosure(doGlobalDebug, &labelMap, plotConfig_p, strLowerToUpper(observables1[oI]), dateStr, "PureBkgdCheck_" + globalSaveTag, hists_p, legStrs, refHists_p, refLegStrs, {"", ("Reco./#color[" + std::to_string(pureBkgdMCTemp_p->GetMarkerColor()) + "]{Truth}").c_str()}, {false, false}, doReducedLabel, outFile_p);
 
 	    }
 	  }
@@ -2047,16 +2041,10 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	      delete singleTruthToMultiFakeMix_p;
 	    }
 	  }
-
-	  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-	  
-	}
-      
+	}      
       }
     }
   }
-
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   if(mcFileName.size() != 0){  
     mcFile_p->Close();
@@ -2066,10 +2054,10 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
   inFile_p->Close();
   delete inFile_p;
 
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+  outFile_p->Close();
+  delete outFile_p;
 
   std::cout << "GDJMIXEDEVENTPLOTTER COMPLETE. return 0" << std::endl;
-
   return 0;
 }
 

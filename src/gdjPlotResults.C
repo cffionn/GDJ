@@ -50,6 +50,22 @@
 // #include "include/treeUtil.h"
 #include "include/varUtil.h"
 
+std::string systNameToLegName(std::string inStr)
+{
+  if(isStrSame("PURSIDEBANDLOOSE", inStr)) return "Loose Sideband";
+  else if(isStrSame("PURSIDEBANDTIGHT", inStr)) return "Tight Sideband";
+  else if(isStrSame("PURBINORFIT", inStr)) return "Binned Purity";
+  else if(isStrSame("PHOISOANDPUR", inStr)) return "#gamma Iso./Pur.";
+  else if(isStrSame("MIXING", inStr)) return "Mixing";
+  else if(isStrSame("UNFOLDING", inStr)) return "Unfolding";
+  else if(isStrSame("MIXNONCLOSURE", inStr)) return "MC Nonclosure";
+  else if(isStrSame("JTPTCUT", inStr)) return "Vary Jet p_{T} Cut";
+  else if(isStrSame("PRIOR", inStr)) return "Vary Prior";
+  else if(isStrSame("JESRTRK", inStr)) return "JES R_{Trk}";
+    
+  return inStr;
+}
+
 //vector of syst, bin-by-bin
 //As a start, assume symmetric syst
 std::vector<std::vector<Double_t> > getSyst(TFile* histFile_p, TH1D* nominalHist_p, std::vector<std::string> systHistNames, std::vector<Int_t> yPos, std::vector<Double_t> scaledTotalSyst)
@@ -218,7 +234,7 @@ std::vector<Double_t> plotSyst(TH1D* nominalHist_p, std::vector<std::vector<Doub
   if(doGlobalDebug) std::cout << "LINE, FILE: " << __LINE__ << ", " << __FILE__ << std::endl;
  
   //Define our histogram array and new the total syst hist
-  std::string titleStr = ";" + std::string(nominalHist_p->GetXaxis()->GetTitle()) + ";" + yStr + " Syst. (%)";
+  std::string titleStr = ";" + std::string(nominalHist_p->GetXaxis()->GetTitle()) + ";" + yStr + " Syst. (Fractional)";
   TH1D* systHist_p[nMaxHist+1];
   systHist_p[0] = new TH1D("systHist_Total_h", titleStr.c_str(), nBinsX, binsX);
   HIJet::Style::EquipHistogram(systHist_p[0], 0);
@@ -257,7 +273,7 @@ std::vector<Double_t> plotSyst(TH1D* nominalHist_p, std::vector<std::vector<Doub
   systHist_p[0]->SetMinimum(-maxVal*1.2);
   
   TCanvas* canv_p = new TCanvas("canvSyst_p", "", width, height);
-  setMargins(canv_p, leftMargin, 0.20, 0.25, bottomMargin);  
+  setMargins(canv_p, leftMargin, 0.20, 0.25, 2.0*bottomMargin/3.0);  
   canv_p->cd();
   
   for(Int_t sI = 0; sI < systVals.size()+1; ++sI){
@@ -296,7 +312,7 @@ std::vector<Double_t> plotSyst(TH1D* nominalHist_p, std::vector<std::vector<Doub
   if(doGlobalDebug) std::cout << "LINE, FILE: " << __LINE__ << ", " << __FILE__ << std::endl;
   
   std::vector<TLegend*> legs_p = {nullptr, nullptr};
-  if(systVals.size() <= nMaxHist/2) legs_p[0] = new TLegend(0.76, 0.81 - systVals.size()*0.045, 0.90, 0.81);
+  if(systVals.size() <= nMaxHist/2) legs_p[0] = new TLegend(0.76, 0.81 - (systVals.size()+1)*0.045, 0.90, 0.81);
   else{
     legs_p[0] = new TLegend(0.76, 0.81 - (nMaxHist/2)*0.045, 0.87, 0.81);
     legs_p[1] = new TLegend(0.87, 0.81 - (systVals.size() - nMaxHist/2 + 1)*0.045 - 0.045, 0.99, 0.81 - 0.045);
@@ -315,7 +331,7 @@ std::vector<Double_t> plotSyst(TH1D* nominalHist_p, std::vector<std::vector<Doub
   
   legs_p[0]->AddEntry(systHist_p[0], totalStr.c_str(), "L");
   for(Int_t sI = 0; sI < systVals.size(); ++sI){
-    legs_p[(sI+1)/(nMaxHist/2)]->AddEntry(systHist_p[sI+1], systNames[sI].c_str(), "L");
+    legs_p[(sI+1)/(nMaxHist/2)]->AddEntry(systHist_p[sI+1], systNameToLegName(systNames[sI]).c_str(), "L");
   }
 
   legs_p[0]->Draw("SAME");
@@ -847,6 +863,7 @@ int gdjPlotResults(std::string inConfigFileName)
     }
     
     std::string ppHistName = "photonPtJet" + varNameUpper + "Reco_Iter" + std::to_string(iterPP) + "_PP_Nominal_PURCORR_COMBINED_h";
+    std::string pyt8TruthName = "photonPtJet" + varNameUpper + "Truth_PreUnfold_PP_NOMINAL_TRUTH_COMBINED_h";
     std::vector<std::string> ppSystHistNames;
     std::vector<bool> isSystCorrelated;
     std::vector<std::string> systNames;
@@ -896,7 +913,9 @@ int gdjPlotResults(std::string inConfigFileName)
 	else gammaMatchedBins.push_back(sgI);
       }      
     }
-    
+      
+    std::cout << "PYT8NAME: " << pyt8TruthName << std::endl;
+    TH2D* pyt8Truth2D_p = (TH2D*)inPPFile_p->Get(pyt8TruthName.c_str());
     TH2D* ppHist2D_p = (TH2D*)inPPFile_p->Get(ppHistName.c_str());
     TH1D* ppHist_p = nullptr;
     if(!doXTrunc) ppHist_p = new TH1D("ppHist1D_h", ";;", nVarBins, varBins);
@@ -944,20 +963,29 @@ int gdjPlotResults(std::string inConfigFileName)
 
     //JEWEL handling for pp
     TH1D* inJEWELPPHist_p = nullptr;
-    TH1D* jewelPPHist_p = nullptr;
     if(doJEWEL){
       inJEWELPPHist_p = (TH1D*)ppJEWELFile_p->Get((varNameLower + "_R" + std::to_string(jetR) + "_GammaPt" + std::to_string(gI) + "_h").c_str());
-      if(!doXTrunc) jewelPPHist_p = new TH1D("jewelPPHist_h", ";;", nVarBins, varBins);
-      else jewelPPHist_p = new TH1D("jewelPPHist_h", ";;", nVarBinsTrunc, varBinsTrunc);
-
-      fineHistToCoarseHist(inJEWELPPHist_p, jewelPPHist_p);
-
-      //For the tlegend
-      inJEWELPPHist_p->SetLineColor(1);
-      inJEWELPPHist_p->SetLineStyle(1);
     }        
     
     for(unsigned int cI = 0; cI < centBinsStr.size(); ++cI){   
+      TH1D* pyt8Truth_p = nullptr;
+
+      if(!doXTrunc) pyt8Truth_p = new TH1D("pyt8Truth1D_h", ";;", nVarBins, varBins);
+      else pyt8Truth_p = new TH1D("pyt8Truth1D_h", ";;", nVarBinsTrunc, varBinsTrunc);
+      fineTH2ToCoarseTH1(pyt8Truth2D_p, pyt8Truth_p, gammaMatchedBins);
+
+      TH1D* jewelPPHist_p = nullptr;
+      if(doJEWEL){
+	if(!doXTrunc) jewelPPHist_p = new TH1D("jewelPPHist_h", ";;", nVarBins, varBins);
+	else jewelPPHist_p = new TH1D("jewelPPHist_h", ";;", nVarBinsTrunc, varBinsTrunc);
+	
+	fineHistToCoarseHist(inJEWELPPHist_p, jewelPPHist_p);
+	
+	//For the tlegend
+	inJEWELPPHist_p->SetLineColor(1);
+	inJEWELPPHist_p->SetLineStyle(1);
+      }        
+
       if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
  
       const Int_t iterPbPbPhoPt = inPbPbTermFileConfig_p->GetValue(("GAMMAPT_" + centBinsStr[cI] + "_Nominal").c_str(), -1);
@@ -1050,7 +1078,6 @@ int gdjPlotResults(std::string inConfigFileName)
 	systTypeToSystValsPbPb[val.first] = tempVectVals;
       }  
 
-
       //JEWEL handling for pbpb
       TH1D* inJEWELPbPbHist_p = nullptr;
       TH1D* jewelPbPbHist_p = nullptr;
@@ -1080,7 +1107,6 @@ int gdjPlotResults(std::string inConfigFileName)
 	  else jewelPbPbHist_p = new TH1D("jewelPbPbHist_h", ";;", nVarBinsTrunc, varBinsTrunc);
 	  
 	  fineHistToCoarseHist(inJEWELPbPbHist_p, jewelPbPbHist_p);
-
 	}
 
 	jewelLeg_p = new TLegend(jewelLegX, jewelLegY - 0.065*2, jewelLegX+0.25, jewelLegY);
@@ -1090,6 +1116,22 @@ int gdjPlotResults(std::string inConfigFileName)
 	jewelLeg_p->SetFillStyle(0);	
       }
       
+      TCanvas* canvPP_p = nullptr;
+      TPad* padsPP_p[nPad];
+      if(cI == 0){
+	canvPP_p = new TCanvas("canvPP_p", "", width, height);
+	padsPP_p[0] = new TPad("padPP0", "", 0.0, padSplit, 1.0, 1.0);
+	setMargins(padsPP_p[0], leftMargin, topMargin, rightMargin, noMargin);
+	canvPP_p->cd();
+	padsPP_p[0]->Draw("SAME");
+	
+	canvPP_p->cd();
+	padsPP_p[1] = new TPad("padPP1", "", 0.0, 0.0, 1.0, padSplit);
+	setMargins(padsPP_p[1], leftMargin, noMargin, rightMargin, bottomMargin);
+	canvPP_p->cd();
+	padsPP_p[1]->Draw("SAME");
+      }
+      
       TCanvas* canv_p = new TCanvas("canv_p", "", width, height);
       TPad* pads_p[nPad];
       setMargins(canv_p, noMargin, noMargin, noMargin, noMargin);
@@ -1097,22 +1139,14 @@ int gdjPlotResults(std::string inConfigFileName)
       
       pads_p[0] = new TPad("pad0", "", 0.0, padSplit, 1.0, 1.0);
       setMargins(pads_p[0], leftMargin, topMargin, rightMargin, noMargin);
-
       canv_p->cd();
       pads_p[0]->Draw("SAME");
-      pads_p[0]->cd();
-      canv_p->cd();
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
       
       canv_p->cd();
       pads_p[1] = new TPad("pad1", "", 0.0, 0.0, 1.0, padSplit);
       setMargins(pads_p[1], leftMargin, noMargin, rightMargin, bottomMargin);
-      
       canv_p->cd();
       pads_p[1]->Draw("SAME");
-      pads_p[1]->cd();
-      canv_p->cd();
       
       pads_p[0]->cd();      
       HIJet::Style::EquipHistogram(pbpbHist_p, 1); 
@@ -1130,14 +1164,16 @@ int gdjPlotResults(std::string inConfigFileName)
       if(doJEWEL){
 	HIJet::Style::EquipHistogram(jewelPPHist_p, 2);
 	jewelPPHist_p->SetLineStyle(2);
+	jewelPPHist_p->SetLineWidth(4);
 
 	if(jewelPbPbHist_p != nullptr){
 	  HIJet::Style::EquipHistogram(jewelPbPbHist_p, 1);
 	  jewelPbPbHist_p->SetLineStyle(2);
+	  jewelPbPbHist_p->SetLineWidth(4);
 	}
 	
 	pads_p[0]->cd();
-	jewelPPHist_p->DrawCopy("HIST SAME");
+	jewelPPHist_p->DrawCopy("C HIST SAME");
 
 	//Change the line color to black for the tlegend and add both jewels
 	jewelPPHist_p->SetLineColor(1);
@@ -1146,7 +1182,7 @@ int gdjPlotResults(std::string inConfigFileName)
 
 	jewelLeg_p->Draw("SAME");
 	
-	if(jewelPbPbHist_p != nullptr) jewelPbPbHist_p->DrawCopy("HIST SAME");
+	if(jewelPbPbHist_p != nullptr) jewelPbPbHist_p->DrawCopy("C HIST SAME");
       }
       pads_p[0]->cd();
       
@@ -1156,6 +1192,27 @@ int gdjPlotResults(std::string inConfigFileName)
       ppHist_p->DrawCopy("HIST E1 P SAME");
       pbpbHist_p->DrawCopy("HIST E1 P SAME");
 
+      //Do the same but just pp
+      if(cI == 0){
+	padsPP_p[0]->cd();
+	ppHist_p->DrawCopy("HIST E1 P");
+	drawSyst(padsPP_p[0], ppHist_p, ppSyst);
+	ppHist_p->DrawCopy("HIST E1 P SAME");
+
+	HIJet::Style::EquipHistogram(pyt8Truth_p, 5);
+	pyt8Truth_p->DrawCopy("C HIST SAME");
+
+	pyt8Truth_p->Print("ALL");
+	
+	HIJet::Style::EquipHistogram(jewelPPHist_p, 2);
+	jewelPPHist_p->SetLineStyle(2);
+	jewelPPHist_p->SetLineWidth(4);
+
+	if(doJEWEL) jewelPPHist_p->DrawCopy("C HIST SAME");
+
+	jewelPPHist_p->SetLineColor(1);
+      }
+      
       Float_t integral = 0.0;
       Float_t integralError = 0.0;
       for(Int_t bIX = 0; bIX < pbpbHist_p->GetXaxis()->GetNbins(); ++bIX){
@@ -1169,9 +1226,6 @@ int gdjPlotResults(std::string inConfigFileName)
       meanPerCentrality_h->SetBinContent(cI+1, pbpbHist_p->GetMean());
       meanPerCentrality_h->SetBinError(cI+1, pbpbHist_p->GetMeanError());
       
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
-
       std::vector<std::string> labelsAlt;
       std::vector<std::string> labelsTemp = getLabels(inPbPbFileConfig_p, pbpbHist_p, &labelMap, &labelsAlt);
       std::vector<std::string> labels = {"#bf{#it{ATLAS Internal}}", "Pb+Pb, #it{pp} at #sqrt{s_{NN}}=5.02 TeV"};
@@ -1200,7 +1254,7 @@ int gdjPlotResults(std::string inConfigFileName)
 	
 	labels.push_back(labelsTemp[lI]);
       }
-      labels.push_back(prettyString(gammaPtBins[gI], 1, false) + " < p_{T,#gamma} < " + prettyString(gammaPtBins[gI+1], 1, false));
+      labels.push_back(prettyString(gammaPtBins[gI], 1, false) + "<p_{T,#gamma}<" + prettyString(gammaPtBins[gI+1], 1, false));
       labels.push_back(gammaJtDPhiCutLabel);
 
       if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
@@ -1233,7 +1287,7 @@ int gdjPlotResults(std::string inConfigFileName)
 	  std::vector<std::vector<Double_t > > tempSystValVect = systTypeToSystValsPP[uniqueSystTypes[sysI]];
 	  std::vector<std::string> tempSystNameVect = systTypeToSystNames[uniqueSystTypes[sysI]];
 	  
-	  plotSyst(ppHist_p, tempSystValVect, tempSystNameVect, systLabels, "pp", plotSaveName, uniqueSystTypes[sysI] + " Total");
+	  plotSyst(ppHist_p, tempSystValVect, tempSystNameVect, systLabels, "pp", plotSaveName, systNameToLegName(uniqueSystTypes[sysI]) + " Total");
 	  
 	  Int_t nBinsTemp = nVarBins;
 	  if(doXTrunc) nBinsTemp = nVarBinsTrunc;
@@ -1270,7 +1324,7 @@ int gdjPlotResults(std::string inConfigFileName)
 	std::vector<std::vector<Double_t > > tempSystValVect = systTypeToSystValsPbPb[uniqueSystTypes[sysI]];
 	std::vector<std::string> tempSystNameVect = systTypeToSystNames[uniqueSystTypes[sysI]];
       	
-	plotSyst(pbpbHist_p, tempSystValVect, tempSystNameVect, systLabels, centBinsLabel[cI], plotSaveName, uniqueSystTypes[sysI] + " Total");
+	plotSyst(pbpbHist_p, tempSystValVect, tempSystNameVect, systLabels, centBinsLabel[cI], plotSaveName, systNameToLegName(uniqueSystTypes[sysI]) + " Total");
 	
 	Int_t nBinsTemp = nVarBins;
 	if(doXTrunc) nBinsTemp = nVarBinsTrunc;
@@ -1328,8 +1382,6 @@ int gdjPlotResults(std::string inConfigFileName)
       
       canv_p->cd();
       pads_p[1]->cd();
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
 
       std::vector<std::vector<Double_t > > ratSyst = getSystRat(inPbPbFile_p, inPPFile_p, pbpbHist_p, ppHist_p, pbpbSystHistNames, ppSystHistNames, isSystCorrelated, gammaMatchedBins, scaledTotalPbPbSyst, scaledTotalPPSyst);
 
@@ -1389,13 +1441,50 @@ int gdjPlotResults(std::string inConfigFileName)
 
       if(doJEWEL && jewelPbPbHist_p != nullptr){
 	jewelPbPbHist_p->Divide(jewelPPHist_p);
-	jewelPbPbHist_p->Draw("HIST SAME");
+	jewelPbPbHist_p->DrawCopy("C HIST SAME");
       }
       
       //drawSyst here returns the quadrature sum of the syst error for convenience just put it right in the push_back
       ratioSystsPerCentrality.push_back(drawSyst(pads_p[1], pbpbHist_p, ratSyst));
       pbpbHist_p->DrawCopy("HIST E1 P SAME");      
     
+      if(cI == 0){
+	padsPP_p[1]->cd();
+	if(doJEWEL){
+	  jewelPPHist_p->Divide(ppHist_p);
+
+	  HIJet::Style::EquipHistogram(jewelPPHist_p, 2);
+	  jewelPPHist_p->SetLineStyle(2);
+	  jewelPPHist_p->SetLineWidth(4);
+	  
+	  jewelPPHist_p->GetYaxis()->SetTitle("Theory/Data");
+
+	  jewelPPHist_p->GetYaxis()->SetNdivisions(505);
+	  jewelPPHist_p->GetXaxis()->SetTitleOffset(1.2);
+	  
+	  jewelPPHist_p->GetXaxis()->SetTitleFont(titleFont);
+	  jewelPPHist_p->GetYaxis()->SetTitleFont(titleFont);
+	  jewelPPHist_p->GetXaxis()->SetTitleSize(titleSize/(padSplit));
+	  jewelPPHist_p->GetYaxis()->SetTitleSize(titleSize/(padSplit));
+	  
+	  jewelPPHist_p->GetXaxis()->SetLabelFont(titleFont);
+	  jewelPPHist_p->GetYaxis()->SetLabelFont(titleFont);
+	  jewelPPHist_p->GetXaxis()->SetLabelSize(labelSize/(padSplit));
+	  jewelPPHist_p->GetYaxis()->SetLabelSize(labelSize/(padSplit));     
+	  
+	  jewelPPHist_p->GetYaxis()->SetTitle("Pb+Pb/p+p");
+	  jewelPPHist_p->GetYaxis()->SetTitleOffset(yOffset*padSplit/(1.0 - padSplit));
+	  
+	  jewelPPHist_p->DrawCopy("HIST C");
+
+	  gPad->SetTicks();
+	  
+	  jewelPPHist_p->SetLineColor(1);
+	}
+	pads_p[1]->cd();
+      }
+
+
       plotSaveName = "pdfDir/" + dateStr + "/" + varName + "UnfoldedSyst_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "OverPP_" + saveTag + "_" + dateStr + "." + saveExt;            
       plotSyst(pbpbHist_p, ratSyst, systNames, systLabels, centBinsLabel[cI] + "/pp", plotSaveName);
 
@@ -1406,7 +1495,7 @@ int gdjPlotResults(std::string inConfigFileName)
         std::vector<std::vector<Double_t > > tempSystValVect = systTypeToSystValsRatio[uniqueSystTypes[sysI]];
         std::vector<std::string> tempSystNameVect = systTypeToSystNames[uniqueSystTypes[sysI]];
        
-	plotSyst(pbpbHist_p, tempSystValVect, tempSystNameVect, systLabels, centBinsLabel[cI] + "/pp", plotSaveName, uniqueSystTypes[sysI] + " Total");
+	plotSyst(pbpbHist_p, tempSystValVect, tempSystNameVect, systLabels, centBinsLabel[cI] + "/pp", plotSaveName, systNameToLegName(uniqueSystTypes[sysI]) + " Total");
 
 	Int_t nBinsTemp = nVarBins;
         if(doXTrunc) nBinsTemp = nVarBinsTrunc;
@@ -1450,7 +1539,18 @@ int gdjPlotResults(std::string inConfigFileName)
       if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
          
       quietSaveAs(canv_p, "pdfDir/" + dateStr + "/" + varName + "Unfolded_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_" + saveTag + "_" + dateStr + "." + saveExt);
-      delete canv_p;
+      for(Int_t pI = 0; pI < nPad; ++pI){
+	delete pads_p[pI];
+      }      
+      delete canv_p;      
+
+      if(cI == 0){
+	quietSaveAs(canvPP_p, "pdfDir/" + dateStr + "/" + varName + "Unfolded_GammaPt" + std::to_string(gI) + "_PPTheory_" + saveTag + "_" + dateStr + "." + saveExt);
+	for(Int_t pI = 0; pI < nPad; ++pI){
+	  delete padsPP_p[pI];
+	}      
+	delete canvPP_p;      
+      }
       delete leg_p;
 
       if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
@@ -1458,8 +1558,11 @@ int gdjPlotResults(std::string inConfigFileName)
       delete pbpbHist_p;
       if(doJEWEL){
 	delete jewelLeg_p;
+	delete jewelPPHist_p;
 	if(jewelPbPbHist_p != nullptr) delete jewelPbPbHist_p;
       }
+
+      delete pyt8Truth_p;
     }
 
     Float_t integral = 0.0;
@@ -1585,10 +1688,6 @@ int gdjPlotResults(std::string inConfigFileName)
     delete integralPerCentrality_h;
     delete meanPerCentrality_h;
     delete ppHist_p;
-
-    if(doJEWEL){
-      delete jewelPPHist_p;
-    }
   }
   
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;

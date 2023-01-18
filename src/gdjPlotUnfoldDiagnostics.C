@@ -831,11 +831,14 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
     std::vector<std::vector<std::string> > unfoldNamesPhoPtJetVar, refoldNamesPhoPtJetVar;
 
 
+    std::string phoSystStrAlt = "NOMINAL";
     std::string phoSystStr = "Nominal";
-    bool isGammaSyst = isStrSame(systTypeStrVect[systI], "GESGER");
+    bool isIsoPur = isStrSame(systTypeStrVect[systI], "PHOISOANDPUR");
+    bool isGammaSyst = isStrSame(systTypeStrVect[systI], "GESGER") || isIsoPur;
     if(isGammaSyst) phoSystStr = systStrVect[systI];
+    if(isIsoPur) phoSystStrAlt = systStrVect[systI];
     
-    
+      
     //Fill out the name vectors
     for(unsigned int cI = 0; cI < centBinsStr.size(); ++cI){
       unfoldNamesPhoPt.push_back({});
@@ -844,7 +847,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       unfoldNamesPhoPtJetVar.push_back({});
       refoldNamesPhoPtJetVar.push_back({});
       
-      recoHistPhoPtNames.push_back("photonPtReco_PreUnfold_" + centBinsStr[cI] + "_PURCORR_COMBINED_h");
+      recoHistPhoPtNames.push_back("photonPtReco_PreUnfold_" + centBinsStr[cI] + "_" + phoSystStrAlt + "_PURCORR_COMBINED_h");
       truthHistPhoPtNames.push_back("photonPtTruth_PreUnfold_" + centBinsStr[cI] + "_TRUTH_COMBINED_h");
       statsDeltaPhoPtNames.push_back("statsDelta_PhoPt_" + centBinsStr[cI] + "_" + phoSystStr + "_PURCORR_COMBINED_h");
       iterDeltaPhoPtNames.push_back("iterDelta_PhoPt_" + centBinsStr[cI] + "_" + phoSystStr + "_PURCORR_COMBINED_h");
@@ -852,6 +855,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 
       std::string recoTruthString = "NOMINAL";
       if(systStrVect[systI].find("JTPTCUT") != std::string::npos) recoTruthString = "JTPTCUT";
+      else if(isIsoPur) recoTruthString = phoSystStrAlt;
       
       recoHistPhoPtJetVarNames.push_back("photonPtJet" + jtVar + "Reco_PreUnfold_" + centBinsStr[cI] + "_" + recoTruthString + "_PURCORR_COMBINED_h");
       truthHistPhoPtJetVarNames.push_back("photonPtJet" + jtVar + "Truth_PreUnfold_" + centBinsStr[cI] + "_" + recoTruthString + "_TRUTH_COMBINED_h");
@@ -973,6 +977,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	
 	TH1D* reco1D_p = nullptr;
 	TH2D* reco2D_p = nullptr;
+	  std::cout << "NAME: " << recoHistNames[cI] << std::endl;
 	if(pI == 0){
 	  reco1D_p = (TH1D*)inUnfoldFile_p->Get(recoHistNames[cI].c_str());
 	  getIterativeHists(reco1D_p, unfoldedHists1D_p, statsDelta_p, iterDelta_p, totalDelta_p, doRelativeTerm, gammaPtBinsLowReco, gammaPtBinsHighReco);
@@ -1059,7 +1064,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	else if(pI == 1){
 	  if(truthHistNames[cI].find("TRUTH_COMBINED") == std::string::npos || isMC) truth2D_p = (TH2D*)inUnfoldFile_p->Get(truthHistNames[cI].c_str());
 	  else if(!isMC) truth2D_p = (TH2D*)inUnfoldFile_p->Get(truthHistNames[cI].c_str());
-
+	  
 	  std::cout << "TRUTH HIST NAMES: " << truthHistNames[cI] << std::endl;
 	}
       
