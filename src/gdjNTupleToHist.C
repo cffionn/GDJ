@@ -548,9 +548,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
   if(!isMC){
     if(!check.checkFileExt(inPurityFileName, "root")) return 1;
 
-    inPurityFileTightName.replace(inPurityFileTightName.find("nominal"), std::string("nominal").size(), "purityTightBkgdID");
-    inPurityFileLooseName.replace(inPurityFileLooseName.find("nominal"), std::string("nominal").size(), "purityLooseBkgdID");
-    inPurityFileIsoName.replace(inPurityFileIsoName.find("nominal"), std::string("nominal").size(), "purityBkgdGap10");
+    inPurityFileTightName.replace(inPurityFileTightName.find("nominal"), std::string("nominal").size(), "purityTightBkgID");
+    inPurityFileLooseName.replace(inPurityFileLooseName.find("nominal"), std::string("nominal").size(), "purityLooseBkgID");
+    inPurityFileIsoName.replace(inPurityFileIsoName.find("nominal"), std::string("nominal").size(), "purityBkgGap10");
     
     if(!check.checkFileExt(inPurityFileTightName, ".root")) return 1;
     if(!check.checkFileExt(inPurityFileLooseName, ".root")) return 1;
