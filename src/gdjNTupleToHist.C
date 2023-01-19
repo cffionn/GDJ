@@ -327,6 +327,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
   const bool doUnifiedPurity = config_p->GetValue("DOUNIFIEDPURITY", 0);
   std::string inPurityFileName = config_p->GetValue("PURITYFILENAME", "");
 
+  //Declaring here alt purity file names used for various systematics
+  std::string inPurityFileTightName = inPurityFileName;
+  std::string inPurityFileLooseName = inPurityFileName;
+  std::string inPurityFileIsoName = inPurityFileName;
+
   const std::string nMaxEvtStr = config_p->GetValue("NEVT", "");
   const std::string nStartEvtStr = config_p->GetValue("NEVTSTART", "");
 
@@ -539,8 +544,19 @@ int gdjNTupleToHist(std::string inConfigFileName)
   if(!check.checkFileExt(inCentFileName, "txt")) return 1; // Check centrality table is valid TXT file   
   if(!isMC && !check.checkFileExt(inGRLFileName, "xml")) return 1; // GRL File xml
   if(doMix && !check.checkFileExt(inMixFileName, "root")) return 1; // Check mixed file exists if mixing is requested
-  if(!check.checkFileExt(inPurityFileName, "root")) return 1;
-  
+
+  if(!isMC){
+    if(!check.checkFileExt(inPurityFileName, "root")) return 1;
+
+    inPurityFileTightName.replace(inPurityFileTightName.find("nominal"), std::string("nominal").size(), "purityTightBkgdID");
+    inPurityFileLooseName.replace(inPurityFileLooseName.find("nominal"), std::string("nominal").size(), "purityLooseBkgdID");
+    inPurityFileIsoName.replace(inPurityFileIsoName.find("nominal"), std::string("nominal").size(), "purityBkgdGap10");
+    
+    if(!check.checkFileExt(inPurityFileTightName, ".root")) return 1;
+    if(!check.checkFileExt(inPurityFileLooseName, ".root")) return 1;
+    if(!check.checkFileExt(inPurityFileIsoName, ".root")) return 1;  
+  }
+
   const std::string dateStr = getDateStr();
   check.doCheckMakeDir("output"); // check output dir exists; if not create
   check.doCheckMakeDir("output/" + dateStr); // check dated output subdir exists; if not create
@@ -945,8 +961,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
   }
 
   //We need to declare some systematics (like jet pt cut unfolding variation)
-  std::vector<std::string> systStrVect = {"NOMINAL", "JTPTCUT", "PURSIDEBANDLOOSE", "PURSIDEBANDTIGHT", "PURBINORFIT"};
-  std::vector<std::string> systTypeVect = {"NOMINAL", "UNFOLDING", "PHOISOANDPUR", "PHOISOANDPUR", "PHOISOANDPUR"};
+  std::vector<std::string> systStrVect = {"NOMINAL", "JTPTCUT", "PURSIDEBANDLOOSE", "PURSIDEBANDTIGHT", "PURBINORFIT", "PURSIDEBANDISO"};
+  std::vector<std::string> systTypeVect = {"NOMINAL", "UNFOLDING", "PHOISOANDPUR", "PHOISOANDPUR", "PHOISOANDPUR", "PHOISOANDPUR"};
   std::vector<bool> isPhoSyst;
   for(unsigned int systI = 0; systI < systTypeVect.size(); ++ systI){
     if(isStrSame(systTypeVect[systI], "PHOISOANDPUR")) isPhoSyst.push_back(true);
@@ -3448,7 +3464,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
-  TFile* purityFile_p = new TFile(inPurityFileName.c_str(), "READ");
+  TFile* purityFile_Nominal_p = new TFile(inPurityFileName.c_str(), "READ");
+  TFile* purityFile_Loose_p = new TFile(inPurityFileLooseName.c_str(), "READ");
+  TFile* purityFile_Tight_p = new TFile(inPurityFileTightName.c_str(), "READ");
+  TFile* purityFile_Iso_p = new TFile(inPurityFileIsoName.c_str(), "READ");
 
   //Purity correction definitions via Yeonju Go:
 
@@ -3675,13 +3694,17 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  purityFitStr = "fit_purity_Cent30to80_Eta0p00to2p37";
 	  purityHistStr = "h1D_photon_purity_vs_pt_Cent30to80_Eta0p00to2p37_h";
 	}
-	
-	TF1* purityFit_p = (TF1*)purityFile_p->Get(purityFitStr.c_str());      
-	TH1D* purityHist_p = (TH1D*)purityFile_p->Get(purityHistStr.c_str());
-
+      
 	std::vector<double> meanValPerGammaBin, rawPerGammaBin, sidebandPerGammaBin;
 
 	for(unsigned int systI = 0; systI < systStrVect.size(); ++systI){	
+	  TFile* purityFile_p = purityFile_Nominal_p;
+	  if(isStrSame(systStrVect[systI], "PURSIDEBANDLOOSE")) purityFile_p = purityFile_Loose_p;
+	  else if(isStrSame(systStrVect[systI], "PURSIDEBANDTIGHT")) purityFile_p = purityFile_Tight_p;
+	  else if(isStrSame(systStrVect[systI], "PURSIDEBANDISO")) purityFile_p = purityFile_Iso_p;
+	  
+	  TF1* purityFit_p = (TF1*)purityFile_p->Get(purityFitStr.c_str());      
+	  TH1D* purityHist_p = (TH1D*)purityFile_p->Get(purityHistStr.c_str());	  
 
 	  TH1D* photonPtVCentRAWSideband_p = photonPtVCent_RAWSideband_p[cI][barrelAndECComboPos][0];
 	  if(isPhoSyst[systI]) photonPtVCentRAWSideband_p = photonPtVCent_RAWSideband_p[cI][barrelAndECComboPos][systI];
@@ -3703,8 +3726,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	
 	  std::vector<mixMachine*> inMixMachines_p = {photonPtJtPtVCent_MixMachine_p[cI][barrelAndECComboPos][systI], photonPtJtXJVCent_MixMachine_p[cI][barrelAndECComboPos][systI], photonPtJtDPhiVCent_MixMachine_p[cI][barrelAndECComboPos][systI], photonPtJtXJJVCent_MixMachine_p[cI][barrelAndECComboPos][systI], photonPtJtAJJVCent_MixMachine_p[cI][barrelAndECComboPos][systI], photonPtJtDPhiJJGVCent_MixMachine_p[cI][barrelAndECComboPos][systI], photonPtJtDPhiJJVCent_MixMachine_p[cI][barrelAndECComboPos][systI], photonPtJtDRJJVCent_MixMachine_p[cI][barrelAndECComboPos][systI]};
 
-	  std::vector<mixMachine*> inMixMachines_Sideband_p = {photonPtJtPtVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos][systI], photonPtJtXJVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos][systI], photonPtJtDPhiVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos][systI], photonPtJtXJJVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos][systI], photonPtJtAJJVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos][systI], photonPtJtDPhiJJGVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos][systI], photonPtJtDPhiJJVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos][systI], photonPtJtDRJJVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos][systI]};
-	    
+	  std::vector<mixMachine*> inMixMachines_Sideband_p = {photonPtJtPtVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos][systI], photonPtJtXJVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos][systI], photonPtJtDPhiVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos][systI], photonPtJtXJJVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos][systI], photonPtJtAJJVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos][systI], photonPtJtDPhiJJGVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos][systI], photonPtJtDPhiJJVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos][systI], photonPtJtDRJJVCent_MixMachine_Sideband_p[cI][barrelAndECComboPos][systI]};	
+    
 	  std::vector<TH2D*> outHists_p = {photonPtJtPtVCent_PURCORR_p[cI][barrelAndECComboPos][systI], photonPtJtXJVCent_PURCORR_p[cI][barrelAndECComboPos][systI], photonPtJtDPhiVCent_PURCORR_p[cI][barrelAndECComboPos][systI], photonPtJtXJJVCent_PURCORR_p[cI][barrelAndECComboPos][systI], photonPtJtAJJVCent_PURCORR_p[cI][barrelAndECComboPos][systI], photonPtJtDPhiJJGVCent_PURCORR_p[cI][barrelAndECComboPos][systI], photonPtJtDPhiJJVCent_PURCORR_p[cI][barrelAndECComboPos][systI], photonPtJtDRJJVCent_PURCORR_p[cI][barrelAndECComboPos][systI]};	  
 
 	  std::vector<TH2D*> outBkgdHists_p = {photonPtJtPtVCent_PURCORRBkgd_p[cI][barrelAndECComboPos][systI], photonPtJtXJVCent_PURCORRBkgd_p[cI][barrelAndECComboPos][systI], photonPtJtDPhiVCent_PURCORRBkgd_p[cI][barrelAndECComboPos][systI], photonPtJtXJJVCent_PURCORRBkgd_p[cI][barrelAndECComboPos][systI], photonPtJtAJJVCent_PURCORRBkgd_p[cI][barrelAndECComboPos][systI], photonPtJtDPhiJJGVCent_PURCORRBkgd_p[cI][barrelAndECComboPos][systI], photonPtJtDPhiJJVCent_PURCORRBkgd_p[cI][barrelAndECComboPos][systI], photonPtJtDRJJVCent_PURCORRBkgd_p[cI][barrelAndECComboPos][systI]};	  
@@ -3897,8 +3920,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
     }
   }
 
-  purityFile_p->Close();
-  delete purityFile_p;
+  purityFile_Nominal_p->Close();
+  delete purityFile_Nominal_p;
 
   outFile_p->cd();
   if(doMix){
@@ -4295,13 +4318,53 @@ int gdjNTupleToHist(std::string inConfigFileName)
     delete centDir_p;
   }
   
+  //Now that we are done writing main analysis hists lets create + write a few useful diagnostics
+  int minRun = 99999999;
+  int maxRun = -1;
+  Double_t maxLumi = -1.0;
+  Double_t minLumi = 9999999.0;
+  for(auto const & runN : runNumberToCount){
+    if(runN.first > maxRun) maxRun = runN.first;
+    if(runN.first < minRun) minRun = runN.first;
+
+    Float_t runLumi = getLumiFromRunNumber(runN.first);
+
+    if(minLumi > runLumi) minLumi = runLumi;
+    if(maxLumi < runLumi) maxLumi = runLumi;
+  }
+
   outFile_p->cd();
   std::cout << "runNumberSize = " << runNumberToCount.size() << std::endl;
-  for(auto const & runN : runNumberToCount){
-    std::cout << " " << runN.first << ", " << runN.second << std::endl;
-  }
-  
+  std::cout << "Min/max lumi: " << minLumi << "/" << maxLumi << std::endl;
+  TH1D* eventsByRun_p = new TH1D("eventsByRun_h", (";Run \# (" + std::to_string(minRun) + "-" + std::to_string(maxRun) + ");Counts").c_str(), runNumberToCount.size(), -0.5, ((Double_t)runNumberToCount.size()) - 0.5);
+  TH1D* eventsByRun_LumiScaled_p = new TH1D("eventsByRun_LumiScaled_h", (";Run \# (" + std::to_string(minRun) + "-" + std::to_string(maxRun) + ");Counts*(Max Run Lumi/Run Lumi)").c_str(), runNumberToCount.size(), -0.5, ((Double_t)runNumberToCount.size()) - 0.5);
 
+  std::string runsStr = "";
+  Int_t binCounter = 0;
+  for(auto const & runN : runNumberToCount){
+    eventsByRun_p->SetBinContent(binCounter+1, runN.second);
+    eventsByRun_p->SetBinError(binCounter+1, TMath::Sqrt(runN.second));
+
+    Double_t runLumi = getLumiFromRunNumber(runN.first);
+    Double_t scaledCounts = runN.second*maxLumi/runLumi;
+    Double_t scaledCountsErr = TMath::Sqrt(runN.second)*maxLumi/runLumi;
+
+    eventsByRun_LumiScaled_p->SetBinContent(binCounter+1, scaledCounts);
+    eventsByRun_LumiScaled_p->SetBinError(binCounter+1, scaledCountsErr);
+
+    runsStr = runsStr + std::to_string(runN.first) + ",";
+
+    ++binCounter;
+  }
+  if(runsStr.size() > 0) runsStr.replace(runsStr.rfind(","), 1, "");
+
+  config_p->SetValue("RUNSLIST", runsStr.c_str());
+
+  eventsByRun_p->Write("", TObject::kOverwrite);
+  delete eventsByRun_p;
+
+  eventsByRun_LumiScaled_p->Write("", TObject::kOverwrite);
+  delete eventsByRun_LumiScaled_p;
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
