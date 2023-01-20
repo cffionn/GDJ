@@ -748,8 +748,8 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
   //Grab both the systematics as defined w/in the file and also the ones we need to declare offline
   //Syst as defined in file
-  std::vector<std::string> inSystStrVect = strToVect(inResponseFileConfig_p->GetValue("SYSTNAMES", ""));
-  std::vector<std::string> inSystTypeVect = strToVect(inResponseFileConfig_p->GetValue("SYSTTYPES", ""));
+  std::vector<std::string> inSystStrVect = strToVect(inUnfoldFileConfig_p->GetValue("SYSTNAMES", ""));
+  std::vector<std::string> inSystTypeVect = strToVect(inUnfoldFileConfig_p->GetValue("SYSTTYPES", ""));
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   

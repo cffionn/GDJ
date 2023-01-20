@@ -269,6 +269,8 @@ std::vector<Double_t> plotSyst(TH1D* nominalHist_p, std::vector<std::vector<Doub
     systHist_p[0]->SetBinError(bIX+1, 0.0);
   }
 
+  if(maxVal > 1.0) maxVal = 1.0;
+  
   systHist_p[0]->SetMaximum(maxVal*1.2);
   systHist_p[0]->SetMinimum(-maxVal*1.2);
   
