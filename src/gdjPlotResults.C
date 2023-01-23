@@ -54,6 +54,7 @@ std::string systNameToLegName(std::string inStr)
 {
   if(isStrSame("PURSIDEBANDLOOSE", inStr)) return "Loose Sideband";
   else if(isStrSame("PURSIDEBANDTIGHT", inStr)) return "Tight Sideband";
+  else if(isStrSame("PURSIDEBANDISO", inStr)) return "Iso. Sideband";
   else if(isStrSame("PURBINORFIT", inStr)) return "Binned Purity";
   else if(isStrSame("PHOISOANDPUR", inStr)) return "#gamma Iso./Pur.";
   else if(isStrSame("MIXING", inStr)) return "Mixing";
@@ -68,11 +69,16 @@ std::string systNameToLegName(std::string inStr)
 
 //vector of syst, bin-by-bin
 //As a start, assume symmetric syst
-std::vector<std::vector<Double_t> > getSyst(TFile* histFile_p, TH1D* nominalHist_p, std::vector<std::string> systHistNames, std::vector<Int_t> yPos, std::vector<Double_t> scaledTotalSyst)
+std::vector<std::vector<Double_t> > getSyst(TFile* histFile_p, TH1D* nominalHist_p, std::vector<std::string> systHistNames, std::vector<Int_t> yPos, std::vector<Double_t> scaledTotalSyst, bool doDebug=false)
 {
   std::vector<std::vector<Double_t> > systVals;
 
+  if(doDebug) std::cout << __FILE__ << ", " << __LINE__ << std::endl;
+  
   for(unsigned int jI = 0; jI < systHistNames.size(); ++jI){
+
+    if(doDebug) std::cout << " " << jI << "/" << systHistNames.size() << ": " << systHistNames[jI] << std::endl;
+
     TH2D* temp2D_p = (TH2D*)histFile_p->Get(systHistNames[jI].c_str());
     TH1D* temp1D_p = (TH1D*)nominalHist_p->Clone("temp1D_p");
     for(Int_t bIX = 0; bIX < temp1D_p->GetXaxis()->GetNbins(); ++bIX){
@@ -90,6 +96,8 @@ std::vector<std::vector<Double_t> > getSyst(TFile* histFile_p, TH1D* nominalHist
 
     delete temp1D_p;
   }
+
+  if(doDebug) std::cout << __FILE__ << ", " << __LINE__ << std::endl;
   
   return systVals;
 }
@@ -626,7 +634,7 @@ int gdjPlotResults(std::string inConfigFileName)
   //if an x-axis truncation is requested, test that given values match array
   if(doXTrunc){
     if(!checkHistContainsBins({minValX, maxValX}, nVarBins, varBins, 0.0001)){      
-      std::cout << "gdjPlotResults ERROR: Requested plotting truncation in var \'" << varNameUpper << "\' to range " << minValX << "-" << maxValX << " is not found in bins \'" << varBinsStr << "\'. return 1" << std::endl;
+     std::cout << "gdjPlotResults ERROR: Requested plotting truncation in var \'" << varNameUpper << "\' to range " << minValX << "-" << maxValX << " is not found in bins \'" << varBinsStr << "\'. return 1" << std::endl;
       
       return 1;
     }
@@ -1066,11 +1074,15 @@ int gdjPlotResults(std::string inConfigFileName)
       if(!doXTrunc) pbpbHist_p = new TH1D("pbpbHist1D_h", ";;", nVarBins, varBins);
       else pbpbHist_p = new TH1D("pbpbHist1D_h", ";;", nVarBinsTrunc, varBinsTrunc);
       fineTH2ToCoarseTH1(pbpbHist2D_p, pbpbHist_p, gammaMatchedBins);    
-          
+
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+      
       binWidthAndScaleNorm(pbpbHist_p, scaledTotalPbPb);      
-      std::vector<std::vector<Double_t > > pbpbSyst = getSyst(inPbPbFile_p, pbpbHist_p, pbpbSystHistNames, gammaMatchedBins, scaledTotalPbPbSyst);
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+      std::vector<std::vector<Double_t > > pbpbSyst = getSyst(inPbPbFile_p, pbpbHist_p, pbpbSystHistNames, gammaMatchedBins, scaledTotalPbPbSyst, doGlobalDebug);
       //      pbpbHist_p->Scale(1./pbpbHist_p->Integral());
 
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
       std::map<std::string, std::vector<std::vector<Double_t> > > systTypeToSystValsPbPb;
       for(auto const &val : systTypesMap){
 	std::vector<std::vector<Double_t> > tempVectVals;
@@ -1084,6 +1096,8 @@ int gdjPlotResults(std::string inConfigFileName)
 	systTypeToSystValsPbPb[val.first] = tempVectVals;
       }  
 
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+      
       //JEWEL handling for pbpb
       TH1D* inJEWELPbPbHist_p = nullptr;
       TH1D* jewelPbPbHist_p = nullptr;
@@ -1103,6 +1117,8 @@ int gdjPlotResults(std::string inConfigFileName)
 	Double_t jewelLegX = config_p->GetValue("JEWELLEGX", -1.0);
 	Double_t jewelLegY = config_p->GetValue("JEWELLEGY", -1.0);
 
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+	
 	if(jewelCentPos == -1){
 	  std::cout << "JEWEL CENT STR MATCHING \'" << centBinsStr[cI] << "\' not found. Pb+Pb in this bin will not be plotted, please fix for overlay" << std::endl;
 	  //	  doJEWEL = false;
@@ -1163,6 +1179,8 @@ int gdjPlotResults(std::string inConfigFileName)
       //Need to set this for both so the systematics dont overflow the plotting space but still draw correctly
       pbpbHist_p->SetMinimum(minVal);
       pbpbHist_p->SetMaximum(maxVal);
+
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
       
       ppHist_p->DrawCopy("HIST E1 P");
       pbpbHist_p->DrawCopy("HIST E1 P SAME");
@@ -1233,6 +1251,8 @@ int gdjPlotResults(std::string inConfigFileName)
 
       meanPerCentrality_h->SetBinContent(cI+1, pbpbHist_p->GetMean());
       meanPerCentrality_h->SetBinError(cI+1, pbpbHist_p->GetMeanError());
+
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
       
       std::vector<std::string> labelsAlt;
       std::vector<std::string> labelsTemp = getLabels(inPbPbFileConfig_p, pbpbHist_p, &labelMap, &labelsAlt);
