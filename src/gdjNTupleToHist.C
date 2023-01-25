@@ -220,6 +220,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 					      "MIXFILENAME",
 					      "DOUNIFIEDPURITY",
 					      "PURITYFILENAME",
+					      "QGFILENAME",
 					      "JETR",
 					      "GAMMAEXCLUSIONDR",
 					      "MIXJETEXCLUSIONDR",
@@ -326,8 +327,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
   std::string inMixFileName = config_p->GetValue("MIXFILENAME", "");
   const bool doUnifiedPurity = config_p->GetValue("DOUNIFIEDPURITY", 0);
   std::string inPurityFileName = config_p->GetValue("PURITYFILENAME", "");
+  std::string inQGFileName = config_p->GetValue("QGFILENAME", "");
 
-  //Declaring here alt purity file names used for various systematics
+  //Declaring here alt purityOD file names used for various systematics
   std::string inPurityFileTightName = inPurityFileName;
   std::string inPurityFileLooseName = inPurityFileName;
   std::string inPurityFileIsoName = inPurityFileName;
@@ -556,6 +558,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
     if(!check.checkFileExt(inPurityFileLooseName, ".root")) return 1;
     if(!check.checkFileExt(inPurityFileIsoName, ".root")) return 1;  
   }
+
+  //Check the QG file
+  if(isMC && !check.checkFileExt(inQGFileName, ".root")) return 1;
 
   const std::string dateStr = getDateStr();
   check.doCheckMakeDir("output"); // check output dir exists; if not create
@@ -906,29 +911,27 @@ int gdjNTupleToHist(std::string inConfigFileName)
     subJtGammaPtBinsStrForConfig = subJtGammaPtBinsStrForConfig + binStr + ",";
   }
 
-  /*
-  std::cout << "subJtGammaPtBins: " << std ::endl;
-  for(Int_t sgI = 0; sgI < nSubJtGammaPtBins; ++sgI){
-    std::cout << " " << sgI << ": " << subJtGammaPtBins[sgI] << "-" << subJtGammaPtBins[sgI+1] << " (gammaBin=" << subJtGammaPtBinFlattener.GetBin1PosFromGlobal(sgI) << ", subJtPtBins=" << subJtGammaPtBinFlattener.GetBin2PosFromGlobal(sgI) << ")" << std::endl;
-  }
 
-  std::cout << std::endl;
-  std::cout << "Gamma,subjtptbins: " << std::endl;
-  for(Int_t gI = 0; gI < nGammaPtBins; ++gI){
-    std::cout << " gI=" << gI << ", " << gammaPtBins[gI] << "-" << gammaPtBins[gI+1] << ": " << std::endl;
-    for(Int_t sI = 0; sI < nSubJtPtBins; ++sI){
-      std::cout << "  sI=" << sI << ", " << subJtPtBins[sI] << "-" << subJtPtBins[sI+1] << ", globalBin=" << subJtGammaPtBinFlattener.GetGlobalFromBin12Pos(gI, sI) << std::endl;
-    }  
-  }
-
-  return 1;
-  */
-  
-
+  //Mixing cap and other params
   const unsigned long long mixCap = config_p->GetValue("MIXCAP", 100000000);
   const unsigned long long nMixEvents = config_p->GetValue("NMIXEVENTS", 1);
   const bool doStrictMix = config_p->GetValue("DOSTRICTMIX", true);
 
+
+  //Declare the file that will be used for handling the qg
+  //also fit names, as given by Yeonju
+  std::string fitNameFlavorResponse = "fit1_PP_Eta0p00to2p80";
+  std::string fitNameFlavorFraction = "fit2_PP_Eta0p00to2p80";
+  TFile* inQGFile_p = nullptr;
+  TF1* qgResponseFit_p = nullptr;
+  TF1* qgFractionFit_p = nullptr;
+  if(isMC){
+    inQGFile_p = new TFile(inQGFileName.c_str(), "READ");
+    qgResponseFit_p = (TF1*)inQGFile_p->Get(fitNameFlavorResponse.c_str());
+    qgFractionFit_p = (TF1*)inQGFile_p->Get(fitNameFlavorFraction.c_str());
+  }
+
+  //Start the outputfile and systematics handling
   std::string outFileNameForTxt = outFileName;
   outFileNameForTxt.replace(outFileNameForTxt.find(".root"), 5, ".txt");
 
@@ -944,20 +947,23 @@ int gdjNTupleToHist(std::string inConfigFileName)
   const Int_t nGammaSysAndNom = 1 + nGESSys + nGERSys;
   std::string gammaSysAndNomStr[nGammaSysAndNom] = {"Nominal", "GES0", "GES1", "GER0", "GER1"};
 
+
   //Define some numbers and names for jet es/er systematics
   const Int_t nJESSys = 18;
   const Int_t nJERSys = 9;
 
-  //1 (nominal) + nJESSys + 1 (centrality dependent rtrk JESSys manual) + nJERSys
-  const Int_t nJetSysAndNom = 1 + nJESSys + 1 + nJERSys;
+  //1 (nominal) + nJESSys + 1 (centrality dependent rtrk JESSys manual) + 1 QGFrac + 1 QGResp + nJERSys
+  const Int_t nJetSysAndNom = 1 + nJESSys + 1 + 1 + 1 + nJERSys;
 
   std::string jetSysAndNomStr[nJetSysAndNom] = {"Nominal"}; 
   for(Int_t sI = 0; sI < nJESSys; ++sI){
     jetSysAndNomStr[1 + sI] = "JES" + std::to_string(sI);
   }
   jetSysAndNomStr[1+nJESSys] = "JESRTRK";
+  jetSysAndNomStr[2+nJESSys] = "QGFRAC";
+  jetSysAndNomStr[3+nJESSys] = "QGRESP";
   for(Int_t sI = 0; sI < nJERSys; ++sI){
-    jetSysAndNomStr[1 + nJESSys + 1 + sI] = "JER" + std::to_string(sI);
+    jetSysAndNomStr[4 + nJESSys + sI] = "JER" + std::to_string(sI);
   }
 
   //We need to declare some systematics (like jet pt cut unfolding variation)
@@ -2516,17 +2522,26 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	      
 	      if(recoPos >= 0){
 		recoJtPt_[nRecoJt_][0] = aktRhi_etajes_jet_pt_p->at(recoPos);
+
 		
 		for(Int_t jsI = 0; jsI < nJESSys; ++jsI){
 		  recoJtPt_[nRecoJt_][1 + jsI] = aktRhi_etajes_jet_pt_sysJES_p[jsI]->at(recoPos);
 		}
 		//Manually insert the rtrk centrality dependent Pb+Pb specific uncertainty
 		//in pp, just set it to zero for simplicity
+
+		//JESRTRK handling
 		if(!isPP) recoJtPt_[nRecoJt_][1+nJESSys] = getRTrkJESSysPt(cent, aktRhi_etajes_jet_pt_p->at(recoPos));
 		else recoJtPt_[nRecoJt_][1+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos);
-		
+	    
+		//QG Fraction handling - note how the eval is on truth pt
+		recoJtPt_[nRecoJt_][2+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos)*(1.0 + qgFractionFit_p->Eval(aktR_truth_jet_pt_p->at(jI)));
+
+		//QG Response handling - similar to fraction but w/ a different fit function
+		recoJtPt_[nRecoJt_][3+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos)*(1.0 + qgResponseFit_p->Eval(aktR_truth_jet_pt_p->at(jI)));
+
 		for(Int_t jsI = 0; jsI < nJERSys; ++jsI){
-		  recoJtPt_[nRecoJt_][1 + nJESSys + 1 + jsI] = aktRhi_etajes_jet_pt_sysJER_p[jsI]->at(recoPos);
+		  recoJtPt_[nRecoJt_][4 + nJESSys + jsI] = aktRhi_etajes_jet_pt_sysJER_p[jsI]->at(recoPos);
 		}
 		
 		recoJtPhi_[nRecoJt_] = aktRhi_etajes_jet_phi_p->at(recoPos);
@@ -4319,54 +4334,55 @@ int gdjNTupleToHist(std::string inConfigFileName)
   }
   
   //Now that we are done writing main analysis hists lets create + write a few useful diagnostics
-  int minRun = 99999999;
-  int maxRun = -1;
-  Double_t maxLumi = -1.0;
-  Double_t minLumi = 9999999.0;
-  for(auto const & runN : runNumberToCount){
-    if(runN.first > maxRun) maxRun = runN.first;
-    if(runN.first < minRun) minRun = runN.first;
+  if(!isMC){
+    int minRun = 99999999;
+    int maxRun = -1;
+    Double_t maxLumi = -1.0;
+    Double_t minLumi = 9999999.0;
+    for(auto const & runN : runNumberToCount){
+      if(runN.first > maxRun) maxRun = runN.first;
+      if(runN.first < minRun) minRun = runN.first;
+      
+      Float_t runLumi = getLumiFromRunNumber(runN.first);
+      
+      if(minLumi > runLumi) minLumi = runLumi;
+      if(maxLumi < runLumi) maxLumi = runLumi;
+    }
+    
+    outFile_p->cd();
+    std::cout << "runNumberSize = " << runNumberToCount.size() << std::endl;
+    std::cout << "Min/max lumi: " << minLumi << "/" << maxLumi << std::endl;
+    TH1D* eventsByRun_p = new TH1D("eventsByRun_h", (";Run \# (" + std::to_string(minRun) + "-" + std::to_string(maxRun) + ");Counts").c_str(), runNumberToCount.size(), -0.5, ((Double_t)runNumberToCount.size()) - 0.5);
+    TH1D* eventsByRun_LumiScaled_p = new TH1D("eventsByRun_LumiScaled_h", (";Run \# (" + std::to_string(minRun) + "-" + std::to_string(maxRun) + ");Counts*(Max Run Lumi/Run Lumi)").c_str(), runNumberToCount.size(), -0.5, ((Double_t)runNumberToCount.size()) - 0.5);
+    
+    std::string runsStr = "";
+    Int_t binCounter = 0;
+    for(auto const & runN : runNumberToCount){
+      eventsByRun_p->SetBinContent(binCounter+1, runN.second);
+      eventsByRun_p->SetBinError(binCounter+1, TMath::Sqrt(runN.second));
 
-    Float_t runLumi = getLumiFromRunNumber(runN.first);
+      Double_t runLumi = getLumiFromRunNumber(runN.first);
+      Double_t scaledCounts = runN.second*maxLumi/runLumi;
+      Double_t scaledCountsErr = TMath::Sqrt(runN.second)*maxLumi/runLumi;
+      
+      eventsByRun_LumiScaled_p->SetBinContent(binCounter+1, scaledCounts);
+      eventsByRun_LumiScaled_p->SetBinError(binCounter+1, scaledCountsErr);
+      
+      runsStr = runsStr + std::to_string(runN.first) + ",";
+      
+      ++binCounter;
+    }
+    if(runsStr.size() > 0) runsStr.replace(runsStr.rfind(","), 1, "");
 
-    if(minLumi > runLumi) minLumi = runLumi;
-    if(maxLumi < runLumi) maxLumi = runLumi;
+    config_p->SetValue("RUNSLIST", runsStr.c_str());
+
+    eventsByRun_p->Write("", TObject::kOverwrite);
+    delete eventsByRun_p;
+    
+    eventsByRun_LumiScaled_p->Write("", TObject::kOverwrite);
+    delete eventsByRun_LumiScaled_p;
   }
 
-  outFile_p->cd();
-  std::cout << "runNumberSize = " << runNumberToCount.size() << std::endl;
-  std::cout << "Min/max lumi: " << minLumi << "/" << maxLumi << std::endl;
-  TH1D* eventsByRun_p = new TH1D("eventsByRun_h", (";Run \# (" + std::to_string(minRun) + "-" + std::to_string(maxRun) + ");Counts").c_str(), runNumberToCount.size(), -0.5, ((Double_t)runNumberToCount.size()) - 0.5);
-  TH1D* eventsByRun_LumiScaled_p = new TH1D("eventsByRun_LumiScaled_h", (";Run \# (" + std::to_string(minRun) + "-" + std::to_string(maxRun) + ");Counts*(Max Run Lumi/Run Lumi)").c_str(), runNumberToCount.size(), -0.5, ((Double_t)runNumberToCount.size()) - 0.5);
-
-  std::string runsStr = "";
-  Int_t binCounter = 0;
-  for(auto const & runN : runNumberToCount){
-    eventsByRun_p->SetBinContent(binCounter+1, runN.second);
-    eventsByRun_p->SetBinError(binCounter+1, TMath::Sqrt(runN.second));
-
-    Double_t runLumi = getLumiFromRunNumber(runN.first);
-    Double_t scaledCounts = runN.second*maxLumi/runLumi;
-    Double_t scaledCountsErr = TMath::Sqrt(runN.second)*maxLumi/runLumi;
-
-    eventsByRun_LumiScaled_p->SetBinContent(binCounter+1, scaledCounts);
-    eventsByRun_LumiScaled_p->SetBinError(binCounter+1, scaledCountsErr);
-
-    runsStr = runsStr + std::to_string(runN.first) + ",";
-
-    ++binCounter;
-  }
-  if(runsStr.size() > 0) runsStr.replace(runsStr.rfind(","), 1, "");
-
-  config_p->SetValue("RUNSLIST", runsStr.c_str());
-
-  eventsByRun_p->Write("", TObject::kOverwrite);
-  delete eventsByRun_p;
-
-  eventsByRun_LumiScaled_p->Write("", TObject::kOverwrite);
-  delete eventsByRun_LumiScaled_p;
-
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   //Before we do a bunch of deletions lets auto-generate some stats tables
   if(!isMC){
