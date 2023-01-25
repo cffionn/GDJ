@@ -63,6 +63,7 @@ std::string systNameToLegName(std::string inStr)
   else if(isStrSame("JTPTCUT", inStr)) return "Vary Jet p_{T} Cut";
   else if(isStrSame("PRIOR", inStr)) return "Vary Prior";
   else if(isStrSame("JESRTRK", inStr)) return "JES R_{Trk}";
+  else if(isStrSame("MCSTAT", inStr)) return "MC Stat.";
     
   return inStr;
 }
@@ -91,6 +92,19 @@ std::vector<std::vector<Double_t> > getSyst(TFile* histFile_p, TH1D* nominalHist
     systVals.push_back({});   
     for(Int_t bIX = 0; bIX < temp1D_p->GetXaxis()->GetNbins(); ++bIX){
       Double_t deltaVal = TMath::Abs(nominalHist_p->GetBinContent(bIX+1) - temp1D_p->GetBinContent(bIX+1));
+
+      //MCStat must be handled special as the syst is stored in the errors not the delta w/ nominal
+      if(systHistNames[jI].find("MCSTAT") != std::string::npos){
+	//Check the deltaVal is 0; i.e. things are working correctly
+	if(deltaVal > TMath::Power(10,-50)){
+	  std::cout << "getSyst ERROR!!!! DeltaVal of Nominal and MCStat variation is greater than 0, return" << std::endl;
+	  return {};
+	}
+
+	//if things check out then just take the error bar as the deltaVal
+	deltaVal = temp1D_p->GetBinError(bIX+1);
+      }
+
       systVals[jI].push_back(deltaVal);
     }    
 
@@ -141,6 +155,26 @@ std::vector<std::vector<Double_t> > getSystRat(TFile* histFilePbPb_p, TFile* his
 
 	Float_t deltaValPbPb = TMath::Abs(ratSystPbPb - ratNom);
 	Float_t deltaValPP = TMath::Abs(ratSystPP - ratNom);
+	
+	if(systHistNamesPbPb[jI].find("MCSTAT") != std::string::npos){
+	  //Check the deltaVal is 0; i.e. things are working correctly
+	  if(deltaValPbPb > TMath::Power(10,-50)){
+	    std::cout << "getSyst ERROR!!!! DeltaVal of Nominal and MCStat variation is greater than 0, return" << std::endl;
+	    return {};
+	  }
+
+	  if(deltaValPP > TMath::Power(10,-50)){
+	    std::cout << "getSyst ERROR!!!! DeltaVal of Nominal and MCStat variation is greater than 0, return" << std::endl;
+	    return {};
+	  }
+	  
+	  //if things check out then just take the error bar as the deltaVal
+	  ratSystPbPb = (temp1DPbPb_p->GetBinContent(bIX+1) + temp1DPbPb_p->GetBinError(bIX+1))/nominalHistPP_p->GetBinContent(bIX+1);
+	  ratSystPP = nominalHistPbPb_p->GetBinContent(bIX+1)/(temp1DPP_p->GetBinContent(bIX+1) + temp1DPP_p->GetBinError(bIX+1));
+
+	  deltaValPbPb = TMath::Abs(ratSystPbPb - ratNom);
+	  deltaValPP = TMath::Abs(ratSystPP - ratNom);
+	}
 
 	deltaVal += TMath::Sqrt(deltaValPbPb*deltaValPbPb + deltaValPP*deltaValPP);
       }
@@ -886,6 +920,7 @@ int gdjPlotResults(std::string inConfigFileName)
       
       if(isStrSame(systStrVect[jI], "JESRTRK")) isSystCorrelated.push_back(false);
       else if(isStrSame(systStrVect[jI], "PRIOR")) isSystCorrelated.push_back(false);
+      else if(isStrSame(systStrVect[jI], "MCSTAT")) isSystCorrelated.push_back(false);
       else isSystCorrelated.push_back(true);
       
       Int_t iterPPSyst = inPPTermFileConfig_p->GetValue((varNameUpper + "_GAMMAPT_PP_" + systStrVect[jI]).c_str(), -1);

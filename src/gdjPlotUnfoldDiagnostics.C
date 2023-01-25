@@ -208,6 +208,7 @@ bool drawBoxAdjacentIterRel(TPad* pad_p, TH1* hist_p, Float_t opacity, std::vect
   
   TBox* box_p = new TBox();
   box_p->SetFillColorAlpha(color, opacity);
+
   for(Int_t bIX = 0; bIX < hist_p->GetNbinsX(); ++bIX){
     Double_t x1 = hist_p->GetBinLowEdge(bIX+1);
     Double_t x2 = hist_p->GetBinLowEdge(bIX+2);
@@ -218,7 +219,7 @@ bool drawBoxAdjacentIterRel(TPad* pad_p, TH1* hist_p, Float_t opacity, std::vect
     box_p->DrawBox(x1, yLow, x2, yHigh);
   }
   delete box_p;
-  
+
   return true;
 }
 
@@ -858,7 +859,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       else if(isIsoPur) recoTruthString = phoSystStrAlt;
       
       recoHistPhoPtJetVarNames.push_back("photonPtJet" + jtVar + "Reco_PreUnfold_" + centBinsStr[cI] + "_" + recoTruthString + "_PURCORR_COMBINED_h");
-      truthHistPhoPtJetVarNames.push_back("photonPtJet" + jtVar + "Truth_PreUnfold_" + centBinsStr[cI] + "_" + recoTruthString + "_TRUTH_COMBINED_h");
+      truthHistPhoPtJetVarNames.push_back("photonPtJet" + jtVar + "Truth_PreUnfold_" + centBinsStr[cI] + "_TRUTH_COMBINED_h");
       statsDeltaPhoPtJetVarNames.push_back("statsDelta_PhoPtJet" + jtVar + "_" + centBinsStr[cI] + "_" + systStrVect[systI] + "_PURCORR_COMBINED_h");
       iterDeltaPhoPtJetVarNames.push_back("iterDelta_PhoPtJet" + jtVar + "_" + centBinsStr[cI] + "_" + systStrVect[systI] + "_PURCORR_COMBINED_h");
       totalDeltaPhoPtJetVarNames.push_back("totalDelta_PhoPtJet" + jtVar + "_" + centBinsStr[cI] + "_" + systStrVect[systI] + "_PURCORR_COMBINED_h");
@@ -977,7 +978,6 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	
 	TH1D* reco1D_p = nullptr;
 	TH2D* reco2D_p = nullptr;
-	  std::cout << "NAME: " << recoHistNames[cI] << std::endl;
 	if(pI == 0){
 	  reco1D_p = (TH1D*)inUnfoldFile_p->Get(recoHistNames[cI].c_str());
 	  getIterativeHists(reco1D_p, unfoldedHists1D_p, statsDelta_p, iterDelta_p, totalDelta_p, doRelativeTerm, gammaPtBinsLowReco, gammaPtBinsHighReco);
@@ -1052,6 +1052,13 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	    break;
 	  }
 	}
+	//MCSTAT our termination unfolding criteria breaks because the error bars are no longer from the measurement but from the MC response matrix
+	//This variation should just take nominal termination
+	if(isStrSame(systStrVect[systI], "MCSTAT")){
+	  termPos = outUnfoldConfig_p->GetValue(("GAMMAPT_" + centBinsStr[cI%centBinsStr.size()] + "_Nominal").c_str(), -1);
+	}
+
+	
 	outUnfoldConfig_p->SetValue(configStr.c_str(), termPos);
 	
 	TH1D* truth1D_p = nullptr;
@@ -1064,8 +1071,6 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	else if(pI == 1){
 	  if(truthHistNames[cI].find("TRUTH_COMBINED") == std::string::npos || isMC) truth2D_p = (TH2D*)inUnfoldFile_p->Get(truthHistNames[cI].c_str());
 	  else if(!isMC) truth2D_p = (TH2D*)inUnfoldFile_p->Get(truthHistNames[cI].c_str());
-	  
-	  std::cout << "TRUTH HIST NAMES: " << truthHistNames[cI] << std::endl;
 	}
       
 	int nGammaPtBinsForUnfold = 1;
@@ -1442,8 +1447,6 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  }  
 	  if(doLogX || pI == 0) gPad->SetLogx();
 	  
-	  std::cout << "OUT OF UNFOLD DRAW INTO LOGX" << std::endl;
-	  
 	  canvBest_p->cd();
 	  padsBest_p[1]->cd();
 
@@ -1482,19 +1485,18 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	      hasDrawn = true;
 	    }
 	    else refoldClone_p->DrawCopy("HIST E1 P SAME");
-
-	    if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIterForLoop+1 << std::endl;
 	    
 	    if(i == termPos){
-	      if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIterForLoop+1 << std::endl;
 	      Float_t tempOpacity = HIJet::Style::GetOpacity(i-1);
 	      drawBoxAdjacentIterRel(padsBest_p[1], refoldClone_p, tempOpacity, &deltaVals);
 	    }
-
+	    
 	    delete refoldClone_p;
 	    delete unfoldClone_p;
 	  }
 
+	  if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
+	  
 	  if(doLogX || pI == 0) gPad->SetLogx();
 	  
 	  //Third panel, divide by truth

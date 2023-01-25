@@ -1,8 +1,9 @@
 #!/bin/bash
 
-GDJDIR=/usatlas/u/cfmcginn/Projects/GDJ/
+GDJDIR=/home/cfmcginn/Projects/GDJ/
 GDJDIRLIB="$GDJDIR"lib
-ROOUNFOLDDIR=/usatlas/u/cfmcginn/Projects/GDJ
+ROOUNFOLDDIR=/home/cfmcginn/Packages/RooUnfold/RooUnfold-build/
+HEPMCLIB=/home/cfmcginn/Packages/HepMC2/hepmc-install/lib/
 #THIS IS A DUMMY FOR MAKE - UNFOLD HAPPENS OFFLINE
 #ROOUNFOLDDIR=$GDJDIR
 
@@ -19,6 +20,13 @@ then
 	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$GDJDIRLIB
     fi
 
+    if [[ $LD_LIBRARY_PATH == *"$HEPMCLIB"* ]]
+    then
+	dummy=0
+    else
+	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HEPMCLIB
+    fi
+    
     if [[ -d $ROOUNFOLDDIR ]]
     then
 	export ROOUNFOLDDIR=$ROOUNFOLDDIR
@@ -35,3 +43,6 @@ then
 else
     echo "GDJDIR given, '$GDJDIR' not found!!! Please fix" 
 fi
+
+#For debugging
+export DOGLOBALDEBUGROOT=0

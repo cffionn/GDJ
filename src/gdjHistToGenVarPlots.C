@@ -1,4 +1,3 @@
-
 //c and cpp
 #include <iostream>
 #include <string>
@@ -26,6 +25,7 @@
 #include "include/globalDebugHandler.h"
 #include "include/HIJetPlotStyle.h"
 #include "include/histDefUtility.h"
+#include "include/photonUtil.h"
 #include "include/plotUtilities.h"
 #include "include/stringUtil.h"
 #include "include/varUtil.h"
