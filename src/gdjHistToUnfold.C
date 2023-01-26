@@ -2019,8 +2019,8 @@ int gdjHistToUnfold(std::string inConfigFileName)
   //Before declaring variables define array size for JES/JER syst. + check it matches input
   const Int_t nJESSys = 18;
   const Int_t nJERSys = 9;
-  //1 (nominal) + nJESSys + 1 (centrality dependent rtrk JESSys manual) + nJERSys                
-  const Int_t nJetSysAndNom = 1 + nJESSys + 1 + nJERSys;
+  //1 (nominal) + nJESSys + 1 (centrality dependent rtrk JESSys manual) + QG Frac + QG Response+ nJERSys                
+  const Int_t nJetSysAndNom = 1 + nJESSys + 1 + 1 + 1 + nJERSys;
 
   if(nJetSysAndNom != nJetSysAndNomInput){
     std::cout << "Mismatch between number of jet systematics expected and input from file \'" << inResponseFileName << "\'. return 1" << std::endl;

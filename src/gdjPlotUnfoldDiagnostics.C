@@ -954,7 +954,6 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	unfoldedHists2D_p.reserve(nIterForLoop);
 	refoldedHists2D_p.reserve(nIterForLoop);
 	
-	std::cout << "Check unfold/refold" << std::endl;
 	for(Int_t i = 1; i < nIterForLoop+1; ++i){
 	  if(pI == 0){
 	    unfold1D_p[i] = (TH1D*)inUnfoldFile_p->Get(unfoldNames[cI][i].c_str());  
@@ -980,6 +979,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	TH2D* reco2D_p = nullptr;
 	if(pI == 0){
 	  reco1D_p = (TH1D*)inUnfoldFile_p->Get(recoHistNames[cI].c_str());
+	  reco1D_p->Print("ALL");
 	  getIterativeHists(reco1D_p, unfoldedHists1D_p, statsDelta_p, iterDelta_p, totalDelta_p, doRelativeTerm, gammaPtBinsLowReco, gammaPtBinsHighReco);
 	}
 	else if(pI == 1){
@@ -1075,7 +1075,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       
 	int nGammaPtBinsForUnfold = 1;
 	if(pI == 1) nGammaPtBinsForUnfold = nGammaPtBins;
-	
+
+	//	std::cout << "CHECKING RECO1D: " << reco1D_p->GetName() << std::endl;
 	std::vector<TH1D*> reco_p = {reco1D_p};
 	std::vector<TH1D*> truth_p = {truth1D_p};
 	std::vector<std::vector<TH1D*> > unfold_p;
@@ -1286,8 +1287,9 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	    HIJet::Style::EquipHistogram(truth_p[gI], 2); //TRUTH IS kAzure-3 lines (atlas style picked up here)
 	    truth_p[gI]->SetMarkerSize(0.00001);
 	  }	
-	  if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
-  
+	  if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", pI=" << pI << std::endl;
+
+	  std::cout << "RECO NAME: " << reco_p[gI]->GetName() << std::endl;
 	  reco_p[gI]->SetMarkerSize(0.00001);
 
 	  if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
