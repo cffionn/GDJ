@@ -1824,6 +1824,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	inTree_p->SetBranchStatus("evtPlane2Phi", 1);
 	inTree_p->SetBranchAddress("evtPlane2Phi", &evtPlane2Phi);
       }
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
       
       //TTree processing; Range of entry handling - default is full range but you can set a start and an endpoint - this just handles that in a somewhat smart way
       ULong64_t nEntriesTemp = inTree_p->GetEntries();
@@ -1836,9 +1838,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
       for(ULong64_t entry = nEntriesStart; entry < nEntriesStart + nSigEntries; ++entry){
 	inTree_p->GetEntry(entry);
 	
-	double vert_z = vert_z_p->at(0);
-	vert_z /= mmToCMDivFactor;
-	if(vert_z <= -15. || vert_z >= 15.) continue;      
+	double vert_z = -999.0;
+	if(doMixVz){
+	  vert_z_p->at(0);
+	  vert_z /= mmToCMDivFactor;
+	}
+
+	//Commenting out this is a relic of CMS analysis
+	//if(vert_z <= -15. || vert_z >= 15.) continue;      
 	//      if(vert_z <= vzMixBinsLow || vert_z >= vzMixBinsHigh) continue;
 	
 	Double_t cent = -1;
@@ -1914,7 +1921,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
       
       double vert_z = vert_z_p->at(0);
       vert_z /= mmToCMDivFactor;
-      if(vert_z <= -15. || vert_z >= 15.) continue;      
+
+      //Commenting out this is a relic of CMS analysis
+      //      if(vert_z <= -15. || vert_z >= 15.) continue;      
       //      if(vert_z <= vzMixBinsLow || vert_z >= vzMixBinsHigh) continue;
       
       Double_t cent = -1;
@@ -2271,7 +2280,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
       //Cut 1: z vertex
       double vert_z = vert_z_p->at(0);
       vert_z /= mmToCMDivFactor;
-      if(vert_z <= -15. || vert_z >= 15.) continue;      
+	//Commenting out this is a relic of CMS analysis
+      //      if(vert_z <= -15. || vert_z >= 15.) continue;      
 
       vzPassing_p->Fill(vert_z);
       ++(eventCounter[0]);
