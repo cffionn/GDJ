@@ -63,6 +63,8 @@ std::string systNameToLegName(std::string inStr)
   else if(isStrSame("JTPTCUT", inStr)) return "Vary Jet p_{T} Cut";
   else if(isStrSame("PRIOR", inStr)) return "Vary Prior";
   else if(isStrSame("JESRTRK", inStr)) return "JES R_{Trk}";
+  else if(isStrSame("QGFRAC", inStr)) return "Frac._{q/g}";
+  else if(isStrSame("QGRESP", inStr)) return "Resp._{q/g}";
   else if(isStrSame("MCSTAT", inStr)) return "MC Stat.";
     
   return inStr;
@@ -298,6 +300,8 @@ std::vector<Double_t> plotSyst(TH1D* nominalHist_p, std::vector<std::vector<Doub
     }    
 
     HIJet::Style::EquipHistogram(systHist_p[sI+1], sI+1);
+    systHist_p[sI+1]->SetMarkerSize(1.5*systHist_p[sI+1]->GetMarkerSize());
+    systHist_p[sI+1]->SetMarkerSize(1.5*systHist_p[sI+1]->GetMarkerSize());
   }
 
   Double_t maxVal = 0.0;
@@ -314,7 +318,9 @@ std::vector<Double_t> plotSyst(TH1D* nominalHist_p, std::vector<std::vector<Doub
   if(maxVal > 1.0) maxVal = 1.0;
   
   systHist_p[0]->SetMaximum(maxVal*1.2);
-  systHist_p[0]->SetMinimum(-maxVal*1.2);
+  //systHist_p[0]->SetMinimum(-maxVal*1.2);
+  //Changed for getting rid of the negative values given everything is being handled as symmetric
+  systHist_p[0]->SetMinimum(-maxVal*0.2);
   
   TCanvas* canv_p = new TCanvas("canvSyst_p", "", width, height);
   setMargins(canv_p, leftMargin, 0.20, 0.25, 2.0*bottomMargin/3.0);  
@@ -324,12 +330,16 @@ std::vector<Double_t> plotSyst(TH1D* nominalHist_p, std::vector<std::vector<Doub
     if(sI == 0) systHist_p[sI]->DrawCopy("HIST");
     else systHist_p[sI]->DrawCopy("HIST SAME");
 
+    systHist_p[sI]->DrawCopy("P SAME");
+
     //Create the mirrored version for negative values
+    //You are symmetrizing everything rn so dont bother with this
+    /*
     for(Int_t bIX = 0; bIX < nBinsX; ++bIX){
       systHist_p[sI]->SetBinContent(bIX+1, -systHist_p[sI]->GetBinContent(bIX+1));
     }
-
-    systHist_p[sI]->DrawCopy("HIST SAME"); 
+    */
+    //    systHist_p[sI]->DrawCopy("HIST P SAME"); 
   }
 
   TLatex* label_p = new TLatex();
@@ -375,7 +385,7 @@ std::vector<Double_t> plotSyst(TH1D* nominalHist_p, std::vector<std::vector<Doub
   
   legs_p[0]->AddEntry(systHist_p[0], totalStr.c_str(), "L");
   for(Int_t sI = 0; sI < systVals.size(); ++sI){
-    legs_p[(sI+1)/(nMaxHist/2)]->AddEntry(systHist_p[sI+1], systNameToLegName(systNames[sI]).c_str(), "L");
+    legs_p[(sI+1)/(nMaxHist/2)]->AddEntry(systHist_p[sI+1], systNameToLegName(systNames[sI]).c_str(), "L P");
   }
 
   legs_p[0]->Draw("SAME");
@@ -502,6 +512,9 @@ int gdjPlotResults(std::string inConfigFileName)
     std::string inJEWELPbPbFileName = config_p->GetValue(("JEWELPBPBFILENAME." + std::to_string(i)).c_str(), "");
     if(check.checkFileExt(inJEWELPbPbFileName, ".root")) inJEWELPbPbFileNames.push_back(inJEWELPbPbFileName);
   }
+
+  //Scaling factor taking from HEP 13 TeV Photon+multijet
+  const Double_t scaleFactorPYT = 1.2;
   //Do jewel overlay only if pp and at least one valid Pb+Pb file exist
   bool doJEWEL = check.checkFileExt(inJEWELPPFileName, ".root") && inJEWELPbPbFileNames.size() > 0;
   //Check that the jewel inputs are matched to our input files (this guarantees things like same-binning
@@ -618,6 +631,13 @@ int gdjPlotResults(std::string inConfigFileName)
   float legY = config_p->GetValue((varNameUpper + "LEGY").c_str(), 0.1);
   float labelX = config_p->GetValue((varNameUpper + "LABELX").c_str(), 0.1);
   float labelY = config_p->GetValue((varNameUpper + "LABELY").c_str(), 0.1);
+
+  float legXCent = config_p->GetValue((varNameUpper + "LEGXCENT").c_str(), legX);
+  float legYCent = config_p->GetValue((varNameUpper + "LEGYCENT").c_str(), legY);
+
+  float labelXCent = config_p->GetValue((varNameUpper + "LABELXCENT").c_str(), labelX);
+  float labelYCent = config_p->GetValue((varNameUpper + "LABELYCENT").c_str(), labelY);
+  float labelAlignRightCent = config_p->GetValue((varNameUpper + "LABELALIGNRIGHTCENT").c_str(), 1);
   
   std::string varPrefix = "";
   if(isStrSame(varNameUpper, "PT")) varPrefix = "JT";
@@ -699,16 +719,10 @@ int gdjPlotResults(std::string inConfigFileName)
   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
   std::vector<std::string> pbpbParams = {"CENTBINS"};
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   if(!checkEnvForParams(inPbPbFileConfig_p, necessaryFileParams)) return 1;
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   if(!checkEnvForParams(inPPFileConfig_p, necessaryFileParams)) return 1;
-  
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
   if(!compEnvParams(inPbPbFileConfig_p, inPPFileConfig_p, paramsToCompare)) return 1;
 
-  
   const Int_t nMaxSyst = 100;
   //Grab all systs
   Int_t nSyst = inPPFileConfig_p->GetValue("NSYST", -1);
@@ -717,6 +731,22 @@ int gdjPlotResults(std::string inConfigFileName)
   std::map<std::string, int> systTypesMap;
   std::map<std::string, std::string> systStrToSystType;
   std::vector<std::string> uniqueSystTypes;
+
+  //Do some prelim splitting of JESJER
+  const Int_t nMaxJESJERFORLEG = 11;
+  Int_t nJESJERCurr = 0;
+  for(unsigned int sI = 0; sI < systTypeVect.size(); ++sI){
+    if(isStrSame(systTypeVect[sI], "JESJER")){
+      if(systStrVect[sI].substr(0,3).find("JES") != std::string::npos || systStrVect[sI].substr(0,2).find("QG") != std::string::npos){
+	systTypeVect[sI] = "JESSET" + std::to_string(nJESJERCurr/nMaxJESJERFORLEG);
+	++nJESJERCurr;
+      }
+      else if(systStrVect[sI].substr(0,3).find("JER") != std::string::npos){
+	systTypeVect[sI] = "JER";
+      }	
+    }
+  }
+  
   
   for(int systI = 0; systI < nSyst; ++systI){
     if(systTypeVect[systI].find("NOMINAL") != std::string::npos) continue;//This is not a syst but a placeholder for convenience
@@ -1230,6 +1260,9 @@ int gdjPlotResults(std::string inConfigFileName)
 	  jewelPbPbHist_p->SetLineStyle(2);
 	  jewelPbPbHist_p->SetLineWidth(4);
 	}
+
+
+	jewelPPHist_p->Scale(scaleFactorPYT);
 	
 	pads_p[0]->cd();
 	jewelPPHist_p->DrawCopy("C HIST SAME");
@@ -1237,11 +1270,14 @@ int gdjPlotResults(std::string inConfigFileName)
 	//Change the line color to black for the tlegend and add both jewels
 	jewelPPHist_p->SetLineColor(1);
 	jewelLeg_p->AddEntry(inJEWELPPHist_p, "Data", "L");
-	jewelLeg_p->AddEntry(jewelPPHist_p, "JEWEL", "L");
+	jewelLeg_p->AddEntry(jewelPPHist_p, ("JEWEL x " + prettyString(scaleFactorPYT,1,false)).c_str(), "L");
 
 	jewelLeg_p->Draw("SAME");
 	
-	if(jewelPbPbHist_p != nullptr) jewelPbPbHist_p->DrawCopy("C HIST SAME");
+	if(jewelPbPbHist_p != nullptr){
+	  jewelPbPbHist_p->Scale(scaleFactorPYT);
+	  jewelPbPbHist_p->DrawCopy("C HIST SAME");
+	}
       }
       pads_p[0]->cd();
       
@@ -1259,19 +1295,28 @@ int gdjPlotResults(std::string inConfigFileName)
 	ppHist_p->DrawCopy("HIST E1 P SAME");
 
 	HIJet::Style::EquipHistogram(pyt8Truth_p, 5);
+	pyt8Truth_p->Scale(scaleFactorPYT);
 	pyt8Truth_p->DrawCopy("C HIST SAME");
+	pyt8Truth_p->Scale(1.0/scaleFactorPYT);
 
-	pyt8Truth_p->Print("ALL");
 	
 	HIJet::Style::EquipHistogram(jewelPPHist_p, 2);
 	jewelPPHist_p->SetLineStyle(2);
 	jewelPPHist_p->SetLineWidth(4);
 
-	if(doJEWEL) jewelPPHist_p->DrawCopy("C HIST SAME");
+	if(doJEWEL){
+	  HIJet::Style::EquipHistogram(jewelPPHist_p, 2);
+	  jewelPPHist_p->SetLineStyle(2);
+	  jewelPPHist_p->SetLineWidth(4);
+
+	  jewelPPHist_p->DrawCopy("C HIST SAME");
+	  //	  jewelPPHist_p->Scale(1.0/scaleFactorPP);
+
+	  jewelPPHist_p->SetLineColor(1);
+	}	  
 
 	gPad->SetTicks();
 	
-	jewelPPHist_p->SetLineColor(1);
       }
       
       Float_t integral = 0.0;
@@ -1514,6 +1559,9 @@ int gdjPlotResults(std::string inConfigFileName)
       if(cI == 0){
 	padsPP_p[1]->cd();
 	if(doJEWEL){
+	  //	  jewelPPHist_p->Scale(scaleFactorPP);
+	  pyt8Truth_p->Scale(scaleFactorPYT);
+
 	  jewelPPHist_p->Divide(ppHist_p);
 	  pyt8Truth_p->Divide(ppHist_p);
 
@@ -1544,11 +1592,18 @@ int gdjPlotResults(std::string inConfigFileName)
 	  Double_t max = TMath::Max(jewelPPHist_p->GetMaximum(), pyt8Truth_p->GetMaximum());
 	  Double_t min = TMath::Min(jewelPPHist_p->GetMinimum(), pyt8Truth_p->GetMinimum());
 
+	  if(max < 1.0) max = 1.0;
+	  
 	  jewelPPHist_p->SetMaximum(max + 0.1*(max-min));
 	  jewelPPHist_p->SetMinimum(min - 0.1*(max-min));
 	  
 	  jewelPPHist_p->DrawCopy("HIST C");
 	  pyt8Truth_p->DrawCopy("HIST C SAME");
+
+	  TLine* line_p = new TLine();
+	  line_p->SetLineStyle(2);
+	  line_p->DrawLine(jewelPPHist_p->GetBinLowEdge(1), 1.0, jewelPPHist_p->GetBinLowEdge(jewelPPHist_p->GetXaxis()->GetNbins()+1), 1.0);
+	  delete line_p;
 
 	  gPad->SetTicks();
 	  
@@ -1626,13 +1681,13 @@ int gdjPlotResults(std::string inConfigFileName)
 	legPP_p->SetTextFont(42);
 	legPP_p->SetTextSize(0.035/(1.0 - padSplit));
 	legPP_p->SetBorderSize(0);
-	leg_p->SetFillStyle(0);
+	legPP_p->SetFillStyle(0);
 
 	HIJet::Style::EquipHistogram(jewelPPHist_p, 2);
 		
 	legPP_p->AddEntry(ppHist_p, "p+p", "P L");
-	legPP_p->AddEntry(pyt8Truth_p, "PYTHIA 8", "L");
-	if(doJEWEL) legPP_p->AddEntry(jewelPPHist_p, "PYTHIA 6", "L");
+	legPP_p->AddEntry(pyt8Truth_p, ("PYTHIA 8 x " + prettyString(scaleFactorPYT, 1, false)).c_str(), "L");
+	if(doJEWEL) legPP_p->AddEntry(jewelPPHist_p, ("PYTHIA 6 x " + prettyString(scaleFactorPYT, 1, false)).c_str(), "L");
 	  
 	legPP_p->Draw("SAME");
 
@@ -1741,7 +1796,7 @@ int gdjPlotResults(std::string inConfigFileName)
       TCanvas* canv_p = new TCanvas("canv_p", "", width, 900.0);
       setMargins(canv_p, leftMargin, topMargin, rightMargin, bottomMargin*padSplit);
 
-      TLegend* leg_p = new TLegend(legX, legY - 0.04*ratioHistsPerCentrality.size(), legX+0.25, legY);
+      TLegend* leg_p = new TLegend(legXCent, legYCent - 0.04*ratioHistsPerCentrality.size(), legXCent+0.25, legYCent);
       leg_p->SetTextFont(42);
       leg_p->SetTextSize(0.035);
       leg_p->SetBorderSize(0);
@@ -1772,10 +1827,10 @@ int gdjPlotResults(std::string inConfigFileName)
       label_p->SetNDC();
       label_p->SetTextFont(42);
       label_p->SetTextSize(0.035);
-      label_p->SetTextAlign(31);
+      if(labelAlignRightCent) label_p->SetTextAlign(31);
 
       for(unsigned int i = 0; i < ratioLabelsPerCentrality[0].size(); ++i){
-	label_p->DrawLatex(labelX, labelY - 0.053*i, ratioLabelsPerCentrality[0][i].c_str());
+	label_p->DrawLatex(labelXCent, labelYCent - 0.05*i, ratioLabelsPerCentrality[0][i].c_str());
       }
       delete label_p;
 

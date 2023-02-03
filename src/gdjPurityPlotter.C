@@ -382,6 +382,7 @@ int gdjPurityPlotter(const std::string inConfigFileName)
     purityFile_p->cd();
 
     std::vector<TF1*> fits_p;
+    std::vector<TH1D*> hists_p;
     
     TCanvas* canv_p = new TCanvas("canv_p", "", 900, 900);
     setMargins(canv_p, leftMargin, 0.03, 0.03, bottomMargin);
@@ -407,29 +408,43 @@ int gdjPurityPlotter(const std::string inConfigFileName)
       }
 
       fits_p.push_back((TF1*)purityFile_p->Get(("fit_purity_" + centStr + "_Eta0p00to2p37").c_str()));
+      hists_p.push_back((TH1D*)purityFile_p->Get(("h1D_photon_purity_vs_pt_" + centStr + "_Eta0p00to2p37_h").c_str()));
       HIJet::Style::EquipTF1(fits_p[cI], nCentBins - cI);
+      HIJet::Style::EquipHistogram(hists_p[cI], nCentBins - cI);
 
-      fits_p[cI]->SetMaximum(1.05);
-      fits_p[cI]->SetMinimum(0.45);
-      fits_p[cI]->SetTitle("");
-      /*
-      fits_p[cI]->GetXaxis()->SetTitleFont(titleFont);
-      fits_p[cI]->GetYaxis()->SetTitleFont(titleFont);
-      fits_p[cI]->GetXaxis()->SetTitleSize(titleSize);
-      fits_p[cI]->GetYaxis()->SetTitleSize(titleSize);
-      fits_p[cI]->GetXaxis()->SetTitleColor(1);
-      fits_p[cI]->GetYaxis()->SetTitleColor(1);
-      */
-      fits_p[cI]->GetXaxis()->SetTitle("Photon p_{T} [GeV]");
-      fits_p[cI]->GetYaxis()->SetTitle("Purity");
+      hists_p[cI]->SetMaximum(1.05);
+      hists_p[cI]->SetMinimum(0.45);
+      hists_p[cI]->SetTitle("");
       
-      fits_p[cI]->GetXaxis()->SetTitleOffset(2.0);
-      fits_p[cI]->GetYaxis()->SetTitleOffset(1.0);
-      
-      if(cI == 0) fits_p[cI]->Draw("L");
-      else fits_p[cI]->Draw("L SAME");
+      hists_p[cI]->GetXaxis()->SetTitleFont(titleFont);
+      hists_p[cI]->GetYaxis()->SetTitleFont(titleFont);
+      hists_p[cI]->GetXaxis()->SetTitleSize(titleSize);
+      hists_p[cI]->GetYaxis()->SetTitleSize(titleSize);
 
-      leg_p->AddEntry(fits_p[cI], centLabel.c_str(), "L");
+      hists_p[cI]->GetXaxis()->SetLabelFont(titleFont);
+      hists_p[cI]->GetYaxis()->SetLabelFont(titleFont);
+      hists_p[cI]->GetXaxis()->SetLabelSize(labelSize);
+      hists_p[cI]->GetYaxis()->SetLabelSize(labelSize);
+
+      hists_p[cI]->GetXaxis()->SetTitleColor(1);
+      hists_p[cI]->GetYaxis()->SetTitleColor(1);
+      
+      hists_p[cI]->GetXaxis()->SetTitle("Photon p_{T} [GeV]");
+      hists_p[cI]->GetYaxis()->SetTitle("Purity");
+      
+      hists_p[cI]->GetYaxis()->SetTitleOffset(1.4);
+      hists_p[cI]->GetXaxis()->SetTitleOffset(1.5);
+
+      hists_p[cI]->GetYaxis()->CenterTitle(0);
+      hists_p[cI]->GetXaxis()->CenterTitle(0);
+
+	
+      if(cI == 0) hists_p[cI]->Draw("HIST E1 P");
+      else hists_p[cI]->Draw("HIST E1 P SAME");
+
+      fits_p[cI]->Draw("L SAME");
+           
+      leg_p->AddEntry(hists_p[cI], centLabel.c_str(), "L P");
     }
     
     gPad->SetLogx();

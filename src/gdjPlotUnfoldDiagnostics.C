@@ -1289,7 +1289,6 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  }	
 	  if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", pI=" << pI << std::endl;
 
-	  std::cout << "RECO NAME: " << reco_p[gI]->GetName() << std::endl;
 	  reco_p[gI]->SetMarkerSize(0.00001);
 
 	  if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;

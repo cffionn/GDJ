@@ -292,10 +292,13 @@ std::string plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::
 	std::string histName = hists_p[cI]->GetName();
 	if(histName.find("yjHist_p") != std::string::npos) continue;
 	if(refHist_p[hI] == hists_p[cI]) continue;
-       	
+
+	if(histName.find("mixTemp_h") != std::string::npos) continue;
+	if(histName.find("rawTemp_h") != std::string::npos) continue;
+	if(histName.find("mcTemp_h") != std::string::npos) continue;
+	
 	TH1D* tempHist_p = new TH1D("tempHist_p", "", nBinsTemp, binsTemp);	
 	tempHist_p->Divide(hists_p[cI], refHist_p[hI]);
-
 	
 	Double_t tempMin = getMinGTZero(tempHist_p);
 	Double_t tempMax = getMax(tempHist_p);
@@ -317,6 +320,7 @@ std::string plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::
       if(tempMax > varyMax) varyMax = tempMax;
     }    
   }
+
   
   for(unsigned int cI = 0; cI < hists_p.size(); ++cI){
     leg_p->AddEntry(hists_p[cI], legStrs[cI].c_str(), "P L");
@@ -350,6 +354,8 @@ std::string plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::
     if(yLabels[0].size() != 0) hists_p[cI]->GetYaxis()->SetTitle(yLabels[0].c_str());
 
     //    if(yLabelNominal.find("#frac") != std::string::npos) hists_p[cI]->GetYaxis()->SetTitleOffset(yOffset - 0.2);
+
+    
     
     if(cI == 0) hists_p[cI]->DrawCopy("HIST E1 P");
     else hists_p[cI]->DrawCopy("HIST E1 P SAME");
@@ -364,7 +370,11 @@ std::string plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::
       if(refHist_p[hI] == hists_p[cI]) continue;
       std::string histName = hists_p[cI]->GetName();
       if(histName.find("yjHist_p") != std::string::npos) continue;
+      if(histName.find("mixTemp_h") != std::string::npos) continue;
+      if(histName.find("rawTemp_h") != std::string::npos) continue;
+      if(histName.find("mcTemp_h") != std::string::npos) continue;
 
+      //      std::cout << "HIST N hI : " << hI << ", " << histName << std::endl;
       canv_p->cd();
       pads_p[hI+1]->cd();
 
@@ -373,6 +383,8 @@ std::string plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::
       tempHist_p->GetXaxis()->SetTitle(hists_p[cI]->GetXaxis()->GetTitle());      
       tempHist_p->Divide(hists_p[cI], refHist_p[hI]);
 
+      //      tempHist_p->Print("ALL");
+      
       //If isMC, write out the relative non-closure to outFile_p
       if(isMC){
 	std::string numName = hists_p[cI]->GetName();
@@ -465,9 +477,9 @@ std::string plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::
       else tempHist_p->GetYaxis()->SetNdivisions(505);
 
       tempHist_p->GetXaxis()->SetNdivisions(505);
-      
-      if(cI == 0) tempHist_p->DrawCopy("HIST E1 P");
-      else tempHist_p->DrawCopy("HIST E1 P SAME");  
+          
+      tempHist_p->DrawCopy("HIST E1 P");
+      //else tempHist_p->DrawCopy("HIST E1 P SAME");  
 
       gPad->SetTicks();
       
@@ -628,9 +640,6 @@ std::string plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::
     }
   }
 
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
-  
   if(nPads == 3){
     canv_p->cd();
     pads_p[2]->cd();
@@ -1498,10 +1507,12 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	  
 	  HIJet::Style::EquipHistogram(mixTemp_p, equipPos);    
 	  ++equipPos;
+
+	  HIJet::Style::EquipHistogram(subTemp_p, 1);    
 	  
 	  std::vector<TH1D*> refHists_p = {mixTemp_p};
 	  std::vector<std::string> refLegStrs = {"Mixed"};
-	  std::vector<std::string> yLabels = {"", ("X/#color[" + std::to_string(mixTemp_p->GetMarkerColor()) + "]{Bkgd}").c_str()};
+	  std::vector<std::string> yLabels = {"", ("#frac{#color[" +  std::to_string(subTemp_p->GetMarkerColor())+ "]{Raw-Mix}}{#color[" + std::to_string(mixTemp_p->GetMarkerColor()) + "]{Bkgd}}").c_str()};
 	  std::vector<bool> yLogs = {false, true};
 	  if(isMC && mcTemp_p != nullptr){
 	    HIJet::Style::EquipHistogram(mcTemp_p, equipPos);
@@ -1509,7 +1520,7 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
 	    refHists_p.push_back(mcTemp_p);
 	    refLegStrs.push_back("Truth Matched");
 
-	    yLabels.push_back("#frac{Reco.}{#color[" + std::to_string(mcTemp_p->GetMarkerColor()) + "]{Truth-Matched}}");
+	    yLabels.push_back("#frac{#color[" + std::to_string(subTemp_p->GetMarkerColor()) + "]{Raw-Mix}}{#color[" + std::to_string(mcTemp_p->GetMarkerColor()) + "]{Truth-Matched}}");
 	    yLogs.push_back(false);
 	  }
 
