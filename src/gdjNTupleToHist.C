@@ -1156,6 +1156,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
   mixMachine* photonPtJtDPhiJJVCent_MixMachine_Sideband_p[nMaxCentBins][nBarrelAndEC][nMaxSyst];
   mixMachine* photonPtJtDRJJVCent_MixMachine_Sideband_p[nMaxCentBins][nBarrelAndEC][nMaxSyst];
 
+  //Dhanush request, basic kinematics
+  const Int_t nBasicKin = 2;
+  std::vector<std::string> kinStr = {"Leading", "Subleading"};
+  TH1D* multijetPt_h[nMaxCentBins][nBasicKin];
+  TH1D* multijetEta_h[nMaxCentBins][nBasicKin];
+  TH1D* multijetPhi_h[nMaxCentBins][nBasicKin];
+  TH1D* multijetDPhiPho_h[nMaxCentBins][nBasicKin];
+
   TH2D* drJJ_OneJetNoTruth_p[nMaxCentBins];
   TH2D* singleJetResponse_OneJetNoTruth_p[nMaxCentBins];
   TH2D* doubleJetResponse_OneJetNoTruth_p[nMaxCentBins];
@@ -1308,6 +1316,15 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
   for(Int_t cI = 0; cI < nCentBins; ++cI){
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
+    //Do the basic kin declaration
+    //Req. Dhanush 2023.02.01
+    for(Int_t kI = 0; kI < nBasicKin; ++kI){
+      multijetPt_h[cI][kI] = new TH1D(("multijetPt_" + centBinsStr[cI] + "_" + kinStr[kI] + "_h").c_str(), (";" +  kinStr[kI] + " Jet p_{T} [GeV];Counts").c_str(), nJtPtBins, jtPtBins);
+      multijetEta_h[cI][kI] = new TH1D(("multijetEta_" + centBinsStr[cI] + "_" + kinStr[kI] + "_h").c_str(), (";" +  kinStr[kI] + " Jet #eta;Counts").c_str(), nJtEtaBins, jtEtaBins);
+      multijetPhi_h[cI][kI] = new TH1D(("multijetPhi_" + centBinsStr[cI] + "_" + kinStr[kI] + "_h").c_str(), (";" +  kinStr[kI] + " Jet #phi;Counts").c_str(), nPhiBins, phiBins);
+     multijetDPhiPho_h[cI][kI] = new TH1D(("multijetDPhiPho_" + centBinsStr[cI] + "_" + kinStr[kI] + "_h").c_str(), (";" +  kinStr[kI] + " Jet #Delta#phi_{J,#gamma};Counts").c_str(), nDPhiBins, dPhiBins);
+    }
 
     for(Int_t eI = 0; eI < nGammaEtaBinsSub+1; ++eI){
       photonPtVCentEta_p[cI][eI] = new TH1D(("photonPtVCentEta_" + centBinsStr[cI] + "_" + gammaEtaBinsSubStr[eI]+ "_h").c_str(), ";#gamma p_{T} [GeV];Counts", nGammaPtBins, gammaPtBins);
@@ -2886,9 +2903,21 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		  
 		  //If it fails the reco cut we do not fill
 		  if(multiJtDPhiReco < gammaMultiJtDPhiCut) continue;	    
-
-		  
+	       		 		  
 		  if(isGoodRecoSignal){
+		    
+		    if(systI == 0){
+		      multijetPt_h[centPos][0]->Fill(goodRecoJets[gI].Pt(), fullWeight);
+		      multijetEta_h[centPos][0]->Fill(goodRecoJets[gI].Eta(), fullWeight);
+		      multijetPhi_h[centPos][0]->Fill(goodRecoJets[gI].Phi(), fullWeight);
+		      multijetDPhiPho_h[centPos][0]->Fill(TMath::Abs(getDPHI(goodRecoJets[gI].Phi(), photon_phi_p->at(pI))), fullWeight);
+		      
+		      multijetPt_h[centPos][1]->Fill(goodRecoJets[gI2].Pt(), fullWeight);
+		      multijetEta_h[centPos][1]->Fill(goodRecoJets[gI2].Eta(), fullWeight);
+		      multijetPhi_h[centPos][1]->Fill(goodRecoJets[gI2].Phi(), fullWeight);
+		      multijetDPhiPho_h[centPos][1]->Fill(TMath::Abs(getDPHI(goodRecoJets[gI2].Phi(), photon_phi_p->at(pI))), fullWeight);
+		    }
+
 		    if(xJJValueGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRaw(xJJValue, subJtGammaPtValReco, fullWeight);
 		    if(aJJValueGood) photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRaw(aJJValue, subJtGammaPtValReco, fullWeight);
 		  
@@ -2906,7 +2935,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 			else{
 			  photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRawNoTruthMatch(xJJValue, subJtGammaPtValReco, fullWeight);		  		      
 			}
-		      }
+		      }///////////////
 		      
 		      //aJJ Handling
 		      if(aJJValueGood){
@@ -4033,6 +4062,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
     
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
+    //Write out multijet kinematics
+    for(Int_t kI = 0; kI < nBasicKin; ++kI){
+      multijetPt_h[cI][kI]->Write("", TObject::kOverwrite);
+      multijetEta_h[cI][kI]->Write("", TObject::kOverwrite);
+      multijetPhi_h[cI][kI]->Write("", TObject::kOverwrite);
+      multijetDPhiPho_h[cI][kI]->Write("", TObject::kOverwrite);
+    }
+
     for(Int_t eI = 0; eI < nGammaEtaBinsSub+1; ++eI){
       if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
       photonPtVCentEta_p[cI][eI]->Write("", TObject::kOverwrite);
@@ -4516,6 +4553,15 @@ int gdjNTupleToHist(std::string inConfigFileName)
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   for(Int_t cI = 0; cI < nCentBins; ++cI){
+    //Deleting Multijet kinematics
+    for(Int_t kI = 0; kI < nBasicKin; ++kI){
+      delete multijetPt_h[cI][kI];
+      delete multijetEta_h[cI][kI];
+      delete multijetPhi_h[cI][kI];
+      delete multijetDPhiPho_h[cI][kI];
+    }
+
+
     for(Int_t eI = 0; eI < nGammaEtaBinsSub+1; ++eI){
       delete photonPtVCentEta_p[cI][eI];
 
