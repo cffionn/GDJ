@@ -631,7 +631,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
     outTree_p->Branch("akt4hi_jetconstit_phi", &akt4hi_jetconstit_phi_p);
   }
 
-  if(!isPP){   
+  if(!isPP && false){   
     outTree_p->Branch("akt10hi_jet_n", &akt10hi_jet_n_, "akt10hi_jet_n/I");
     outTree_p->Branch("akt10hi_etajes_jet_pt", &akt10hi_etajes_jet_pt_p);
     outTree_p->Branch("akt10hi_etajes_jet_eta", &akt10hi_etajes_jet_eta_p);
@@ -714,7 +714,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
     outTree_p->Branch("akt4_truth_jet_partonid", &akt4_truth_jet_partonid_p);
     outTree_p->Branch("akt4_truth_jet_recopos", &akt4_truth_jet_recopos_p);
 
-    if(!isPP){    
+    if(!isPP && false){    
       outTree_p->Branch("akt10_truth_jet_n", &akt10_truth_jet_n_, "akt10_truth_jet_n/I");
       outTree_p->Branch("akt10_truth_jet_pt", &akt10_truth_jet_pt_p);
       outTree_p->Branch("akt10_truth_jet_eta", &akt10_truth_jet_eta_p);
@@ -836,6 +836,8 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	  continue;
 	}
       }
+
+      if(branch.find("akt10hi_") != std::string::npos) continue;
 	
       if(!vectContainsStr(branch, &listOfBranchesIn)){
 	listOfBranchesIn.push_back(branch);
@@ -1219,7 +1221,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       inTree_p->SetBranchAddress("akt4hi_jetconstit_eta", &akt4hi_jetconstit_eta_p);
     }    
 
-    if(!isPP){      
+    if(!isPP && false){      
       inTree_p->SetBranchAddress("akt10hi_jet_n", &akt10hi_jet_n_);
       inTree_p->SetBranchAddress("akt10hi_etajes_jet_pt", &akt10hi_etajes_jet_pt_p);
       inTree_p->SetBranchAddress("akt10hi_etajes_jet_eta", &akt10hi_etajes_jet_eta_p);
@@ -1304,7 +1306,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       inTree_p->SetBranchAddress("akt4_truth_jet_recopos", &akt4_truth_jet_recopos_p);
 
 
-      if(!isPP){	
+      if(!isPP && false){	
 	inTree_p->SetBranchAddress("akt10_truth_jet_n", &akt10_truth_jet_n_);
 	inTree_p->SetBranchAddress("akt10_truth_jet_pt", &akt10_truth_jet_pt_p);
 	inTree_p->SetBranchAddress("akt10_truth_jet_eta", &akt10_truth_jet_eta_p);
@@ -1450,7 +1452,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       if(minNRecoR4 > akt4hi_jet_n_) minNRecoR4 = akt4hi_jet_n_;
       if(maxNRecoR4 < akt4hi_jet_n_) maxNRecoR4 = akt4hi_jet_n_;
 
-      if(!isPP){
+      if(!isPP && false){
 	if(minNRecoR10 > akt10hi_jet_n_) minNRecoR10 = akt10hi_jet_n_;
 	if(maxNRecoR10 < akt10hi_jet_n_) maxNRecoR10 = akt10hi_jet_n_;
       }
@@ -1465,7 +1467,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	if(minNTruthR4 > akt4_truth_jet_n_) minNTruthR4 = akt4_truth_jet_n_;
 	if(maxNTruthR4 < akt4_truth_jet_n_) maxNTruthR4 = akt4_truth_jet_n_;
 
-	if(!isPP){
+	if(!isPP && false){
 	  if(minNTruthR10 > akt10_truth_jet_n_) minNTruthR10 = akt10_truth_jet_n_;
 	  if(maxNTruthR10 < akt10_truth_jet_n_) maxNTruthR10 = akt10_truth_jet_n_;
 	}
@@ -1577,7 +1579,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       }
 
       //akt10 jet collection size checks
-      if(!isPP){
+      if(!isPP && false){
 	if(akt10hi_etajes_jet_pt_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
 	if(akt10hi_etajes_jet_eta_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
 	if(akt10hi_etajes_jet_phi_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
@@ -1669,7 +1671,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	if(akt4_truth_jet_recopos_p->size() != (unsigned int)akt4_truth_jet_n_) std::cout << "TRUTH JET R4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
 	if(akt4_truth_jet_partonid_p->size() != (unsigned int)akt4_truth_jet_n_) std::cout << "TRUTH JET R4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
 
-	if(!isPP){
+	if(!isPP && false){
 	  if(akt10_truth_jet_pt_p->size() != (unsigned int)akt10_truth_jet_n_) std::cout << "TRUTH JET R10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
 	  if(akt10_truth_jet_eta_p->size() != (unsigned int)akt10_truth_jet_n_) std::cout << "TRUTH JET R10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
 	  if(akt10_truth_jet_phi_p->size() != (unsigned int)akt10_truth_jet_n_) std::cout << "TRUTH JET R10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;

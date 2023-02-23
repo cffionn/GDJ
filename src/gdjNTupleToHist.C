@@ -224,6 +224,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 					      "JETR",
 					      "GAMMAEXCLUSIONDR",
 					      "MIXJETEXCLUSIONDR",
+					      "DOCENTMIXCORRECT",
+					      "CENTMIXCORRECTFILE",
 					      "DOMIX",
 					      "MIXCAP",
 					      "NMIXEVENTS",
@@ -358,6 +360,28 @@ int gdjNTupleToHist(std::string inConfigFileName)
   if(doMix){
     if(!checkEnvForParams(config_p, mixParams)) return 1;
   } 
+
+  const bool doCentMixCorrect = (bool)config_p->GetValue("DOCENTMIXCORRECT", 0);
+  std::map<int, double> centMixCorrectionFactorMap;
+
+  if(doCentMixCorrect){
+    std::string centMixCorrectFileName = config_p->GetValue("CENTMIXCORRECTFILE", "");
+    std::ifstream centMixCorrectFile(centMixCorrectFileName.c_str());
+
+    std::string tempLine;
+    while(std::getline(centMixCorrectFile, tempLine)){
+      std::vector<std::string> lineVect = strToVect(tempLine);
+
+      int cent = std::stoi(lineVect[0]);
+      unsigned long long num = std::stoi(lineVect[1]);
+      unsigned long long denom = std::stoi(lineVect[2]);
+      double factor = num;
+      factor /= (double)denom;
+
+      centMixCorrectionFactorMap[cent] = factor;
+    }
+    centMixCorrectFile.close();
+  }
   
   const Int_t nMaxMixBins = 200;
   bool doMixCent = false;
@@ -2399,6 +2423,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
       ++(eventCounter[3]);
       
       Float_t mixWeight = fullWeight/(double)nMixEvents;
+      if(doCentMixCorrect){
+	mixWeight *= centMixCorrectionFactorMap[cent];       
+      }
+
+
       unsigned long long tempKey = runLumiKey.GetKey({(unsigned long long)runNumber, (unsigned long long)lumiBlock});    
       runLumiIsFired[tempKey] = true;
       

@@ -24,6 +24,7 @@
 //Local
 #include "include/checkMakeDir.h"
 #include "include/envUtil.h"
+#include "include/returnFileList.h"
 #include "include/stringUtil.h"
 
 /// Utility function copied from example_UsingIterators.cc in HepMC
@@ -67,6 +68,20 @@ int gdjHEPMCToRoot(std::string inConfigFileName)
   std::string outROOTFileName = config_p->GetValue("OUTROOTFILENAME", "");
   std::string jetRs = config_p->GetValue("JETRS", "");
 
+  std::vector<std::string> inHEPFileNames;
+  if(check.checkDir(inHEPFileName)){
+    inHEPFileNames = returnFileList(inHEPFileName, "hepmc");
+    if(inHEPFileNames.size() == 0){
+      std::cout << "Given inHEPFileName \'" << inHEPFileName << "\' is not a valid directory containing hepMCFiles or a hepmc file. return 1" << std::endl;
+      return 1;
+    }
+  }
+  else if(check.checkFileExt(inHEPFileName, "hepmc")) inHEPFileNames.push_back(inHEPFileName);
+  else{
+    std::cout << "Given inHEPFileName \'" << inHEPFileName << "\' is not a valid directory containing hepMCFiles or a hepmc file. return 1" << std::endl;
+    return 1;
+  }
+
   const Double_t jtPtMin = config_p->GetValue("JETPTMIN", 15.0);
   
   std::vector<int> jetRVect = strToVectI(jetRs);
@@ -101,6 +116,7 @@ int gdjHEPMCToRoot(std::string inConfigFileName)
   Float_t eta_[nMaxPart];
   Float_t phi_[nMaxPart];
   Float_t m_[nMaxPart];
+  Float_t genM_[nMaxPart];
   Int_t pid_[nMaxPart];
 
   const Int_t nMaxJets = 100;
@@ -119,6 +135,7 @@ int gdjHEPMCToRoot(std::string inConfigFileName)
   jewelTree_p->Branch("eta", eta_, "eta[nPart]/F");
   jewelTree_p->Branch("phi", phi_, "phi[nPart]/F");
   jewelTree_p->Branch("m", m_, "m[nPart]/F");
+  jewelTree_p->Branch("genM", genM_, "genM[nPart]/F");
   jewelTree_p->Branch("pid", pid_, "pid[nPart]/I");  				  
 
   for(unsigned int jI = 0; jI < jetRVect.size(); ++jI){
@@ -133,81 +150,88 @@ int gdjHEPMCToRoot(std::string inConfigFileName)
 
   //Quickly analyze hep file name for centrality
   std::string centStr = "PP";
-  if(inHEPFileName.find("Cent") != std::string::npos){
-    centStr = inHEPFileName.substr(inHEPFileName.find("Cent"), inHEPFileName.size());
+  if(inHEPFileNames[0].find("Cent") != std::string::npos){
+    centStr = inHEPFileNames[0].substr(inHEPFileNames[0].find("Cent"), inHEPFileNames[0].size());
     centStr = centStr.substr(0, centStr.rfind("."));
   }
   
-  //Following hepmc example_EventSelection.cc
-  HepMC::IO_GenEvent ascii_in(inHEPFileName.c_str(),std::ios::in);
-  HepMC::GenEvent* evt = ascii_in.read_next_event();
   ULong64_t nEvents = 0;
-  while(evt){
-    evtWeight_ = evt->weights().weights()[0];
+  std::cout << "Processing " << inHEPFileNames.size() << " files..." << std::endl;
+  for(unsigned int hI = 0; hI < inHEPFileNames.size(); ++hI){
+    std::cout << " Processing file " << hI << "/" << inHEPFileNames.size() << "..." << std::endl;
+
+    //Following hepmc example_EventSelection.cc
+    HepMC::IO_GenEvent ascii_in(inHEPFileNames[hI].c_str(),std::ios::in);
+    HepMC::GenEvent* evt = ascii_in.read_next_event();
+    while(evt){
+      evtWeight_ = evt->weights().weights()[0];
     
-    //grab all final state particles
-    IsStateFinal isFinal;
-    std::vector<HepMC::GenParticle*> finalStateParticles;
-    for(HepMC::GenEvent::particle_iterator p = evt->particles_begin(); p != evt->particles_end(); ++p){
-      if(isFinal(*p)) finalStateParticles.push_back(*p);
-    }
-    
-    nPart_ = 0;
-    std::vector<fastjet::PseudoJet> particlesForCluster;
-    for(auto const & particle : finalStateParticles){
-      TLorentzVector tL;
-      tL.SetPtEtaPhiM(particle->momentum().perp(), particle->momentum().eta(), particle->momentum().phi(), particle->momentum().m());
-      particlesForCluster.push_back(fastjet::PseudoJet(tL.Px(), tL.Py(), tL.Pz(), tL.E()));
-
-      //keep 10 gev photons only
-      if(particle->pdg_id() != 22) continue;
-      if(particle->momentum().perp() < 10.0) continue;
-
-      pt_[nPart_] = particle->momentum().perp();
-      eta_[nPart_] = particle->momentum().eta();
-      phi_[nPart_] = particle->momentum().phi();
-      m_[nPart_] = particle->momentum().m();
-      pid_[nPart_] = particle->pdg_id();
-      
-      ++nPart_;
-    }
-
-    if(nPart_ > nMaxPart){
-      std::cout << "ERROR: nPart=" << nPart_ << " exceeds maximum allowed value nMaxPart=" << nMaxPart << ". Please extend array size. return 1" << std::endl;
-      return 1;
-    }
-
-    //Cluster jets
-    for(unsigned int rI = 0; rI < jetRVect.size(); ++rI){
-      double jetR = jetRVect[rI];
-      jetR /= 10.0;
-
-      fastjet::JetDefinition jetDef(fastjet::antikt_algorithm, jetR);
-      fastjet::ClusterSequence cs(particlesForCluster, jetDef);
-      std::vector<fastjet::PseudoJet> jets = fastjet::sorted_by_pt(cs.inclusive_jets(jtPtMin));
-
-      nJt_[rI] = 0;
-
-      for(unsigned int jI = 0; jI < jets.size(); ++jI){
-	jtpt_[rI][jI] = jets[jI].pt();
-	jtphi_[rI][jI] = jets[jI].phi_std();
-	jteta_[rI][jI] = jets[jI].eta();
-	jtm_[rI][jI] = jets[jI].m();
-
-	++nJt_[rI];
+      //grab all final state particles
+      IsStateFinal isFinal;
+      std::vector<HepMC::GenParticle*> finalStateParticles;
+      for(HepMC::GenEvent::particle_iterator p = evt->particles_begin(); p != evt->particles_end(); ++p){
+	if(isFinal(*p)) finalStateParticles.push_back(*p);
       }
-    }
     
-    jewelTree_p->Fill();
-    
-    //iterate event counter
-    ++nEvents;
+      nPart_ = 0;
+      std::vector<fastjet::PseudoJet> particlesForCluster;
+      for(auto const & particle : finalStateParticles){
+	TLorentzVector tL;
+	tL.SetPtEtaPhiM(particle->momentum().perp(), particle->momentum().eta(), particle->momentum().phi(), particle->momentum().m());
+	particlesForCluster.push_back(fastjet::PseudoJet(tL.Px(), tL.Py(), tL.Pz(), tL.E()));
+	
+	//keep 10 gev photons only
+	//      if(particle->pdg_id() != 22) continue;
+	//      if(particle->momentum().perp() < 10.0) continue;
+	
+	pt_[nPart_] = particle->momentum().perp();
+	eta_[nPart_] = particle->momentum().eta();
+	phi_[nPart_] = particle->momentum().phi();
+	m_[nPart_] = particle->momentum().m();
+	genM_[nPart_] = particle->generatedMass();
+	pid_[nPart_] = particle->pdg_id();
+	
+	++nPart_;
+      }
+      
+      if(nPart_ > nMaxPart){
+	std::cout << "ERROR: nPart=" << nPart_ << " exceeds maximum allowed value nMaxPart=" << nMaxPart << ". Please extend array size. return 1" << std::endl;
+	return 1;
+      }
+      
+      //Cluster jets
+      for(unsigned int rI = 0; rI < jetRVect.size(); ++rI){
+	double jetR = jetRVect[rI];
+	jetR /= 10.0;
+	
+	fastjet::JetDefinition jetDef(fastjet::antikt_algorithm, jetR);
+	fastjet::ClusterSequence cs(particlesForCluster, jetDef);
+	std::vector<fastjet::PseudoJet> jets = fastjet::sorted_by_pt(cs.inclusive_jets(jtPtMin));
+	
+	nJt_[rI] = 0;
 
-    //Clean and next event
-    delete evt;
-    ascii_in >> evt;
+	for(unsigned int jI = 0; jI < jets.size(); ++jI){
+	  jtpt_[rI][jI] = jets[jI].pt();
+	  jtphi_[rI][jI] = jets[jI].phi_std();
+	  jteta_[rI][jI] = jets[jI].eta();
+	  jtm_[rI][jI] = jets[jI].m();
+	  
+	  ++nJt_[rI];
+	}
+      }
+      
+      jewelTree_p->Fill();
+    
+      //iterate event counter
+      ++nEvents;
+
+      //Clean and next event
+      delete evt;
+      ascii_in >> evt;
+    }
   }
   
+  std::cout << "Processing Complete!" << std::endl;
   std::cout << "NEVENTS: " << nEvents << std::endl;
 
   outFile_p->cd();
