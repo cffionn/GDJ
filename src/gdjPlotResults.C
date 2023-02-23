@@ -100,6 +100,13 @@ std::vector<std::vector<Double_t> > getSyst(TFile* histFile_p, TH1D* nominalHist
 	//Check the deltaVal is 0; i.e. things are working correctly
 	if(deltaVal > TMath::Power(10,-50)){
 	  std::cout << "getSyst ERROR!!!! DeltaVal of Nominal and MCStat variation is greater than 0, return" << std::endl;
+	  std::cout << deltaVal << std::endl;
+	  std::cout << "CHECK 1: " << nominalHist_p->GetName() << std::endl;
+	  std::cout << "CHECK 2: " << systHistNames[jI] << std::endl;
+	  std::cout << "Print 1: " << std::endl;
+	  nominalHist_p->Print("ALL");
+	  std::cout << "Print 2: " << std::endl;
+	  temp1D_p->Print("ALL");
 	  return {};
 	}
 
@@ -338,10 +345,14 @@ std::vector<Double_t> plotSyst(TH1D* nominalHist_p, std::vector<std::vector<Doub
     for(Int_t bIX = 0; bIX < nBinsX; ++bIX){
       systHist_p[sI]->SetBinContent(bIX+1, -systHist_p[sI]->GetBinContent(bIX+1));
     }
-    */
+    */    
     //    systHist_p[sI]->DrawCopy("HIST P SAME"); 
   }
 
+  systHist_p[0]->SetLineStyle(2);
+  systHist_p[0]->DrawCopy("HIST SAME");
+  systHist_p[0]->SetLineStyle(1);
+  
   TLatex* label_p = new TLatex();
   label_p->SetNDC();
   label_p->SetTextFont(titleFont);
@@ -451,7 +462,11 @@ int gdjPlotResults(std::string inConfigFileName)
 						 "VARLEGX",
 						 "VARLEGY",
   						 "VARLABELX",
-						 "VARLABELY"};
+						 "VARLABELY",
+  						 "VARRATLEGX",
+						 "VARRATLEGY",
+  						 "VARRATLABELX",
+						 "VARRATLABELY"};
   
   if(!checkEnvForParams(config_p, necessaryParams)) return 1;
   const std::string inPbPbFileName = config_p->GetValue("INPBPBFILENAME", "");
@@ -632,6 +647,11 @@ int gdjPlotResults(std::string inConfigFileName)
   float labelX = config_p->GetValue((varNameUpper + "LABELX").c_str(), 0.1);
   float labelY = config_p->GetValue((varNameUpper + "LABELY").c_str(), 0.1);
 
+  float ratLegX = config_p->GetValue((varNameUpper + "RATLEGX").c_str(), 0.1);
+  float ratLegY = config_p->GetValue((varNameUpper + "RATLEGY").c_str(), 0.1);
+  float ratLabelX = config_p->GetValue((varNameUpper + "RATLABELX").c_str(), 0.1);
+  float ratLabelY = config_p->GetValue((varNameUpper + "RATLABELY").c_str(), 0.1);
+  
   float legXCent = config_p->GetValue((varNameUpper + "LEGXCENT").c_str(), legX);
   float legYCent = config_p->GetValue((varNameUpper + "LEGYCENT").c_str(), legY);
 
@@ -640,7 +660,11 @@ int gdjPlotResults(std::string inConfigFileName)
   float labelAlignRightCent = config_p->GetValue((varNameUpper + "LABELALIGNRIGHTCENT").c_str(), 1);
   
   std::string varPrefix = "";
-  if(isStrSame(varNameUpper, "PT")) varPrefix = "JT";
+  std::string varNameHist = varNameUpper;
+  if(isStrSame(varNameUpper, "PT")){
+    varNameHist = "Pt";
+    varPrefix = "JT";
+  }
 
   std::string binVarStr = varPrefix + varNameUpper;
   if(isStrSame(binVarStr, "AJJ")) binVarStr = "AJ";
@@ -935,9 +959,11 @@ int gdjPlotResults(std::string inConfigFileName)
 
       scaledTotalPP += ppHistPhoPt_p->GetBinContent(bIX+1);
     }
+
+    std::cout << "SCALED TOTAL PP: " << scaledTotalPP << std::endl;
     
-    std::string ppHistName = "photonPtJet" + varNameUpper + "Reco_Iter" + std::to_string(iterPP) + "_PP_Nominal_PURCORR_COMBINED_h";
-    std::string pyt8TruthName = "photonPtJet" + varNameUpper + "Truth_PreUnfold_PP_NOMINAL_TRUTH_COMBINED_h";
+    std::string ppHistName = "photonPtJet" + varNameHist + "Reco_Iter" + std::to_string(iterPP) + "_PP_Nominal_PURCORR_COMBINED_h";
+    std::string pyt8TruthName = "photonPtJet" + varNameHist + "Truth_PreUnfold_PP_NOMINAL_TRUTH_COMBINED_h";
     
     std::vector<std::string> ppSystHistNames;
     std::vector<bool> isSystCorrelated;
@@ -954,7 +980,7 @@ int gdjPlotResults(std::string inConfigFileName)
       else isSystCorrelated.push_back(true);
       
       Int_t iterPPSyst = inPPTermFileConfig_p->GetValue((varNameUpper + "_GAMMAPT_PP_" + systStrVect[jI]).c_str(), -1);
-      ppSystHistNames.push_back("photonPtJet" + varNameUpper + "Reco_Iter" + std::to_string(iterPPSyst) + "_PP_" + systStrVect[jI] + "_PURCORR_COMBINED_h");
+      ppSystHistNames.push_back("photonPtJet" + varNameHist + "Reco_Iter" + std::to_string(iterPPSyst) + "_PP_" + systStrVect[jI] + "_PURCORR_COMBINED_h");
 
       if(isStrSame(systTypeVect[jI], "GESGER")){
 	const Int_t iterPPPhoPtSyst = inPPTermFileConfig_p->GetValue(("GAMMAPT_PP_" + systStrVect[jI]).c_str(), -1); 
@@ -972,28 +998,46 @@ int gdjPlotResults(std::string inConfigFileName)
       else scaledTotalPPSyst.push_back(scaledTotalPP);
     }
 
+    TH1D* ratioJEWEL0to10_p = nullptr;
+    if(!doXTrunc) ratioJEWEL0to10_p = new TH1D("ratioJEWEL0to10_h", ";;", nVarBins, varBins);
+    else ratioJEWEL0to10_p = new TH1D("ratioJEWEL0to10_h", ";;", nVarBinsTrunc, varBinsTrunc);
+					      
+    
     std::vector<TH1D*> ratioHistsPerCentrality;
     std::vector<std::vector<Double_t> > ratioSystsPerCentrality;
     std::vector<std::vector<std::string> > ratioLabelsPerCentrality;
     
     //We need to find all gamma bins matching our current bin for creating our final histogram
     std::vector<int> gammaMatchedBins;
-    for(Int_t sgI = 0; sgI < nSubJtGammaPtBins; ++sgI){
-      if(subJtGammaPtBinFlattener.GetBin1PosFromGlobal(sgI) == gI){
-	if(doJtPtCut){
-	  int subJtPtBinPos = subJtGammaPtBinFlattener.GetBin2PosFromGlobal(sgI);
-	  Float_t subJtPtBinCenter = (subJtPtBins[subJtPtBinPos] + subJtPtBins[subJtPtBinPos+1])/2.0;
-	  if(subJtPtBinCenter > jtPtBinsLowReco) gammaMatchedBins.push_back(sgI);
-
-	}
-	else gammaMatchedBins.push_back(sgI);
-      }      
+    if(isMultijet){
+      for(Int_t sgI = 0; sgI < nSubJtGammaPtBins; ++sgI){
+	if(subJtGammaPtBinFlattener.GetBin1PosFromGlobal(sgI) == gI){
+	  if(doJtPtCut){
+	    int subJtPtBinPos = subJtGammaPtBinFlattener.GetBin2PosFromGlobal(sgI);
+	    Float_t subJtPtBinCenter = (subJtPtBins[subJtPtBinPos] + subJtPtBins[subJtPtBinPos+1])/2.0;
+	    if(subJtPtBinCenter > jtPtBinsLowReco) gammaMatchedBins.push_back(sgI);
+	  }
+	  else gammaMatchedBins.push_back(sgI);
+	}      
+      }
     }
+    else gammaMatchedBins.push_back(gI);
       
     std::cout << "PYT8NAME: " << pyt8TruthName << std::endl;
     TH1D* pyt8TruthPhoPt_p = (TH1D*)inPPFile_p->Get("photonPtTruth_PreUnfold_PP_TRUTH_COMBINED_h");
     TH2D* pyt8Truth2D_p = (TH2D*)inPPFile_p->Get(pyt8TruthName.c_str());
     TH2D* ppHist2D_p = (TH2D*)inPPFile_p->Get(ppHistName.c_str());
+
+    if(gI == 2){
+      std::cout << "PP HIST PRINT ON GI == 2" << std::endl;
+      ppHist2D_p->Print("ALL");
+      std::cout << "END PRINT, gammaMatchedBins.size(): " << gammaMatchedBins.size() << std::endl;
+      std::cout << "GammaMatchedBins: " << std::endl;
+      for(unsigned int sgI = 0; sgI < gammaMatchedBins.size(); ++sgI){
+	std::cout << " " << sgI << ": " << gammaMatchedBins[sgI] << std::endl;
+      }
+    }
+    
     TH1D* ppHist_p = nullptr;
     if(!doXTrunc) ppHist_p = new TH1D("ppHist1D_h", ";;", nVarBins, varBins);
     else ppHist_p = new TH1D("ppHist1D_h", ";;", nVarBinsTrunc, varBinsTrunc);
@@ -1102,7 +1146,7 @@ int gdjPlotResults(std::string inConfigFileName)
 	centBins2Str = centBins2Str + "%";
       }
     
-      std::string pbpbHistName = "photonPtJet" + varNameUpper + "Reco_Iter" + std::to_string(iterPbPb) + "_" + centBinsStr[cI] + "_Nominal_PURCORR_COMBINED_h";
+      std::string pbpbHistName = "photonPtJet" + varNameHist + "Reco_Iter" + std::to_string(iterPbPb) + "_" + centBinsStr[cI] + "_Nominal_PURCORR_COMBINED_h";
       std::vector<std::string> pbpbSystHistNames;      
 
 
@@ -1113,7 +1157,7 @@ int gdjPlotResults(std::string inConfigFileName)
 	if(isStrSame(systStrVect[systI], "Nominal")) continue;
 
 	Int_t iterPbPbSyst = inPbPbTermFileConfig_p->GetValue((varNameUpper + "_GAMMAPT_" + centBinsStr[cI] + "_" + systStrVect[systI]).c_str(), -1);
-	pbpbSystHistNames.push_back("photonPtJet" + varNameUpper + "Reco_Iter" + std::to_string(iterPbPbSyst) + "_" + centBinsStr[cI] + "_" + systStrVect[systI] + "_PURCORR_COMBINED_h");
+	pbpbSystHistNames.push_back("photonPtJet" + varNameHist + "Reco_Iter" + std::to_string(iterPbPbSyst) + "_" + centBinsStr[cI] + "_" + systStrVect[systI] + "_PURCORR_COMBINED_h");
 
 	if(isStrSame(systTypeVect[systI], "GESGER")){
 	  const Int_t iterPbPbPhoPtSyst = inPbPbTermFileConfig_p->GetValue(("GAMMAPT_" + centBinsStr[cI] + "_" + systStrVect[systI]).c_str(), -1);
@@ -1151,8 +1195,11 @@ int gdjPlotResults(std::string inConfigFileName)
       std::map<std::string, std::vector<std::vector<Double_t> > > systTypeToSystValsPbPb;
       for(auto const &val : systTypesMap){
 	std::vector<std::vector<Double_t> > tempVectVals;
-	
+
+	std::cout << val.first << std::endl;
 	for(int sI = 0; sI < systNames.size(); ++sI){
+	  std::cout << " " << systNames[sI] << std::endl;
+
 	  if(!isStrSame(val.first, systStrToSystType[systNames[sI]])) continue;
 	  
 	  tempVectVals.push_back(pbpbSyst[sI]);
@@ -1249,7 +1296,9 @@ int gdjPlotResults(std::string inConfigFileName)
       
       ppHist_p->DrawCopy("HIST E1 P");
       pbpbHist_p->DrawCopy("HIST E1 P SAME");
-       
+
+      
+      
       if(doJEWEL){
 	HIJet::Style::EquipHistogram(jewelPPHist_p, 2);
 	jewelPPHist_p->SetLineStyle(2);
@@ -1279,7 +1328,11 @@ int gdjPlotResults(std::string inConfigFileName)
 	  jewelPbPbHist_p->DrawCopy("C HIST SAME");
 	}
       }
+
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+
       pads_p[0]->cd();
+
       
       drawSyst(pads_p[0], ppHist_p, ppSyst);
       drawSyst(pads_p[0], pbpbHist_p, pbpbSyst);
@@ -1288,6 +1341,8 @@ int gdjPlotResults(std::string inConfigFileName)
       pbpbHist_p->DrawCopy("HIST E1 P SAME");
 
       //Do the same but just pp
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+
       if(cI == 0){
 	padsPP_p[0]->cd();
 	ppHist_p->DrawCopy("HIST E1 P");
@@ -1300,11 +1355,11 @@ int gdjPlotResults(std::string inConfigFileName)
 	pyt8Truth_p->Scale(1.0/scaleFactorPYT);
 
 	
-	HIJet::Style::EquipHistogram(jewelPPHist_p, 2);
-	jewelPPHist_p->SetLineStyle(2);
-	jewelPPHist_p->SetLineWidth(4);
-
 	if(doJEWEL){
+	  HIJet::Style::EquipHistogram(jewelPPHist_p, 2);
+	  jewelPPHist_p->SetLineStyle(2);
+	  jewelPPHist_p->SetLineWidth(4);
+
 	  HIJet::Style::EquipHistogram(jewelPPHist_p, 2);
 	  jewelPPHist_p->SetLineStyle(2);
 	  jewelPPHist_p->SetLineWidth(4);
@@ -1318,6 +1373,8 @@ int gdjPlotResults(std::string inConfigFileName)
 	gPad->SetTicks();
 	
       }
+
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
       
       Float_t integral = 0.0;
       Float_t integralError = 0.0;
@@ -1362,6 +1419,7 @@ int gdjPlotResults(std::string inConfigFileName)
 	
 	labels.push_back(labelsTemp[lI]);
       }
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
       labels.push_back(prettyString(gammaPtBins[gI], 1, false) + "<p_{T,#gamma}<" + prettyString(gammaPtBins[gI+1], 1, false));
       labels.push_back(gammaJtDPhiCutLabel);
 
@@ -1549,6 +1607,9 @@ int gdjPlotResults(std::string inConfigFileName)
 
       if(doJEWEL && jewelPbPbHist_p != nullptr){
 	jewelPbPbHist_p->Divide(jewelPPHist_p);
+
+	if(isStrSame("Cent0to10", centBinsStr[cI])) fineHistToCoarseHist(jewelPbPbHist_p, ratioJEWEL0to10_p);
+
 	jewelPbPbHist_p->DrawCopy("C HIST SAME");
       }
       
@@ -1569,7 +1630,7 @@ int gdjPlotResults(std::string inConfigFileName)
 	  jewelPPHist_p->SetLineStyle(2);
 	  jewelPPHist_p->SetLineWidth(4);
 	  
-	  jewelPPHist_p->GetYaxis()->SetTitle("Theory/Data");
+	  jewelPPHist_p->GetYaxis()->SetTitle("MC/Data");
 
 	  jewelPPHist_p->GetYaxis()->SetNdivisions(505);
 	  jewelPPHist_p->GetXaxis()->SetTitleOffset(1.2);
@@ -1584,7 +1645,7 @@ int gdjPlotResults(std::string inConfigFileName)
 	  jewelPPHist_p->GetXaxis()->SetLabelSize(labelSize/(padSplit));
 	  jewelPPHist_p->GetYaxis()->SetLabelSize(labelSize/(padSplit));     
 	  
-	  jewelPPHist_p->GetYaxis()->SetTitle("Theory/Data");
+	  jewelPPHist_p->GetYaxis()->SetTitle("MC/Data");
 	  jewelPPHist_p->GetYaxis()->SetTitleOffset(yOffset*padSplit/(1.0 - padSplit));
 
 	  jewelPPHist_p->GetXaxis()->SetTitle(ppHist_p->GetXaxis()->GetTitle());
@@ -1683,7 +1744,7 @@ int gdjPlotResults(std::string inConfigFileName)
 	legPP_p->SetBorderSize(0);
 	legPP_p->SetFillStyle(0);
 
-	HIJet::Style::EquipHistogram(jewelPPHist_p, 2);
+	if(doJEWEL) HIJet::Style::EquipHistogram(jewelPPHist_p, 2);
 		
 	legPP_p->AddEntry(ppHist_p, "p+p", "P L");
 	legPP_p->AddEntry(pyt8Truth_p, ("PYTHIA 8 x " + prettyString(scaleFactorPYT, 1, false)).c_str(), "L");
@@ -1724,7 +1785,6 @@ int gdjPlotResults(std::string inConfigFileName)
 	delete jewelPPHist_p;
 	if(jewelPbPbHist_p != nullptr) delete jewelPbPbHist_p;
       }
-
       delete pyt8Truth_p;
     }
 
@@ -1835,11 +1895,84 @@ int gdjPlotResults(std::string inConfigFileName)
       delete label_p;
 
       leg_p->Draw("SAME");
+      gPad->SetTicks();
+
       
       quietSaveAs(canv_p, "pdfDir/" + dateStr + "/" + varName + "Unfolded_GammaPt" + std::to_string(gI)	 + "_AllCentRatio_" + saveTag + "_" + dateStr + "." + saveExt);
       delete canv_p;
       delete leg_p;
     }
+
+    //Plot centrality 0-10% RAA w/ JEWEL
+    if(ratioJEWEL0to10_p != nullptr){
+      TCanvas* canv_p = new TCanvas("canv_p", "", width, 900.0);
+      setMargins(canv_p, leftMargin, topMargin, rightMargin, bottomMargin*padSplit);
+
+      TLegend* leg_p = new TLegend(ratLegX, ratLegY - 0.04*ratioHistsPerCentrality.size(), ratLegX+0.25, ratLegY);
+      leg_p->SetTextFont(42);
+      leg_p->SetTextSize(0.035);
+      leg_p->SetBorderSize(0);
+      leg_p->SetFillStyle(0);
+
+      for(unsigned int cI = 0; cI < ratioHistsPerCentrality.size(); ++cI){
+	std::string legLabel = centBinsLabel[cI].substr(centBinsLabel[cI].find(",")+2, centBinsLabel[cI].size());
+	legLabel.replace(legLabel.rfind("}"), 1, "");
+
+	if(legLabel.find("0-10%") == std::string::npos) continue;
+
+	HIJet::Style::EquipHistogram(ratioHistsPerCentrality[cI], cI+1);
+
+	ratioHistsPerCentrality[cI]->SetMinimum(minRatVal);
+	ratioHistsPerCentrality[cI]->SetMaximum(maxRatVal);
+
+	if(cI == 0) ratioHistsPerCentrality[cI]->DrawCopy("HIST E1 P");
+	else ratioHistsPerCentrality[cI]->DrawCopy("HIST E1 P SAME");
+
+	drawSyst(canv_p, ratioHistsPerCentrality[cI], {ratioSystsPerCentrality[cI]});
+
+	leg_p->AddEntry(ratioHistsPerCentrality[cI], legLabel.c_str(), "P L");
+      }
+
+      HIJet::Style::EquipHistogram(ratioJEWEL0to10_p, 1);
+      ratioJEWEL0to10_p->SetLineStyle(2);
+      ratioJEWEL0to10_p->SetLineWidth(4);
+      
+      ratioJEWEL0to10_p->DrawCopy("HIST C SAME");
+      leg_p->AddEntry(ratioJEWEL0to10_p, "JEWEL", "L");
+      
+      TLine* line_p = new TLine();
+      line_p->SetLineStyle(2);
+      line_p->DrawLine(ratioHistsPerCentrality[0]->GetBinLowEdge(1), 1.0, ratioHistsPerCentrality[0]->GetBinLowEdge(ratioHistsPerCentrality[0]->GetXaxis()->GetNbins()+1), 1.0);
+      delete line_p;
+
+      TLatex* label_p = new TLatex();
+      label_p->SetNDC();
+      label_p->SetTextFont(42);
+      label_p->SetTextSize(0.035);
+      if(labelAlignRightCent) label_p->SetTextAlign(31);
+
+      if(isStrSame(varNameLower, "drjj")){
+	for(unsigned int i = 0; i < ratioLabelsPerCentrality[0].size(); ++i){
+	  if(i < 4) label_p->DrawLatex(ratLabelX, ratLabelY - 0.05*i, ratioLabelsPerCentrality[0][i].c_str());
+	  else label_p->DrawLatex(ratLabelX+0.45, ratLabelY - 0.05*(i-4), ratioLabelsPerCentrality[0][i].c_str());
+	}
+      }
+      else{
+	for(unsigned int i = 0; i < ratioLabelsPerCentrality[0].size(); ++i){
+	  label_p->DrawLatex(ratLabelX, ratLabelY - 0.05*i, ratioLabelsPerCentrality[0][i].c_str());
+	}
+      }
+      delete label_p;
+
+      leg_p->Draw("SAME");
+      gPad->SetTicks();
+      
+      quietSaveAs(canv_p, "pdfDir/" + dateStr + "/" + varName + "Unfolded_GammaPt" + std::to_string(gI)	 + "_Cent0to10RatioWithJEWEL_" + saveTag + "_" + dateStr + "." + saveExt);
+      delete canv_p;
+      delete leg_p;
+    }
+    delete ratioJEWEL0to10_p;
+  
     
     for(unsigned int cI = 0; cI < ratioHistsPerCentrality.size(); ++cI){
       delete ratioHistsPerCentrality[cI];

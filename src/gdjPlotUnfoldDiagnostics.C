@@ -209,6 +209,8 @@ bool drawBoxAdjacentIterRel(TPad* pad_p, TH1* hist_p, Float_t opacity, std::vect
   TBox* box_p = new TBox();
   box_p->SetFillColorAlpha(color, opacity);
 
+  std::cout << "DELTAVALS SIZE: " << deltaVals->size() << std::endl;
+  
   for(Int_t bIX = 0; bIX < hist_p->GetNbinsX(); ++bIX){
     Double_t x1 = hist_p->GetBinLowEdge(bIX+1);
     Double_t x2 = hist_p->GetBinLowEdge(bIX+2);
@@ -1486,11 +1488,19 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	      hasDrawn = true;
 	    }
 	    else refoldClone_p->DrawCopy("HIST E1 P SAME");
+
+	    if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIterForLoop+1 << std::endl;
 	    
 	    if(i == termPos){
 	      Float_t tempOpacity = HIJet::Style::GetOpacity(i-1);
+
+	      if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIterForLoop+1 << ", " << termPos << std::endl;
+
 	      drawBoxAdjacentIterRel(padsBest_p[1], refoldClone_p, tempOpacity, &deltaVals);
+	      if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIterForLoop+1 << std::endl;
 	    }
+
+	    if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIterForLoop+1 << std::endl;
 	    
 	    delete refoldClone_p;
 	    delete unfoldClone_p;

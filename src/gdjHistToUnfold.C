@@ -2119,6 +2119,10 @@ int gdjHistToUnfold(std::string inConfigFileName)
       const bool isGammaSyst = gesGERSystPos >= 0;
       
       if(isGammaSyst){//Each gamma syst we need to recalc this
+	std::cout << " BUILDING: rooResGamma_" << centBinsStr[cI] << "_" << systStrVect[sI] << std::endl;
+
+	std::cout << photonPtReco_p[cI]->GetXaxis()->GetBinLowEdge(1) << ", " << photonPtReco_p[cI]->GetXaxis()->GetBinLowEdge(photonPtReco_p[cI]->GetXaxis()->GetNbins()+1)  << std::endl;
+	std::cout << photonPtTruth_p[cI]->GetXaxis()->GetBinLowEdge(1) << ", " << photonPtTruth_p[cI]->GetXaxis()->GetBinLowEdge(photonPtTruth_p[cI]->GetXaxis()->GetNbins()+1)  << std::endl;
 	rooResGamma_p[cI][sI] = new RooUnfoldResponse(photonPtReco_p[cI], photonPtTruth_p[cI], ("rooResGamma_" + centBinsStr[cI] + "_" + systStrVect[sI]).c_str(), "");
 	rooResGammaMatrix_p[cI][sI] = new TH2D(("rooResGammaMatrix_" + centBinsStr[cI] + "_" + systStrVect[sI] + "_h").c_str(), ";Reco #gamma p_{T} [GeV]; Truth #gamma p_{T} [GeV]", nGammaPtBins, gammaPtBins, nGammaPtBins, gammaPtBins);
 	rooResGammaMisses_p[cI][sI] = new TH1D(("rooResGammaMisses_" + centBinsStr[cI] + "_" + systStrVect[sI] + "_h").c_str(), ";Truth #gamma p_{T} [GeV]; Counts (weighted)", nGammaPtBins, gammaPtBins);
@@ -2208,13 +2212,17 @@ int gdjHistToUnfold(std::string inConfigFileName)
       //Construct 1-D unfold response matrix for gamma-pt (required in normalization)
       bool recoGammaOutOfBounds = recoGammaPt_[gammaSysPos] < gammaPtBinsLowReco || recoGammaPt_[gammaSysPos] >= gammaPtBinsHighReco;   
       recoGammaOutOfBounds = recoGammaOutOfBounds || !photonEtaIsGood(recoGammaEta_);
-
+      
       if(isGammaSyst){
 	if(recoGammaOutOfBounds){
+	  //	  std::cout << "FILLING ROORES GAMMA MISS: " << truthGammaPt_ << ", " << unfoldWeight_ << "*" << phoWeight << std::endl;
+
 	  rooResGamma_p[centPos][sysI]->Miss(truthGammaPt_, unfoldWeight_*phoWeight);
 	  rooResGammaMisses_p[centPos][sysI]->Fill(truthGammaPt_, unfoldWeight_*phoWeight);
 	}
 	else{
+	  //	  std::cout << "FILLING ROORES GAMMA RECOxTruth: " << recoGammaPt_[gammaSysPos] << ", " << truthGammaPt_ << ", " << unfoldWeight_ << "*" << phoWeight << std::endl;
+
 	  rooResGamma_p[centPos][sysI]->Fill(recoGammaPt_[gammaSysPos], truthGammaPt_, unfoldWeight_*phoWeight);
 	  rooResGammaMatrix_p[centPos][sysI]->Fill(recoGammaPt_[gammaSysPos], truthGammaPt_, unfoldWeight_*phoWeight);
 	
@@ -2839,16 +2847,12 @@ int gdjHistToUnfold(std::string inConfigFileName)
     
 
     for(unsigned int sI = 0; sI < inSystStrVect.size(); ++sI){
-      if(doGlobalDebug) std::cout << __FILE__ << ", " << __LINE__ << std::endl;
-
       if(!unfoldAll){
 	if(!vectContainsStr(inSystStrVect[sI], &inUnfoldNames)) continue;
       }      
 
       if(sI == 0) photonPtJetVarReco_TRUTH_COMBINED_p[cI]->Write(("photonPtJet" + varName + "Truth_PreUnfold_" + centBinsStr[cI] + "_NOMINAL_TRUTH_COMBINED_h").c_str(), TObject::kOverwrite);
-
-      if(doGlobalDebug) std::cout << __FILE__ << ", " << __LINE__ << std::endl;
-      
+ 
       TH2D* tempTruthHist_p = (TH2D*)rooResGammaJetVar_p[cI][sI]->Htruth();
       tempTruthHist_p->Write(("photonPtJet" + varName + "Truth_PreUnfold_" + centBinsStr[cI] + "_" + inSystStrVect[sI] + "_TRUTH2_COMBINED_h").c_str(), TObject::kOverwrite); 
     
@@ -2891,10 +2895,21 @@ int gdjHistToUnfold(std::string inConfigFileName)
       std::cout << " " << systStrVect[sysI] << std::endl;
       Int_t systPos = systPosToInSystPos[sysI];
       
-      for(int i = 1; i <= nIter; ++ i){
+      for(int i = 1; i <= nIter; ++i){
+	std::cout << "PRINTING ROORESGAMMA: " << std::endl;
+	rooResGamma_p[cI][sysI]->Print();
+	std::cout << "END PRINTING ROORESGAMMA: " << std::endl;
+
 	std::cout << "  Iter " << i << "/" << nIter << "..." << std::endl;
 	RooUnfoldBayes* rooBayes_p = new RooUnfoldBayes(rooResGamma_p[cI][sysI], photonPtReco_PURCORR_COMBINED_p[cI][systPos], i);
-	rooBayes_p->SetVerbose(0);
+
+ 	std::cout << "CHECK THE UNFOLD: " << systStrVect[sysI] << std::endl;
+
+ 	std::cout << "PRINT: " << std::endl;
+	photonPtReco_PURCORR_COMBINED_p[cI][systPos]->Print("ALL");
+
+	
+	rooBayes_p->SetVerbose(1);
 	
 	TH1D* unfolded_p = nullptr;	
 	Int_t currErrType = unfoldErrType;
@@ -2908,6 +2923,15 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	else if(currErrType == 1){
 	  rooBayes_p->SetNToys(nToys);
 	  unfolded_p = (TH1D*)rooBayes_p->Hreco(RooUnfold::kCovToy)->Clone(("photonPtReco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_h").c_str());
+
+	  std::cout << "Measured print" << std::endl;
+	  rooResGamma_p[cI][sysI]->Hmeasured()->Print("ALL");
+
+	  std::cout << "Truth print" << std::endl;
+	  rooResGamma_p[cI][sysI]->Htruth()->Print("ALL");
+	  
+	  std::cout << "post unfold print: " << std::endl;
+	  unfolded_p->Print("ALL");
 	}
 	else if(currErrType == 2) unfolded_p = (TH1D*)rooBayes_p->Hreco(RooUnfold::kNoError)->Clone(("photonPtReco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_h").c_str());
 	
@@ -2921,6 +2945,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	delete rooBayes_p;
       }
     }
+
     std::cout << "Photon unfold, " << centBinsStr[cI] << ", complete." << std::endl;
     
     //Gamma-jet unfold
@@ -2969,6 +2994,13 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	  //	  return 1;
 	}
 
+	std::cout << "PRINTING ROORESGAMMA JET VAR: " << std::endl;
+
+	rooResGammaJetVar_p[cI][sysI]->Print("ALL");
+	std::cout << "END PRINTING ROORESGAMMA JET VAR: " << std::endl;
+
+
+	
 	RooUnfoldBayes* rooBayes_p = new RooUnfoldBayes(rooResGammaJetVar_p[cI][sysI], histForUnfold_p, i);
 	rooBayes_p->SetVerbose(0);
 
@@ -2983,18 +3015,18 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	//2=syst from MC stat only
 	//Note ^ because you are using toy error, this will not close on checks until you go to very high number of toys (~10k will get you to percent level closure of the quad sum in checks
 	if(isStrSame(systStrVect[sysI], "MCSTAT")) rooBayes_p->IncludeSystematics(2);
-
 	
 	
 	if(currErrType == 0) unfolded_p = (TH2D*)rooBayes_p->Hreco()->Clone(("photonPtJetVarReco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_h").c_str());
 	else if(currErrType == 1){
-	  std::cout << "UNFOLDING WITH TOY ERROR" << std::endl;
+	  if(doGlobalDebug) std::cout << "UNFOLDING WITH TOY ERROR, L" << __LINE__ << std::endl;
 	  rooBayes_p->SetNToys(nToys);
 	  unfolded_p = (TH2D*)rooBayes_p->Hreco(RooUnfold::kCovToy)->Clone(("photonPtJetVarReco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_h").c_str());
+	  if(doGlobalDebug) std::cout << "UNFOLD COMPLETE, L" << __LINE__ << std::endl;
 	}
 	else if(currErrType == 2) unfolded_p = (TH2D*)rooBayes_p->Hreco(RooUnfold::kNoError)->Clone(("photonPtJetVarReco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_h").c_str());
-		
-	TH2D* refolded_p = (TH2D*)rooResGammaJetVar_p[cI][sysI]->ApplyToTruth(unfolded_p)->Clone(("photonPtKetVarReco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_Refolded_h").c_str());
+
+	TH2D* refolded_p = (TH2D*)rooResGammaJetVar_p[cI][sysI]->ApplyToTruth(unfolded_p)->Clone(("photonPtJetVarReco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_Refolded_h").c_str());
 
 	unfolded_p->Write(("photonPtJet" + varName + "Reco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_h").c_str(), TObject::kOverwrite);
 	refolded_p->Write(("photonPtJet" + varName + "Reco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_Refolded_h").c_str(), TObject::kOverwrite);
