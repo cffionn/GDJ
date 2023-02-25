@@ -1014,6 +1014,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
   Float_t recoGammaPt_[nGammaSysAndNom];
   Float_t recoGammaPhi_;
   Float_t recoGammaEta_;
+  Float_t recoGammaIso_;
+  Float_t recoGammaCorrectedIso_;
 
   Float_t truthGammaPt_;
   Float_t truthGammaPhi_;
@@ -1052,6 +1054,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
     unfoldTree_p->Branch("recoGammaPt", recoGammaPt_, ("recoGammaPt[" + std::to_string(nGammaSysAndNom) + "]/F").c_str()); 
     unfoldTree_p->Branch("recoGammaPhi", &recoGammaPhi_, "recoGammaPhi/F"); 
     unfoldTree_p->Branch("recoGammaEta", &recoGammaEta_, "recoGammaEta/F"); 
+    unfoldTree_p->Branch("recoGammaIso", &recoGammaIso_, "recoGammaIso/F"); 
+    unfoldTree_p->Branch("recoGammaCorrectedIso", &recoGammaCorrectedIso_, "recoGammaCorrectedIso/F"); 
     unfoldTree_p->Branch("truthGammaPt", &truthGammaPt_, "truthGammaPt/F"); 
     unfoldTree_p->Branch("truthGammaPhi", &truthGammaPhi_, "truthGammaPhi/F"); 
     unfoldTree_p->Branch("truthGammaEta", &truthGammaEta_, "truthGammaEta/F"); 
@@ -2529,13 +2533,15 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  recoGammaPt_[4] = photon_pt_sys4_p->at(truthPhoRecoPos);
 
 	  recoGammaEta_ = photon_eta_p->at(truthPhoRecoPos);
-	  Float_t tempCorrectedIso = photon_correctedIso_p->at(truthPhoRecoPos);
+	  recoGammaIso_ = photon_etcone_p->at(truthPhoRecoPos);
+	  recoGammaCorrectedIso_ = photon_correctedIso_p->at(truthPhoRecoPos);
+	  //	  Float_t tempCorrectedIso = photon_correctedIso_p->at(truthPhoRecoPos);
 	  
 	  if(!photonEtaIsGood(recoGammaEta_)) truthPhoHasGoodReco = false;
 	  else if(!photon_tight_p->at(truthPhoRecoPos)) truthPhoHasGoodReco = false;
-	  else if(!isIsolatedPhoton(isPP, doPtIsoCorrection, tempCorrectedIso)) truthPhoHasGoodReco = false;    
 	  else if(recoGammaPt_[0] < gammaPtBinsLowReco) truthPhoHasGoodReco = false;    
 	  else if(recoGammaPt_[0] >= gammaPtBinsHighReco) truthPhoHasGoodReco = false;          
+	  //	  else if(!isIsolatedPhoton(isPP, doPtIsoCorrection, tempCorrectedIso)) truthPhoHasGoodReco = false;    
 	}
 	
 	//Response TTree filling
@@ -2544,7 +2550,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
 	  if(truthPhoRecoPos >= 0){
 	    isSignal = photon_tight_p->at(truthPhoRecoPos);
-	    isSignal = isSignal && isIsolatedPhoton(isPP, doPtIsoCorrection, photon_correctedIso_p->at(truthPhoRecoPos));
+	    //	    isSignal = isSignal && isIsolatedPhoton(isPP, doPtIsoCorrection, photon_correctedIso_p->at(truthPhoRecoPos));
 	  }
       	  
 	  if(keepResponseTree){
@@ -2565,6 +2571,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	      recoGammaPt_[4] = photon_pt_sys4_p->at(truthPhoRecoPos);
 	      recoGammaPhi_ = photon_phi_p->at(truthPhoRecoPos);
 	      recoGammaEta_ = photon_eta_p->at(truthPhoRecoPos);
+	      recoGammaIso_ = photon_etcone_p->at(truthPhoRecoPos);
+	      recoGammaCorrectedIso_ = photon_correctedIso_p->at(truthPhoRecoPos);
 	    }
 	    
 	    unfoldWeight_ = fullWeight;
