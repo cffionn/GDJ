@@ -9,6 +9,11 @@
 #include "TGraph.h"
 #include <TF1.h>
 
+//kAzure-3 in RGB = 0, 101, 254
+//0, 34, 85
+//Dark Version? RBG: 0, 25, 36
+//Alt: 0, 30, 48
+
 namespace HIJet
 {
   namespace Style
@@ -40,7 +45,7 @@ namespace HIJet
       h1->SetLineColor(color_scheme[index_mod]);
       h1->SetLineWidth(line_width);
       h1->SetMarkerStyle(style_scheme[index_mod]);
-      h1->SetMarkerSize(size_scheme[index_mod]);
+      h1->SetMarkerSize(size_scheme[index_mod]*1.5);
     }
     inline void EquipGraph(TGraph* g1, unsigned int index)
     {

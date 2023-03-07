@@ -208,8 +208,6 @@ bool drawBoxAdjacentIterRel(TPad* pad_p, TH1* hist_p, Float_t opacity, std::vect
   
   TBox* box_p = new TBox();
   box_p->SetFillColorAlpha(color, opacity);
-
-  std::cout << "DELTAVALS SIZE: " << deltaVals->size() << std::endl;
   
   for(Int_t bIX = 0; bIX < hist_p->GetNbinsX(); ++bIX){
     Double_t x1 = hist_p->GetBinLowEdge(bIX+1);
@@ -285,6 +283,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   //Start grabbing parameters from config file
   std::string inUnfoldFileName = config_p->GetValue("INUNFOLDFILENAME", "");
   std::string outUnfoldConfigName = config_p->GetValue("OUTUNFOLDCONFIG", "");
+  
   TEnv* outUnfoldConfig_p = new TEnv();
 
   //Threshold by which we terminate the unfolding - deltaStat contribution to quad sum exceeds this value, term
@@ -464,7 +463,16 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   return 1;
   */
   
-  std::string unfoldName = inUnfoldFileConfig_p->GetValue("UNFOLD", "");
+  const std::string inUnfoldName = inUnfoldFileConfig_p->GetValue("UNFOLD", "");
+  std::vector<std::string> inUnfoldNames = strToVect(inUnfoldName);
+  bool unfoldAll = false;
+  for(unsigned int uI = 0; uI < inUnfoldNames.size(); ++uI){
+    if(isStrSame(inUnfoldNames[uI], "ALL")){
+      unfoldAll = true;
+      break;
+    }
+  }
+
   
   //Additional params are required if it is Pb+Pb
   std::vector<std::string> pbpbParams = {"CENTBINS"};
@@ -476,6 +484,13 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   std::string varNameUpper = strLowerToUpper(varName);
   std::string varNameLower = returnAllLowercaseString(varName);
   std::string varNameLabel = varNameToLabel(varName);
+
+
+  std::string outUnfoldErrorName = outUnfoldConfigName.substr(0, outUnfoldConfigName.find("."));
+  
+  outUnfoldErrorName = "output/" + dateStr + "/" + outUnfoldErrorName + "_" + varNameUpper + "_SysError.root";
+  TFile* outSysFile_p = new TFile(outUnfoldErrorName.c_str(), "RECREATE");
+
 
   const Bool_t isMultijet = isStrSame(varNameLower, "xjj") || isStrSame(varNameLower, "dphijjg") || isStrSame(varNameLower, "ajj") || isStrSame(varNameLower, "dphijj") || isStrSame(varNameLower, "drjj");
   
@@ -540,10 +555,12 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   //Grab first set of parameters defined in necessaryInFileParams
   const bool isMC = inUnfoldFileConfig_p->GetValue("ISMC", 1);
   const bool isPP = inUnfoldFileConfig_p->GetValue("ISPP", 0);
+
   std::vector<std::string> centBinsStr = {"PP"};
   std::vector<std::string> centBinsLabel = {"#bf{p+p}"};
 
   if(!isPP){
+    if(!checkEnvForParams(inUnfoldFileConfig_p, pbpbParams)) return 1;
     std::vector<std::string> tempCentBinsStr = strToVect(inUnfoldFileConfig_p->GetValue("CENTBINS", ""));
     centBinsStr.clear();
     centBinsLabel.clear();
@@ -756,6 +773,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   }
   else getLinBins(varBinsLow, varBinsHigh, nVarBins, varBins);
 
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+  
   //We need to create a map of bins to exclude in judging the iterative convergence
   //Map xBin, yBin, bool true false use in deltaAbs = deltaIter quadSum deltaStat 
   std::map<int, std::map<int, bool> > goodBinMap;
@@ -817,12 +836,13 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   return 1;
   */
 
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   //Loop over all jet systematics
   for(Int_t systI = 0; systI < nSyst; ++systI){   
-    if(!isStrSame(unfoldName, systStrVect[systI])){
-      if(!isStrSame(unfoldName, "ALL")) continue;
-    }    
-
+    if(!unfoldAll){
+      if(!vectContainsStr(returnAllCapsString(systStrVect[systI]), &inUnfoldNames)) continue;
+    }
+    
     //Photon-pt only; double vector for centrality, iterations
     std::vector<std::string> statsDeltaPhoPtNames, iterDeltaPhoPtNames, totalDeltaPhoPtNames;
     std::vector<std::string> recoHistPhoPtNames, truthHistPhoPtNames;
@@ -882,7 +902,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
       //pI = 1; Photon+Jet Var processing
       //Skip all jet systematics on pure photon unfold
 
-      bool isGammaSyst = isStrSame(systTypeStrVect[systI], "GESGER") || systI == 0;
+      bool isGammaSyst = isStrSame(systTypeStrVect[systI], "GESGER") || systI == 0 || isStrSame(systStrVect[systI], "ISO85") || isStrSame(systStrVect[systI], "ISO95");
       if(pI == 0 && !isGammaSyst) continue;      
 
       std::vector<std::string> statsDeltaNames = statsDeltaPhoPtNames;
@@ -975,13 +995,15 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	
 	if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << pI << std::endl;
 
-	bool doIterPrint = centBinsStr[cI].find("Cent0to10") != std::string::npos && pI == 1 && systI == 0;
+	bool doIterPrint = centBinsStr[cI].find("Cent0to10") != std::string::npos && pI == 1 && systI == 0 && false;
 	
 	TH1D* reco1D_p = nullptr;
 	TH2D* reco2D_p = nullptr;
+
+	if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << pI << std::endl;
 	if(pI == 0){
+	  std::cout << recoHistNames[cI] << std::endl;
 	  reco1D_p = (TH1D*)inUnfoldFile_p->Get(recoHistNames[cI].c_str());
-	  reco1D_p->Print("ALL");
 	  getIterativeHists(reco1D_p, unfoldedHists1D_p, statsDelta_p, iterDelta_p, totalDelta_p, doRelativeTerm, gammaPtBinsLowReco, gammaPtBinsHighReco);
 	}
 	else if(pI == 1){
@@ -990,6 +1012,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  if(isMultijet) getIterativeHists2D(reco2D_p, unfoldedHists2D_p, statsDelta_p, iterDelta_p, totalDelta_p, doRelativeTerm, goodBinMap, doIterPrint);
  	  else getIterativeHists2D(reco2D_p, unfoldedHists2D_p, statsDelta_p, iterDelta_p, totalDelta_p, doRelativeTerm, goodBinMap);
 	}
+
+	if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << pI << std::endl;
 	
 	TCanvas* canv_p = new TCanvas("canv_p", "", width, height*3.0/4.0);
 	setMargins(canv_p, leftMargin, topMargin, rightMargin, leftMargin/2.0); //intentionally settng bottom to left margin value
@@ -998,6 +1022,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	HIJet::Style::EquipHistogram(iterDelta_p, 2);
 	HIJet::Style::EquipHistogram(statsDelta_p, 1);
 	HIJet::Style::EquipHistogram(totalDelta_p, 0);
+
+	if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << pI << std::endl;
 	
 	totalDelta_p->SetMinimum(diagMinimum);	
 	totalDelta_p->SetMaximum(diagMaximum);	
@@ -1005,11 +1031,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	statsDelta_p->DrawCopy("HIST E1 P SAME");
 	iterDelta_p->DrawCopy("HIST E1 P SAME");
 	totalDelta_p->DrawCopy("HIST E1 P SAME");    
-      
-	if(doIterPrint){
-	  totalDelta_p->Print("ALL");
-	}
 
+	if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << pI << std::endl;       
 	
 	gPad->SetLogy();
 	//Draw Legends
@@ -1039,11 +1062,13 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  delete leg_p[lI];
 	}
 	leg_p.clear();
-
+   
 	//Write photon pt termination point to our config file
 	std::string configStr = "GAMMAPT_" + centBinsStr[cI%centBinsStr.size()] + "_" + systStrVect[systI];
 	if(pI == 1) configStr = varNameUpper + "_" + configStr;
 
+	if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << pI << std::endl;
+	
 	int termPos = -1;
 	for(Int_t i = 1; i < nIterForLoop+1; ++i){
 	  Double_t totalDelta = totalDelta_p->GetBinContent(i);
@@ -1059,13 +1084,14 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	if(isStrSame(systStrVect[systI], "MCSTAT")){
 	  termPos = outUnfoldConfig_p->GetValue(("GAMMAPT_" + centBinsStr[cI%centBinsStr.size()] + "_Nominal").c_str(), -1);
 	}
-
 	
 	outUnfoldConfig_p->SetValue(configStr.c_str(), termPos);
 	
 	TH1D* truth1D_p = nullptr;
 	TH2D* truth2D_p = nullptr;
-	
+
+	if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << pI << std::endl;
+
 	if(pI == 0){
 	  if(truthHistNames[cI].find("TRUTH_COMBINED") == std::string::npos || isMC) truth1D_p = (TH1D*)inUnfoldFile_p->Get(truthHistNames[cI].c_str());
 	  else if(!isMC) truth1D_p = (TH1D*)inUnfoldFile_p->Get(truthHistNames[cI].c_str());
@@ -1235,6 +1261,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	    }
 	  }
 	}
+
+	if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << pI << std::endl;
 	
 	for(Int_t gI = 0; gI < nGammaPtBinsForUnfold; ++gI){      
 	  //First bin is left intentionally empty on the reco side so just skip it
@@ -1552,9 +1580,17 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	    bool isGood = false;
 	    if(i == termPos) isGood = true;
 	    if(!isGood) continue;
-	    
-	    TH1D* unfoldClone_p = (TH1D*)unfold_p[gI][i]->Clone("tempClone");
+	  
+	    TH1D* unfoldClone_p = (TH1D*)unfold_p[gI][i]->Clone(("unfoldOverTruthMC_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_MCNonClosure").c_str());
 	    unfoldClone_p->Divide(truth_p[gI]);
+
+	    //Write out the ratio of these two to file for systematic
+	    if(systI == 0 && isMC){
+	      outSysFile_p->cd();
+	      unfoldClone_p->Write("", TObject::kOverwrite);
+	      canvBest_p->cd();
+	      padsBest_p[2]->cd();
+	    }
 	    
 	    if(!hasDrawn){
 	      if(isMC) unfoldClone_p->GetYaxis()->SetTitle("#frac{Unfolded}{Truth}");
@@ -1700,6 +1736,9 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   
   outUnfoldConfig_p->SetValue("UNFOLDFILENAME", inUnfoldFileName.c_str());  
   outUnfoldConfig_p->WriteFile(outUnfoldConfigName.c_str());
+
+  outSysFile_p->Close();
+  delete outSysFile_p;
   
   std::cout << "GDJPLOTUNFOLDDIAGNOSTICS COMPLETE. return 0." << std::endl;
   return 0;

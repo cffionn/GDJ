@@ -939,8 +939,9 @@ int gdjMixedEventPlotter(std::string inConfigFileName)
       bool isBarrelAndEC = barrelECStr[bI].find("BarrelAndEC") != std::string::npos;
       //      if(isBarrelAndEC) mainBarrelECStr = "Barrel";	
 
-      std::string phoName = centStr + "/photonPtVCent_" + centStr + "_" + mainBarrelECStr + "_RAW_h";
+      std::string phoName = centStr + "/photonPtVCent_" + centStr + "_" + mainBarrelECStr + "_NOMINAL_RAW_h";
       if(doGlobalDebug) std::cout << "FILE, LINE, PHONAME: " << __FILE__ << ", " << __LINE__ << ", " << phoName << std::endl;
+    
       TH1D* photonHist_p = (TH1D*)inFile_p->Get(phoName.c_str());
       TH1D* photonHistMC_p = nullptr;
       if(mcFileName.size() != 0) photonHistMC_p = (TH1D*)mcFile_p->Get(phoName.c_str());

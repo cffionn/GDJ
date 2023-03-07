@@ -59,7 +59,7 @@ inline std::string varNameToLabel(std::string varName)
   std::string retStr = "";
 
   if(isStrSame(varNameLower, "xj")) retStr = "x_{J#gamma}";
-  else if(isStrSame(varNameLower, "xjj")) retStr = "x_{#vec{JJ}#gamma}";
+  else if(isStrSame(varNameLower, "xjj")) retStr = "x_{JJ#gamma}";
   else if(isStrSame(varNameLower, "ajj")) retStr = "A_{JJ#gamma}";
   else if(isStrSame(varNameLower, "pt")) retStr = "p_{T}";
   else if(isStrSame(varNameLower, "dphi")) retStr = "#Delta#phi_{J#gamma}";

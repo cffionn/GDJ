@@ -15,10 +15,12 @@
 #include "TH2F.h"
 #include "TKey.h"
 #include "TLatex.h"
+#include "TLegend.h"
 #include "TLine.h"
 #include "TStyle.h"
 
 //Local
+#include "include/binUtils.h"
 #include "include/checkMakeDir.h"
 #include "include/configParser.h"
 #include "include/globalDebugHandler.h"
@@ -26,7 +28,7 @@
 #include "include/plotUtilities.h"
 #include "include/stringUtil.h"
 
-bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::string, std::string>* labelMap, std::string topDir = "")
+bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::string, std::string>* labelMap, std::string filterStr = "", std::string topDir = "", TFile* matchedFile_p=nullptr, std::vector<std::string> legVect = {})
 {
   globalDebugHandler gDebug;
   bool doGlobalDebug = gDebug.GetDoGlobalDebug();
@@ -56,6 +58,11 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::str
   const Int_t markerColor = 1;
   const Int_t lineColor = 1;
 
+  const Int_t markerSize2 = 1;
+  const Int_t markerStyle2 = 25;
+  const Int_t markerColor2 = 2;
+  const Int_t lineColor2 = 2;
+  
   const Float_t yOffset = 1.8;
 
   const Float_t topMargin = 0.06;
@@ -77,15 +84,24 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::str
   while((key=(TKey*)((*next)()))){
     const std::string name = key->GetName();
     const std::string className = key->GetClassName();
-
+    
     if(isStrSame(className, "TDirectory") || isStrSame(className, "TDirectoryFile")){
-      if(topDir.size() == 0) retVal = retVal && recursiveHistSearch(dateStr, inFile_p, labelMap, name);
-      else retVal = retVal && recursiveHistSearch(dateStr, inFile_p, labelMap, topDir + "/" + name);
+      if(topDir.size() == 0) retVal = retVal && recursiveHistSearch(dateStr, inFile_p, labelMap, filterStr, name, matchedFile_p, legVect);
+      else retVal = retVal && recursiveHistSearch(dateStr, inFile_p, labelMap, filterStr, topDir + "/" + name, matchedFile_p, legVect);
     }
 
     if(!isStrSame(className, "TH1D") && !isStrSame(className, "TH2D") && !isStrSame(className, "TH1F") && !isStrSame(className, "TH2F")) continue;
+
+    //TEMP TO GET THE TH2 only!
+    if(!isStrSame(className, "TH2D") && !isStrSame(className, "TH2F")) continue;
+
+    
     else if(name.find("GenRes") != std::string::npos && name.find("GenPt") != std::string::npos && name.find("RecoPt") != std::string::npos) continue;
 
+    if(filterStr.size() != 0){
+      if(name.find(filterStr) == std::string::npos) continue;
+    }
+    
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
     TCanvas* canv_p = new TCanvas("canv_p", "", width, height);
@@ -94,29 +110,83 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::str
     canv_p->SetRightMargin(rightMargin);
     canv_p->SetBottomMargin(bottomMargin);
 
+    std::cout << "NAME: " << name << std::endl;
+    std::cout << "NAME2: " << topDir << "/" << name << std::endl;
+
+    TLegend* leg_p = nullptr;
+    
     if(isStrSame(className, "TH1D")){
       TH1D* tempHist_p = (TH1D*)key->ReadObj();
       
-      tempHist_p->SetMaximum(1.15*getMax(tempHist_p));
-      tempHist_p->SetMinimum(0.0);
-
+      TH1D* matchedHist_p = nullptr;
+      if(matchedFile_p != nullptr){
+	if(topDir.size() != 0) matchedHist_p = (TH1D*)matchedFile_p->Get((topDir + "/" + name).c_str());
+	else matchedHist_p = (TH1D*)matchedFile_p->Get(name.c_str());
+      }
+    
       tempHist_p->SetMarkerSize(markerSize);
       tempHist_p->SetMarkerStyle(markerStyle);
       tempHist_p->SetMarkerColor(markerColor);
       tempHist_p->SetLineColor(lineColor);
 
+      //Temp!!!!
+      binWidthAndSelfNorm(tempHist_p);
+      if(matchedFile_p != nullptr){
+	binWidthAndSelfNorm(matchedHist_p);
+	matchedHist_p->SetMarkerSize(markerSize2);
+	matchedHist_p->SetMarkerStyle(markerStyle2);
+	matchedHist_p->SetMarkerColor(markerColor2);
+	matchedHist_p->SetLineColor(lineColor2);
+      }
+      std::string xTitle = tempHist_p->GetXaxis()->GetTitle();
+      xTitle.replace(0,xTitle.find("Jet")+4, "");
+      if(xTitle.find(" [") != std::string::npos) xTitle.replace(xTitle.rfind(" ["), xTitle.size(), "");
+
+      if(name.find("DPhiJJ") != std::string::npos) tempHist_p->GetYaxis()->SetTitle(("#frac{1}{N_{JJ}} #frac{dN_{JJ}}{d" + xTitle + "}").c_str());
+      else tempHist_p->GetYaxis()->SetTitle(("#frac{1}{N_{Jet}} #frac{dN_{Jet}}{d" + xTitle + "}").c_str());
+      
       tempHist_p->GetYaxis()->SetTitleOffset(yOffset);
 
       if(name.find("JtDPhi") != std::string::npos){
 	tempHist_p->SetMaximum(0.5);
 	tempHist_p->SetMinimum(-0.02);
       }
-         
-      tempHist_p->DrawCopy("HIST E1 P");
 
+      Double_t tempMax = getMax(tempHist_p);
+      if(matchedHist_p != nullptr) tempMax = TMath::Max(tempMax, getMax(matchedHist_p));
+      tempHist_p->SetMaximum(1.15*tempMax);
+      if(name.find("multijetPt") == std::string::npos) tempHist_p->SetMinimum(0.0);
+      
+      tempHist_p->DrawCopy("HIST E1 P");
+      if(matchedFile_p != nullptr){
+	matchedHist_p->DrawCopy("HIST E1 P SAME");
+
+	Float_t legX = 0.7;
+	Float_t legY = 0.8;
+	if(name.find("DPhi") != std::string::npos){
+	  legX -= 0.3;
+	}
+	else if(name.find("Phi") != std::string::npos){
+	  legY -= 0.3;
+	}
+	
+	leg_p = new TLegend(legX, legY, legX+0.25, legY+0.1);
+
+	leg_p->SetTextFont(42);
+        leg_p->SetTextSize(0.035);
+        leg_p->SetBorderSize(0);
+        leg_p->SetFillStyle(0);
+
+	leg_p->AddEntry(tempHist_p, legVect[0].c_str(), "P L");
+	leg_p->AddEntry(matchedHist_p, legVect[1].c_str(), "P L");
+
+	leg_p->Draw("SAME");
+      }
+      if(name.find("multijetPt") != std::string::npos) gPad->SetLogy();
+      
       if(name.find("JtDPhi") != std::string::npos) line_p->DrawLine(tempHist_p->GetBinLowEdge(1), 0.0, tempHist_p->GetBinLowEdge(tempHist_p->GetXaxis()->GetNbins()+1), 0.0);
     }
-    else if(isStrSame(className, "TH1F")){
+    else if(isStrSame(className, "TH2F")){
       TH1F* tempHist_p = (TH1F*)key->ReadObj();
       tempHist_p->SetMaximum(1.15*getMax(tempHist_p));
       tempHist_p->SetMinimum(0.0);
@@ -153,7 +223,7 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::str
     else{
       TH2F* tempHist_p = (TH2F*)key->ReadObj();
       tempHist_p->DrawCopy("COLZ");
-
+      
       if(name.find("rooResJtPtGammaM") != std::string::npos){
 	gPad->SetLogx();
 	gPad->SetLogy();
@@ -174,7 +244,7 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::str
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
     std::string labelName = saveName.substr(saveName.find("_")+1, saveName.size());//First part of the name should be clear from the figure itself so to simplify chop it off
-    labelName.replace(labelName.rfind("_h"), 2, "");
+    if(labelName.find("_h") != std::string::npos) labelName.replace(labelName.rfind("_h"), 2, "");
     std::vector<std::string> preLabels;
     while(labelName.find("_") != std::string::npos){
       preLabels.push_back(labelName.substr(0, labelName.find("_")));
@@ -206,10 +276,10 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::str
 
     saveName = "pdfDir/" + dateStr + "/" + saveName + "_" + dateStr + ".png";
     quietSaveAs(canv_p, saveName);
+
+    if(leg_p != nullptr) delete leg_p;
     delete canv_p;
   }
-
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   delete line_p;
   delete label_p;
@@ -217,7 +287,7 @@ bool recursiveHistSearch(std::string dateStr, TFile* inFile_p, std::map<std::str
   return retVal;
 }
 
-int gdjHistDumper(std::string inFileName)
+int gdjHistDumper(std::string inFileName, std::string filterStr = "", std::string matchFileName = "", std::string commaSepLegStr = "")
 {
   checkMakeDir check;
   if(!check.checkFileExt(inFileName, "root")) return 1;
@@ -230,7 +300,23 @@ int gdjHistDumper(std::string inFileName)
   TEnv* label_p = (TEnv*)inFile_p->Get("label");
   configParser config(label_p);
   std::map<std::string, std::string> labelMap = config.GetConfigMap();
-  recursiveHistSearch(dateStr, inFile_p, &labelMap);  
+
+  TFile* matchedFile_p = nullptr;
+  std::vector<std::string> legVect;
+  if(matchFileName.size() != 0){
+    if(check.checkFileExt(matchFileName, "root")){
+
+      matchedFile_p = new TFile(matchFileName.c_str(), "READ");
+      
+      legVect = strToVect(commaSepLegStr);
+      if(legVect.size() != 2){
+	std::cout << "Not enough leg: " << commaSepLegStr << ", " << legVect.size() << std::endl;
+	return 1;
+      }
+    }
+  }
+
+  recursiveHistSearch(dateStr, inFile_p, &labelMap, filterStr, "", matchedFile_p, legVect);  
   
   inFile_p->Close();
   delete inFile_p;
@@ -242,8 +328,8 @@ int gdjHistDumper(std::string inFileName)
 
 int main(int argc, char* argv[])
 {
-  if(argc != 2){
-    std::cout << "Usage: ./bin/gdjHistDumper.exe <inFileName>" << std::endl;
+  if(argc != 2 && argc != 3 && argc != 5){
+    std::cout << "Usage: ./bin/gdjHistDumper.exe <inFileName> <filterStr=''> <matchedFile=''> <commaSepLegStr>" << std::endl;
     std::cout << "TO DEBUG:" << std::endl;
     std::cout << " export DOGLOBALDEBUGROOT=1 #from command line" << std::endl;
     std::cout << "TO TURN OFF DEBUG:" << std::endl;
@@ -253,6 +339,8 @@ int main(int argc, char* argv[])
   }
  
   int retVal = 0;
-  retVal += gdjHistDumper(argv[1]);
+  if(argc == 2) retVal += gdjHistDumper(argv[1]);
+  else if(argc == 3) retVal += gdjHistDumper(argv[1], argv[2]);
+  else if(argc == 5) retVal += gdjHistDumper(argv[1], argv[2], argv[3], argv[4]);
   return retVal;
 }

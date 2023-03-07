@@ -72,24 +72,53 @@ std::string systNameToLegName(std::string inStr)
 
 //vector of syst, bin-by-bin
 //As a start, assume symmetric syst
-std::vector<std::vector<Double_t> > getSyst(TFile* histFile_p, TH1D* nominalHist_p, std::vector<std::string> systHistNames, std::vector<Int_t> yPos, std::vector<Double_t> scaledTotalSyst, bool doDebug=false)
+std::vector<std::vector<Double_t> > getSyst(TFile* histFile_p, TH1D* nominalHist_p, std::vector<std::string> systHistNames, std::vector<Int_t> yPos, std::vector<Double_t> scaledTotalSyst, std::string unfFileName, bool doDebug=false)
 {
   std::vector<std::vector<Double_t> > systVals;
 
   if(doDebug) std::cout << __FILE__ << ", " << __LINE__ << std::endl;
-  
+
   for(unsigned int jI = 0; jI < systHistNames.size(); ++jI){
-
-    if(doDebug) std::cout << " " << jI << "/" << systHistNames.size() << ": " << systHistNames[jI] << std::endl;
-
-    TH2D* temp2D_p = (TH2D*)histFile_p->Get(systHistNames[jI].c_str());
+    TH2D* temp2D_p = nullptr;
     TH1D* temp1D_p = (TH1D*)nominalHist_p->Clone("temp1D_p");
     for(Int_t bIX = 0; bIX < temp1D_p->GetXaxis()->GetNbins(); ++bIX){
       temp1D_p->GetBinContent(bIX+1, 0.0);
       temp1D_p->GetBinError(bIX+1, 0.0);
     }
-    fineTH2ToCoarseTH1(temp2D_p, temp1D_p, yPos);
-    binWidthAndScaleNorm(temp1D_p, scaledTotalSyst[jI]);
+
+    
+    if(systHistNames[jI].find("UNFNONCLOSURE") == std::string::npos){
+      if(doDebug) std::cout << __FILE__ << ", " << __LINE__ << ", " <<  std::endl;
+      temp2D_p = (TH2D*)histFile_p->Get(systHistNames[jI].c_str());
+      fineTH2ToCoarseTH1(temp2D_p, temp1D_p, yPos);
+      binWidthAndScaleNorm(temp1D_p, scaledTotalSyst[jI]);
+    }
+    else{//Unfolding non-closure must be handled specially
+      std::string gammaPtStr = nominalHist_p->GetName();
+      if(gammaPtStr.find("GammaPt") != std::string::npos){
+	gammaPtStr.replace(0, gammaPtStr.find("GammaPt"), "");
+
+	while(gammaPtStr.find("_") != std::string::npos){
+	  gammaPtStr.replace(gammaPtStr.rfind("_"), gammaPtStr.size(), "");
+	}
+      }
+
+      TFile* tempFile_p = new TFile(unfFileName.c_str(), "READ");
+      TH1D* corrHist_p = (TH1D*)tempFile_p->Get(("unfoldOverTruthMC_" + gammaPtStr + "_PP_MCNonClosure").c_str());
+      fineHistToCoarseHist(corrHist_p, temp1D_p);
+
+      for(Int_t bIX = 0; bIX < temp1D_p->GetXaxis()->GetNbins(); ++bIX){
+	Double_t value = nominalHist_p->GetBinContent(bIX+1)/temp1D_p->GetBinContent(bIX+1);
+	Double_t error = nominalHist_p->GetBinError(bIX+1)/temp1D_p->GetBinContent(bIX+1);
+
+	temp1D_p->SetBinContent(bIX+1, value);
+	temp1D_p->SetBinError(bIX+1, error);
+      }
+
+      tempFile_p->Close();
+      delete tempFile_p;
+    }
+    
     
     systVals.push_back({});   
     for(Int_t bIX = 0; bIX < temp1D_p->GetXaxis()->GetNbins(); ++bIX){
@@ -125,15 +154,15 @@ std::vector<std::vector<Double_t> > getSyst(TFile* histFile_p, TH1D* nominalHist
   return systVals;
 }
 
-std::vector<std::vector<Double_t> > getSystRat(TFile* histFilePbPb_p, TFile* histFilePP_p, TH1D* nominalHistPbPb_p, TH1D* nominalHistPP_p, std::vector<std::string> systHistNamesPbPb, std::vector<std::string> systHistNamesPP, std::vector<bool> isCorrelated, std::vector<Int_t> yPos, std::vector<Double_t> scaleTotalPbPbSyst, std::vector<Double_t> scaleTotalPPSyst)
+std::vector<std::vector<Double_t> > getSystRat(TFile* histFilePbPb_p, TFile* histFilePP_p, TH1D* nominalHistPbPb_p, TH1D* nominalHistPP_p, std::vector<std::string> systHistNamesPbPb, std::vector<std::string> systHistNamesPP, std::vector<bool> isCorrelated, std::vector<Int_t> yPos, std::vector<Double_t> scaleTotalPbPbSyst, std::vector<Double_t> scaleTotalPPSyst, std::string unfFileName)
 {
   std::vector<std::vector<Double_t> > systVals;
-  
+
   for(unsigned int jI = 0; jI < systHistNamesPbPb.size(); ++jI){
-    TH2D* temp2DPbPb_p = (TH2D*)histFilePbPb_p->Get(systHistNamesPbPb[jI].c_str());
+    TH2D* temp2DPbPb_p = nullptr;
     TH1D* temp1DPbPb_p = (TH1D*)nominalHistPbPb_p->Clone("temp1DPbPb_p");
 
-    TH2D* temp2DPP_p = (TH2D*)histFilePP_p->Get(systHistNamesPP[jI].c_str());
+    TH2D* temp2DPP_p = nullptr;
     TH1D* temp1DPP_p = (TH1D*)nominalHistPP_p->Clone("temp1DPP_p");
 
     for(Int_t bIX = 0; bIX < temp1DPbPb_p->GetXaxis()->GetNbins(); ++bIX){
@@ -143,12 +172,50 @@ std::vector<std::vector<Double_t> > getSystRat(TFile* histFilePbPb_p, TFile* his
       temp1DPP_p->SetBinContent(bIX+1, 0.0);
       temp1DPP_p->SetBinError(bIX+1, 0.0);
     }
-    fineTH2ToCoarseTH1(temp2DPbPb_p, temp1DPbPb_p, yPos);
-    fineTH2ToCoarseTH1(temp2DPP_p, temp1DPP_p, yPos);
+
+    if(systHistNamesPP[jI].find("UNFNONCLOSURE") == std::string::npos){
+      temp2DPbPb_p = (TH2D*)histFilePbPb_p->Get(systHistNamesPbPb[jI].c_str());      
+      temp2DPP_p = (TH2D*)histFilePP_p->Get(systHistNamesPP[jI].c_str());
+      
+      fineTH2ToCoarseTH1(temp2DPbPb_p, temp1DPbPb_p, yPos);
+      fineTH2ToCoarseTH1(temp2DPP_p, temp1DPP_p, yPos);
+      
+      binWidthAndScaleNorm(temp1DPbPb_p, scaleTotalPbPbSyst[jI]);
+      binWidthAndScaleNorm(temp1DPP_p, scaleTotalPPSyst[jI]);
+    }
+    else{
+      std::string gammaPtStr = nominalHistPP_p->GetName();
+      if(gammaPtStr.find("GammaPt") != std::string::npos){
+        gammaPtStr.replace(0, gammaPtStr.find("GammaPt"), "");
+	
+        while(gammaPtStr.find("_") != std::string::npos){
+          gammaPtStr.replace(gammaPtStr.rfind("_"), gammaPtStr.size(), "");
+        }
+      }
+
+      TFile* tempFile_p = new TFile(unfFileName.c_str(), "READ");
+      TH1D* corrHist_p = (TH1D*)tempFile_p->Get(("unfoldOverTruthMC_" + gammaPtStr + "_PP_MCNonClosure").c_str());
+      fineHistToCoarseHist(corrHist_p, temp1DPP_p);
+      fineHistToCoarseHist(corrHist_p, temp1DPbPb_p);
+
+      for(Int_t bIX = 0; bIX < temp1DPP_p->GetXaxis()->GetNbins(); ++bIX){
+        Double_t value = nominalHistPP_p->GetBinContent(bIX+1)/temp1DPP_p->GetBinContent(bIX+1);
+        Double_t error = nominalHistPP_p->GetBinError(bIX+1)/temp1DPP_p->GetBinContent(bIX+1);
+
+        temp1DPP_p->SetBinContent(bIX+1, value);
+        temp1DPP_p->SetBinError(bIX+1, error);
+
+        value = nominalHistPbPb_p->GetBinContent(bIX+1)/temp1DPbPb_p->GetBinContent(bIX+1);
+        error = nominalHistPbPb_p->GetBinError(bIX+1)/temp1DPbPb_p->GetBinContent(bIX+1);
+
+        temp1DPbPb_p->SetBinContent(bIX+1, value);
+        temp1DPbPb_p->SetBinError(bIX+1, error);
+      }
+
+      tempFile_p->Close();
+      delete tempFile_p;
+    }
     
-    binWidthAndScaleNorm(temp1DPbPb_p, scaleTotalPbPbSyst[jI]);
-    binWidthAndScaleNorm(temp1DPP_p, scaleTotalPPSyst[jI]);
-     
     systVals.push_back({});   
     for(Int_t bIX = 0; bIX < temp1DPP_p->GetXaxis()->GetNbins(); ++bIX){
       Double_t deltaVal = 0.0;
@@ -168,12 +235,12 @@ std::vector<std::vector<Double_t> > getSystRat(TFile* histFilePbPb_p, TFile* his
 	if(systHistNamesPbPb[jI].find("MCSTAT") != std::string::npos){
 	  //Check the deltaVal is 0; i.e. things are working correctly
 	  if(deltaValPbPb > TMath::Power(10,-50)){
-	    std::cout << "getSyst ERROR!!!! DeltaVal of Nominal and MCStat variation is greater than 0, return" << std::endl;
+	    std::cout << "getSyst ERROR!!!! DeltaVal of Nominal and MCStat variation is greater than 0, " << deltaValPbPb << " for Pb+Pb, return" << std::endl;
 	    return {};
 	  }
 
 	  if(deltaValPP > TMath::Power(10,-50)){
-	    std::cout << "getSyst ERROR!!!! DeltaVal of Nominal and MCStat variation is greater than 0, return" << std::endl;
+	    std::cout << "getSyst ERROR!!!! DeltaVal of Nominal and MCStat variation is greater than 0, "<< deltaValPbPb <<" for pp, return" << std::endl;
 	    return {};
 	  }
 	  
@@ -260,7 +327,7 @@ std::vector<Double_t> plotSyst(TH1D* nominalHist_p, std::vector<std::vector<Doub
   //Define some plotting parameters
   const int titleFont = 42;
   const double titleSize = 0.035;
-  const double labelSize = titleSize*0.9;
+  const double labelSize = titleSize*0.8;
   const double yOffset = 1.0;
 
   const Float_t height = 900.0;
@@ -425,9 +492,9 @@ std::vector<Double_t> plotSyst(TH1D* nominalHist_p, std::vector<std::vector<Doub
 int gdjPlotResults(std::string inConfigFileName)
 {
   const int titleFont = 42;
-  const double titleSize = 0.035;
-  const double labelSize = titleSize*0.9;
-  const double yOffset = 1.0;
+  const double titleSize = 0.0325;
+  const double labelSize = titleSize*0.8;
+  const double yOffset = 1.2;
   
   cppWatch globalTimer;
   globalTimer.start();
@@ -448,7 +515,8 @@ int gdjPlotResults(std::string inConfigFileName)
 					      "INPPFILENAME",
 					      "INPBPBTERMFILENAME",
 					      "INPPTERMFILENAME",
-					      "DOJTPTCUT",
+					      "INUNFNONCLOSUREFILENAME",
+					      "DOJTPTCUT",					      
 					      "SAVETAG",
 					      "SAVEEXT"};
 
@@ -457,6 +525,8 @@ int gdjPlotResults(std::string inConfigFileName)
 						 "VARMAXY",
 						 "VARRATMINY",
 						 "VARRATMAXY",
+						 "VARPYTRATMINY",
+						 "VARPYTRATMAXY",
 						 "VARDOLOGX",
 						 "VARDOLOGY",
 						 "VARLEGX",
@@ -466,8 +536,10 @@ int gdjPlotResults(std::string inConfigFileName)
   						 "VARRATLEGX",
 						 "VARRATLEGY",
   						 "VARRATLABELX",
-						 "VARRATLABELY"};
-  
+						 "VARRATLABELY",
+						 "VAR2JETXLABELX",
+						 "VAR2JETXLABELY"};
+
   if(!checkEnvForParams(config_p, necessaryParams)) return 1;
   const std::string inPbPbFileName = config_p->GetValue("INPBPBFILENAME", "");
   const std::string inPPFileName = config_p->GetValue("INPPFILENAME", "");
@@ -475,12 +547,14 @@ int gdjPlotResults(std::string inConfigFileName)
   const std::string inPbPbTermFileName = config_p->GetValue("INPBPBTERMFILENAME", "");
   const std::string inPPTermFileName = config_p->GetValue("INPPTERMFILENAME", "");
 
+  const std::string inUnfoldNonClosureFileName = config_p->GetValue("INUNFNONCLOSUREFILENAME", "");
+  
   //Check all files exist before continuing to grab params
   if(!check.checkFileExt(inPbPbFileName, ".root")) return 1;
   if(!check.checkFileExt(inPPFileName, ".root")) return 1;
   if(!check.checkFileExt(inPbPbTermFileName, ".config")) return 1;
   if(!check.checkFileExt(inPPTermFileName, ".config")) return 1;
-
+  if(!check.checkFileExt(inUnfoldNonClosureFileName, ".root")) return 1;
   
   const Bool_t doJtPtCut = config_p->GetValue("DOJTPTCUT", 0);  
 					        
@@ -518,808 +592,860 @@ int gdjPlotResults(std::string inConfigFileName)
     return 1;
   }  
 
-  //We should check the file for possible other inputs, like JEWEL for overlay
-  std::string inJEWELPPFileName = config_p->GetValue("JEWELPPFILENAME", "");
-  std::vector<std::string> inJEWELPbPbFileNames;
-  //Just cap it at ten to check for inputs - should never be more than that
-  const Int_t nMaxPbPbJEWELFiles = 10;
-  for(Int_t i = 0; i < nMaxPbPbJEWELFiles; ++i){
-    std::string inJEWELPbPbFileName = config_p->GetValue(("JEWELPBPBFILENAME." + std::to_string(i)).c_str(), "");
-    if(check.checkFileExt(inJEWELPbPbFileName, ".root")) inJEWELPbPbFileNames.push_back(inJEWELPbPbFileName);
-  }
+ //We should check the file for possible other inputs, like JEWEL for overlay
+ std::string inJEWELPPFileName = config_p->GetValue("JEWELPPFILENAME", "");
+ std::vector<std::string> inJEWELPbPbFileNames;
+ //Just cap it at ten to check for inputs - should never be more than that
+ const Int_t nMaxPbPbJEWELFiles = 10;
+ for(Int_t i = 0; i < nMaxPbPbJEWELFiles; ++i){
+   std::string inJEWELPbPbFileName = config_p->GetValue(("JEWELPBPBFILENAME." + std::to_string(i)).c_str(), "");
+   if(check.checkFileExt(inJEWELPbPbFileName, ".root")) inJEWELPbPbFileNames.push_back(inJEWELPbPbFileName);
+ }
 
-  //Scaling factor taking from HEP 13 TeV Photon+multijet
-  const Double_t scaleFactorPYT = 1.2;
-  //Do jewel overlay only if pp and at least one valid Pb+Pb file exist
-  bool doJEWEL = check.checkFileExt(inJEWELPPFileName, ".root") && inJEWELPbPbFileNames.size() > 0;
-  //Check that the jewel inputs are matched to our input files (this guarantees things like same-binning
-  TFile* ppJEWELFile_p = nullptr;
-  TEnv* ppJEWELConfig_p = nullptr;
-  TFile* pbpbJEWELFile_p[nMaxPbPbJEWELFiles];
-  TEnv* pbpbJEWELConfig_p[nMaxPbPbJEWELFiles];
-  if(doJEWEL){
-    ppJEWELFile_p = new TFile(inJEWELPPFileName.c_str(), "READ");
-    ppJEWELConfig_p = (TEnv*)ppJEWELFile_p->Get("config");
+ //Scaling factor taking from HEP 13 TeV Photon+multijet
+ const Double_t scaleFactorPYT = 1.2;
+ //Do jewel overlay only if pp and at least one valid Pb+Pb file exist
+ bool doJEWEL = check.checkFileExt(inJEWELPPFileName, ".root") && inJEWELPbPbFileNames.size() > 0;
+ //Check that the jewel inputs are matched to our input files (this guarantees things like same-binning
+ TFile* ppJEWELFile_p = nullptr;
+ TEnv* ppJEWELConfig_p = nullptr;
+ TFile* pbpbJEWELFile_p[nMaxPbPbJEWELFiles];
+ TEnv* pbpbJEWELConfig_p[nMaxPbPbJEWELFiles];
+ if(doJEWEL){
+   ppJEWELFile_p = new TFile(inJEWELPPFileName.c_str(), "READ");
+   ppJEWELConfig_p = (TEnv*)ppJEWELFile_p->Get("config");
 
-    std::string ppUnfoldFileFromJEWEL = ppJEWELConfig_p->GetValue("INUNFOLDFILENAME", "");
-    if(!isStrSame(ppUnfoldFileFromJEWEL, inPPFileName)){
-      std::cout << "Given JEWEL file was created from unfold file \'" << ppUnfoldFileFromJEWEL << "\' does not match input unfold file \'" << inPPFileName << "\'. Fix for JEWEL overlay. doJEWEL set to false"  << std::endl;
-      doJEWEL = false;
-    }    
+   std::string ppUnfoldFileFromJEWEL = ppJEWELConfig_p->GetValue("INUNFOLDFILENAME", "");
+   if(!isStrSame(ppUnfoldFileFromJEWEL, inPPFileName)){
+     std::cout << "Given JEWEL file was created from unfold file \'" << ppUnfoldFileFromJEWEL << "\' does not match input unfold file \'" << inPPFileName << "\'. Fix for JEWEL overlay. doJEWEL set to false"  << std::endl;
+     doJEWEL = false;
+   }    
 
-    if(doJEWEL){
-      for(unsigned int jI = 0; jI < inJEWELPbPbFileNames.size(); ++jI){
-	pbpbJEWELFile_p[jI] = new TFile(inJEWELPbPbFileNames[jI].c_str(), "READ");
-	pbpbJEWELConfig_p[jI] = (TEnv*)pbpbJEWELFile_p[jI]->Get("config");
+   if(doJEWEL){
+     for(unsigned int jI = 0; jI < inJEWELPbPbFileNames.size(); ++jI){
+ 	pbpbJEWELFile_p[jI] = new TFile(inJEWELPbPbFileNames[jI].c_str(), "READ");
+ 	pbpbJEWELConfig_p[jI] = (TEnv*)pbpbJEWELFile_p[jI]->Get("config");
 
-	std::string pbpbUnfoldFileFromJEWEL = pbpbJEWELConfig_p[jI]->GetValue("INUNFOLDFILENAME", "");
+ 	std::string pbpbUnfoldFileFromJEWEL = pbpbJEWELConfig_p[jI]->GetValue("INUNFOLDFILENAME", "");
 
-	if(!isStrSame(pbpbUnfoldFileFromJEWEL, inPbPbFileName)){
-	  std::cout << "Given JEWEL file was created from unfold file \'" << pbpbUnfoldFileFromJEWEL << "\' does not match input unfold file \'" << inPbPbFileName << "\'. Fix for JEWEL overlay.  doJEWEL set to false" << std::endl;
-	  doJEWEL = false;
-	}
-      }
-    }
-  }
-
-  
-  
-  //Get global labels
-  std::vector<std::string> globalLabels;
-  for(unsigned int i = 0; i < 100; ++i){
-    std::string tempStr = config_p->GetValue(("GLOBALLABEL." + std::to_string(i)).c_str(), "");
-    if(tempStr.size() != 0) globalLabels.push_back(tempStr);        
-  }
-
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-  
-  if(!check.checkFileExt(inPbPbFileName, ".root")) return 1;
-  if(!check.checkFileExt(inPPFileName, ".root")) return 1;
-  
-  TFile* inPbPbFile_p = new TFile(inPbPbFileName.c_str(), "READ");
-  TEnv* inPbPbFileConfig_p = (TEnv*)inPbPbFile_p->Get("config");    
-  TEnv* inPbPbFileLabel_p = (TEnv*)inPbPbFile_p->Get("label");    
-
-  TFile* inPPFile_p = new TFile(inPPFileName.c_str(), "READ");
-  TEnv* inPPFileConfig_p = (TEnv*)inPPFile_p->Get("config");    
-  //  TEnv* inPPFileLabel_p = (TEnv*)inPPFile_p->Get("label");    
-  
-  std::vector<std::string> paramsToCompare = {"ISMC",
-					      "NGAMMAPTBINS",
-					      "GAMMAPTBINSLOW",
-					      "GAMMAPTBINSHIGH",
-					      "GAMMAPTBINSDOLOG",
-					      "GAMMAPTBINSDOCUSTOM",
-					      "GAMMAPTBINSCUSTOM",
-					      "NSUBJTPTBINS",
-					      "SUBJTPTBINSLOW",
-					      "SUBJTPTBINSHIGH",
-					      "SUBJTPTBINSDOLOG",
-					      "SUBJTPTBINSDOCUSTOM",
-					      "SUBJTPTBINSCUSTOM",
-					      "SUBJTGAMMAPTMIN",
-					      "SUBJTGAMMAPTMAX",
-					      "JTPTBINSLOWRECO",
-					      "NITER",
-					      "JETR",
-					      "VARNAME"};
-
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
-  std::vector<std::string> necessaryFileParams = paramsToCompare;
-  necessaryFileParams.push_back("ISPP");
-
-  const std::string varName = returnAllLowercaseString(inPbPbFileConfig_p->GetValue("VARNAME", ""));
-  if(!isStrSame(termVarName, varName)){
-    std::cout << "Varname of input files \'" << varName << "\' does not match the varName of termination files \'" << termVarName << "\'. return 1" << std::endl;
-    return 1;
-  }
-  const std::string varNameUpper = strLowerToUpper(varName);
-  const std::string varNameLower = returnAllLowercaseString(varName);
-  const std::string varNameLabel = varNameToLabel(varName);
-
-  const Bool_t isMultijet = isStrSame(varNameLower, "xjj") || isStrSame(varNameLower, "dphijjg") || isStrSame(varNameLower, "ajj") || isStrSame(varNameLower, "dphijj") || isStrSame(varNameLower, "drjj");
+ 	if(!isStrSame(pbpbUnfoldFileFromJEWEL, inPbPbFileName)){
+ 	  std::cout << "Given JEWEL file was created from unfold file \'" << pbpbUnfoldFileFromJEWEL << "\' does not match input unfold file \'" << inPbPbFileName << "\'. Fix for JEWEL overlay.  doJEWEL set to false" << std::endl;
+ 	  doJEWEL = false;
+ 	}
+     }
+   }
+ }
 
   
-  //Now that we have the varName, fix necessaryVarParams and check our input config has them before getting the values
-  for(unsigned int vI = 0; vI < necessaryVarParams.size(); ++vI){
-    std::string repStr = necessaryVarParams[vI];
-    repStr.replace(repStr.find("VAR"), 3, varNameUpper);
-    necessaryVarParams[vI] = repStr;
-  }
-  if(!checkEnvForParams(config_p, necessaryVarParams)) return 1;
+  
+ //Get global labels
+ std::vector<std::string> globalLabels;
+ for(unsigned int i = 0; i < 100; ++i){
+   std::string tempStr = config_p->GetValue(("GLOBALLABEL." + std::to_string(i)).c_str(), "");
+   if(tempStr.size() != 0) globalLabels.push_back(tempStr);        
+ }
 
-  //Only optional value truncating the x-axis range; hence the absurd default values
-  float minValX = config_p->GetValue((varNameUpper + "MINX").c_str(), -1000.0);
-  float maxValX = config_p->GetValue((varNameUpper + "MAXX").c_str(), -10000.0);
-  bool doXTrunc = minValX < maxValX;
+ if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+  
+ if(!check.checkFileExt(inPbPbFileName, ".root")) return 1;
+ if(!check.checkFileExt(inPPFileName, ".root")) return 1;
+  
+ TFile* inPbPbFile_p = new TFile(inPbPbFileName.c_str(), "READ");
+ TEnv* inPbPbFileConfig_p = (TEnv*)inPbPbFile_p->Get("config");    
+ TEnv* inPbPbFileLabel_p = (TEnv*)inPbPbFile_p->Get("label");    
+
+ TFile* inPPFile_p = new TFile(inPPFileName.c_str(), "READ");
+ TEnv* inPPFileConfig_p = (TEnv*)inPPFile_p->Get("config");    
+ //  TEnv* inPPFileLabel_p = (TEnv*)inPPFile_p->Get("label");    
+  
+ std::vector<std::string> paramsToCompare = {"ISMC",
+ 					      "NGAMMAPTBINS",
+ 					      "GAMMAPTBINSLOW",
+ 					      "GAMMAPTBINSHIGH",
+ 					      "GAMMAPTBINSDOLOG",
+ 					      "GAMMAPTBINSDOCUSTOM",
+ 					      "GAMMAPTBINSCUSTOM",
+ 					      "NSUBJTPTBINS",
+ 					      "SUBJTPTBINSLOW",
+ 					      "SUBJTPTBINSHIGH",
+ 					      "SUBJTPTBINSDOLOG",
+ 					      "SUBJTPTBINSDOCUSTOM",
+ 					      "SUBJTPTBINSCUSTOM",
+ 					      "SUBJTGAMMAPTMIN",
+ 					      "SUBJTGAMMAPTMAX",
+ 					      "JTPTBINSLOWRECO",
+ 					      "NITER",
+ 					      "JETR",
+ 					      "VARNAME"};
+
+ if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
+ std::vector<std::string> necessaryFileParams = paramsToCompare;
+ necessaryFileParams.push_back("ISPP");
+
+ const std::string varName = returnAllLowercaseString(inPbPbFileConfig_p->GetValue("VARNAME", ""));
+ if(!isStrSame(termVarName, varName)){
+   std::cout << "Varname of input files \'" << varName << "\' does not match the varName of termination files \'" << termVarName << "\'. return 1" << std::endl;
+   return 1;
+ }
+ const std::string varNameUpper = strLowerToUpper(varName);
+ const std::string varNameLower = returnAllLowercaseString(varName);
+ const std::string varNameLabel = varNameToLabel(varName);
+
+ const Bool_t isMultijet = isStrSame(varNameLower, "xjj") || isStrSame(varNameLower, "dphijjg") || isStrSame(varNameLower, "ajj") || isStrSame(varNameLower, "dphijj") || isStrSame(varNameLower, "drjj");
+
+  
+ //Now that we have the varName, fix necessaryVarParams and check our input config has them before getting the values
+ for(unsigned int vI = 0; vI < necessaryVarParams.size(); ++vI){
+   std::string repStr = necessaryVarParams[vI];
+   repStr.replace(repStr.find("VAR"), 3, varNameUpper);
+   necessaryVarParams[vI] = repStr;
+ }
+ if(!checkEnvForParams(config_p, necessaryVarParams)) return 1;
+
+ //Only optional value truncating the x-axis range; hence the absurd default values
+ float minValX = config_p->GetValue((varNameUpper + "MINX").c_str(), -1000.0);
+ float maxValX = config_p->GetValue((varNameUpper + "MAXX").c_str(), -10000.0);
+ bool doXTrunc = minValX < maxValX;
   
   
-  //Min. necessary values for plotting
-  float minVal = config_p->GetValue((varNameUpper + "MINY").c_str(), 0.0);
-  float maxVal = config_p->GetValue((varNameUpper + "MAXY").c_str(), 0.0);
-  float minRatVal = config_p->GetValue((varNameUpper + "RATMINY").c_str(), 0.0);
-  float maxRatVal = config_p->GetValue((varNameUpper + "RATMAXY").c_str(), 0.0);
-  bool doLogX = config_p->GetValue((varNameUpper + "DOLOGX").c_str(), 0);
-  bool doLogY = config_p->GetValue((varNameUpper + "DOLOGY").c_str(), 0);
-  float legX = config_p->GetValue((varNameUpper + "LEGX").c_str(), 0.1);
-  float legY = config_p->GetValue((varNameUpper + "LEGY").c_str(), 0.1);
-  float labelX = config_p->GetValue((varNameUpper + "LABELX").c_str(), 0.1);
-  float labelY = config_p->GetValue((varNameUpper + "LABELY").c_str(), 0.1);
+ //Min. necessary values for plotting
+ float minVal = config_p->GetValue((varNameUpper + "MINY").c_str(), 0.0);
+ float maxVal = config_p->GetValue((varNameUpper + "MAXY").c_str(), 0.0);
+ float minRatVal = config_p->GetValue((varNameUpper + "RATMINY").c_str(), 0.0);
+ float maxRatVal = config_p->GetValue((varNameUpper + "RATMAXY").c_str(), 0.0);
+ float minPytRatVal = config_p->GetValue((varNameUpper + "PYTRATMINY").c_str(), 0.0);
+ float maxPytRatVal = config_p->GetValue((varNameUpper + "PYTRATMAXY").c_str(), 0.0);
+ bool doLogX = config_p->GetValue((varNameUpper + "DOLOGX").c_str(), 0);
+ bool doLogY = config_p->GetValue((varNameUpper + "DOLOGY").c_str(), 0);
+ float legX = config_p->GetValue((varNameUpper + "LEGX").c_str(), 0.1);
+ float legY = config_p->GetValue((varNameUpper + "LEGY").c_str(), 0.1);
+ float labelX = config_p->GetValue((varNameUpper + "LABELX").c_str(), 0.1);
+ float labelY = config_p->GetValue((varNameUpper + "LABELY").c_str(), 0.1);
 
-  float ratLegX = config_p->GetValue((varNameUpper + "RATLEGX").c_str(), 0.1);
-  float ratLegY = config_p->GetValue((varNameUpper + "RATLEGY").c_str(), 0.1);
-  float ratLabelX = config_p->GetValue((varNameUpper + "RATLABELX").c_str(), 0.1);
-  float ratLabelY = config_p->GetValue((varNameUpper + "RATLABELY").c_str(), 0.1);
+ float var2JetXLabelX = config_p->GetValue((varNameUpper + "2JETXLABELX").c_str(), 0.1);
+ float var2JetXLabelY = config_p->GetValue((varNameUpper + "2JETXLABELY").c_str(), 0.1);
   
-  float legXCent = config_p->GetValue((varNameUpper + "LEGXCENT").c_str(), legX);
-  float legYCent = config_p->GetValue((varNameUpper + "LEGYCENT").c_str(), legY);
-
-  float labelXCent = config_p->GetValue((varNameUpper + "LABELXCENT").c_str(), labelX);
-  float labelYCent = config_p->GetValue((varNameUpper + "LABELYCENT").c_str(), labelY);
-  float labelAlignRightCent = config_p->GetValue((varNameUpper + "LABELALIGNRIGHTCENT").c_str(), 1);
+ float ratLegX = config_p->GetValue((varNameUpper + "RATLEGX").c_str(), 0.1);
+ float ratLegY = config_p->GetValue((varNameUpper + "RATLEGY").c_str(), 0.1);
+ float ratLabelX = config_p->GetValue((varNameUpper + "RATLABELX").c_str(), 0.1);
+ float ratLabelY = config_p->GetValue((varNameUpper + "RATLABELY").c_str(), 0.1);
   
-  std::string varPrefix = "";
-  std::string varNameHist = varNameUpper;
-  if(isStrSame(varNameUpper, "PT")){
-    varNameHist = "Pt";
-    varPrefix = "JT";
-  }
+ float legXCent = config_p->GetValue((varNameUpper + "LEGXCENT").c_str(), legX);
+ float legYCent = config_p->GetValue((varNameUpper + "LEGYCENT").c_str(), legY);
 
-  std::string binVarStr = varPrefix + varNameUpper;
-  if(isStrSame(binVarStr, "AJJ")) binVarStr = "AJ";
-  if(isStrSame(binVarStr, "DRJJ")) binVarStr = "DR";
-
-  const Int_t nMaxPtBins = 200;
-  Int_t nVarBins = inPbPbFileConfig_p->GetValue(("N" + binVarStr + "BINS").c_str(), -1);
-  Float_t varBinsLow = inPbPbFileConfig_p->GetValue((binVarStr + "BINSLOW").c_str(), -1);
-  Float_t varBinsHigh = inPbPbFileConfig_p->GetValue((binVarStr + "BINSHIGH").c_str(), -1);
-  Bool_t varBinsDoLog = inPbPbFileConfig_p->GetValue((binVarStr + "BINSDOLOG").c_str(), 0);
-  Bool_t varBinsDoCustom = inPbPbFileConfig_p->GetValue((binVarStr + "BINSDOCUSTOM").c_str(), 0);
-  std::string varBinsStr;
-  Double_t varBins[nMaxPtBins+1];
-  Int_t nVarBinsTrunc = -1;
-  Double_t varBinsTrunc[nMaxPtBins+1];
+ float labelXCent = config_p->GetValue((varNameUpper + "LABELXCENT").c_str(), labelX);
+ float labelYCent = config_p->GetValue((varNameUpper + "LABELYCENT").c_str(), labelY);
+ float labelAlignRightCent = config_p->GetValue((varNameUpper + "LABELALIGNRIGHTCENT").c_str(), 1);
   
-  std::string gammaJtDPhiCutLabel = inPbPbFileConfig_p->GetValue("GAMMAJTDPHI", "");
-  if(gammaJtDPhiCutLabel.size() == 0){
-    std::cout << "GammaJtDPhi not found, check line L" << __LINE__ << ". return 1" << std::endl;
-    return 1;
-  }
-  if(gammaJtDPhiCutLabel.find("pi") != std::string::npos) gammaJtDPhiCutLabel.replace(gammaJtDPhiCutLabel.find("pi"), 2, "#pi");
-  gammaJtDPhiCutLabel = "|#Delta#phi_{#gamma,jet}|>" + gammaJtDPhiCutLabel;
+ std::string varPrefix = "";
+ std::string varNameHist = varNameUpper;
+ if(isStrSame(varNameUpper, "PT")){
+   varNameHist = "Pt";
+   varPrefix = "JT";
+ }
+
+ std::string binVarStr = varPrefix + varNameUpper;
+ if(isStrSame(binVarStr, "AJJ")) binVarStr = "AJ";
+ if(isStrSame(binVarStr, "DRJJ")) binVarStr = "DR";
+
+ const Int_t nMaxPtBins = 200;
+ Int_t nVarBins = inPbPbFileConfig_p->GetValue(("N" + binVarStr + "BINS").c_str(), -1);
+ Float_t varBinsLow = inPbPbFileConfig_p->GetValue((binVarStr + "BINSLOW").c_str(), -1);
+ Float_t varBinsHigh = inPbPbFileConfig_p->GetValue((binVarStr + "BINSHIGH").c_str(), -1);
+ Bool_t varBinsDoLog = inPbPbFileConfig_p->GetValue((binVarStr + "BINSDOLOG").c_str(), 0);
+ Bool_t varBinsDoCustom = inPbPbFileConfig_p->GetValue((binVarStr + "BINSDOCUSTOM").c_str(), 0);
+ std::string varBinsStr;
+ Double_t varBins[nMaxPtBins+1];
+ Int_t nVarBinsTrunc = -1;
+ Double_t varBinsTrunc[nMaxPtBins+1];
   
-  //Grab the bins and throw them in the varBins array
-  if(varBinsDoLog) getLogBins(varBinsLow, varBinsHigh, nVarBins, varBins);
-  else if(varBinsDoCustom){
-    varBinsStr = inPbPbFileConfig_p->GetValue((binVarStr + "BINSCUSTOM").c_str(), "");
-    if(varBinsStr.size() == 0){
-      std::cout << "No custom bins given. return 1" << std::endl;
-      return 1;
-    }
-    std::vector<float> varBinsTemp = strToVectF(varBinsStr);
-    Int_t nVarBinsTemp = ((Int_t)varBinsTemp.size()) - 1;
-    if(nVarBins != nVarBinsTemp){
-      return 1;
-    }
+ std::string gammaJtDPhiCutLabel = inPbPbFileConfig_p->GetValue("GAMMAJTDPHI", "");
+ if(gammaJtDPhiCutLabel.size() == 0){
+   std::cout << "GammaJtDPhi not found, check line L" << __LINE__ << ". return 1" << std::endl;
+   return 1;
+ }
+ if(gammaJtDPhiCutLabel.find("pi") != std::string::npos) gammaJtDPhiCutLabel.replace(gammaJtDPhiCutLabel.find("pi"), 2, "#pi");
+ gammaJtDPhiCutLabel = "|#Delta#phi_{#gamma,jet}|>" + gammaJtDPhiCutLabel;
+  
+ //Grab the bins and throw them in the varBins array
+ if(varBinsDoLog) getLogBins(varBinsLow, varBinsHigh, nVarBins, varBins);
+ else if(varBinsDoCustom){
+   varBinsStr = inPbPbFileConfig_p->GetValue((binVarStr + "BINSCUSTOM").c_str(), "");
+   if(varBinsStr.size() == 0){
+     std::cout << "No custom bins given. return 1" << std::endl;
+     return 1;
+   }
+   std::vector<float> varBinsTemp = strToVectF(varBinsStr);
+   Int_t nVarBinsTemp = ((Int_t)varBinsTemp.size()) - 1;
+   if(nVarBins != nVarBinsTemp){
+     return 1;
+   }
 
-    for(unsigned int gI = 0; gI < varBinsTemp.size(); ++gI){
-      varBins[gI] = varBinsTemp[gI];
-    }
-  }
-  else getLinBins(varBinsLow, varBinsHigh, nVarBins, varBins);
+   for(unsigned int gI = 0; gI < varBinsTemp.size(); ++gI){
+     varBins[gI] = varBinsTemp[gI];
+   }
+ }
+ else getLinBins(varBinsLow, varBinsHigh, nVarBins, varBins);
 
-  //if an x-axis truncation is requested, test that given values match array
-  if(doXTrunc){
-    if(!checkHistContainsBins({minValX, maxValX}, nVarBins, varBins, 0.0001)){      
-     std::cout << "gdjPlotResults ERROR: Requested plotting truncation in var \'" << varNameUpper << "\' to range " << minValX << "-" << maxValX << " is not found in bins \'" << varBinsStr << "\'. return 1" << std::endl;
+ //if an x-axis truncation is requested, test that given values match array
+ if(doXTrunc){
+   if(!checkHistContainsBins({minValX, maxValX}, nVarBins, varBins, 0.0001)){      
+    std::cout << "gdjPlotResults ERROR: Requested plotting truncation in var \'" << varNameUpper << "\' to range " << minValX << "-" << maxValX << " is not found in bins \'" << varBinsStr << "\'. return 1" << std::endl;
       
-      return 1;
-    }
+     return 1;
+   }
 
-    nVarBinsTrunc = truncateBinRange(nVarBins, varBins, minValX, maxValX, 0.0001, varBinsTrunc);
-    /*   
-    std::cout << "Original bins: " << std::endl;
-    for(Int_t bIX = 0; bIX < nVarBins; ++bIX){
-      std::cout << " " << varBins[bIX] << ",";
-    }
-    std::cout << " " <<  varBins[nVarBins] << "." << std::endl;
+   nVarBinsTrunc = truncateBinRange(nVarBins, varBins, minValX, maxValX, 0.0001, varBinsTrunc);
+   /*   
+   std::cout << "Original bins: " << std::endl;
+   for(Int_t bIX = 0; bIX < nVarBins; ++bIX){
+     std::cout << " " << varBins[bIX] << ",";
+   }
+   std::cout << " " <<  varBins[nVarBins] << "." << std::endl;
 
-    std::cout << std::endl;
-    std::cout << "New bins: " << std::endl;
-    for(Int_t bIX = 0; bIX < nVarBinsTrunc; ++bIX){
-      std::cout << " " << varBinsTrunc[bIX] << ",";
-    }
-    std::cout << " " << varBinsTrunc[nVarBinsTrunc] << ".";
+   std::cout << std::endl;
+   std::cout << "New bins: " << std::endl;
+   for(Int_t bIX = 0; bIX < nVarBinsTrunc; ++bIX){
+     std::cout << " " << varBinsTrunc[bIX] << ",";
+   }
+   std::cout << " " << varBinsTrunc[nVarBinsTrunc] << ".";
     
-    return 1;
-    */
-  }
+   return 1;
+   */
+ }
   
-  const std::string gammaJtDPhiStr = "DPhi0";
-  //  const std::string multiJtCutGlobalStr = "MultiJt0";
-  const std::string jtPtBinsGlobalStr = "GlobalJtPt0";
+ const std::string gammaJtDPhiStr = "DPhi0";
+ //  const std::string multiJtCutGlobalStr = "MultiJt0";
+ const std::string jtPtBinsGlobalStr = "GlobalJtPt0";
 
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+ if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
-  std::vector<std::string> pbpbParams = {"CENTBINS"};
-  if(!checkEnvForParams(inPbPbFileConfig_p, necessaryFileParams)) return 1;
-  if(!checkEnvForParams(inPPFileConfig_p, necessaryFileParams)) return 1;
-  if(!compEnvParams(inPbPbFileConfig_p, inPPFileConfig_p, paramsToCompare)) return 1;
+ std::vector<std::string> pbpbParams = {"CENTBINS"};
+ if(!checkEnvForParams(inPbPbFileConfig_p, necessaryFileParams)) return 1;
+ if(!checkEnvForParams(inPPFileConfig_p, necessaryFileParams)) return 1;
+ if(!compEnvParams(inPbPbFileConfig_p, inPPFileConfig_p, paramsToCompare)) return 1;
 
-  const Int_t nMaxSyst = 100;
-  //Grab all systs
-  Int_t nSyst = inPPFileConfig_p->GetValue("NSYST", -1);
-  std::vector<std::string> systStrVect = strToVect(inPPFileConfig_p->GetValue("SYST", ""));
-  std::vector<std::string> systTypeVect = strToVect(inPPFileConfig_p->GetValue("SYSTTYPE", ""));
-  std::map<std::string, int> systTypesMap;
-  std::map<std::string, std::string> systStrToSystType;
-  std::vector<std::string> uniqueSystTypes;
+ const Int_t nMaxSyst = 100;
+ //Grab all systs
+ Int_t nSyst = inPPFileConfig_p->GetValue("NSYST", -1);
+ std::vector<std::string> systStrVect = strToVect(inPPFileConfig_p->GetValue("SYST", ""));
+ std::vector<std::string> systTypeVect = strToVect(inPPFileConfig_p->GetValue("SYSTTYPE", ""));
+ std::map<std::string, int> systTypesMap;
+ std::map<std::string, std::string> systStrToSystType;
+ std::vector<std::string> uniqueSystTypes;
 
-  //Do some prelim splitting of JESJER
-  const Int_t nMaxJESJERFORLEG = 11;
-  Int_t nJESJERCurr = 0;
-  for(unsigned int sI = 0; sI < systTypeVect.size(); ++sI){
-    if(isStrSame(systTypeVect[sI], "JESJER")){
-      if(systStrVect[sI].substr(0,3).find("JES") != std::string::npos || systStrVect[sI].substr(0,2).find("QG") != std::string::npos){
-	systTypeVect[sI] = "JESSET" + std::to_string(nJESJERCurr/nMaxJESJERFORLEG);
-	++nJESJERCurr;
-      }
-      else if(systStrVect[sI].substr(0,3).find("JER") != std::string::npos){
-	systTypeVect[sI] = "JER";
-      }	
-    }
-  }
+ //We need to first insert the unfolding syst
+ ++nSyst;
+ systStrVect.push_back("UNFNONCLOSURE");
+ systTypeVect.push_back("UNFOLDING");
   
-  
-  for(int systI = 0; systI < nSyst; ++systI){
-    if(systTypeVect[systI].find("NOMINAL") != std::string::npos) continue;//This is not a syst but a placeholder for convenience
-
-    systStrToSystType[systStrVect[systI]] = systTypeVect[systI];
-    ++(systTypesMap[systTypeVect[systI]]);
-  }
-
-  for(auto const & val : systTypesMap){
-    uniqueSystTypes.push_back(val.first);
-  }
-  
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;  
-  
-  //Add to global labels
-  int jetR = inPbPbFileConfig_p->GetValue("JETR", 100);
-  std::string jetRStr = "anti-k_{t} #it{R}=";
-  if(jetR < 10) jetRStr = jetRStr + "0." + std::to_string(jetR) + " jets";
-  else{
-    jetRStr = jetRStr + prettyString(((double)jetR)/10., 1, false) + " jets";
-  }
-  globalLabels.push_back(jetRStr);
-  globalLabels.push_back(jtPtBinsGlobalStr);
-  globalLabels.push_back(gammaJtDPhiStr);
-
-  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
-  configParser labels(inPbPbFileLabel_p);
-  std::map<std::string, std::string> labelMap = labels.GetConfigMap();
-
-  for(unsigned int gI = 0; gI < globalLabels.size(); ++gI){
-    if(labelMap.count(globalLabels[gI]) != 0){
-      globalLabels[gI] = labelMap[globalLabels[gI]];
-    }
-  }
-  
-  //Grab first set of parameters defined in necessaryInFileParams
-  const bool isPP = inPPFileConfig_p->GetValue("ISPP", 0);
-  const bool isPbPb = !(inPbPbFileConfig_p->GetValue("ISPP", 0));  
-  
-  if(!isPP){
-    std::cout << "Given pp file is not pp return 1" << std::endl;
-    return 1;
-  }
-  if(!isPbPb){
-    std::cout << "Given pbpb file is not pbpb return 1" << std::endl;
-    return 1;
-  }
-
-  std::vector<std::string> tempCentBinsStr = strToVect(inPbPbFileConfig_p->GetValue("CENTBINS", ""));
-  std::vector<std::string> centBinsStr ;
-  std::vector<std::string> centBinsLabel;
-
-  for(unsigned int cI = 0; cI < tempCentBinsStr.size()-1; ++cI){
-    centBinsStr.push_back("Cent" + tempCentBinsStr[cI] + "to" + tempCentBinsStr[cI+1]);
-    centBinsLabel.push_back("#bf{Pb+Pb, " + tempCentBinsStr[cI] + "-" + tempCentBinsStr[cI+1] + "%}");
-  }  
-
+ //Do some prelim splitting of JESJER
+ const Int_t nMaxJESJERFORLEG = 11;
+ Int_t nJESJERCurr = 0;
+ for(unsigned int sI = 0; sI < systTypeVect.size(); ++sI){
+   if(isStrSame(systTypeVect[sI], "JESJER")){
+     if(systStrVect[sI].substr(0,3).find("JES") != std::string::npos || systStrVect[sI].substr(0,2).find("QG") != std::string::npos){
+ 	systTypeVect[sI] = "JESSET" + std::to_string(nJESJERCurr/nMaxJESJERFORLEG);
+ 	++nJESJERCurr;
+     }
+     else if(systStrVect[sI].substr(0,3).find("JER") != std::string::npos){
+ 	systTypeVect[sI] = "JER";
+     }	
+   }
+ }
   
   
-  //Define a bunch of parameters for the TCanvas
-  const Int_t nPad = 2;
-  Double_t padSplit = 0.45;
-  const Double_t leftMargin = 0.16;
-  const Double_t bottomMargin = 0.125/padSplit;
-  const Double_t topMargin = 0.02;
-  const Double_t rightMargin = 0.02;
-  const Double_t noMargin = 0.001;
-  Double_t height = 900.0;
-  Double_t width = height*(1.0 - topMargin*(1.0 - padSplit) - bottomMargin*padSplit)/(1.0 - leftMargin - rightMargin);
-  height = 1200.0;
+ for(int systI = 0; systI < nSyst; ++systI){
+   if(systTypeVect[systI].find("NOMINAL") != std::string::npos) continue;//This is not a syst but a placeholder for convenience
+
+   systStrToSystType[systStrVect[systI]] = systTypeVect[systI];
+   ++(systTypesMap[systTypeVect[systI]]);
+ }
+
+ for(auto const & val : systTypesMap){
+   uniqueSystTypes.push_back(val.first);
+ }
   
-  const Int_t nGammaPtBins = inPbPbFileConfig_p->GetValue("NGAMMAPTBINS", 0);
-  const Float_t gammaPtBinsLow = inPbPbFileConfig_p->GetValue("GAMMAPTBINSLOW", 80.0);
-  const Float_t gammaPtBinsHigh = inPbPbFileConfig_p->GetValue("GAMMAPTBINSHIGH", 280.0);
-  const Bool_t gammaPtBinsDoLog = (bool)inPbPbFileConfig_p->GetValue("GAMMAPTBINSDOLOG", 1);
-  const Bool_t gammaPtBinsDoCustom = (bool)inPbPbFileConfig_p->GetValue("GAMMAPTBINSDOCUSTOM", 1);
-  Double_t gammaPtBins[nMaxPtBins+1];
-
-  if(gammaPtBinsDoLog) getLogBins(gammaPtBinsLow, gammaPtBinsHigh, nGammaPtBins, gammaPtBins);
-  else if(gammaPtBinsDoCustom){
-    std::string gammaPtBinsStr = inPbPbFileConfig_p->GetValue("GAMMAPTBINSCUSTOM", "");
-    if(gammaPtBinsStr.size() == 0){
-      std::cout << "No custom bins given. return 1" << std::endl;
-      return 1;
-    }
-    std::vector<float> gammaPtBinsTemp = strToVectF(gammaPtBinsStr);
-    Int_t nGammaPtBinsTemp = ((Int_t)gammaPtBinsTemp.size()) - 1;
-    if(nGammaPtBins != nGammaPtBinsTemp){
-      std::cout << "GAMMAPTBINS DONT MATCH: " << std::endl;
-      return 1;
-    }
-
-    for(unsigned int gI = 0; gI < gammaPtBinsTemp.size(); ++gI){
-      gammaPtBins[gI] = gammaPtBinsTemp[gI];
-    }
-  }
-  else getLinBins(gammaPtBinsLow, gammaPtBinsHigh, nGammaPtBins, gammaPtBins);
-
-  const Int_t nSubJtPtBins = inPbPbFileConfig_p->GetValue("NSUBJTPTBINS", 0);
-  const Float_t subJtPtBinsLow = inPbPbFileConfig_p->GetValue("SUBJTPTBINSLOW", 80.0);
-  const Float_t subJtPtBinsHigh = inPbPbFileConfig_p->GetValue("SUBJTPTBINSHIGH", 280.0);
-  const Bool_t subJtPtBinsDoLog = (bool)inPbPbFileConfig_p->GetValue("SUBJTPTBINSDOLOG", 1);
-  const Bool_t subJtPtBinsDoCustom = (bool)inPbPbFileConfig_p->GetValue("SUBJTPTBINSDOCUSTOM", 1);
-  Double_t subJtPtBins[nMaxPtBins+1];
-
-  if(subJtPtBinsDoLog) getLogBins(subJtPtBinsLow, subJtPtBinsHigh, nSubJtPtBins, subJtPtBins);
-  else if(subJtPtBinsDoCustom){
-    std::string subJtPtBinsStr = inPbPbFileConfig_p->GetValue("SUBJTPTBINSCUSTOM", "");
-    if(subJtPtBinsStr.size() == 0){
-      std::cout << "No custom bins given. return 1" << std::endl;
-      return 1;
-    }
-    std::vector<float> subJtPtBinsTemp = strToVectF(subJtPtBinsStr);
-    Int_t nSubJtPtBinsTemp = ((Int_t)subJtPtBinsTemp.size()) - 1;
-    if(nSubJtPtBins != nSubJtPtBinsTemp){
-      std::cout << "SUBJTPTBINS DONT MATCH: " << std::endl;
-      return 1;
-    }
-
-    for(unsigned int gI = 0; gI < subJtPtBinsTemp.size(); ++gI){
-      subJtPtBins[gI] = subJtPtBinsTemp[gI];
-    }
-  }
-  else getLinBins(subJtPtBinsLow, subJtPtBinsHigh, nSubJtPtBins, subJtPtBins);
-
-  //Now that we have subjtpt bins, do the doJTPtCut check
-  Double_t jtPtBinsLowReco = inPbPbFileConfig_p->GetValue("JTPTBINSLOWRECO", -10.0);
-  if(doJtPtCut){
-    bool jtPtCutFound = false;
-    double deltaVal = 0.001;
-    for(Int_t sI = 0; sI < nSubJtPtBins; ++sI){
-      if(TMath::Abs(subJtPtBins[sI] - jtPtBinsLowReco) < deltaVal){
-        jtPtCutFound = true;
-        break;
-      }
-    }
-
-    if(!jtPtCutFound){
-      std::cout << "doJtPtCut is on but jtPtCut, " << jtPtBinsLowReco << " is not found in bins, ";
-      for(Int_t sI = 0; sI < nSubJtPtBins; ++sI){
-	std::cout << subJtPtBins[sI] << ", ";
-      }
-      std::cout << subJtPtBins[nSubJtPtBins] << ". return 1" << std::endl;
-      return 1;
-    }
-  }
+ if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;  
   
-  //We have subjt pt bins and gamma pt bins now setup the bin flattener
-  const Float_t subJtGammaPtMin = inPbPbFileConfig_p->GetValue("SUBJTGAMMAPTBINSMIN", -1000.0);
-  const Float_t subJtGammaPtMax = inPbPbFileConfig_p->GetValue("SUBJTGAMMAPTBINSMAX", -1000.0);
+ //Add to global labels
+ int jetR = inPbPbFileConfig_p->GetValue("JETR", 100);
+ std::string jetRStr = "anti-k_{t} #it{R}=";
+ if(jetR < 10) jetRStr = jetRStr + "0." + std::to_string(jetR) + " jets";
+ else{
+   jetRStr = jetRStr + prettyString(((double)jetR)/10., 1, false) + " jets";
+ }
+ globalLabels.push_back(jetRStr);
+ globalLabels.push_back(jtPtBinsGlobalStr);
+ globalLabels.push_back(gammaJtDPhiStr);
 
-  binFlattener subJtGammaPtBinFlattener;
-  if(!subJtGammaPtBinFlattener.Init("subJtGammaPtBinFlattener", nGammaPtBins, gammaPtBins, nSubJtPtBins, subJtPtBins)){
-    std::cout << "Error gdjPlotResults: Failure to init binFlattener, L" << __LINE__ << ". return 1" << std::endl;
-    return 1;
-  }
+ if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
-  std::vector<double> subJtGammaPtBinsV = subJtGammaPtBinFlattener.GetFlattenedBins(subJtGammaPtMin, subJtGammaPtMax); 
-  Int_t nSubJtGammaPtBins = nGammaPtBins*nSubJtPtBins;
+ configParser labels(inPbPbFileLabel_p);
+ std::map<std::string, std::string> labelMap = labels.GetConfigMap();
+
+ for(unsigned int gI = 0; gI < globalLabels.size(); ++gI){
+   if(labelMap.count(globalLabels[gI]) != 0){
+     globalLabels[gI] = labelMap[globalLabels[gI]];
+   }
+ }
   
-  gStyle->SetOptStat(0);
-
-  const Int_t iterPPPhoPt = inPPTermFileConfig_p->GetValue("GAMMAPT_PP_Nominal", -1); 
-
-  const Int_t nCentIntBins = 5;
-  Double_t centIntBins[nCentIntBins+1] = {0,10,30,80,100,120};
+ //Grab first set of parameters defined in necessaryInFileParams
+ const bool isPP = inPPFileConfig_p->GetValue("ISPP", 0);
+ const bool isPbPb = !(inPbPbFileConfig_p->GetValue("ISPP", 0));  
   
-  for(Int_t gI = 1; gI < nGammaPtBins-1; ++gI){
-    //Create a few summary plots
-    TH1D* integralPerCentrality_h = new TH1D("integralPerCentrality_h", ";Centrality/p+p;R_{JJ#gamma}", nCentIntBins, centIntBins);
-    TH1D* meanPerCentrality_h = new TH1D("meanPerCentrality_h", ";Centrality/p+p;#LT#vec{x}_{JJ#gamma}#GT", nCentIntBins, centIntBins);
+ if(!isPP){
+   std::cout << "Given pp file is not pp return 1" << std::endl;
+   return 1;
+ }
+ if(!isPbPb){
+   std::cout << "Given pbpb file is not pbpb return 1" << std::endl;
+   return 1;
+ }
 
-    Int_t iterPP = inPPTermFileConfig_p->GetValue((varNameUpper + "_GAMMAPT_PP_Nominal").c_str(), -1);
+ std::vector<std::string> tempCentBinsStr = strToVect(inPbPbFileConfig_p->GetValue("CENTBINS", ""));
+ std::vector<std::string> centBinsStr ;
+ std::vector<std::string> centBinsLabel;
+ std::vector<int> centColors;
+ int ppColor = -1;
+ //pp custom color object
+ TColor* ppColor_p = new TColor();
+ ppColor = ppColor_p->GetColor(0, 34, 85);
+ 
+ 
+ for(unsigned int cI = 0; cI < tempCentBinsStr.size()-1; ++cI){
+   centBinsStr.push_back("Cent" + tempCentBinsStr[cI] + "to" + tempCentBinsStr[cI+1]);
+   centBinsLabel.push_back("#bf{Pb+Pb, " + tempCentBinsStr[cI] + "-" + tempCentBinsStr[cI+1] + "%}");
 
-    if(iterPP < 0){
-      std::cout << "Terminating iteration is \'" << iterPP << "\' in pp, for \'" << varNameUpper + "_GAMMAPT_PP_NOMINAL" << "\'. return 1" << std::endl;
-      return 1;
-    }
+   Int_t centPos = -1;
+   if(centBinsStr[cI].find("Cent0to10") != std::string::npos) centPos = 1;
+   else if(centBinsStr[cI].find("Cent10to30") != std::string::npos) centPos = 2;
+   else if(centBinsStr[cI].find("Cent30to80") != std::string::npos) centPos = 3;
 
-    TH1D* ppHistPhoPt_p = (TH1D*)inPPFile_p->Get(("photonPtReco_Iter" + std::to_string(iterPPPhoPt) + "_PP_Nominal_PURCORR_COMBINED_h").c_str());
-    Double_t scaledTotalPP = 0.0;
-    for(Int_t bIX = 0; bIX < ppHistPhoPt_p->GetXaxis()->GetNbins(); ++bIX){
-      Float_t binCenter = ppHistPhoPt_p->GetBinCenter(bIX+1);
-      if(binCenter < gammaPtBins[gI] || binCenter >= gammaPtBins[gI+1]) continue;
+   TH1D* dummyHist_p = new TH1D("dummyHist_p", "", 10, 0, 1);
+   HIJet::Style::EquipHistogram(dummyHist_p, centPos);
 
-      scaledTotalPP += ppHistPhoPt_p->GetBinContent(bIX+1);
-    }
+   centColors.push_back(dummyHist_p->GetMarkerColor());   
 
-    std::cout << "SCALED TOTAL PP: " << scaledTotalPP << std::endl;
+   /*
+   if(cI == 0){
+     HIJet::Style::EquipHistogram(dummyHist_p, 2);
+     ppColor = dummyHist_p->GetMarkerColor();   
+   }
+   */
+   
+   delete dummyHist_p;
+ }  
+  
+ delete ppColor_p;
+ 
+ //Define a bunch of parameters for the TCanvas
+ const Int_t nPad = 2;
+ Double_t padSplit = 0.45;
+ const Double_t leftMargin = 0.17;
+ const Double_t bottomMargin = 0.125/padSplit;
+ const Double_t topMargin = 0.02;
+ const Double_t rightMargin = 0.02;
+ const Double_t noMargin = 0.001;
+ Double_t height = 900.0;
+ Double_t width = height*(1.0 - topMargin*(1.0 - padSplit) - bottomMargin*padSplit)/(1.0 - leftMargin - rightMargin);
+ height = 1200.0;
+  
+ const Int_t nGammaPtBins = inPbPbFileConfig_p->GetValue("NGAMMAPTBINS", 0);
+ const Float_t gammaPtBinsLow = inPbPbFileConfig_p->GetValue("GAMMAPTBINSLOW", 80.0);
+ const Float_t gammaPtBinsHigh = inPbPbFileConfig_p->GetValue("GAMMAPTBINSHIGH", 280.0);
+ const Bool_t gammaPtBinsDoLog = (bool)inPbPbFileConfig_p->GetValue("GAMMAPTBINSDOLOG", 1);
+ const Bool_t gammaPtBinsDoCustom = (bool)inPbPbFileConfig_p->GetValue("GAMMAPTBINSDOCUSTOM", 1);
+ Double_t gammaPtBins[nMaxPtBins+1];
+
+ if(gammaPtBinsDoLog) getLogBins(gammaPtBinsLow, gammaPtBinsHigh, nGammaPtBins, gammaPtBins);
+ else if(gammaPtBinsDoCustom){
+   std::string gammaPtBinsStr = inPbPbFileConfig_p->GetValue("GAMMAPTBINSCUSTOM", "");
+   if(gammaPtBinsStr.size() == 0){
+     std::cout << "No custom bins given. return 1" << std::endl;
+     return 1;
+   }
+   std::vector<float> gammaPtBinsTemp = strToVectF(gammaPtBinsStr);
+   Int_t nGammaPtBinsTemp = ((Int_t)gammaPtBinsTemp.size()) - 1;
+   if(nGammaPtBins != nGammaPtBinsTemp){
+     std::cout << "GAMMAPTBINS DONT MATCH: " << std::endl;
+     return 1;
+   }
+
+   for(unsigned int gI = 0; gI < gammaPtBinsTemp.size(); ++gI){
+     gammaPtBins[gI] = gammaPtBinsTemp[gI];
+   }
+ }
+ else getLinBins(gammaPtBinsLow, gammaPtBinsHigh, nGammaPtBins, gammaPtBins);
+
+ const Int_t nSubJtPtBins = inPbPbFileConfig_p->GetValue("NSUBJTPTBINS", 0);
+ const Float_t subJtPtBinsLow = inPbPbFileConfig_p->GetValue("SUBJTPTBINSLOW", 80.0);
+ const Float_t subJtPtBinsHigh = inPbPbFileConfig_p->GetValue("SUBJTPTBINSHIGH", 280.0);
+ const Bool_t subJtPtBinsDoLog = (bool)inPbPbFileConfig_p->GetValue("SUBJTPTBINSDOLOG", 1);
+ const Bool_t subJtPtBinsDoCustom = (bool)inPbPbFileConfig_p->GetValue("SUBJTPTBINSDOCUSTOM", 1);
+ Double_t subJtPtBins[nMaxPtBins+1];
+
+ if(subJtPtBinsDoLog) getLogBins(subJtPtBinsLow, subJtPtBinsHigh, nSubJtPtBins, subJtPtBins);
+ else if(subJtPtBinsDoCustom){
+   std::string subJtPtBinsStr = inPbPbFileConfig_p->GetValue("SUBJTPTBINSCUSTOM", "");
+   if(subJtPtBinsStr.size() == 0){
+     std::cout << "No custom bins given. return 1" << std::endl;
+     return 1;
+   }
+   std::vector<float> subJtPtBinsTemp = strToVectF(subJtPtBinsStr);
+   Int_t nSubJtPtBinsTemp = ((Int_t)subJtPtBinsTemp.size()) - 1;
+   if(nSubJtPtBins != nSubJtPtBinsTemp){
+     std::cout << "SUBJTPTBINS DONT MATCH: " << std::endl;
+     return 1;
+   }
+
+   for(unsigned int gI = 0; gI < subJtPtBinsTemp.size(); ++gI){
+     subJtPtBins[gI] = subJtPtBinsTemp[gI];
+   }
+ }
+ else getLinBins(subJtPtBinsLow, subJtPtBinsHigh, nSubJtPtBins, subJtPtBins);
+
+ //Now that we have subjtpt bins, do the doJTPtCut check
+ Double_t jtPtBinsLowReco = inPbPbFileConfig_p->GetValue("JTPTBINSLOWRECO", -10.0);
+ if(doJtPtCut){
+   bool jtPtCutFound = false;
+   double deltaVal = 0.001;
+   for(Int_t sI = 0; sI < nSubJtPtBins; ++sI){
+     if(TMath::Abs(subJtPtBins[sI] - jtPtBinsLowReco) < deltaVal){
+       jtPtCutFound = true;
+       break;
+     }
+   }
+
+   if(!jtPtCutFound){
+     std::cout << "doJtPtCut is on but jtPtCut, " << jtPtBinsLowReco << " is not found in bins, ";
+     for(Int_t sI = 0; sI < nSubJtPtBins; ++sI){
+ 	std::cout << subJtPtBins[sI] << ", ";
+     }
+     std::cout << subJtPtBins[nSubJtPtBins] << ". return 1" << std::endl;
+     return 1;
+   }
+ }
+  
+ //We have subjt pt bins and gamma pt bins now setup the bin flattener
+ const Float_t subJtGammaPtMin = inPbPbFileConfig_p->GetValue("SUBJTGAMMAPTBINSMIN", -1000.0);
+ const Float_t subJtGammaPtMax = inPbPbFileConfig_p->GetValue("SUBJTGAMMAPTBINSMAX", -1000.0);
+
+ binFlattener subJtGammaPtBinFlattener;
+ if(!subJtGammaPtBinFlattener.Init("subJtGammaPtBinFlattener", nGammaPtBins, gammaPtBins, nSubJtPtBins, subJtPtBins)){
+   std::cout << "Error gdjPlotResults: Failure to init binFlattener, L" << __LINE__ << ". return 1" << std::endl;
+   return 1;
+ }
+
+ std::vector<double> subJtGammaPtBinsV = subJtGammaPtBinFlattener.GetFlattenedBins(subJtGammaPtMin, subJtGammaPtMax); 
+ Int_t nSubJtGammaPtBins = nGammaPtBins*nSubJtPtBins;
+  
+ gStyle->SetOptStat(0);
+
+ const Int_t iterPPPhoPt = inPPTermFileConfig_p->GetValue("GAMMAPT_PP_Nominal", -1); 
+
+ const Int_t nCentIntBins = 5;
+ Double_t centIntBins[nCentIntBins+1] = {0,10,30,80,100,120};
+  
+ for(Int_t gI = 1; gI < nGammaPtBins-1; ++gI){
+   // Create a few summary plots
+   TH1D* integralPerCentrality_h = new TH1D("integralPerCentrality_h", ";Centrality/p+p;R_{JJ#gamma}", nCentIntBins, centIntBins);
+   TH1D* meanPerCentrality_h = new TH1D("meanPerCentrality_h", ";Centrality/p+p;#LT#vec{x}_{JJ#gamma}#GT", nCentIntBins, centIntBins);
+
+   Int_t iterPP = inPPTermFileConfig_p->GetValue((varNameUpper + "_GAMMAPT_PP_Nominal").c_str(), -1);
+
+   if(iterPP < 0){
+     std::cout << "Terminating iteration is \'" << iterPP << "\' in pp, for \'" << varNameUpper + "_GAMMAPT_PP_NOMINAL" << "\'. return 1" << std::endl;
+     return 1;
+   }
+
+   TH1D* ppHistPhoPt_p = (TH1D*)inPPFile_p->Get(("photonPtReco_Iter" + std::to_string(iterPPPhoPt) + "_PP_Nominal_PURCORR_COMBINED_h").c_str());
+   Double_t scaledTotalPP = 0.0;
+   for(Int_t bIX = 0; bIX < ppHistPhoPt_p->GetXaxis()->GetNbins(); ++bIX){
+     Float_t binCenter = ppHistPhoPt_p->GetBinCenter(bIX+1);
+     if(binCenter < gammaPtBins[gI] || binCenter >= gammaPtBins[gI+1]) continue;
+
+     scaledTotalPP += ppHistPhoPt_p->GetBinContent(bIX+1);
+   }
+
+   std::cout << "SCALED TOTAL PP: " << scaledTotalPP << std::endl;
     
-    std::string ppHistName = "photonPtJet" + varNameHist + "Reco_Iter" + std::to_string(iterPP) + "_PP_Nominal_PURCORR_COMBINED_h";
-    std::string pyt8TruthName = "photonPtJet" + varNameHist + "Truth_PreUnfold_PP_NOMINAL_TRUTH_COMBINED_h";
+   std::string ppHistName = "photonPtJet" + varNameHist + "Reco_Iter" + std::to_string(iterPP) + "_PP_Nominal_PURCORR_COMBINED_h";
+   std::string pyt8TruthName = "photonPtJet" + varNameHist + "Truth_PreUnfold_PP_NOMINAL_TRUTH_COMBINED_h";
     
-    std::vector<std::string> ppSystHistNames;
-    std::vector<bool> isSystCorrelated;
-    std::vector<std::string> systNames;
-    std::vector<Double_t> scaledTotalPPSyst;
-    for(unsigned int jI = 0; jI < systStrVect.size(); ++jI){
-      if(isStrSame(systStrVect[jI], "Nominal")) continue;
+   std::vector<std::string> ppSystHistNames;
+   std::vector<bool> isSystCorrelated;
+   std::vector<std::string> systNames;
+   std::vector<Double_t> scaledTotalPPSyst;
+   for(unsigned int jI = 0; jI < systStrVect.size(); ++jI){
+     if(isStrSame(systStrVect[jI], "Nominal")) continue;
 
-      systNames.push_back(systStrVect[jI]);
+     systNames.push_back(systStrVect[jI]);
       
-      if(isStrSame(systStrVect[jI], "JESRTRK")) isSystCorrelated.push_back(false);
-      else if(isStrSame(systStrVect[jI], "PRIOR")) isSystCorrelated.push_back(false);
-      else if(isStrSame(systStrVect[jI], "MCSTAT")) isSystCorrelated.push_back(false);
-      else isSystCorrelated.push_back(true);
+     if(isStrSame(systStrVect[jI], "JESRTRK")) isSystCorrelated.push_back(false);
+     else if(isStrSame(systStrVect[jI], "PRIOR")) isSystCorrelated.push_back(false);
+     else if(isStrSame(systStrVect[jI], "MCSTAT")) isSystCorrelated.push_back(false);
+     else isSystCorrelated.push_back(true);
       
-      Int_t iterPPSyst = inPPTermFileConfig_p->GetValue((varNameUpper + "_GAMMAPT_PP_" + systStrVect[jI]).c_str(), -1);
-      ppSystHistNames.push_back("photonPtJet" + varNameHist + "Reco_Iter" + std::to_string(iterPPSyst) + "_PP_" + systStrVect[jI] + "_PURCORR_COMBINED_h");
+     Int_t iterPPSyst = inPPTermFileConfig_p->GetValue((varNameUpper + "_GAMMAPT_PP_" + systStrVect[jI]).c_str(), -1);
+     ppSystHistNames.push_back("photonPtJet" + varNameHist + "Reco_Iter" + std::to_string(iterPPSyst) + "_PP_" + systStrVect[jI] + "_PURCORR_COMBINED_h");
 
-      if(isStrSame(systTypeVect[jI], "GESGER")){
-	const Int_t iterPPPhoPtSyst = inPPTermFileConfig_p->GetValue(("GAMMAPT_PP_" + systStrVect[jI]).c_str(), -1); 
+     if(isStrSame(systTypeVect[jI], "GESGER") || isStrSame(systStrVect[jI], "ISO85") || isStrSame(systStrVect[jI], "ISO95")){
+ 	const Int_t iterPPPhoPtSyst = inPPTermFileConfig_p->GetValue(("GAMMAPT_PP_" + systStrVect[jI]).c_str(), -1); 
 
-	TH1D* ppHistPhoPtSyst_p = (TH1D*)inPPFile_p->Get(("photonPtReco_Iter" + std::to_string(iterPPPhoPtSyst) + "_PP_" + systStrVect[jI] + "_PURCORR_COMBINED_h").c_str());
-	Double_t scaledTotalPPTemp = 0.0;
-	for(Int_t bIX = 0; bIX < ppHistPhoPtSyst_p->GetXaxis()->GetNbins(); ++bIX){
-	  Float_t binCenter = ppHistPhoPtSyst_p->GetBinCenter(bIX+1);
-	  if(binCenter < gammaPtBins[gI] || binCenter >= gammaPtBins[gI+1]) continue;
+ 	TH1D* ppHistPhoPtSyst_p = (TH1D*)inPPFile_p->Get(("photonPtReco_Iter" + std::to_string(iterPPPhoPtSyst) + "_PP_" + systStrVect[jI] + "_PURCORR_COMBINED_h").c_str());
+ 	Double_t scaledTotalPPTemp = 0.0;
+ 	for(Int_t bIX = 0; bIX < ppHistPhoPtSyst_p->GetXaxis()->GetNbins(); ++bIX){
+ 	  Float_t binCenter = ppHistPhoPtSyst_p->GetBinCenter(bIX+1);
+ 	  if(binCenter < gammaPtBins[gI] || binCenter >= gammaPtBins[gI+1]) continue;
 	  
-	  scaledTotalPPTemp += ppHistPhoPtSyst_p->GetBinContent(bIX+1);
-	}
-	scaledTotalPPSyst.push_back(scaledTotalPPTemp);
-      }
-      else scaledTotalPPSyst.push_back(scaledTotalPP);
-    }
+ 	  scaledTotalPPTemp += ppHistPhoPtSyst_p->GetBinContent(bIX+1);
+ 	}
+ 	scaledTotalPPSyst.push_back(scaledTotalPPTemp);
+     }
+     else scaledTotalPPSyst.push_back(scaledTotalPP);
+   }
 
-    TH1D* ratioJEWEL0to10_p = nullptr;
-    if(!doXTrunc) ratioJEWEL0to10_p = new TH1D("ratioJEWEL0to10_h", ";;", nVarBins, varBins);
-    else ratioJEWEL0to10_p = new TH1D("ratioJEWEL0to10_h", ";;", nVarBinsTrunc, varBinsTrunc);
+   TH1D* ratioJEWEL0to10_p = nullptr;
+   if(!doXTrunc) ratioJEWEL0to10_p = new TH1D("ratioJEWEL0to10_h", ";;", nVarBins, varBins);
+   else ratioJEWEL0to10_p = new TH1D("ratioJEWEL0to10_h", ";;", nVarBinsTrunc, varBinsTrunc);
 					      
     
-    std::vector<TH1D*> ratioHistsPerCentrality;
-    std::vector<std::vector<Double_t> > ratioSystsPerCentrality;
-    std::vector<std::vector<std::string> > ratioLabelsPerCentrality;
+   std::vector<TH1D*> ratioHistsPerCentrality;
+   std::vector<std::vector<Double_t> > ratioSystsPerCentrality;
+   std::vector<std::vector<std::string> > ratioLabelsPerCentrality;
     
-    //We need to find all gamma bins matching our current bin for creating our final histogram
-    std::vector<int> gammaMatchedBins;
-    if(isMultijet){
-      for(Int_t sgI = 0; sgI < nSubJtGammaPtBins; ++sgI){
-	if(subJtGammaPtBinFlattener.GetBin1PosFromGlobal(sgI) == gI){
-	  if(doJtPtCut){
-	    int subJtPtBinPos = subJtGammaPtBinFlattener.GetBin2PosFromGlobal(sgI);
-	    Float_t subJtPtBinCenter = (subJtPtBins[subJtPtBinPos] + subJtPtBins[subJtPtBinPos+1])/2.0;
-	    if(subJtPtBinCenter > jtPtBinsLowReco) gammaMatchedBins.push_back(sgI);
-	  }
-	  else gammaMatchedBins.push_back(sgI);
-	}      
-      }
-    }
-    else gammaMatchedBins.push_back(gI);
+   // We need to find all gamma bins matching our current bin for creating our final histogram
+   std::vector<int> gammaMatchedBins;
+   if(isMultijet){
+     for(Int_t sgI = 0; sgI < nSubJtGammaPtBins; ++sgI){
+ 	if(subJtGammaPtBinFlattener.GetBin1PosFromGlobal(sgI) == gI){
+ 	  if(doJtPtCut){
+ 	    int subJtPtBinPos = subJtGammaPtBinFlattener.GetBin2PosFromGlobal(sgI);
+ 	    Float_t subJtPtBinCenter = (subJtPtBins[subJtPtBinPos] + subJtPtBins[subJtPtBinPos+1])/2.0;
+ 	    if(subJtPtBinCenter > jtPtBinsLowReco) gammaMatchedBins.push_back(sgI);
+ 	  }
+ 	  else gammaMatchedBins.push_back(sgI);
+ 	}      
+     }
+   }
+   else gammaMatchedBins.push_back(gI);
       
-    std::cout << "PYT8NAME: " << pyt8TruthName << std::endl;
-    TH1D* pyt8TruthPhoPt_p = (TH1D*)inPPFile_p->Get("photonPtTruth_PreUnfold_PP_TRUTH_COMBINED_h");
-    TH2D* pyt8Truth2D_p = (TH2D*)inPPFile_p->Get(pyt8TruthName.c_str());
-    TH2D* ppHist2D_p = (TH2D*)inPPFile_p->Get(ppHistName.c_str());
+   std::cout << "PYT8NAME: " << pyt8TruthName << std::endl;
+   TH1D* pyt8TruthPhoPt_p = (TH1D*)inPPFile_p->Get("photonPtTruth_PreUnfold_PP_TRUTH_COMBINED_h");
+   TH2D* pyt8Truth2D_p = (TH2D*)inPPFile_p->Get(pyt8TruthName.c_str());
+   TH2D* ppHist2D_p = (TH2D*)inPPFile_p->Get(ppHistName.c_str());
 
-    if(gI == 2){
-      std::cout << "PP HIST PRINT ON GI == 2" << std::endl;
-      ppHist2D_p->Print("ALL");
-      std::cout << "END PRINT, gammaMatchedBins.size(): " << gammaMatchedBins.size() << std::endl;
-      std::cout << "GammaMatchedBins: " << std::endl;
-      for(unsigned int sgI = 0; sgI < gammaMatchedBins.size(); ++sgI){
-	std::cout << " " << sgI << ": " << gammaMatchedBins[sgI] << std::endl;
-      }
-    }
+   if(gI == 2){
+     std::cout << "PP HIST PRINT ON GI == 2" << std::endl;
+     ppHist2D_p->Print("ALL");
+     std::cout << "END PRINT, gammaMatchedBins.size(): " << gammaMatchedBins.size() << std::endl;
+     std::cout << "GammaMatchedBins: " << std::endl;
+     for(unsigned int sgI = 0; sgI < gammaMatchedBins.size(); ++sgI){
+ 	std::cout << " " << sgI << ": " << gammaMatchedBins[sgI] << std::endl;
+     }
+   }
+  
+   TH1D* ppHist_p = nullptr;
+   if(!doXTrunc) ppHist_p = new TH1D(("ppHist1D_GammaPt" + std::to_string(gI) + "_h").c_str(), ";;", nVarBins, varBins);
+   else ppHist_p = new TH1D(("ppHist1D_GammaPt" + std::to_string(gI) + "_h").c_str(), ";;", nVarBinsTrunc, varBinsTrunc);
+   fineTH2ToCoarseTH1(ppHist2D_p, ppHist_p, gammaMatchedBins);
+
+   binWidthAndScaleNorm(ppHist_p, scaledTotalPP);
+   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+   std::vector<std::vector<Double_t > > ppSyst = getSyst(inPPFile_p, ppHist_p, ppSystHistNames, gammaMatchedBins, scaledTotalPPSyst, inUnfoldNonClosureFileName, doGlobalDebug);
+   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
     
-    TH1D* ppHist_p = nullptr;
-    if(!doXTrunc) ppHist_p = new TH1D("ppHist1D_h", ";;", nVarBins, varBins);
-    else ppHist_p = new TH1D("ppHist1D_h", ";;", nVarBinsTrunc, varBinsTrunc);
-    fineTH2ToCoarseTH1(ppHist2D_p, ppHist_p, gammaMatchedBins);
+   // Now we gotta make a few subsets of systematics for clearer plotting
+   std::map<std::string, std::vector<std::string> > systTypeToSystNames;
+   std::map<std::string, std::vector<std::vector<Double_t> > > systTypeToSystValsPP;
+   for(auto const &val : systTypesMap){
+     std::vector<std::string> tempVectNames;
+     std::vector<std::vector<Double_t> > tempVectVals;
 
-    binWidthAndScaleNorm(ppHist_p, scaledTotalPP);
-    std::vector<std::vector<Double_t > > ppSyst = getSyst(inPPFile_p, ppHist_p, ppSystHistNames, gammaMatchedBins, scaledTotalPPSyst);
-    //Now we gotta make a few subsets of systematics for clearer plotting
-    std::map<std::string, std::vector<std::string> > systTypeToSystNames;
-    std::map<std::string, std::vector<std::vector<Double_t> > > systTypeToSystValsPP;
-    for(auto const &val : systTypesMap){
-      std::vector<std::string> tempVectNames;
-      std::vector<std::vector<Double_t> > tempVectVals;
+     for(int sI = 0; sI < systNames.size(); ++sI){
+ 	if(!isStrSame(val.first, systStrToSystType[systNames[sI]])) continue;
 
-      for(int sI = 0; sI < systNames.size(); ++sI){
-	if(!isStrSame(val.first, systStrToSystType[systNames[sI]])) continue;
+ 	tempVectNames.push_back(systNames[sI]);
+ 	tempVectVals.push_back(ppSyst[sI]);
+     }
 
-	tempVectNames.push_back(systNames[sI]);
-	tempVectVals.push_back(ppSyst[sI]);
-      }
+     systTypeToSystValsPP[val.first] = tempVectVals;
+     systTypeToSystNames[val.first] = tempVectNames;
+   }  
 
-      systTypeToSystValsPP[val.first] = tempVectVals;
-      systTypeToSystNames[val.first] = tempVectNames;
-    }  
+ if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
     
-    HIJet::Style::EquipHistogram(ppHist_p, 2); 
-    ppHist_p->GetXaxis()->SetTitleFont(titleFont);
-    ppHist_p->GetYaxis()->SetTitleFont(titleFont);
-    ppHist_p->GetXaxis()->SetTitleSize(0.00001);
-    ppHist_p->GetYaxis()->SetTitleSize(titleSize/(1.0-padSplit));
+   HIJet::Style::EquipHistogram(ppHist_p, 0);
+   ppHist_p->SetMarkerColor(ppColor);
+   ppHist_p->SetLineColor(ppColor);
+   ppHist_p->GetXaxis()->SetTitleFont(titleFont);
+   ppHist_p->GetYaxis()->SetTitleFont(titleFont);
+   ppHist_p->GetXaxis()->SetTitleSize(0.00001);
+   ppHist_p->GetYaxis()->SetTitleSize(titleSize/(1.0-padSplit));
     
-    ppHist_p->GetXaxis()->SetLabelFont(titleFont);
-    ppHist_p->GetYaxis()->SetLabelFont(titleFont);
-    ppHist_p->GetXaxis()->SetLabelSize(0.00001);
-    ppHist_p->GetYaxis()->SetLabelSize(labelSize/(1.0-padSplit));
+   ppHist_p->GetXaxis()->SetLabelFont(titleFont);
+   ppHist_p->GetYaxis()->SetLabelFont(titleFont);
+   ppHist_p->GetXaxis()->SetLabelSize(0.00001);
+   ppHist_p->GetYaxis()->SetLabelSize(labelSize/(1.0-padSplit));
 
-    ppHist_p->GetYaxis()->SetTitleOffset(yOffset);
+   ppHist_p->GetYaxis()->SetTitleOffset(yOffset);
     
-    ppHist_p->GetYaxis()->SetNdivisions(505);
+   ppHist_p->GetYaxis()->SetNdivisions(505);
     
-    if(isMultijet) ppHist_p->GetYaxis()->SetTitle(("#frac{1}{N_{#gamma}}#frac{dN_{JJ#gamma}}{d" + varNameLabel + "}").c_str());
-    else ppHist_p->GetYaxis()->SetTitle(("#frac{1}{N_{#gamma}}#frac{dN_{J#gamma}}{d" + varNameLabel + "}}").c_str());
-    ppHist_p->GetXaxis()->SetTitle(varNameLabel.c_str());
+   if(isMultijet) ppHist_p->GetYaxis()->SetTitle(("#frac{1}{N_{#gamma}}#frac{dN_{JJ#gamma}}{d" + varNameLabel + "}").c_str());
+   else ppHist_p->GetYaxis()->SetTitle(("#frac{1}{N_{#gamma}}#frac{dN_{J#gamma}}{d" + varNameLabel + "}}").c_str());
+   ppHist_p->GetXaxis()->SetTitle(varNameLabel.c_str());
 
-    //JEWEL handling for pp
-    TH1D* inJEWELPPHist_p = nullptr;
-    if(doJEWEL){
-      inJEWELPPHist_p = (TH1D*)ppJEWELFile_p->Get((varNameLower + "_R" + std::to_string(jetR) + "_GammaPt" + std::to_string(gI) + "_h").c_str());
-    }        
+   // JEWEL handling for pp
+   TH1D* inJEWELPPHist_p = nullptr;
+   if(doJEWEL){
+     inJEWELPPHist_p = (TH1D*)ppJEWELFile_p->Get((varNameLower + "_R" + std::to_string(jetR) + "_GammaPt" + std::to_string(gI) + "_h").c_str());
+   }        
+
+ if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
     
-    for(unsigned int cI = 0; cI < centBinsStr.size(); ++cI){   
-      TH1D* pyt8Truth_p = nullptr;
+   for(unsigned int cI = 0; cI < centBinsStr.size(); ++cI){   
+     TH1D* pyt8Truth_p = nullptr;
 
-      if(!doXTrunc) pyt8Truth_p = new TH1D("pyt8Truth1D_h", ";;", nVarBins, varBins);
-      else pyt8Truth_p = new TH1D("pyt8Truth1D_h", ";;", nVarBinsTrunc, varBinsTrunc);
-      fineTH2ToCoarseTH1(pyt8Truth2D_p, pyt8Truth_p, gammaMatchedBins);
+     if(!doXTrunc) pyt8Truth_p = new TH1D("pyt8Truth1D_h", ";;", nVarBins, varBins);
+     else pyt8Truth_p = new TH1D("pyt8Truth1D_h", ";;", nVarBinsTrunc, varBinsTrunc);
+     fineTH2ToCoarseTH1(pyt8Truth2D_p, pyt8Truth_p, gammaMatchedBins);
 
-      binWidthAndScaleNorm(pyt8Truth_p, pyt8TruthPhoPt_p->GetBinContent(gI+1));
+     binWidthAndScaleNorm(pyt8Truth_p, pyt8TruthPhoPt_p->GetBinContent(gI+1));
       
-      TH1D* jewelPPHist_p = nullptr;
-      if(doJEWEL){
-	if(!doXTrunc) jewelPPHist_p = new TH1D("jewelPPHist_h", ";;", nVarBins, varBins);
-	else jewelPPHist_p = new TH1D("jewelPPHist_h", ";;", nVarBinsTrunc, varBinsTrunc);
+     TH1D* jewelPPHist_p = nullptr;
+     if(doJEWEL){
+ 	if(!doXTrunc) jewelPPHist_p = new TH1D("jewelPPHist_h", ";;", nVarBins, varBins);
+ 	else jewelPPHist_p = new TH1D("jewelPPHist_h", ";;", nVarBinsTrunc, varBinsTrunc);
 	
-	fineHistToCoarseHist(inJEWELPPHist_p, jewelPPHist_p);
+ 	fineHistToCoarseHist(inJEWELPPHist_p, jewelPPHist_p);
 	
-	//For the tlegend
-	inJEWELPPHist_p->SetLineColor(1);
-	inJEWELPPHist_p->SetLineStyle(1);
-      }        
+ 	//For the tlegend
+ 	inJEWELPPHist_p->SetLineColor(1);
+ 	inJEWELPPHist_p->SetLineStyle(1);
+     }        
 
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+     if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
  
-      const Int_t iterPbPbPhoPt = inPbPbTermFileConfig_p->GetValue(("GAMMAPT_" + centBinsStr[cI] + "_Nominal").c_str(), -1);
-      TH1D* pbpbHistPhoPt_p = nullptr;          
-      if(iterPbPbPhoPt > 0) pbpbHistPhoPt_p = (TH1D*)inPbPbFile_p->Get(("photonPtReco_Iter" + std::to_string(iterPbPbPhoPt) + "_" + centBinsStr[cI] + "_Nominal_PURCORR_COMBINED_h").c_str());
-      else{
-	std::cout << "No good termination point found. return 1" << std::endl;
-	return 1;
-      }
+     const Int_t iterPbPbPhoPt = inPbPbTermFileConfig_p->GetValue(("GAMMAPT_" + centBinsStr[cI] + "_Nominal").c_str(), -1);
+     TH1D* pbpbHistPhoPt_p = nullptr;          
+     if(iterPbPbPhoPt > 0) pbpbHistPhoPt_p = (TH1D*)inPbPbFile_p->Get(("photonPtReco_Iter" + std::to_string(iterPbPbPhoPt) + "_" + centBinsStr[cI] + "_Nominal_PURCORR_COMBINED_h").c_str());
+     else{
+ 	std::cout << "No good termination point found. return 1" << std::endl;
+ 	return 1;
+     }
 
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+     if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
       
-      Double_t scaledTotalPbPb = 0.0;
-      for(Int_t bIX = 0; bIX < pbpbHistPhoPt_p->GetXaxis()->GetNbins(); ++bIX){
-	Float_t binCenter = pbpbHistPhoPt_p->GetBinCenter(bIX+1);
-	if(binCenter < gammaPtBins[gI] || binCenter >= gammaPtBins[gI+1]) continue;	
+     Double_t scaledTotalPbPb = 0.0;
+     for(Int_t bIX = 0; bIX < pbpbHistPhoPt_p->GetXaxis()->GetNbins(); ++bIX){
+ 	Float_t binCenter = pbpbHistPhoPt_p->GetBinCenter(bIX+1);
+ 	if(binCenter < gammaPtBins[gI] || binCenter >= gammaPtBins[gI+1]) continue;	
 
-	scaledTotalPbPb += pbpbHistPhoPt_p->GetBinContent(bIX+1);
-      }
+ 	scaledTotalPbPb += pbpbHistPhoPt_p->GetBinContent(bIX+1);
+     }
 
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+     if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
       
-      Int_t iterPbPb = inPbPbTermFileConfig_p->GetValue((varNameUpper + "_GAMMAPT_" + centBinsStr[cI] + "_Nominal").c_str(), -1);
-      if(iterPbPb < 0){
-	std::cout << "Terminating iteration is \'" << iterPbPb << "\' in pbpb, \'" << centBinsStr[cI] << "\' for \'" << varNameUpper + "_GAMMAPT_" + centBinsStr[cI] << "\'. return 1" << std::endl;
-	return 1;
-      }
+     Int_t iterPbPb = inPbPbTermFileConfig_p->GetValue((varNameUpper + "_GAMMAPT_" + centBinsStr[cI] + "_Nominal").c_str(), -1);
+     if(iterPbPb < 0){
+ 	std::cout << "Terminating iteration is \'" << iterPbPb << "\' in pbpb, \'" << centBinsStr[cI] << "\' for \'" << varNameUpper + "_GAMMAPT_" + centBinsStr[cI] << "\'. return 1" << std::endl;
+ 	return 1;
+     }
 
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+     if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
       
-      std::string centBins2Str = centBinsStr[cI];
-      if(centBins2Str.find("to") != std::string::npos){
-	centBins2Str.replace(0, 4, "");
-	centBins2Str.replace(centBins2Str.find("to"), 2, "-");
-	centBins2Str = centBins2Str + "%";
-      }
+     std::string centBins2Str = centBinsStr[cI];
+     if(centBins2Str.find("to") != std::string::npos){
+ 	centBins2Str.replace(0, 4, "");
+ 	centBins2Str.replace(centBins2Str.find("to"), 2, "-");
+ 	centBins2Str = centBins2Str + "%";
+     }
     
-      std::string pbpbHistName = "photonPtJet" + varNameHist + "Reco_Iter" + std::to_string(iterPbPb) + "_" + centBinsStr[cI] + "_Nominal_PURCORR_COMBINED_h";
-      std::vector<std::string> pbpbSystHistNames;      
+     std::string pbpbHistName = "photonPtJet" + varNameHist + "Reco_Iter" + std::to_string(iterPbPb) + "_" + centBinsStr[cI] + "_Nominal_PURCORR_COMBINED_h";
+     std::vector<std::string> pbpbSystHistNames;      
 
 
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+     if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
       
-      std::vector<Double_t> scaledTotalPbPbSyst;
-      for(unsigned int systI = 0; systI < systStrVect.size(); ++systI){
-	if(isStrSame(systStrVect[systI], "Nominal")) continue;
+     std::vector<Double_t> scaledTotalPbPbSyst;
+     for(unsigned int systI = 0; systI < systStrVect.size(); ++systI){
+ 	if(isStrSame(systStrVect[systI], "Nominal")) continue;
 
-	Int_t iterPbPbSyst = inPbPbTermFileConfig_p->GetValue((varNameUpper + "_GAMMAPT_" + centBinsStr[cI] + "_" + systStrVect[systI]).c_str(), -1);
-	pbpbSystHistNames.push_back("photonPtJet" + varNameHist + "Reco_Iter" + std::to_string(iterPbPbSyst) + "_" + centBinsStr[cI] + "_" + systStrVect[systI] + "_PURCORR_COMBINED_h");
+ 	Int_t iterPbPbSyst = inPbPbTermFileConfig_p->GetValue((varNameUpper + "_GAMMAPT_" + centBinsStr[cI] + "_" + systStrVect[systI]).c_str(), -1);
+ 	pbpbSystHistNames.push_back("photonPtJet" + varNameHist + "Reco_Iter" + std::to_string(iterPbPbSyst) + "_" + centBinsStr[cI] + "_" + systStrVect[systI] + "_PURCORR_COMBINED_h");
 
-	if(isStrSame(systTypeVect[systI], "GESGER")){
-	  const Int_t iterPbPbPhoPtSyst = inPbPbTermFileConfig_p->GetValue(("GAMMAPT_" + centBinsStr[cI] + "_" + systStrVect[systI]).c_str(), -1);
+ 	if(isStrSame(systTypeVect[systI], "GESGER") /* || isStrSame(systStrVect[systI], "ISO85") || isStrSame(systStrVect[systI], "ISO95")*/){
+ 	  const Int_t iterPbPbPhoPtSyst = inPbPbTermFileConfig_p->GetValue(("GAMMAPT_" + centBinsStr[cI] + "_" + systStrVect[systI]).c_str(), -1);
 	  
-	  TH1D* pbpbHistPhoPtSyst_p = (TH1D*)inPbPbFile_p->Get(("photonPtReco_Iter" + std::to_string(iterPbPbPhoPtSyst) + "_" + centBinsStr[cI] + "_" + systStrVect[systI] + "_PURCORR_COMBINED_h").c_str());
-	  Double_t scaledTotalPbPbTemp = 0.0;
+ 	  TH1D* pbpbHistPhoPtSyst_p = (TH1D*)inPbPbFile_p->Get(("photonPtReco_Iter" + std::to_string(iterPbPbPhoPtSyst) + "_" + centBinsStr[cI] + "_" + systStrVect[systI] + "_PURCORR_COMBINED_h").c_str());
+ 	  Double_t scaledTotalPbPbTemp = 0.0;
 
-	  for(Int_t bIX = 0; bIX < pbpbHistPhoPtSyst_p->GetXaxis()->GetNbins(); ++bIX){
-	    Float_t binCenter = pbpbHistPhoPtSyst_p->GetBinCenter(bIX+1);
-	    if(binCenter < gammaPtBins[gI] || binCenter >= gammaPtBins[gI+1]) continue;	    
+ 	  for(Int_t bIX = 0; bIX < pbpbHistPhoPtSyst_p->GetXaxis()->GetNbins(); ++bIX){
+ 	    Float_t binCenter = pbpbHistPhoPtSyst_p->GetBinCenter(bIX+1);
+ 	    if(binCenter < gammaPtBins[gI] || binCenter >= gammaPtBins[gI+1]) continue;	    
 
-	    scaledTotalPbPbTemp += pbpbHistPhoPtSyst_p->GetBinContent(bIX+1);
-	  }
-	  scaledTotalPbPbSyst.push_back(scaledTotalPbPbTemp);
-	}
-	else scaledTotalPbPbSyst.push_back(scaledTotalPbPb);	
-      }
+ 	    scaledTotalPbPbTemp += pbpbHistPhoPtSyst_p->GetBinContent(bIX+1);
+ 	  }
+ 	  scaledTotalPbPbSyst.push_back(scaledTotalPbPbTemp);
+ 	}
+ 	else scaledTotalPbPbSyst.push_back(scaledTotalPbPb);	
+     }
 
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+     if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
       
-      TH2D* pbpbHist2D_p = (TH2D*)inPbPbFile_p->Get(pbpbHistName.c_str());
-      TH1D* pbpbHist_p = nullptr;
-      if(!doXTrunc) pbpbHist_p = new TH1D("pbpbHist1D_h", ";;", nVarBins, varBins);
-      else pbpbHist_p = new TH1D("pbpbHist1D_h", ";;", nVarBinsTrunc, varBinsTrunc);
-      fineTH2ToCoarseTH1(pbpbHist2D_p, pbpbHist_p, gammaMatchedBins);    
+     TH2D* pbpbHist2D_p = (TH2D*)inPbPbFile_p->Get(pbpbHistName.c_str());
+     TH1D* pbpbHist_p = nullptr;
+     if(!doXTrunc) pbpbHist_p = new TH1D(("pbpbHist1D_GammaPt" + std::to_string(gI) + "_h").c_str(), ";;", nVarBins, varBins);
+     else pbpbHist_p = new TH1D(("pbpbHist1D_GammaPt" + std::to_string(gI) + "_h").c_str(), ";;", nVarBinsTrunc, varBinsTrunc);
+     fineTH2ToCoarseTH1(pbpbHist2D_p, pbpbHist_p, gammaMatchedBins);    
 
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+     if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
       
-      binWidthAndScaleNorm(pbpbHist_p, scaledTotalPbPb);      
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
-      std::vector<std::vector<Double_t > > pbpbSyst = getSyst(inPbPbFile_p, pbpbHist_p, pbpbSystHistNames, gammaMatchedBins, scaledTotalPbPbSyst, doGlobalDebug);
-      //      pbpbHist_p->Scale(1./pbpbHist_p->Integral());
+     binWidthAndScaleNorm(pbpbHist_p, scaledTotalPbPb);      
+     if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+     std::vector<std::vector<Double_t > > pbpbSyst = getSyst(inPbPbFile_p, pbpbHist_p, pbpbSystHistNames, gammaMatchedBins, scaledTotalPbPbSyst, inUnfoldNonClosureFileName, doGlobalDebug);
+     //pbpbHist_p->Scale(1./pbpbHist_p->Integral());
 
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
-      std::map<std::string, std::vector<std::vector<Double_t> > > systTypeToSystValsPbPb;
-      for(auto const &val : systTypesMap){
-	std::vector<std::vector<Double_t> > tempVectVals;
+     if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+     std::map<std::string, std::vector<std::vector<Double_t> > > systTypeToSystValsPbPb;
+     for(auto const &val : systTypesMap){
+ 	std::vector<std::vector<Double_t> > tempVectVals;
 
-	std::cout << val.first << std::endl;
-	for(int sI = 0; sI < systNames.size(); ++sI){
-	  std::cout << " " << systNames[sI] << std::endl;
+ 	std::cout << val.first << std::endl;
+ 	for(int sI = 0; sI < systNames.size(); ++sI){
+ 	  std::cout << " " << systNames[sI] << std::endl;
 
-	  if(!isStrSame(val.first, systStrToSystType[systNames[sI]])) continue;
+ 	  if(!isStrSame(val.first, systStrToSystType[systNames[sI]])) continue;
 	  
-	  tempVectVals.push_back(pbpbSyst[sI]);
-	}
+ 	  tempVectVals.push_back(pbpbSyst[sI]);
+ 	}
 	
-	systTypeToSystValsPbPb[val.first] = tempVectVals;
-      }  
+ 	systTypeToSystValsPbPb[val.first] = tempVectVals;
+     }  
 
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+     if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
       
-      //JEWEL handling for pbpb
-      TH1D* inJEWELPbPbHist_p = nullptr;
-      TH1D* jewelPbPbHist_p = nullptr;
-      TLegend* jewelLeg_p = nullptr;
-      if(doJEWEL){      
-	Int_t jewelCentPos = -1;
-	for(unsigned int jewelI = 0; jewelI < inJEWELPbPbFileNames.size(); ++jewelI){
-	  std::string jewelCent = pbpbJEWELConfig_p[jewelI]->GetValue("CENT", "");
+     //   JEWEL handling for pbpb
+     TH1D* inJEWELPbPbHist_p = nullptr;
+     TH1D* jewelPbPbHist_p = nullptr;
+     TLegend* jewelLeg_p = nullptr;
+     if(doJEWEL){      
+ 	Int_t jewelCentPos = -1;
+ 	for(unsigned int jewelI = 0; jewelI < inJEWELPbPbFileNames.size(); ++jewelI){
+ 	  std::string jewelCent = pbpbJEWELConfig_p[jewelI]->GetValue("CENT", "");
 
-	  if(isStrSame(centBinsStr[cI], jewelCent)){
-	    jewelCentPos = jewelI;
-	    break;
-	  }
-	}
-
-	//Grab legend parameters for jewel
-	Double_t jewelLegX = config_p->GetValue("JEWELLEGX", -1.0);
-	Double_t jewelLegY = config_p->GetValue("JEWELLEGY", -1.0);
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
-	
-	if(jewelCentPos == -1){
-	  std::cout << "JEWEL CENT STR MATCHING \'" << centBinsStr[cI] << "\' not found. Pb+Pb in this bin will not be plotted, please fix for overlay" << std::endl;
-	  //	  doJEWEL = false;
-	}
-	else{
-	  inJEWELPbPbHist_p = (TH1D*)pbpbJEWELFile_p[jewelCentPos]->Get((varNameLower + "_R" + std::to_string(jetR) + "_GammaPt" + std::to_string(gI) + "_h").c_str());
-	  if(!doXTrunc) jewelPbPbHist_p = new TH1D("jewelPbPbHist_h", ";;", nVarBins, varBins);
-	  else jewelPbPbHist_p = new TH1D("jewelPbPbHist_h", ";;", nVarBinsTrunc, varBinsTrunc);
+ 	  while(jewelCent.find("/") != std::string::npos){
+ 	    jewelCent.replace(jewelCent.rfind("/"), jewelCent.size(), "");
+ 	  }
 	  
-	  fineHistToCoarseHist(inJEWELPbPbHist_p, jewelPbPbHist_p);
-	}
+ 	  if(isStrSame(centBinsStr[cI], jewelCent)){
+ 	    jewelCentPos = jewelI;
+ 	    break;
+ 	  }
+ 	}
 
-	jewelLeg_p = new TLegend(jewelLegX, jewelLegY - 0.065*2, jewelLegX+0.25, jewelLegY);
-	jewelLeg_p->SetTextFont(42);
-	jewelLeg_p->SetTextSize(0.035/(1.0 - padSplit));
-	jewelLeg_p->SetBorderSize(0);
-	jewelLeg_p->SetFillStyle(0);	
-      }
-      
-      TCanvas* canvPP_p = nullptr;
-      TPad* padsPP_p[nPad];
-      if(cI == 0){
-	canvPP_p = new TCanvas("canvPP_p", "", width, height);
-	padsPP_p[0] = new TPad("padPP0", "", 0.0, padSplit, 1.0, 1.0);
-	setMargins(padsPP_p[0], leftMargin, topMargin, rightMargin, noMargin);
-	canvPP_p->cd();
-	padsPP_p[0]->Draw("SAME");
+ 	//Grab legend parameters for jewel
+ 	Double_t jewelLegX = config_p->GetValue("JEWELLEGX", -1.0);
+ 	Double_t jewelLegY = config_p->GetValue("JEWELLEGY", -1.0);
+
+     if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
 	
-	canvPP_p->cd();
-	padsPP_p[1] = new TPad("padPP1", "", 0.0, 0.0, 1.0, padSplit);
-	setMargins(padsPP_p[1], leftMargin, noMargin, rightMargin, bottomMargin);
-	canvPP_p->cd();
-	padsPP_p[1]->Draw("SAME");
-      }
-      
-      TCanvas* canv_p = new TCanvas("canv_p", "", width, height);
-      TPad* pads_p[nPad];
-      setMargins(canv_p, noMargin, noMargin, noMargin, noMargin);
-      canv_p->cd();
-      
-      pads_p[0] = new TPad("pad0", "", 0.0, padSplit, 1.0, 1.0);
-      setMargins(pads_p[0], leftMargin, topMargin, rightMargin, noMargin);
-      canv_p->cd();
-      pads_p[0]->Draw("SAME");
-      
-      canv_p->cd();
-      pads_p[1] = new TPad("pad1", "", 0.0, 0.0, 1.0, padSplit);
-      setMargins(pads_p[1], leftMargin, noMargin, rightMargin, bottomMargin);
-      canv_p->cd();
-      pads_p[1]->Draw("SAME");
-      
-      pads_p[0]->cd();      
-      HIJet::Style::EquipHistogram(pbpbHist_p, 1); 
+ 	if(jewelCentPos == -1){
+ 	  std::cout << "JEWEL CENT STR MATCHING \'" << centBinsStr[cI] << "\' not found. Pb+Pb in this bin will not be plotted, please fix for overlay" << std::endl;
+ 		  doJEWEL = false;
+ 	}
+ 	else{
+ 	  inJEWELPbPbHist_p = (TH1D*)pbpbJEWELFile_p[jewelCentPos]->Get((varNameLower + "_R" + std::to_string(jetR) + "_GammaPt" + std::to_string(gI) + "_h").c_str());
+ 	  if(!doXTrunc) jewelPbPbHist_p = new TH1D("jewelPbPbHist_h", ";;", nVarBins, varBins);
+ 	  else jewelPbPbHist_p = new TH1D("jewelPbPbHist_h", ";;", nVarBinsTrunc, varBinsTrunc);
+	  
+ 	  fineHistToCoarseHist(inJEWELPbPbHist_p, jewelPbPbHist_p);
+ 	}
 
-      ppHist_p->SetMinimum(minVal);
-      ppHist_p->SetMaximum(maxVal);
-
-      //Need to set this for both so the systematics dont overflow the plotting space but still draw correctly
-      pbpbHist_p->SetMinimum(minVal);
-      pbpbHist_p->SetMaximum(maxVal);
-
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+ 	jewelLeg_p = new TLegend(jewelLegX, jewelLegY - 0.065*2, jewelLegX+0.25, jewelLegY);
+ 	jewelLeg_p->SetTextFont(42);
+ 	jewelLeg_p->SetTextSize(0.035/(1.0 - padSplit));
+ 	jewelLeg_p->SetBorderSize(0);
+ 	jewelLeg_p->SetFillStyle(0);	
+     }
       
-      ppHist_p->DrawCopy("HIST E1 P");
-      pbpbHist_p->DrawCopy("HIST E1 P SAME");
-
-      
-      
-      if(doJEWEL){
-	HIJet::Style::EquipHistogram(jewelPPHist_p, 2);
-	jewelPPHist_p->SetLineStyle(2);
-	jewelPPHist_p->SetLineWidth(4);
-
-	if(jewelPbPbHist_p != nullptr){
-	  HIJet::Style::EquipHistogram(jewelPbPbHist_p, 1);
-	  jewelPbPbHist_p->SetLineStyle(2);
-	  jewelPbPbHist_p->SetLineWidth(4);
-	}
-
-
-	jewelPPHist_p->Scale(scaleFactorPYT);
+     TCanvas* canvPP_p = nullptr;
+     TPad* padsPP_p[nPad];
+     if(cI == 0){
+ 	canvPP_p = new TCanvas("canvPP_p", "", width, height);
+ 	padsPP_p[0] = new TPad("padPP0", "", 0.0, padSplit, 1.0, 1.0);
+ 	setMargins(padsPP_p[0], leftMargin, topMargin, rightMargin, noMargin);
+ 	canvPP_p->cd();
+ 	padsPP_p[0]->Draw("SAME");
 	
-	pads_p[0]->cd();
-	jewelPPHist_p->DrawCopy("C HIST SAME");
+ 	canvPP_p->cd();
+ 	padsPP_p[1] = new TPad("padPP1", "", 0.0, 0.0, 1.0, padSplit);
+ 	setMargins(padsPP_p[1], leftMargin, noMargin, rightMargin, bottomMargin);
+ 	canvPP_p->cd();
+ 	padsPP_p[1]->Draw("SAME");
+     }
+      
+     TCanvas* canv_p = new TCanvas("canv_p", "", width, height);
+     TPad* pads_p[nPad];
+     setMargins(canv_p, noMargin, noMargin, noMargin, noMargin);
+     canv_p->cd();
+      
+     pads_p[0] = new TPad("pad0", "", 0.0, padSplit, 1.0, 1.0);
+     setMargins(pads_p[0], leftMargin, topMargin, rightMargin, noMargin);
+     canv_p->cd();
+     pads_p[0]->Draw("SAME");
+      
+     canv_p->cd();
+     pads_p[1] = new TPad("pad1", "", 0.0, 0.0, 1.0, padSplit);
+     setMargins(pads_p[1], leftMargin, noMargin, rightMargin, bottomMargin);
+     canv_p->cd();
+     pads_p[1]->Draw("SAME");
+      
+     pads_p[0]->cd();      
+     HIJet::Style::EquipHistogram(pbpbHist_p, 1); 
+     pbpbHist_p->SetMarkerColor(1);
+     pbpbHist_p->SetLineColor(1);
+     pbpbHist_p->SetMarkerStyle(25);
+     
+     ppHist_p->SetMinimum(minVal);
+     ppHist_p->SetMaximum(maxVal);
 
-	//Change the line color to black for the tlegend and add both jewels
-	jewelPPHist_p->SetLineColor(1);
-	jewelLeg_p->AddEntry(inJEWELPPHist_p, "Data", "L");
-	jewelLeg_p->AddEntry(jewelPPHist_p, ("JEWEL x " + prettyString(scaleFactorPYT,1,false)).c_str(), "L");
+     //   Need to set this for both so the systematics dont overflow the plotting space but still draw correctly
+     pbpbHist_p->SetMinimum(minVal);
+     pbpbHist_p->SetMaximum(maxVal);
+
+     if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+
+     ppHist_p->GetXaxis()->SetTitleSize(ppHist_p->GetXaxis()->GetTitleSize()*1.3);
+      
+     ppHist_p->DrawCopy("HIST E1 X0 P");
+     pbpbHist_p->DrawCopy("HIST E1 X0 P SAME");     
+      
+     if(doJEWEL){
+ 	HIJet::Style::EquipHistogram(jewelPPHist_p, 2);
+ 	jewelPPHist_p->SetLineStyle(2);
+ 	jewelPPHist_p->SetLineWidth(8);
+ 	jewelPPHist_p->SetMarkerSize(0.0001);
+
+ 	if(jewelPbPbHist_p != nullptr){
+ 	  HIJet::Style::EquipHistogram(jewelPbPbHist_p, 1);
+ 	  jewelPbPbHist_p->SetLineStyle(2);
+ 	  jewelPbPbHist_p->SetLineWidth(8);
+ 	  jewelPbPbHist_p->SetMarkerSize(0.0001);
+ 	}
+
+ 	jewelPPHist_p->Scale(scaleFactorPYT);
+	
+ 	pads_p[0]->cd();
+ 	jewelPPHist_p->DrawCopy("C HIST SAME");
+
+ 	//Change the line color to black for the tlegend and add both jewels
+ 	jewelPPHist_p->SetLineColor(1);
+	//	jewelLeg_p->AddEntry(inJEWELPPHist_p, "Data", "L");
+	jewelLeg_p->AddEntry(jewelPPHist_p, ("JEWEL (x " + prettyString(scaleFactorPYT,1,false) + ")").c_str(), "L");
 
 	jewelLeg_p->Draw("SAME");
 	
@@ -1334,35 +1460,40 @@ int gdjPlotResults(std::string inConfigFileName)
       pads_p[0]->cd();
 
       
+      //      HIJet::Style::EquipHistogram(ppHist_p, 2); 
       drawSyst(pads_p[0], ppHist_p, ppSyst);
+      //      HIJet::Style::EquipHistogram(pbpbHist_p, 1); 
       drawSyst(pads_p[0], pbpbHist_p, pbpbSyst);
+      //      pbpbHist_p->SetMarkerColor(1);
+      //      pbpbHist_p->SetLineColor(1);
+      //      pbpbHist_p->SetMarkerStyle(25);
 
-      ppHist_p->DrawCopy("HIST E1 P SAME");
-      pbpbHist_p->DrawCopy("HIST E1 P SAME");
-
+      ppHist_p->DrawCopy("HIST E1 X0 P SAME");
+      pbpbHist_p->DrawCopy("HIST E1 X0 P SAME");
+      
       //Do the same but just pp
       if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
 
       if(cI == 0){
 	padsPP_p[0]->cd();
-	ppHist_p->DrawCopy("HIST E1 P");
-	drawSyst(padsPP_p[0], ppHist_p, ppSyst);
-	ppHist_p->DrawCopy("HIST E1 P SAME");
 
+	ppHist_p->DrawCopy("HIST E1 X0 P");
+	drawSyst(padsPP_p[0], ppHist_p, ppSyst);
+	ppHist_p->DrawCopy("HIST E1 X0 P SAME");
+	
 	HIJet::Style::EquipHistogram(pyt8Truth_p, 5);
+	pyt8Truth_p->SetLineWidth(8);
 	pyt8Truth_p->Scale(scaleFactorPYT);
+	pyt8Truth_p->SetMarkerSize(0.00001);
 	pyt8Truth_p->DrawCopy("C HIST SAME");
 	pyt8Truth_p->Scale(1.0/scaleFactorPYT);
 
 	
 	if(doJEWEL){
 	  HIJet::Style::EquipHistogram(jewelPPHist_p, 2);
+	  jewelPPHist_p->SetMarkerSize(0.00001);
 	  jewelPPHist_p->SetLineStyle(2);
-	  jewelPPHist_p->SetLineWidth(4);
-
-	  HIJet::Style::EquipHistogram(jewelPPHist_p, 2);
-	  jewelPPHist_p->SetLineStyle(2);
-	  jewelPPHist_p->SetLineWidth(4);
+	  jewelPPHist_p->SetLineWidth(8);
 
 	  jewelPPHist_p->DrawCopy("C HIST SAME");
 	  //	  jewelPPHist_p->Scale(1.0/scaleFactorPP);
@@ -1370,11 +1501,14 @@ int gdjPlotResults(std::string inConfigFileName)
 	  jewelPPHist_p->SetLineColor(1);
 	}	  
 
+	ppHist_p->DrawCopy("HIST E1 X0 P SAME");
+
 	gPad->SetTicks();
-	
       }
 
       if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
+      
+      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
       
       Float_t integral = 0.0;
       Float_t integralError = 0.0;
@@ -1393,7 +1527,7 @@ int gdjPlotResults(std::string inConfigFileName)
       
       std::vector<std::string> labelsAlt;
       std::vector<std::string> labelsTemp = getLabels(inPbPbFileConfig_p, pbpbHist_p, &labelMap, &labelsAlt);
-      std::vector<std::string> labels = {"#bf{#it{ATLAS Internal}}", "Pb+Pb, #it{pp} at #sqrt{s_{NN}}=5.02 TeV"};
+      std::vector<std::string> labels = {"#bf{#it{ATLAS Internal}}", "2018 Pb+Pb 1.7 nb^{-1}", "2017 #it{pp} 260 pb^{-1}", "#sqrt{s} = 5.02 TeV"};
     
       for(unsigned int lI = 0; lI < labelsTemp.size(); ++lI){
 	if(isStrSame(labelsTemp[lI], "h")) continue;
@@ -1416,12 +1550,16 @@ int gdjPlotResults(std::string inConfigFileName)
 	    labelsTemp[lI] = "|#eta_{Jet}|<" + backStr;
 	  }
 	}
+
+	if(labelsTemp[lI].find("#eta_{Jet}") != std::string::npos) continue;
+	if(labelsTemp[lI].find("#DeltaR_{JJ}") != std::string::npos) continue;
+
+	if(labelsTemp[lI].find("p_{T") != std::string::npos) labelsTemp[lI] = labelsTemp[lI] + " GeV";
 	
 	labels.push_back(labelsTemp[lI]);
       }
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
-      labels.push_back(prettyString(gammaPtBins[gI], 1, false) + "<p_{T,#gamma}<" + prettyString(gammaPtBins[gI+1], 1, false));
-      labels.push_back(gammaJtDPhiCutLabel);
+      //      labels.push_back(prettyString(gammaPtBins[gI], 1, false) + "<p_{T,#gamma}<" + prettyString(gammaPtBins[gI+1], 1, false));
+      //      labels.push_back(gammaJtDPhiCutLabel);
 
       if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
       
@@ -1521,12 +1659,12 @@ int gdjPlotResults(std::string inConfigFileName)
       TLatex* label_p = new TLatex();
       label_p->SetNDC();
       label_p->SetTextFont(42);
-      label_p->SetTextSize(0.035/(1.0 - padSplit));
+      label_p->SetTextSize(titleSize/(1.0 - padSplit));
       label_p->SetTextAlign(31);
 
       std::vector<std::string> tempLabels;
       for(unsigned int i = 0; i < labels.size(); ++i){
-	label_p->DrawLatex(labelX, labelY - 0.083*i, labels[i].c_str());
+	label_p->DrawLatex(labelX, labelY - 0.063*i, labels[i].c_str());
 	tempLabels.push_back(labels[i]);	
       }
       ratioLabelsPerCentrality.push_back(tempLabels);
@@ -1534,12 +1672,17 @@ int gdjPlotResults(std::string inConfigFileName)
       
       TLegend* leg_p = new TLegend(legX, legY - 0.065*2, legX+0.25, legY);
       leg_p->SetTextFont(42);
-      leg_p->SetTextSize(0.035/(1.0 - padSplit));
+      leg_p->SetTextSize(titleSize/(1.0 - padSplit));
       leg_p->SetBorderSize(0);
       leg_p->SetFillStyle(0);
-   
-      leg_p->AddEntry(pbpbHist_p, ("Pb+Pb #bf{" + centBins2Str + "}").c_str(), "P L");
-      leg_p->AddEntry(ppHist_p, "p+p", "P L");      
+
+      pbpbHist_p->SetFillColorAlpha(kRed-4, 0.3);      
+      leg_p->AddEntry(pbpbHist_p, ("Pb+Pb #bf{" + centBins2Str + "}").c_str(), "P L F");
+      pbpbHist_p->SetFillColor(0);
+
+      ppHist_p->SetFillColorAlpha(kAzure-3, 0.3);      
+      leg_p->AddEntry(ppHist_p, "#it{pp}", "P L F");      
+      ppHist_p->SetFillColor(0);
       leg_p->Draw("SAME");
       
       gPad->SetTicks();
@@ -1548,9 +1691,11 @@ int gdjPlotResults(std::string inConfigFileName)
       
       canv_p->cd();
       pads_p[1]->cd();
-
-      std::vector<std::vector<Double_t > > ratSyst = getSystRat(inPbPbFile_p, inPPFile_p, pbpbHist_p, ppHist_p, pbpbSystHistNames, ppSystHistNames, isSystCorrelated, gammaMatchedBins, scaledTotalPbPbSyst, scaledTotalPPSyst);
-
+      
+      if(doGlobalDebug) std::cout << "LINE, FILE: " << __LINE__ << ", " << __FILE__ << std::endl;
+      std::vector<std::vector<Double_t > > ratSyst = getSystRat(inPbPbFile_p, inPPFile_p, pbpbHist_p, ppHist_p, pbpbSystHistNames, ppSystHistNames, isSystCorrelated, gammaMatchedBins, scaledTotalPbPbSyst, scaledTotalPPSyst, inUnfoldNonClosureFileName);
+  if(doGlobalDebug) std::cout << "LINE, FILE: " << __LINE__ << ", " << __FILE__ << std::endl;
+  
       std::map<std::string, std::vector<std::vector<Double_t> > > systTypeToSystValsRatio;
       for(auto const &val : systTypesMap){
 	std::vector<std::vector<Double_t> > tempVectVals;
@@ -1564,9 +1709,12 @@ int gdjPlotResults(std::string inConfigFileName)
 	systTypeToSystValsRatio[val.first] = tempVectVals;
       }  
 
+      if(doGlobalDebug) std::cout << "LINE, FILE: " << __LINE__ << ", " << __FILE__ << std::endl;
 
       pbpbHist_p->Divide(ppHist_p);
-    
+
+      if(doGlobalDebug) std::cout << "LINE, FILE: " << __LINE__ << ", " << __FILE__ << std::endl;
+      
       //We need to save the ratio histograms for plotting all centrality together
       std::string ratioHistName = "ratioHist_" + centBinsStr[cI];
       std::string ratioHistTitle = ";" + varNameLabel + ";Pb+Pb/pp";
@@ -1603,8 +1751,9 @@ int gdjPlotResults(std::string inConfigFileName)
       pbpbHist_p->SetTickLength(pbpbHist_p->GetTickLength("Y")*(1.0 - padSplit)/padSplit, "Y");
 
       pbpbHist_p->GetXaxis()->SetTitle(varNameLabel.c_str());
-      pbpbHist_p->DrawCopy("HIST E1 P");
-
+      pbpbHist_p->GetXaxis()->SetTitleSize(pbpbHist_p->GetXaxis()->GetTitleSize()*1.3);
+      pbpbHist_p->DrawCopy("HIST E1 X0 P");
+  
       if(doJEWEL && jewelPbPbHist_p != nullptr){
 	jewelPbPbHist_p->Divide(jewelPPHist_p);
 
@@ -1614,8 +1763,12 @@ int gdjPlotResults(std::string inConfigFileName)
       }
       
       //drawSyst here returns the quadrature sum of the syst error for convenience just put it right in the push_back
+      //     HIJet::Style::EquipHistogram(pbpbHist_p, 1); 
       ratioSystsPerCentrality.push_back(drawSyst(pads_p[1], pbpbHist_p, ratSyst));
-      pbpbHist_p->DrawCopy("HIST E1 P SAME");      
+      //     pbpbHist_p->SetMarkerColor(1);
+      //     pbpbHist_p->SetLineColor(1);
+      //     pbpbHist_p->SetMarkerStyle(25);
+      pbpbHist_p->DrawCopy("HIST E1 X0 P SAME");      
     
       if(cI == 0){
 	padsPP_p[1]->cd();
@@ -1628,9 +1781,10 @@ int gdjPlotResults(std::string inConfigFileName)
 
 	  HIJet::Style::EquipHistogram(jewelPPHist_p, 2);
 	  jewelPPHist_p->SetLineStyle(2);
-	  jewelPPHist_p->SetLineWidth(4);
-	  
-	  jewelPPHist_p->GetYaxis()->SetTitle("MC/Data");
+	  jewelPPHist_p->SetLineWidth(8);
+	  jewelPPHist_p->SetMarkerSize(0.0001);
+	    
+	  jewelPPHist_p->GetYaxis()->SetTitle("Scaled PYTHIA/Data");
 
 	  jewelPPHist_p->GetYaxis()->SetNdivisions(505);
 	  jewelPPHist_p->GetXaxis()->SetTitleOffset(1.2);
@@ -1645,7 +1799,7 @@ int gdjPlotResults(std::string inConfigFileName)
 	  jewelPPHist_p->GetXaxis()->SetLabelSize(labelSize/(padSplit));
 	  jewelPPHist_p->GetYaxis()->SetLabelSize(labelSize/(padSplit));     
 	  
-	  jewelPPHist_p->GetYaxis()->SetTitle("MC/Data");
+	  jewelPPHist_p->GetYaxis()->SetTitle("Scaled PYTHIA/Data");
 	  jewelPPHist_p->GetYaxis()->SetTitleOffset(yOffset*padSplit/(1.0 - padSplit));
 
 	  jewelPPHist_p->GetXaxis()->SetTitle(ppHist_p->GetXaxis()->GetTitle());
@@ -1655,11 +1809,12 @@ int gdjPlotResults(std::string inConfigFileName)
 
 	  if(max < 1.0) max = 1.0;
 	  
-	  jewelPPHist_p->SetMaximum(max + 0.1*(max-min));
-	  jewelPPHist_p->SetMinimum(min - 0.1*(max-min));
+	  jewelPPHist_p->SetMaximum(maxPytRatVal);
+	  jewelPPHist_p->SetMinimum(minPytRatVal);
 	  
-	  jewelPPHist_p->DrawCopy("HIST C");
-	  pyt8Truth_p->DrawCopy("HIST C SAME");
+	  jewelPPHist_p->GetXaxis()->SetTitleSize(jewelPPHist_p->GetXaxis()->GetTitleSize()*1.3);
+	  jewelPPHist_p->DrawCopy("C HIST");
+	  pyt8Truth_p->DrawCopy("C HIST SAME");
 
 	  TLine* line_p = new TLine();
 	  line_p->SetLineStyle(2);
@@ -1722,16 +1877,20 @@ int gdjPlotResults(std::string inConfigFileName)
       
       TBox* box_p = new TBox();
       box_p->SetFillColor(0);
-      box_p->DrawBox(0.11, 0.435, 0.1575, 0.46);
+      box_p->DrawBox(0.11, 0.435, leftMargin - 0.25, 0.46);
       delete box_p;
 
-      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
-         
+      pbpbHist_p->SetFillColorAlpha(1, 0.3);      
+      ppHist_p->SetFillColorAlpha(ppColor, 0.3);      
+
+      gPad->Modified();
       quietSaveAs(canv_p, "pdfDir/" + dateStr + "/" + varName + "Unfolded_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_" + saveTag + "_" + dateStr + "." + saveExt);
       for(Int_t pI = 0; pI < nPad; ++pI){
 	delete pads_p[pI];
       }      
       delete canv_p;      
+      pbpbHist_p->SetFillColor(0);
+      ppHist_p->SetFillColor(0);
     
       if(cI == 0){	
 	Int_t nLegEntriesPP = 2;
@@ -1740,40 +1899,61 @@ int gdjPlotResults(std::string inConfigFileName)
 	
 	TLegend* legPP_p = new TLegend(legX, legY - 0.065*nLegEntriesPP, legX+0.25, legY);
 	legPP_p->SetTextFont(42);
-	legPP_p->SetTextSize(0.035/(1.0 - padSplit));
+	legPP_p->SetTextSize(titleSize/(1.0 - padSplit));
 	legPP_p->SetBorderSize(0);
 	legPP_p->SetFillStyle(0);
 
-	if(doJEWEL) HIJet::Style::EquipHistogram(jewelPPHist_p, 2);
-		
-	legPP_p->AddEntry(ppHist_p, "p+p", "P L");
-	legPP_p->AddEntry(pyt8Truth_p, ("PYTHIA 8 x " + prettyString(scaleFactorPYT, 1, false)).c_str(), "L");
-	if(doJEWEL) legPP_p->AddEntry(jewelPPHist_p, ("PYTHIA 6 x " + prettyString(scaleFactorPYT, 1, false)).c_str(), "L");
+	if(doJEWEL){
+	  HIJet::Style::EquipHistogram(jewelPPHist_p, 2);
+	  jewelPPHist_p->SetMarkerSize(0.00001);
+	  jewelPPHist_p->SetLineWidth(8);
+	}
+  
+	legPP_p->AddEntry(ppHist_p, "#it{pp}", "P L F");
+
+	legPP_p->AddEntry(pyt8Truth_p, ("PYTHIA 8 (x " + prettyString(scaleFactorPYT, 1, false) + ")").c_str(), "L P");
+	if(doJEWEL) legPP_p->AddEntry(jewelPPHist_p, ("PYTHIA 6 (x " + prettyString(scaleFactorPYT, 1, false) + ")").c_str(), "L P");
 	  
 	legPP_p->Draw("SAME");
 
 	TLatex* label_p = new TLatex();
 	label_p->SetNDC();
 	label_p->SetTextFont(42);
-	label_p->SetTextSize(0.035/(1.0 - padSplit));
+	label_p->SetTextSize(titleSize/(1.0 - padSplit));
 	label_p->SetTextAlign(31);
 	
 	std::vector<std::string> tempLabels;
+	Int_t currLabelPos=0;
 	for(unsigned int i = 0; i < labels.size(); ++i){
 	  std::string label = labels[i];
-	  if(label.find("Pb+Pb, ") != std::string::npos){
-	    label.replace(0, label.find(" ")+1, "");
-	  }
-	  
-	  label_p->DrawLatex(labelX, labelY - 0.083*i, label.c_str());
-	}
+	  if(label.find("Pb+Pb") != std::string::npos) continue;
+
+	  label_p->DrawLatex(labelX, labelY - 0.063*currLabelPos, label.c_str());
+	  ++currLabelPos;
+	}	
+	label_p->SetTextAlign(11);
+	label_p->DrawLatex(var2JetXLabelX, var2JetXLabelY, "#it{pp} #rightarrow #gamma + 2 jets + X");
 	delete label_p;
+
+	//Draw a white box to get rid of the zero
+	canvPP_p->cd();
+	TBox* box_p = new TBox();
+	box_p->SetFillColor(0);
+	box_p->DrawBox(0.13, .45, leftMargin-0.25, 0.5);
+	if(isStrSame(varNameLower, "drjj")){
+	  box_p->DrawBox(0.1, .41, leftMargin-0.25, 0.45);
+	}
+	delete box_p;
 	
+	
+	ppHist_p->SetFillColorAlpha(ppColor, 0.3);
 	quietSaveAs(canvPP_p, "pdfDir/" + dateStr + "/" + varName + "Unfolded_GammaPt" + std::to_string(gI) + "_PPTheory_" + saveTag + "_" + dateStr + "." + saveExt);
 	for(Int_t pI = 0; pI < nPad; ++pI){
 	  delete padsPP_p[pI];
 	}      
 	delete canvPP_p;      
+
+	ppHist_p->SetFillColor(0);
       }
       delete leg_p;
 
@@ -1815,7 +1995,7 @@ int gdjPlotResults(std::string inConfigFileName)
       TLatex* label_p = new TLatex();
       label_p->SetNDC();
       label_p->SetTextFont(42);
-      label_p->SetTextSize(0.035);
+      label_p->SetTextSize(titleSize);
       label_p->SetTextAlign(31);
       
       label_p->DrawLatex(labelX, labelY, std::string(prettyString(gammaPtBins[gI], 1, false) + " < p_{T,#gamma} < " + prettyString(gammaPtBins[gI+1], 1, false)).c_str());
@@ -1840,7 +2020,7 @@ int gdjPlotResults(std::string inConfigFileName)
       TLatex* label_p = new TLatex();
       label_p->SetNDC();
       label_p->SetTextFont(42);
-      label_p->SetTextSize(0.035);
+      label_p->SetTextSize(titleSize);
       label_p->SetTextAlign(31);
       
       label_p->DrawLatex(labelX, labelY, std::string(prettyString(gammaPtBins[gI], 1, false) + " < p_{T,#gamma} < " + prettyString(gammaPtBins[gI+1], 1, false)).c_str());
@@ -1858,7 +2038,7 @@ int gdjPlotResults(std::string inConfigFileName)
 
       TLegend* leg_p = new TLegend(legXCent, legYCent - 0.04*ratioHistsPerCentrality.size(), legXCent+0.25, legYCent);
       leg_p->SetTextFont(42);
-      leg_p->SetTextSize(0.035);
+      leg_p->SetTextSize(titleSize);
       leg_p->SetBorderSize(0);
       leg_p->SetFillStyle(0);
 
@@ -1868,14 +2048,14 @@ int gdjPlotResults(std::string inConfigFileName)
 	ratioHistsPerCentrality[cI]->SetMinimum(minRatVal);
 	ratioHistsPerCentrality[cI]->SetMaximum(maxRatVal);
 
-	if(cI == 0) ratioHistsPerCentrality[cI]->DrawCopy("HIST E1 P");
-	else ratioHistsPerCentrality[cI]->DrawCopy("HIST E1 P SAME");
+	if(cI == 0) ratioHistsPerCentrality[cI]->DrawCopy("HIST E1 P X0");
+	else ratioHistsPerCentrality[cI]->DrawCopy("HIST E1 P SAME X0");
 
 	drawSyst(canv_p, ratioHistsPerCentrality[cI], {ratioSystsPerCentrality[cI]});
 
 	std::string legLabel = centBinsLabel[cI].substr(centBinsLabel[cI].find(",")+2, centBinsLabel[cI].size());
 	legLabel.replace(legLabel.rfind("}"), 1, "");
-	leg_p->AddEntry(ratioHistsPerCentrality[cI], legLabel.c_str(), "P L");
+	leg_p->AddEntry(ratioHistsPerCentrality[cI], legLabel.c_str(), "P L F");
       }
 
       TLine* line_p = new TLine();
@@ -1886,7 +2066,7 @@ int gdjPlotResults(std::string inConfigFileName)
       TLatex* label_p = new TLatex();
       label_p->SetNDC();
       label_p->SetTextFont(42);
-      label_p->SetTextSize(0.035);
+      label_p->SetTextSize(titleSize);
       if(labelAlignRightCent) label_p->SetTextAlign(31);
 
       for(unsigned int i = 0; i < ratioLabelsPerCentrality[0].size(); ++i){
@@ -1897,10 +2077,19 @@ int gdjPlotResults(std::string inConfigFileName)
       leg_p->Draw("SAME");
       gPad->SetTicks();
 
-      
+      /*
+      for(unsigned int cI = 0; cI < ratioHistsPerCentrality.size(); ++cI){
+	ratioHistsPerCentrality[cI]->SetFillColorAlpha(centColors[cI], 0.3);
+	}*/
+    
+      gPad->Modified();
       quietSaveAs(canv_p, "pdfDir/" + dateStr + "/" + varName + "Unfolded_GammaPt" + std::to_string(gI)	 + "_AllCentRatio_" + saveTag + "_" + dateStr + "." + saveExt);
       delete canv_p;
       delete leg_p;
+
+      for(unsigned int cI = 0; cI < ratioHistsPerCentrality.size(); ++cI){
+	ratioHistsPerCentrality[cI]->SetFillColor(0);
+      }      
     }
 
     //Plot centrality 0-10% RAA w/ JEWEL
@@ -1910,7 +2099,7 @@ int gdjPlotResults(std::string inConfigFileName)
 
       TLegend* leg_p = new TLegend(ratLegX, ratLegY - 0.04*ratioHistsPerCentrality.size(), ratLegX+0.25, ratLegY);
       leg_p->SetTextFont(42);
-      leg_p->SetTextSize(0.035);
+      leg_p->SetTextSize(titleSize);
       leg_p->SetBorderSize(0);
       leg_p->SetFillStyle(0);
 
@@ -1921,21 +2110,32 @@ int gdjPlotResults(std::string inConfigFileName)
 	if(legLabel.find("0-10%") == std::string::npos) continue;
 
 	HIJet::Style::EquipHistogram(ratioHistsPerCentrality[cI], cI+1);
+	ratioHistsPerCentrality[cI]->SetMarkerColor(1);
+	ratioHistsPerCentrality[cI]->SetLineColor(1);
+	ratioHistsPerCentrality[cI]->SetMarkerStyle(25);
 
 	ratioHistsPerCentrality[cI]->SetMinimum(minRatVal);
 	ratioHistsPerCentrality[cI]->SetMaximum(maxRatVal);
 
-	if(cI == 0) ratioHistsPerCentrality[cI]->DrawCopy("HIST E1 P");
-	else ratioHistsPerCentrality[cI]->DrawCopy("HIST E1 P SAME");
-
+	ratioHistsPerCentrality[cI]->GetXaxis()->SetTitleSize(ratioHistsPerCentrality[cI]->GetXaxis()->GetTitleSize()*1.3);
+	if(cI == 0) ratioHistsPerCentrality[cI]->DrawCopy("HIST E1 X0 P");
+	else ratioHistsPerCentrality[cI]->DrawCopy("HIST E1 P X0 SAME");
+	
+	//	HIJet::Style::EquipHistogram(ratioHistsPerCentrality[cI], cI+1);
+	ratioHistsPerCentrality[cI]->SetFillColorAlpha(1, 0.3);
 	drawSyst(canv_p, ratioHistsPerCentrality[cI], {ratioSystsPerCentrality[cI]});
+	ratioHistsPerCentrality[cI]->SetMarkerColor(1);
+	ratioHistsPerCentrality[cI]->SetLineColor(1);
+	ratioHistsPerCentrality[cI]->SetMarkerStyle(25);
 
-	leg_p->AddEntry(ratioHistsPerCentrality[cI], legLabel.c_str(), "P L");
+	leg_p->AddEntry(ratioHistsPerCentrality[cI], legLabel.c_str(), "P L F");
       }
 
       HIJet::Style::EquipHistogram(ratioJEWEL0to10_p, 1);
       ratioJEWEL0to10_p->SetLineStyle(2);
-      ratioJEWEL0to10_p->SetLineWidth(4);
+      ratioJEWEL0to10_p->SetLineWidth(8);
+      ratioJEWEL0to10_p->SetMarkerSize(0.0000001);
+
       
       ratioJEWEL0to10_p->DrawCopy("HIST C SAME");
       leg_p->AddEntry(ratioJEWEL0to10_p, "JEWEL", "L");
@@ -1948,7 +2148,7 @@ int gdjPlotResults(std::string inConfigFileName)
       TLatex* label_p = new TLatex();
       label_p->SetNDC();
       label_p->SetTextFont(42);
-      label_p->SetTextSize(0.035);
+      label_p->SetTextSize(titleSize);
       if(labelAlignRightCent) label_p->SetTextAlign(31);
 
       if(isStrSame(varNameLower, "drjj")){
@@ -1966,10 +2166,21 @@ int gdjPlotResults(std::string inConfigFileName)
 
       leg_p->Draw("SAME");
       gPad->SetTicks();
+
+      for(unsigned int cI = 0; cI < ratioHistsPerCentrality.size(); ++cI){
+	//	ratioHistsPerCentrality[cI]->SetFillColorAlpha(centColors[cI], 0.3);
+	ratioHistsPerCentrality[cI]->SetFillColorAlpha(1, 0.3);      
+      }
       
+
       quietSaveAs(canv_p, "pdfDir/" + dateStr + "/" + varName + "Unfolded_GammaPt" + std::to_string(gI)	 + "_Cent0to10RatioWithJEWEL_" + saveTag + "_" + dateStr + "." + saveExt);
       delete canv_p;
       delete leg_p;
+
+      for(unsigned int cI = 0; cI < ratioHistsPerCentrality.size(); ++cI){
+	ratioHistsPerCentrality[cI]->SetFillColor(0);
+      }
+
     }
     delete ratioJEWEL0to10_p;
   

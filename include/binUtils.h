@@ -12,6 +12,8 @@
 #include "TMath.h"
 
 //Local
+#include "include/getLinBins.h"
+#include "include/getLogBins.h"
 #include "include/stringUtil.h"
 
 #define _USE_MATH_DEFINES
@@ -542,6 +544,54 @@ inline int getBinPosFromValue(double value, std::vector<double> bins)
   }
 
   return binPos;
+}
+
+bool customBinFiller(std::string binsStr, TEnv* inEnv_p, Int_t nMaxBins, Double_t bins[])
+{
+  Int_t nBins = inEnv_p->GetValue(("N" + binsStr + "BINS").c_str(), -1);
+  if(nBins <= 0){
+    std::cout << "ERROR, " << __FILE__ << ", " << __LINE__ << ", customBinFiler: nBins from N" << binsStr << "BINS is " << nBins << ", invalid. return false" << std::endl;
+    return false;
+  }
+  else if(nBins > nMaxBins){
+    std::cout << "ERROR, " << __FILE__ << ", " << __LINE__ << ", customBinFiler: nBins from N" << binsStr << "BINS is " << nBins << ", greater than max of array given, " << nMaxBins << ". return false" << std::endl;
+    return false;
+  }
+
+  bool doLog = (bool)inEnv_p->GetValue((binsStr + "BINSDOLOG").c_str(), 0);
+  bool doCustom = (bool)inEnv_p->GetValue((binsStr + "BINSDOCUSTOM").c_str(), 0);
+
+  if(doCustom){
+    std::string binsVectStr = inEnv_p->GetValue((binsStr + "BINSCUSTOM").c_str(), "");
+    if(binsVectStr.size() == 0){
+      std::cout << "ERROR, " << __FILE__ << ", " << __LINE__ << ", customBinFiler: custom bins str, " << binsStr << "CUSTOMBINS returned empty vector. return false" << std::endl;
+      return false;
+    }
+    std::vector<float> binsVect = strToVectF(binsVectStr);
+
+    if(nBins+1 != (int)binsVect.size()){
+      std::cout << "ERROR, " << __FILE__ << ", " << __LINE__ << ", customBinFiler: custom bins str, " << binsStr << "CUSTOMBINS returned size \'" << binsVect.size() << "\', not equal to nBins+1=" << nBins+1 << ". return false" << std::endl;
+      return false;
+    }
+    
+    for(unsigned int bI = 0; bI < binsVect.size(); ++bI){
+      bins[bI] = binsVect[bI];
+    }
+  }
+  else{
+    const Float_t binsLow = inEnv_p->GetValue((binsStr + "BINSLOW").c_str(), 9999.0);
+    const Float_t binsHigh = inEnv_p->GetValue((binsStr + "BINSHIGH").c_str(), -9999.0);
+
+    if(binsLow > binsHigh){
+      std::cout << "ERROR, " << __FILE__ << ", " << __LINE__ << ", customBinFiler: Given " <<  binsStr << "BINSLOW="<< binsLow << "is greater than " << binsStr << "BINSHIGH=" << binsHigh << ". return false" << std::endl;
+      return false;
+    }
+    
+    if(doLog) getLogBins(binsLow, binsHigh, nBins, bins);
+    else getLinBins(binsLow, binsHigh, nBins, bins);
+  }
+  
+  return true;  
 }
 
 #endif
