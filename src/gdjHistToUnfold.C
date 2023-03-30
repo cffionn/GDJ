@@ -454,6 +454,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 					      "SYSTUNFOLDERRTYPE",
 					      "NTOYS",
 					      "DOREBIN",
+					      "DOHALFTEST",
 					      "UNFOLD"};
 
   //Terminate if not all necessary params are found
@@ -468,6 +469,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
   std::string varNameLower = returnAllLowercaseString(varName);
 
   const bool doTruthTest = (bool)config_p->GetValue("DOTRUTHTEST", 0);
+  const bool doHalfTest = (bool)config_p->GetValue("DOHALFTEST", 0);
   const bool doROOFakeTest = (bool)config_p->GetValue("DOROOFAKETEST", 0);
   const std::string saveTag = config_p->GetValue("SAVETAG", "");
 
@@ -745,7 +747,11 @@ int gdjHistToUnfold(std::string inConfigFileName)
   const bool isPP = inResponseFileConfig_p->GetValue("ISPP", 0);
 
   if(doTruthTest && !isMC){
-    std::cout << "BOOL doTruthTest is set to true, but sample \'" << inUnfoldFileName << "\' is not Monte Carloe. return 1" << std::endl;
+    std::cout << "BOOL doTruthTest is set to true, but sample \'" << inUnfoldFileName << "\' is not Monte Carlo. return 1" << std::endl;
+    return 1;
+  }
+  if(doHalfTest && !isMC){
+    std::cout << "BOOL doHalfTest is set to true, but sample \'" << inUnfoldFileName << "\' is not Monte Carlo. return 1" << std::endl;
     return 1;
   }
   
@@ -1506,6 +1512,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
       
       repStr = repStr + "_RAWWITHTRUTHMATCH";
     }
+    else if(doHalfTest) repStr = "PURCORRHalf";
 
     for(unsigned int systI = 0; systI < inSystStrVect.size(); ++systI){
       if(isMultijet){
@@ -2080,6 +2087,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
   }
 
   //Run,lumi,event check for duplication
+  Bool_t is5050FilledHist;
   UInt_t runNumber;
   UInt_t lumiBlock;
   ULong64_t eventNumber;
@@ -2114,6 +2122,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
   Double_t unfoldWeight_;
   Float_t unfoldCent_;
   
+  unfoldTree_p->SetBranchAddress("is5050FilledHist", &is5050FilledHist);
   unfoldTree_p->SetBranchAddress("runNumber", &runNumber);
   unfoldTree_p->SetBranchAddress("lumiBlock", &lumiBlock);
   unfoldTree_p->SetBranchAddress("eventNumber", &eventNumber);
@@ -2222,7 +2231,9 @@ int gdjHistToUnfold(std::string inConfigFileName)
   for(ULong64_t entry = 0; entry < nEntriesUnfold; ++entry){
     if(entry%nDiv == 0) std::cout << " Entry " << entry << "/" << nEntriesUnfold << "..." << std::endl;
     unfoldTree_p->GetEntry(entry);
-  
+
+    if(doHalfTest && is5050FilledHist) continue;
+    
     //pushbacks
     runNumbers.push_back(runNumber);
     lumiBlocks.push_back(lumiBlock);
