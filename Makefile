@@ -26,9 +26,9 @@ ifndef ROOUNFOLDDIR
 $(error "$(ROOUNFOLDDIRERR)")	
 endif
 
-HEPMC=/home/cfmcginn/Packages/HepMC2/hepmc-install
+HEPMC=/home/cfm/Packages/HepMC2/hepmc-install
 
-ROOUNFOLDDIR=/home/cfmcginn/Packages/RooUnfold/RooUnfold-build/
+ROOUNFOLDDIR=/home/cfm/Packages/RooUnfold/RooUnfold-build/
 INCLUDE=-I$(GDJDIR) -I$(ROOUNFOLDDIR) -I$(HEPMC)/include
 LIB=-L$(GDJDIR)/lib  -L$(HEPMC)/lib -lHepMC
 ROOUNFOLDLIB=-L$(ROOUNFOLDDIR) -lRooUnfold
@@ -42,7 +42,7 @@ MKDIR_OBJ=mkdir -p $(GDJDIR)/obj
 MKDIR_OUTPUT=mkdir -p $(GDJDIR)/output
 MKDIR_PDF=mkdir -p $(GDJDIR)/pdfDir
 
-all: mkdirBin mkdirLib mkdirObj mkdirOutput mkdirPdf obj/binFlattener.o obj/centralityFromInput.o obj/checkMakeDir.o obj/configParser.o obj/globalDebugHandler.o obj/keyHandler.o obj/sampleHandler.o obj/mixMachine.o lib/libATLASGDJ.so bin/gdjNtuplePreProc.exe bin/gdjAnalyzeTxtOut.exe bin/gdjToyMultiMix.exe bin/gdjPlotToy.exe bin/gdjNTupleToHist.exe bin/gdjNTupleToMBHist.exe bin/gdjHistDumper.exe bin/gdjGammaJetResponsePlot.exe bin/gdjMixedEventPlotter.exe bin/gdjPurityPlotter.exe bin/gdjControlPlotter.exe bin/gdjResponsePlotter.exe bin/gdjDataMCRawPlotter.exe bin/gdjPbPbOverPPRawPlotter.exe bin/gdjRCPRawPlotter.exe bin/gdjR4OverR2RawPlotter.exe bin/grlToTex.exe bin/testKeyHandler.exe bin/testSampleHandler.exe bin/gdjPlotMBHist.exe bin/gdjHistToUnfold.exe bin/gdjHistToGenVarPlots.exe bin/gdjPlotUnfoldReweight.exe bin/gdjPlotUnfoldDiagnostics.exe bin/gdjPlotResults.exe bin/gdjHistDQM.exe bin/gdjHEPMCToRoot.exe bin/gdjHEPMCAna.exe bin/gdjHEPMCPlot.exe
+all: mkdirBin mkdirLib mkdirObj mkdirOutput mkdirPdf obj/binFlattener.o obj/centralityFromInput.o obj/checkMakeDir.o obj/configParser.o obj/globalDebugHandler.o obj/keyHandler.o obj/sampleHandler.o obj/mixMachine.o lib/libATLASGDJ.so bin/gdjNtuplePreProc.exe bin/gdjAnalyzeTxtOut.exe bin/gdjToyMultiMix.exe bin/gdjPlotToy.exe bin/gdjNTupleToHist.exe bin/gdjNTupleToMBHist.exe bin/gdjHistDumper.exe bin/gdjGammaJetResponsePlot.exe bin/gdjMixedEventPlotter.exe bin/gdjPurityPlotter.exe bin/gdjControlPlotter.exe bin/gdjResponsePlotter.exe bin/gdjDataMCRawPlotter.exe bin/gdjPbPbOverPPRawPlotter.exe bin/gdjRCPRawPlotter.exe bin/gdjR4OverR2RawPlotter.exe bin/grlToTex.exe bin/testKeyHandler.exe bin/testSampleHandler.exe bin/gdjPlotMBHist.exe bin/gdjHistToUnfold.exe bin/gdjHistToGenVarPlots.exe bin/gdjPlotUnfoldReweight.exe bin/gdjPlotUnfoldDiagnostics.exe bin/gdjPlotResults.exe bin/gdjHistDQM.exe bin/gdjHEPMCToRoot.exe bin/gdjHEPMCAna.exe bin/gdjHEPMCPlot.exe bin/gdjHEPMCCalib.exe bin/gdjHEPMCCalibPlot.exe bin/gdjRunStabilityPlotter.exe bin/gdjPlotJetVarResponse.exe
 #bin/gdjNTupleToSignalHist.exe bin/gdjPlotSignalHist.exe bin/gdjToyMultiMix.exe bin/gdjPlotToy.exe
 
 mkdirBin:
@@ -183,8 +183,20 @@ bin/gdjHEPMCToRoot.exe: src/gdjHEPMCToRoot.C
 bin/gdjHEPMCAna.exe: src/gdjHEPMCAna.C
 	$(CXX) $(CXXFLAGS) src/gdjHEPMCAna.C -o bin/gdjHEPMCAna.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
 
+bin/gdjHEPMCCalib.exe: src/gdjHEPMCCalib.C
+	$(CXX) $(CXXFLAGS) src/gdjHEPMCCalib.C -o bin/gdjHEPMCCalib.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
+
 bin/gdjHEPMCPlot.exe: src/gdjHEPMCPlot.C
 	$(CXX) $(CXXFLAGS) src/gdjHEPMCPlot.C -o bin/gdjHEPMCPlot.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
+
+bin/gdjHEPMCCalibPlot.exe: src/gdjHEPMCCalibPlot.C
+	$(CXX) $(CXXFLAGS) src/gdjHEPMCCalibPlot.C -o bin/gdjHEPMCCalibPlot.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
+
+bin/gdjRunStabilityPlotter.exe: src/gdjRunStabilityPlotter.C
+	$(CXX) $(CXXFLAGS) src/gdjRunStabilityPlotter.C -o bin/gdjRunStabilityPlotter.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
+
+bin/gdjPlotJetVarResponse.exe: src/gdjPlotJetVarResponse.C
+	$(CXX) $(CXXFLAGS) src/gdjPlotJetVarResponse.C -o bin/gdjPlotJetVarResponse.exe $(ROOT) $(INCLUDE) $(LIB) -lATLASGDJ
 
 clean:
 	rm -f ./*~

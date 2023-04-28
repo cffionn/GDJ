@@ -45,7 +45,7 @@ namespace HIJet
       h1->SetLineColor(color_scheme[index_mod]);
       h1->SetLineWidth(line_width);
       h1->SetMarkerStyle(style_scheme[index_mod]);
-      h1->SetMarkerSize(size_scheme[index_mod]*1.5);
+      h1->SetMarkerSize(size_scheme[index_mod]*2.0);
     }
     inline void EquipGraph(TGraph* g1, unsigned int index)
     {

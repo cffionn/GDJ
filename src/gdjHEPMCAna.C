@@ -293,17 +293,20 @@ int gdjHEPMCAna(std::string inConfigFileName)
   //Construct the histograms, which can cover many R values and gamma pt bins
   ULong64_t nPhotonsPerPtBin[nMaxPtBins];
   TH1D* varHist_p[nMaxJetRs][nMaxPtBins];
+  TH1D* varHistCurve_p[nMaxJetRs][nMaxPtBins];
   for(unsigned int rI = 0; rI < jetRVect.size(); ++rI){
     for(Int_t gI = 0; gI < nGammaPtBins; ++gI){
       nPhotonsPerPtBin[gI] = 0;
 
       std::string nameStr = varNameLower + "_R" + std::to_string(jetRVect[rI]) + "_GammaPt" + std::to_string(gI) + "_h";
+      std::string nameCurveStr = varNameLower + "Curve_R" + std::to_string(jetRVect[rI]) + "_GammaPt" + std::to_string(gI) + "_h";
       std::string titleStr = ";" + varNameLabel + ";#frac{1}{N_{#gamma}}";
       if(isMultijet) titleStr = titleStr + "#frac{dN_{JJ#gamma}}{d" + varNameLabel + "}";
       else titleStr = titleStr + "#frac{dN_{J#gamma}}{d" + varNameLabel + "}";
       
       varHist_p[rI][gI] = new TH1D(nameStr.c_str(), titleStr.c_str(), nVarBins, varBins);
-      setSumW2(varHist_p[rI][gI]);
+      varHistCurve_p[rI][gI] = new TH1D(nameCurveStr.c_str(), titleStr.c_str(), 100, varBinsLow, varBinsHigh);
+      setSumW2({varHist_p[rI][gI], varHistCurve_p[rI][gI]});
     }
   }
   
@@ -392,6 +395,7 @@ int gdjHEPMCAna(std::string inConfigFileName)
 	    //Give it the same jet twice - in inclusive jets its not used
 	    Float_t varVal = getVar(varNameLower, goodJets[rI][jI], goodJets[rI][jI], goodPhotons[gI]);
 	    varHist_p[rI][gammaPos]->Fill(varVal, evtWeight_);
+	    varHistCurve_p[rI][gammaPos]->Fill(varVal, evtWeight_);
 	  }
 	  else{
 	    //Loop over jets again
@@ -415,6 +419,7 @@ int gdjHEPMCAna(std::string inConfigFileName)
 
 	      Float_t varVal = getVar(varNameLower, goodJets[rI][jI], goodJets[rI][jI2], goodPhotons[gI]);
 	      varHist_p[rI][gammaPos]->Fill(varVal, evtWeight_);
+	      varHistCurve_p[rI][gammaPos]->Fill(varVal, evtWeight_);
 	    }
 	  }	  
 	}	
@@ -438,9 +443,12 @@ int gdjHEPMCAna(std::string inConfigFileName)
       
       //Scale by nPhotons
       binWidthAndScaleNorm(varHist_p[rI][gI], (Double_t)nPhotonsPerPtBin[gI]);
+      binWidthAndScaleNorm(varHistCurve_p[rI][gI], (Double_t)nPhotonsPerPtBin[gI]);
 
       varHist_p[rI][gI]->Write("", TObject::kOverwrite);
+      varHistCurve_p[rI][gI]->Write("", TObject::kOverwrite);
       delete varHist_p[rI][gI];
+      delete varHistCurve_p[rI][gI];
     }
   }
   
