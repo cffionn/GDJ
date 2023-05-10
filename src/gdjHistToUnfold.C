@@ -2192,7 +2192,6 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	rooResGammaFakes_p[cI][sI] = rooResGammaFakes_p[cI][0];
       }
 
-      std::cout << "NEW ROO RES GAMMA JET VAR: " << cI << ", " << sI << ", " << systStrVect[sI] << std::endl;
       rooResGammaJetVar_p[cI][sI] = new RooUnfoldResponse(photonPtJetVarReco_p[cI][systPos], photonPtJetVarTruth_p[cI][systPos], ("rooResGammaJetVar_" + centBinsStr[cI] + "_" + systStrVect[sI]).c_str(), ("rooResGammaJet" + varName + "_" + centBinsStr[cI] + "_" + systStrVect[sI]).c_str());
 
       if(isMultijet){
@@ -2346,7 +2345,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
       for(Int_t tI = 0; tI < nTruthJtUnmatched_; ++tI){
 	bool truthJetOutOfBounds = truthJtUnmatchedPt_[tI] < jtPtBinsLow || truthJtUnmatchedPt_[tI] >= jtPtBinsHigh;
 	truthJetOutOfBounds = truthJetOutOfBounds || truthJtUnmatchedEta_[tI] < jtEtaBinsLow || truthJtUnmatchedEta_[tI] > jtEtaBinsHigh;
-       	if(truthJetOutOfBounds) continue;
+	if(truthJetOutOfBounds) continue;
 
 	TLorentzVector truthJetTL;
 	truthJetTL.SetPtEtaPhiM(truthJtUnmatchedPt_[tI], truthJtUnmatchedEta_[tI], truthJtUnmatchedPhi_[tI], 0.0);
@@ -2396,35 +2395,32 @@ int gdjHistToUnfold(std::string inConfigFileName)
       std::vector<TLorentzVector> goodRecoJets, goodRecoTruthMatchJets;
       //Now process reco-truth jet matched pairs
       for(Int_t jI = 0; jI < nRecoJt_; ++jI){
+	//We only need reco jets w/ a proper truth match
+	if(truthJtPt_[jI] < 0.0) continue;
+	
 	//The jet vector position will be zero unless we are doing jet related systematics
 	Int_t jtVPos = vectContainsStrPos(systStrVect[sysI], &jesJERStrVect);
-	/*
-	if(sysI == 0){
-	  std::cout << "CHECKING jtVPos: " << systStrVect[sysI] << ", " << jtVPos << std::endl;
-	  return 1;
-	}
-	*/
 	if(jtVPos < 0) jtVPos = 0;
-      	
-	bool recoJtOutOfBounds = recoJtPt_[jI][jtVPos] < jtPtBinsLowReco || recoJtPt_[jI][jtVPos] >= jtPtBinsHighReco;
+
+	//Define booleans on the reco jet pt and eta
+	bool recoJtOutOfBoundsByPt = recoJtPt_[jI][jtVPos] < jtPtBinsLowReco || recoJtPt_[jI][jtVPos] >= jtPtBinsHighReco;
 	if(systStrVect[sysI].find("JTPTCUT") != std::string::npos){
-	  //	  std::cout << "JTPTBINSLOWRECOSYST: " << jtPtBinsLowRecoSyst << ", " << jtVPos << std::endl;
-
-	  recoJtOutOfBounds = recoJtOutOfBounds || recoJtPt_[jI][jtVPos] < jtPtBinsLowRecoSyst;
+	  recoJtOutOfBoundsByPt = recoJtOutOfBoundsByPt || recoJtPt_[jI][jtVPos] < jtPtBinsLowRecoSyst;
 	}	
-	recoJtOutOfBounds = recoJtOutOfBounds || recoJtEta_[jI] < jtEtaBinsLow || recoJtEta_[jI] >= jtEtaBinsHigh;
+	bool recoJtOutOfBoundsByEta = recoJtEta_[jI] < jtEtaBinsLow || recoJtEta_[jI] >= jtEtaBinsHigh;
+	bool recoJtOutOfBounds = recoJtOutOfBoundsByPt || recoJtOutOfBoundsByEta;
+	
+	//Define booleans on the truth jet pt and eta
+	bool truthJtOutOfBoundsByPt = truthJtPt_[jI] < jtPtBinsLow || truthJtPt_[jI] >= jtPtBinsHigh;
+	bool truthJtOutOfBoundsByEta = truthJtEta_[jI] < jtEtaBinsLow || truthJtEta_[jI] > jtEtaBinsHigh;
+	bool truthJtOutOfBounds = truthJtOutOfBoundsByPt || truthJtOutOfBoundsByEta;
 
-	//Doing these checks for using the roounfold Fake function
-	bool truthJetOutOfBoundsByPt = truthJtPt_[jI] < jtPtBinsLow || truthJtPt_[jI] >= jtPtBinsHigh;
-	bool truthJetOutOfBoundsByEta = truthJtEta_[jI] < jtEtaBinsLow || truthJtEta_[jI] > jtEtaBinsHigh;
-	bool truthJetOutOfBounds = truthJetOutOfBoundsByPt || truthJetOutOfBoundsByEta;
-	if(truthJtPt_[jI] < 0.0){
-	  truthJetOutOfBoundsByPt = false;
-	  //	  truthJetOutOfBoundsByEta = false;	    
-	}
 
+	//Define truth DR between jet and photon w/ boolean
 	Float_t gammaJtDRTruth = getDR(truthJtEta_[jI], truthJtPhi_[jI], truthGammaEta_, truthGammaPhi_);
 	bool gammaJtPassesDRTruth = gammaJtDRTruth >= gammaJtDRExclusionCut;
+
+	//define reco DR between jet and photon w/ boolean
 	Float_t gammaJtDRReco = -999;
 	bool gammaJtPassesDRReco = false;
 	if(!recoGammaOutOfBounds){
@@ -2450,25 +2446,27 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	//Reweight if doReweightVar AND its not the prior variation systematic
 	if(doReweightVar && !isStrSame(systStrVect[sysI], "PRIOR")) phoJetWeight = reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetBinContent(reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetXaxis()->FindBin(truthJetVar), reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetYaxis()->FindBin(truthGammaPt_)); 
 
+	bool isTruthGood = !truthJtOutOfBoundsByEta && !truthJtOutOfBoundsByPt && gammaJtPassesDRTruth;
+	bool isRecoGood = !recoJtOutOfBoundsByEta && !recoJtOutOfBoundsByPt && gammaJtPassesDRReco;
+
+
+	//	if(!isTruthGood && !isRecoGood) continue;
+	
 	//DEBUGGING UNFOLDING NONCLOSURE - 2023.04.19 start
-	if(truthJetOutOfBounds || !gammaJtPassesDRTruth){
-	  if(recoJtPt_[jI][jtVPos] < 35.0 && recoJtPt_[jI][jtVPos] > 30.0 && recoGammaPt_[gammaSysPos] >= 90.0 && recoGammaPt_[gammaSysPos] < 180.0 && recoJtEta_[jI] >= jtEtaBinsLow && recoJtEta_[jI] < jtEtaBinsHigh && gammaJtPassesDPhiReco && !truthJetOutOfBoundsByPt && !truthJetOutOfBoundsByEta){
+	if(truthJtOutOfBounds || !gammaJtPassesDRTruth){
+	  if(recoJtPt_[jI][jtVPos] < 35.0 && recoJtPt_[jI][jtVPos] > 30.0 && recoGammaPt_[gammaSysPos] >= 90.0 && recoGammaPt_[gammaSysPos] < 180.0 && recoJtEta_[jI] >= jtEtaBinsLow && recoJtEta_[jI] < jtEtaBinsHigh && gammaJtPassesDPhiReco && !truthJtOutOfBoundsByPt && !truthJtOutOfBoundsByEta){
 	    std::cout << "GOOD JET IN ENTRY: " << entry << std::endl;	      
 	    std::cout << " Jet reco pt,eta,phi: " << recoJtPt_[jI][jtVPos] << ", " << recoJtEta_[jI] << ", " << recoJtPhi_[jI] << std::endl;
 	    std::cout << " Jet truth pt,eta,phi: " << truthJtPt_[jI] << ", " << truthJtEta_[jI] << ", " << truthJtPhi_[jI] << std::endl;
 	  }
 	  
-	  if(!truthJetOutOfBoundsByPt) continue;
+	  if(!truthJtOutOfBoundsByPt) continue;
 	}
 
 	
 	if(isStrSame(varNameLower, "dphi")){
 	  //Unfolding debugging 2023.04.20 - we will use the fake function but only when truthpt is out of bounds
-	  if((truthGammaOutOfBoundsByPt || truthJetOutOfBoundsByPt) && recoGammaPt_[gammaSysPos] > 0.0){
-	    if(recoGammaPt_[gammaSysPos] > 90.0){
-	      std::cout << "FILLING FAKE ENTRY: " << entry << std::endl;
-	      std::cout << " " << gammaJtDPhiReco << ", " << recoGammaPt_[gammaSysPos] << ", " << unfoldWeight_*phoJetWeight << std::endl;
-	    }
+	  if((truthGammaOutOfBoundsByPt || truthJtOutOfBoundsByPt) && recoGammaPt_[gammaSysPos] > 0.0){
 
 	    rooResGammaJetVar_p[centPos][sysI]->Fake(gammaJtDPhiReco, recoGammaPt_[gammaSysPos], unfoldWeight_*phoJetWeight);
 	    rooResGammaJetVarFakes_p[centPos][sysI]->Fill(gammaJtDPhiReco, recoGammaPt_[gammaSysPos], unfoldWeight_*phoJetWeight);
@@ -2504,7 +2502,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	//Now that the truth has passed all cuts - fill out the vectors goodRecoJets OR Fill the inclusive jet variables
 	if(isStrSame(varNameLower, "pt")){
 	  //Unfolding debugging 2023.04.20 - we will use the fake function but only when truthpt is out of bounds
-	  if((truthGammaOutOfBoundsByPt || truthJetOutOfBoundsByPt) && recoGammaPt_[gammaSysPos] > 0.0){
+	  if((truthGammaOutOfBoundsByPt || truthJtOutOfBoundsByPt) && recoGammaPt_[gammaSysPos] > 0.0){
 	    if(recoGammaPt_[gammaSysPos] > 90.0 && false){
 	      std::cout << "FILLING FAKE ENTRY: " << entry << std::endl;
 	      std::cout << " Jtptbinslow, high: " << jtPtBinsLow << ", " << jtPtBinsHigh << std::endl;
