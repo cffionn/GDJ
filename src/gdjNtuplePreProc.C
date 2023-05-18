@@ -209,6 +209,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 					       "sampleWeight",
 					       "ncollWeight",
 					       "fullWeight",
+					       "nTruthPhotons",
 					       "truthPhotonPt",
 					       "truthPhotonEta",
 					       "truthPhotonPhi",
@@ -286,31 +287,39 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   std::vector<int>* truthOut_origin_p=new std::vector<int>;
   std::vector<int>* truthOut_status_p=new std::vector<int>;
 
-  Float_t truthPhotonPt_;
-  Float_t truthPhotonEta_;
-  Float_t truthPhotonPhi_;
-  Int_t truthPhotonType_;
-  Int_t truthPhotonOrigin_;
-  Float_t truthPhotonIso2_;
-  Float_t truthPhotonIso3_;
-  Float_t truthPhotonIso4_;
+  const Int_t nMaxTruthPhotons = 10;
+  Int_t nTruthPhotons_;
+  Float_t truthPhotonPt_[nMaxTruthPhotons];
+  Float_t truthPhotonEta_[nMaxTruthPhotons];
+  Float_t truthPhotonPhi_[nMaxTruthPhotons];
+  Int_t truthPhotonType_[nMaxTruthPhotons];
+  Int_t truthPhotonOrigin_[nMaxTruthPhotons];
+  Float_t truthPhotonIso2_[nMaxTruthPhotons];
+  Float_t truthPhotonIso3_[nMaxTruthPhotons];
+  Float_t truthPhotonIso4_[nMaxTruthPhotons];
   
   Int_t akt2hi_jet_n_;
   const Int_t nJESR2 = 19;
-  std::vector<std::vector<float>* > akt2hi_etajes_jet_pt_sys_JES_p;
+  std::vector<std::vector<float>* > akt2hi_etajes_jet_pt_sys_JESUp_p;
+  std::vector<std::vector<float>* > akt2hi_etajes_jet_pt_sys_JESDown_p;
   if(isMC){
-    akt2hi_etajes_jet_pt_sys_JES_p.reserve(nJESR2);
+    akt2hi_etajes_jet_pt_sys_JESUp_p.reserve(nJESR2);
+    akt2hi_etajes_jet_pt_sys_JESDown_p.reserve(nJESR2);
     for(unsigned int eI = 0; eI < nJESR2; ++eI){
-      akt2hi_etajes_jet_pt_sys_JES_p[eI] = nullptr;
+      akt2hi_etajes_jet_pt_sys_JESUp_p[eI] = nullptr;
+      akt2hi_etajes_jet_pt_sys_JESDown_p[eI] = nullptr;
     }
   }
 
   const Int_t nJERR2 = 10;
-  std::vector<std::vector<float>* > akt2hi_etajes_jet_pt_sys_JER_p;
+  std::vector<std::vector<float>* > akt2hi_etajes_jet_pt_sys_JERUp_p;
+  std::vector<std::vector<float>* > akt2hi_etajes_jet_pt_sys_JERDown_p;
   if(isMC){
-    akt2hi_etajes_jet_pt_sys_JER_p.reserve(nJERR2);
+    akt2hi_etajes_jet_pt_sys_JERUp_p.reserve(nJERR2);
+    akt2hi_etajes_jet_pt_sys_JERDown_p.reserve(nJERR2);
     for(unsigned int eI = 0; eI < nJERR2; ++eI){
-      akt2hi_etajes_jet_pt_sys_JER_p[eI] = nullptr;
+      akt2hi_etajes_jet_pt_sys_JERUp_p[eI] = nullptr;
+      akt2hi_etajes_jet_pt_sys_JERDown_p[eI] = nullptr;
     }
   }
 
@@ -334,22 +343,28 @@ int gdjNtuplePreProc(std::string inConfigFileName)
   
   Int_t akt4hi_jet_n_;
   std::vector<float>* akt4hi_etajes_jet_pt_p=nullptr;
-  std::vector<std::vector<float>* > akt4hi_etajes_jet_pt_sys_JES_p;
+  std::vector<std::vector<float>* > akt4hi_etajes_jet_pt_sys_JESUp_p;
+  std::vector<std::vector<float>* > akt4hi_etajes_jet_pt_sys_JESDown_p;
 
   const Int_t nJESR4 = 18;
   const Int_t nJERR4 = 9;
 
   if(isMC){
-    akt4hi_etajes_jet_pt_sys_JES_p.reserve(nJESR4);
+    akt4hi_etajes_jet_pt_sys_JESUp_p.reserve(nJESR4);
+    akt4hi_etajes_jet_pt_sys_JESDown_p.reserve(nJESR4);
     for(unsigned int eI = 0; eI < nJESR4; ++eI){
-      akt4hi_etajes_jet_pt_sys_JES_p[eI] = nullptr;
+      akt4hi_etajes_jet_pt_sys_JESUp_p[eI] = nullptr;
+      akt4hi_etajes_jet_pt_sys_JESDown_p[eI] = nullptr;
     }
   }
-  std::vector<std::vector<float>* > akt4hi_etajes_jet_pt_sys_JER_p;
+  std::vector<std::vector<float>* > akt4hi_etajes_jet_pt_sys_JERUp_p;
+  std::vector<std::vector<float>* > akt4hi_etajes_jet_pt_sys_JERDown_p;
   if(isMC){
-    akt4hi_etajes_jet_pt_sys_JER_p.reserve(nJERR4);
+    akt4hi_etajes_jet_pt_sys_JERUp_p.reserve(nJERR4);
+    akt4hi_etajes_jet_pt_sys_JERDown_p.reserve(nJERR4);
     for(unsigned int eI = 0; eI < nJERR4; ++eI){
-      akt4hi_etajes_jet_pt_sys_JER_p[eI] = nullptr;
+      akt4hi_etajes_jet_pt_sys_JERUp_p[eI] = nullptr;
+      akt4hi_etajes_jet_pt_sys_JERDown_p[eI] = nullptr;
     }
   }
 
@@ -557,25 +572,28 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       outTree_p->Branch("truth_status", &truthOut_status_p);
     }
 
-    outTree_p->Branch("truthPhotonPt", &truthPhotonPt_, "truthPhotonPt/F");
-    outTree_p->Branch("truthPhotonPhi", &truthPhotonPhi_, "truthPhotonPhi/F");
-    outTree_p->Branch("truthPhotonEta", &truthPhotonEta_, "truthPhotonEta/F");
-    outTree_p->Branch("truthPhotonType", &truthPhotonType_, "truthPhotonType/I");
-    outTree_p->Branch("truthPhotonOrigin", &truthPhotonOrigin_, "truthPhotonOrigin/I");
-    outTree_p->Branch("truthPhotonIso2", &truthPhotonIso2_, "truthPhotonIso2/F");
-    outTree_p->Branch("truthPhotonIso3", &truthPhotonIso3_, "truthPhotonIso3/F");
-    outTree_p->Branch("truthPhotonIso4", &truthPhotonIso4_, "truthPhotonIso4/F");
+    outTree_p->Branch("nTruthPhotons", &nTruthPhotons_, "nTruthPhotons/I");
+    outTree_p->Branch("truthPhotonPt", truthPhotonPt_, "truthPhotonPt[nTruthPhotons]/F");
+    outTree_p->Branch("truthPhotonPhi", truthPhotonPhi_, "truthPhotonPhi[nTruthPhotons]/F");
+    outTree_p->Branch("truthPhotonEta", truthPhotonEta_, "truthPhotonEta[nTruthPhotons]/F");
+    outTree_p->Branch("truthPhotonType", truthPhotonType_, "truthPhotonType[nTruthPhotons]/I");
+    outTree_p->Branch("truthPhotonOrigin", truthPhotonOrigin_, "truthPhotonOrigin[nTruthPhotons]/I");
+    outTree_p->Branch("truthPhotonIso2", truthPhotonIso2_, "truthPhotonIso2[nTruthPhotons]/F");
+    outTree_p->Branch("truthPhotonIso3", truthPhotonIso3_, "truthPhotonIso3[nTruthPhotons]/F");
+    outTree_p->Branch("truthPhotonIso4", truthPhotonIso4_, "truthPhotonIso4[nTruthPhotons]/F");
   }
   
   outTree_p->Branch("akt2hi_jet_n", &akt2hi_jet_n_, "akt2hi_jet_n/I");
 
-  if(isMC){
+  if(isMC && false){
     for(Int_t eI = 0; eI < nJESR2; ++eI){
-      outTree_p->Branch(("akt2hi_etajes_jet_pt_sys_JES_" + std::to_string(eI)).c_str(), &(akt2hi_etajes_jet_pt_sys_JES_p[eI]));
+      outTree_p->Branch(("akt2hi_etajes_jet_pt_sys_JESUp_" + std::to_string(eI)).c_str(), &(akt2hi_etajes_jet_pt_sys_JESUp_p[eI]));
+      outTree_p->Branch(("akt2hi_etajes_jet_pt_sys_JESDown_" + std::to_string(eI)).c_str(), &(akt2hi_etajes_jet_pt_sys_JESDown_p[eI]));
     }
     
     for(Int_t eI = 0; eI < nJERR2; ++eI){
-      outTree_p->Branch(("akt2hi_etajes_jet_pt_sys_JER_" + std::to_string(eI)).c_str(), &(akt2hi_etajes_jet_pt_sys_JER_p[eI]));
+      outTree_p->Branch(("akt2hi_etajes_jet_pt_sys_JERUp_" + std::to_string(eI)).c_str(), &(akt2hi_etajes_jet_pt_sys_JERUp_p[eI]));
+      outTree_p->Branch(("akt2hi_etajes_jet_pt_sys_JERDown_" + std::to_string(eI)).c_str(), &(akt2hi_etajes_jet_pt_sys_JERDown_p[eI]));
     }
   }
 
@@ -601,13 +619,15 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 
   outTree_p->Branch("akt4hi_jet_n", &akt4hi_jet_n_, "akt4hi_jet_n/I");
 
-  if(isMC){
+  if(isMC && false){
     for(Int_t eI = 0; eI < nJESR4; ++eI){
-      outTree_p->Branch(("akt4hi_etajes_jet_pt_sys_JES_" + std::to_string(eI)).c_str(), &(akt4hi_etajes_jet_pt_sys_JES_p[eI]));
+      outTree_p->Branch(("akt4hi_etajes_jet_pt_sys_JESUp_" + std::to_string(eI)).c_str(), &(akt4hi_etajes_jet_pt_sys_JESUp_p[eI]));
+      outTree_p->Branch(("akt4hi_etajes_jet_pt_sys_JESDown_" + std::to_string(eI)).c_str(), &(akt4hi_etajes_jet_pt_sys_JESDown_p[eI]));
     }
     
     for(Int_t eI = 0; eI < nJERR4; ++eI){
-      outTree_p->Branch(("akt4hi_etajes_jet_pt_sys_JER_" + std::to_string(eI)).c_str(), &(akt4hi_etajes_jet_pt_sys_JER_p[eI]));
+      outTree_p->Branch(("akt4hi_etajes_jet_pt_sys_JERUp_" + std::to_string(eI)).c_str(), &(akt4hi_etajes_jet_pt_sys_JERUp_p[eI]));
+      outTree_p->Branch(("akt4hi_etajes_jet_pt_sys_JERDown_" + std::to_string(eI)).c_str(), &(akt4hi_etajes_jet_pt_sys_JERDown_p[eI]));
     }
   }
 
@@ -631,7 +651,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
     outTree_p->Branch("akt4hi_jetconstit_phi", &akt4hi_jetconstit_phi_p);
   }
 
-  if(!isPP && false){   
+  if((!isPP || isMC) && false){    
     outTree_p->Branch("akt10hi_jet_n", &akt10hi_jet_n_, "akt10hi_jet_n/I");
     outTree_p->Branch("akt10hi_etajes_jet_pt", &akt10hi_etajes_jet_pt_p);
     outTree_p->Branch("akt10hi_etajes_jet_eta", &akt10hi_etajes_jet_eta_p);
@@ -714,7 +734,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
     outTree_p->Branch("akt4_truth_jet_partonid", &akt4_truth_jet_partonid_p);
     outTree_p->Branch("akt4_truth_jet_recopos", &akt4_truth_jet_recopos_p);
 
-    if(!isPP && false){    
+    if((!isPP || isMC) && false){    
       outTree_p->Branch("akt10_truth_jet_n", &akt10_truth_jet_n_, "akt10_truth_jet_n/I");
       outTree_p->Branch("akt10_truth_jet_pt", &akt10_truth_jet_pt_p);
       outTree_p->Branch("akt10_truth_jet_eta", &akt10_truth_jet_eta_p);
@@ -838,6 +858,8 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       }
 
       if(branch.find("akt10hi_") != std::string::npos) continue;
+      if(branch.find("JES") != std::string::npos) continue;
+      if(branch.find("JER") != std::string::npos) continue;
 	
       if(!vectContainsStr(branch, &listOfBranchesIn)){
 	listOfBranchesIn.push_back(branch);
@@ -1159,13 +1181,15 @@ int gdjNtuplePreProc(std::string inConfigFileName)
     inTree_p->SetBranchAddress("akt2hi_jet_n", &akt2hi_jet_n_);
        
     inTree_p->SetBranchAddress("akt2hi_etajes_jet_pt", &akt2hi_etajes_jet_pt_p);
-    if(isMC){
+    if(isMC && false){
       for(Int_t eI = 0; eI < nJESR2; ++eI){
-	inTree_p->SetBranchAddress(("akt2hi_etajes_jet_pt_sys_JES_" + std::to_string(eI)).c_str(), &(akt2hi_etajes_jet_pt_sys_JES_p[eI]));
+	inTree_p->SetBranchAddress(("akt2hi_etajes_jet_pt_sys_JESUp_" + std::to_string(eI)).c_str(), &(akt2hi_etajes_jet_pt_sys_JESUp_p[eI]));
+	inTree_p->SetBranchAddress(("akt2hi_etajes_jet_pt_sys_JESDown_" + std::to_string(eI)).c_str(), &(akt2hi_etajes_jet_pt_sys_JESDown_p[eI]));
       }
 
       for(Int_t eI = 0; eI < nJERR2; ++eI){
-	inTree_p->SetBranchAddress(("akt2hi_etajes_jet_pt_sys_JER_" + std::to_string(eI)).c_str(), &(akt2hi_etajes_jet_pt_sys_JER_p[eI]));
+	inTree_p->SetBranchAddress(("akt2hi_etajes_jet_pt_sys_JERUp_" + std::to_string(eI)).c_str(), &(akt2hi_etajes_jet_pt_sys_JERUp_p[eI]));
+	inTree_p->SetBranchAddress(("akt2hi_etajes_jet_pt_sys_JERDown_" + std::to_string(eI)).c_str(), &(akt2hi_etajes_jet_pt_sys_JERDown_p[eI]));
       }
     }
 
@@ -1191,13 +1215,15 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 
     inTree_p->SetBranchAddress("akt4hi_jet_n", &akt4hi_jet_n_);
     inTree_p->SetBranchAddress("akt4hi_etajes_jet_pt", &akt4hi_etajes_jet_pt_p);
-    if(isMC){
+    if(isMC && false){
       for(Int_t eI = 0; eI < nJESR4; ++eI){
-	inTree_p->SetBranchAddress(("akt4hi_etajes_jet_pt_sys_JES_" + std::to_string(eI)).c_str(), &(akt4hi_etajes_jet_pt_sys_JES_p[eI]));
+	inTree_p->SetBranchAddress(("akt4hi_etajes_jet_pt_sys_JESUp_" + std::to_string(eI)).c_str(), &(akt4hi_etajes_jet_pt_sys_JESUp_p[eI]));
+	inTree_p->SetBranchAddress(("akt4hi_etajes_jet_pt_sys_JESDown_" + std::to_string(eI)).c_str(), &(akt4hi_etajes_jet_pt_sys_JESDown_p[eI]));
       }
 
       for(Int_t eI = 0; eI < nJERR4; ++eI){
-	inTree_p->SetBranchAddress(("akt4hi_etajes_jet_pt_sys_JER_" + std::to_string(eI)).c_str(), &(akt4hi_etajes_jet_pt_sys_JER_p[eI]));
+	inTree_p->SetBranchAddress(("akt4hi_etajes_jet_pt_sys_JERUp_" + std::to_string(eI)).c_str(), &(akt4hi_etajes_jet_pt_sys_JERUp_p[eI]));
+	inTree_p->SetBranchAddress(("akt4hi_etajes_jet_pt_sys_JERDown_" + std::to_string(eI)).c_str(), &(akt4hi_etajes_jet_pt_sys_JERDown_p[eI]));
       }
     }
 
@@ -1220,8 +1246,8 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       inTree_p->SetBranchAddress("akt4hi_jetconstit_phi", &akt4hi_jetconstit_phi_p);
       inTree_p->SetBranchAddress("akt4hi_jetconstit_eta", &akt4hi_jetconstit_eta_p);
     }    
-
-    if(!isPP && false){      
+  
+    if(!isPP){      
       inTree_p->SetBranchAddress("akt10hi_jet_n", &akt10hi_jet_n_);
       inTree_p->SetBranchAddress("akt10hi_etajes_jet_pt", &akt10hi_etajes_jet_pt_p);
       inTree_p->SetBranchAddress("akt10hi_etajes_jet_eta", &akt10hi_etajes_jet_eta_p);
@@ -1306,7 +1332,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       inTree_p->SetBranchAddress("akt4_truth_jet_recopos", &akt4_truth_jet_recopos_p);
 
 
-      if(!isPP && false){	
+      if(!isPP){	
 	inTree_p->SetBranchAddress("akt10_truth_jet_n", &akt10_truth_jet_n_);
 	inTree_p->SetBranchAddress("akt10_truth_jet_pt", &akt10_truth_jet_pt_p);
 	inTree_p->SetBranchAddress("akt10_truth_jet_eta", &akt10_truth_jet_eta_p);
@@ -1452,7 +1478,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       if(minNRecoR4 > akt4hi_jet_n_) minNRecoR4 = akt4hi_jet_n_;
       if(maxNRecoR4 < akt4hi_jet_n_) maxNRecoR4 = akt4hi_jet_n_;
 
-      if(!isPP && false){
+      if(!isPP){
 	if(minNRecoR10 > akt10hi_jet_n_) minNRecoR10 = akt10hi_jet_n_;
 	if(maxNRecoR10 < akt10hi_jet_n_) maxNRecoR10 = akt10hi_jet_n_;
       }
@@ -1467,7 +1493,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	if(minNTruthR4 > akt4_truth_jet_n_) minNTruthR4 = akt4_truth_jet_n_;
 	if(maxNTruthR4 < akt4_truth_jet_n_) maxNTruthR4 = akt4_truth_jet_n_;
 
-	if(!isPP && false){
+	if(!isPP){
 	  if(minNTruthR10 > akt10_truth_jet_n_) minNTruthR10 = akt10_truth_jet_n_;
 	  if(maxNTruthR10 < akt10_truth_jet_n_) maxNTruthR10 = akt10_truth_jet_n_;
 	}
@@ -1505,13 +1531,15 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       //akt2 jet collection size checks
       if(akt2hi_etajes_jet_pt_p->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH, L" << __LINE__  << std::endl;
 
-      if(isMC){
+      if(isMC && false){
 	for(Int_t eI = 0; eI < nJESR2; ++eI){
-	  if(akt2hi_etajes_jet_pt_sys_JES_p[eI]->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH, L" << __LINE__  << ", " << eI << "/" << nJESR2 << std::endl;
+	  if(akt2hi_etajes_jet_pt_sys_JESUp_p[eI]->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH, L" << __LINE__  << ", " << eI << "/" << nJESR2 << std::endl;
+	  if(akt2hi_etajes_jet_pt_sys_JESDown_p[eI]->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH, L" << __LINE__  << ", " << eI << "/" << nJESR2 << std::endl;
 	}
 
 	for(Int_t eI = 0; eI < nJERR2; ++eI){
-	  if(akt2hi_etajes_jet_pt_sys_JER_p[eI]->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH, L" << __LINE__  << ", " << eI << "/" << nJERR2 << std::endl;
+	  if(akt2hi_etajes_jet_pt_sys_JERUp_p[eI]->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH, L" << __LINE__  << ", " << eI << "/" << nJERR2 << std::endl;
+	  if(akt2hi_etajes_jet_pt_sys_JERDown_p[eI]->size() != (unsigned int)akt2hi_jet_n_) std::cout << "AKT2 VECTOR WARNING: VECTOR SIZE MISMATCH, L" << __LINE__  << ", " << eI << "/" << nJERR2 << std::endl;
 	}
       }
 
@@ -1544,13 +1572,15 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 
       if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
-      if(isMC){
+      if(isMC && false){
 	for(Int_t eI = 0; eI < nJESR4; ++eI){
-	  if(akt4hi_etajes_jet_pt_sys_JES_p[eI]->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	  if(akt4hi_etajes_jet_pt_sys_JESUp_p[eI]->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	  if(akt4hi_etajes_jet_pt_sys_JESDown_p[eI]->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
 	}
 
 	for(Int_t eI = 0; eI < nJERR4; ++eI){
-	  if(akt4hi_etajes_jet_pt_sys_JER_p[eI]->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	  if(akt4hi_etajes_jet_pt_sys_JERUp_p[eI]->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
+	  if(akt4hi_etajes_jet_pt_sys_JERDown_p[eI]->size() != (unsigned int)akt4hi_jet_n_) std::cout << "AKT4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
 	}
       }
 
@@ -1579,7 +1609,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       }
 
       //akt10 jet collection size checks
-      if(!isPP && false){
+      if(!isPP){
 	if(akt10hi_etajes_jet_pt_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
 	if(akt10hi_etajes_jet_eta_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
 	if(akt10hi_etajes_jet_phi_p->size() != (unsigned int)akt10hi_jet_n_) std::cout << "AKT10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
@@ -1671,7 +1701,7 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	if(akt4_truth_jet_recopos_p->size() != (unsigned int)akt4_truth_jet_n_) std::cout << "TRUTH JET R4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
 	if(akt4_truth_jet_partonid_p->size() != (unsigned int)akt4_truth_jet_n_) std::cout << "TRUTH JET R4 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
 
-	if(!isPP && false){
+	if(!isPP){
 	  if(akt10_truth_jet_pt_p->size() != (unsigned int)akt10_truth_jet_n_) std::cout << "TRUTH JET R10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
 	  if(akt10_truth_jet_eta_p->size() != (unsigned int)akt10_truth_jet_n_) std::cout << "TRUTH JET R10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
 	  if(akt10_truth_jet_phi_p->size() != (unsigned int)akt10_truth_jet_n_) std::cout << "TRUTH JET R10 VECTOR WARNING: VECTOR SIZE MISMATCH" << std::endl;
@@ -1692,16 +1722,19 @@ int gdjNtuplePreProc(std::string inConfigFileName)
       }
 
       if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
+    
       if(isMC){
-	truthPhotonPt_ = -999.;     
-	truthPhotonPhi_ = -999.;      
-	truthPhotonEta_ = -999.;
-	truthPhotonType_ = -999;
-	truthPhotonOrigin_ = -999;
-	truthPhotonIso2_ = -999.;
-	truthPhotonIso3_ = -999.;
-	truthPhotonIso4_ = -999.;
+	for(Int_t tI = 0; tI < nMaxTruthPhotons; ++tI){
+	  truthPhotonPt_[tI] = -999.;     
+	  truthPhotonPhi_[tI] = -999.;      
+	  truthPhotonEta_[tI] = -999.;
+	  truthPhotonType_[tI] = -999;
+	  truthPhotonOrigin_[tI] = -999;
+	  truthPhotonIso2_[tI] = -999.;
+	  truthPhotonIso3_[tI] = -999.;
+	  truthPhotonIso4_[tI] = -999.;
+	}
+	nTruthPhotons_ = 0;
 	
 	if(keepTruth){
 	  truthOut_charge_p->clear();
@@ -1779,8 +1812,12 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	  }
 	  //End truth isolation calculation
 
+	  //2023.05.12 - multiple truth photon events are screwing up the calc - add
+	  //Comment out old way below
+	  /*
 	  if(truthPhotonPt_ > 0){
-	    if(doGlobalDebug) std::cout << "WARNING: MORE THAN ONE GEN LEVEL PHOTON FOUND IN FILE, ENTRY: " << file << ", " << entry << std::endl;
+	    if(entry == 109) std::cout << "Alt truth photon pt, phi, eta: " << truth_pt_p->at(tI) << ", " << truth_phi_p->at(tI) << ", " << truth_eta_p->at(tI) << std::endl;
+
 	    if(truth_pt_p->at(tI) > truthPhotonPt_){
 	      truthPhotonPt_ = truth_pt_p->at(tI);
 	      truthPhotonPhi_ = truth_phi_p->at(tI);
@@ -1802,6 +1839,24 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	    truthPhotonIso3_ = genEtSum3; 
 	    truthPhotonIso4_ = genEtSum4; 
 	  }
+	  */
+	  
+
+	  if(truth_pt_p->at(tI) > 20.0){
+	    truthPhotonPt_[nTruthPhotons_] = truth_pt_p->at(tI);
+	    truthPhotonPhi_[nTruthPhotons_] = truth_phi_p->at(tI);
+	    truthPhotonEta_[nTruthPhotons_] = truth_eta_p->at(tI);
+	    truthPhotonType_[nTruthPhotons_] = truth_type_p->at(tI);
+	    truthPhotonOrigin_[nTruthPhotons_] = truth_origin_p->at(tI);
+	    truthPhotonIso2_[nTruthPhotons_] = genEtSum2; 
+	    truthPhotonIso3_[nTruthPhotons_] = genEtSum3; 
+	    truthPhotonIso4_[nTruthPhotons_] = genEtSum4; 
+	    ++nTruthPhotons_;
+	    
+	    if(nTruthPhotons_ > nMaxTruthPhotons){
+	      std::cout << "WARNING YOUVE EXCEEDED THE NUMBER OF VALID TRUTH PHOTONS" << std::endl;
+	    }
+	  }
 	}
 
 	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
@@ -1819,11 +1874,19 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	  std::vector<std::vector<std::vector<float> >* > akt2JetConstVarsF = {};
 	  if(keepJetConstituents) akt2JetConstVarsF = {akt2hi_jetconstit_pt_p, akt2hi_jetconstit_eta_p, akt2hi_jetconstit_phi_p};
 
-	  for(unsigned int jI = 0; jI < akt2hi_etajes_jet_pt_sys_JES_p.size(); ++jI){
-	    akt2JetVarsF.push_back(akt2hi_etajes_jet_pt_sys_JES_p[jI]);
-	  }
-	  for(unsigned int jI = 0; jI < akt2hi_etajes_jet_pt_sys_JER_p.size(); ++jI){
-	    akt2JetVarsF.push_back(akt2hi_etajes_jet_pt_sys_JER_p[jI]);
+	  if(false){
+	    for(unsigned int jI = 0; jI < akt2hi_etajes_jet_pt_sys_JESUp_p.size(); ++jI){
+	      akt2JetVarsF.push_back(akt2hi_etajes_jet_pt_sys_JESUp_p[jI]);
+	    }
+	    for(unsigned int jI = 0; jI < akt2hi_etajes_jet_pt_sys_JESDown_p.size(); ++jI){
+	      akt2JetVarsF.push_back(akt2hi_etajes_jet_pt_sys_JESDown_p[jI]);
+	    }
+	    for(unsigned int jI = 0; jI < akt2hi_etajes_jet_pt_sys_JERUp_p.size(); ++jI){
+	      akt2JetVarsF.push_back(akt2hi_etajes_jet_pt_sys_JERUp_p[jI]);
+	    }
+	    for(unsigned int jI = 0; jI < akt2hi_etajes_jet_pt_sys_JERDown_p.size(); ++jI){
+	      akt2JetVarsF.push_back(akt2hi_etajes_jet_pt_sys_JERDown_p[jI]);
+	    }
 	  }
 	  doJetSort(akt2hi_etajes_jet_pt_p, akt2JetVarsF, {akt2hi_truthpos_p}, {akt2hi_jet_clean_p}, akt2JetConstVarsF);
 
@@ -1892,11 +1955,19 @@ int gdjNtuplePreProc(std::string inConfigFileName)
 	  std::vector<std::vector<std::vector<float> >* > akt4JetConstVarsF = {};
 	  if(keepJetConstituents) akt4JetConstVarsF = {akt4hi_jetconstit_pt_p, akt4hi_jetconstit_eta_p, akt4hi_jetconstit_phi_p};
 
-	  for(unsigned int jI = 0; jI < akt4hi_etajes_jet_pt_sys_JES_p.size(); ++jI){
-	    akt4JetVarsF.push_back(akt4hi_etajes_jet_pt_sys_JES_p[jI]);
-	  }
-	  for(unsigned int jI = 0; jI < akt4hi_etajes_jet_pt_sys_JER_p.size(); ++jI){
-	    akt4JetVarsF.push_back(akt4hi_etajes_jet_pt_sys_JER_p[jI]);
+	  if(false){
+	    for(unsigned int jI = 0; jI < akt4hi_etajes_jet_pt_sys_JESUp_p.size(); ++jI){
+	      akt4JetVarsF.push_back(akt4hi_etajes_jet_pt_sys_JESUp_p[jI]);
+	    }
+	    for(unsigned int jI = 0; jI < akt4hi_etajes_jet_pt_sys_JESDown_p.size(); ++jI){
+	    akt4JetVarsF.push_back(akt4hi_etajes_jet_pt_sys_JESDown_p[jI]);
+	    }
+	    for(unsigned int jI = 0; jI < akt4hi_etajes_jet_pt_sys_JERUp_p.size(); ++jI){
+	      akt4JetVarsF.push_back(akt4hi_etajes_jet_pt_sys_JERUp_p[jI]);
+	    }
+	    for(unsigned int jI = 0; jI < akt4hi_etajes_jet_pt_sys_JERDown_p.size(); ++jI){
+	      akt4JetVarsF.push_back(akt4hi_etajes_jet_pt_sys_JERDown_p[jI]);
+	    }
 	  }
 	  doJetSort(akt4hi_etajes_jet_pt_p, akt4JetVarsF, {akt4hi_truthpos_p}, {akt4hi_jet_clean_p}, akt4JetConstVarsF);
 

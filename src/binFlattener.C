@@ -159,7 +159,7 @@ double binFlattener::GetGlobalBinCenterFromBin12Val(double bin1Val, double bin2V
   //init the return val as something outside the global bin range 
   double retVal = m_binSetGlobal[0] - 1000.0;
   if(bin1Val < m_binSet1.at(0) || bin1Val >= m_binSet1.at(m_nBins1)){
-    std::cout << "binFlattener::GetGlobalBinCenterFromBin12Val() Error: bin1Val \'" << bin1Val << "\' is outside given bin range of " << m_binSet1.at(0) << "-" << m_binSet1.at(m_nBins1) << ". return globalBinCenter " << retVal << std::endl;
+    std::cout << "binFlattener::GetGlobalBinCenterFromBin12Val() Error: bin1Val \'" << bin1Val << "\' is outside given bin range of " << m_binSet1.at(0) << "-" << m_binSet1.at(m_nBins1) << ". Line L" << line << ". return globalBinCenter " << retVal << std::endl;
     return retVal;   
   }
 
