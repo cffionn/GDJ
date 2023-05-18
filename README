@@ -1,0 +1,30 @@
+Martin stuff: /eos/atlas/atlascerngroupdisk/phys-hi/phys-hi-jet/JetVal_data22_hi/user.mrybar.5TeV_HI_2022_MinBias_PVReq_tight_r001.root
+
+#Derivation example HION7
+data18_hi.00365602.physics_CC.deriv.DAOD_HION7.f1021_m2037_p4404
+This gets you everything on AMI
+data18_hi.00%.physics_CC.deriv.DAOD_HION7.f10%_m20%_p44%
+
+#Derivation example HION8
+data18_hi.00365602.physics_CC.deriv.DAOD_HION8.f1021_m2037_p4404
+This gets you everything on AMI, one for HION7 and one for HION8
+data18_hi.00%.physics_CC.deriv.DAOD_HION7.f10%_m20%_p44%
+data18_hi.00%.physics_CC.deriv.DAOD_HION8.f10%_m20%_p44%
+
+PC
+data18_hi.00%.physics_PC.deriv.DAOD_HION7.f10%_m20%_p44%
+data18_hi.00%.physics_PC.deriv.DAOD_HION8.f10%_m20%_p44%
+
+
+AMI list of samples to check:
+2017 pp pythia
+mc16_5TeV.4231%.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP%.merge.AOD.e5094_s3238_r10441_r10210
+
+2018 pbpb pythia + overlay
+mc16_5TeV.4231%.Pythia8EvtGen_A14NNPDF23LO_gammajet_DP%.merge.AOD.e5094_d1516_r11439_r11217
+
+2017 pp sherpa
+mc16_5TeV.420%.Sherpa_224_NNPDF30NNLO_SinglePhotonPt%_EtaFilter.merge.AOD.e6940_s3238_r10441_r10210
+
+2018 pbpb sherpa + overlay
+mc16_5TeV.420%.Sherpa_CT10_SinglePhotonPt%.merge.AOD.e4878_d1516_r11439_r11217

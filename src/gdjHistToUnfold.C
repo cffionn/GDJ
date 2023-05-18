@@ -2256,13 +2256,12 @@ int gdjHistToUnfold(std::string inConfigFileName)
     }
     else isoCentPos = 0;
     
-
     //Only process photons passing truth pt, eta, and isolation cuts
     //Note these are enforced online already, double checking here
     bool truthGammaOutOfBoundsByPt = truthGammaPt_ < gammaPtBinsLow || truthGammaPt_ >= gammaPtBinsHigh;
-    bool truthGammaOutOfBounds = !photonEtaIsGood(truthGammaEta_);
-    if(truthGammaOutOfBounds) continue;
-
+    bool truthGammaOutOfBoundsByEta = !photonEtaIsGood(truthGammaEta_);
+    bool truthGammaOutOfBounds = truthGammaOutOfBoundsByPt || truthGammaOutOfBoundsByEta;
+    //    if(truthGammaOutOfBounds) continue;
     
     TLorentzVector truthGammaTL;
     truthGammaTL.SetPtEtaPhiM(truthGammaPt_, truthGammaEta_, truthGammaPhi_, 0.0);
@@ -2281,6 +2280,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
       Double_t phoWeight = 1.0;
       Int_t inSystStrPos = vectContainsStrPos(systStrVect[sysI], &inSystStrVect);
+
       if(inSystStrPos < 0) inSystStrPos = 0;
       if(doReweightVar){
 	phoWeight = reweightPhoPt_p[centPos][inSystStrPos]->GetBinContent(reweightPhoPt_p[centPos][inSystStrPos]->FindBin(truthGammaPt_));
@@ -2313,15 +2313,15 @@ int gdjHistToUnfold(std::string inConfigFileName)
       }
       
       if(isGammaSyst){
-	if(truthGammaOutOfBoundsByPt){
+	if(truthGammaOutOfBounds && !recoGammaOutOfBounds){
 	  rooResGamma_p[centPos][sysI]->Fake(recoGammaPt_[gammaSysPos], unfoldWeight_*phoWeight);
 	  rooResGammaFakes_p[centPos][sysI]->Fill(recoGammaPt_[gammaSysPos], unfoldWeight_*phoWeight);
 	}	
-	else if(recoGammaOutOfBounds){
+	else if(recoGammaOutOfBounds && !truthGammaOutOfBounds){
 	  rooResGamma_p[centPos][sysI]->Miss(truthGammaPt_, unfoldWeight_*phoWeight);
 	  rooResGammaMisses_p[centPos][sysI]->Fill(truthGammaPt_, unfoldWeight_*phoWeight);
 	}
-	else{
+	else if(!recoGammaOutOfBounds && !truthGammaOutOfBounds){
 	  rooResGamma_p[centPos][sysI]->Fill(recoGammaPt_[gammaSysPos], truthGammaPt_, unfoldWeight_*phoWeight);
 	  rooResGammaMatrix_p[centPos][sysI]->Fill(recoGammaPt_[gammaSysPos], truthGammaPt_, unfoldWeight_*phoWeight);
 	
@@ -2345,7 +2345,10 @@ int gdjHistToUnfold(std::string inConfigFileName)
       for(Int_t tI = 0; tI < nTruthJtUnmatched_; ++tI){
 	bool truthJetOutOfBounds = truthJtUnmatchedPt_[tI] < jtPtBinsLow || truthJtUnmatchedPt_[tI] >= jtPtBinsHigh;
 	truthJetOutOfBounds = truthJetOutOfBounds || truthJtUnmatchedEta_[tI] < jtEtaBinsLow || truthJtUnmatchedEta_[tI] > jtEtaBinsHigh;
-	if(truthJetOutOfBounds) continue;
+
+        bool isTruthGood = !truthJetOutOfBounds && !truthGammaOutOfBounds;
+
+	if(!isTruthGood) continue;
 
 	TLorentzVector truthJetTL;
 	truthJetTL.SetPtEtaPhiM(truthJtUnmatchedPt_[tI], truthJtUnmatchedEta_[tI], truthJtUnmatchedPhi_[tI], 0.0);
@@ -2361,11 +2364,15 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	Float_t gammaJtDRTruth = getDR(truthJtUnmatchedEta_[tI], truthJtUnmatchedPhi_[tI], truthGammaEta_, truthGammaPhi_);
 	bool gammaJtPassesDRTruth = gammaJtDRTruth >= gammaJtDRExclusionCut;
 	if(!gammaJtPassesDRTruth) continue;	
-	
-	Float_t gammaJtDPhiTruth = TMath::Abs(getDPHI(truthJtUnmatchedPhi_[tI], truthGammaPhi_));
+      	
+	Float_t gammaJtDPhiTruth = -999;
+	if(truthGammaPt_ > 0.0) gammaJtDPhiTruth = TMath::Abs(getDPHI(truthJtUnmatchedPhi_[tI], truthGammaPhi_));
 	if(isStrSame(varNameLower, "dphi")){
-	  rooResGammaJetVar_p[centPos][sysI]->Miss(gammaJtDPhiTruth, truthGammaPt_, unfoldWeight_*phoJetWeight);
-	  rooResGammaJetVarMisses_p[centPos][sysI]->Fill(gammaJtDPhiTruth, truthGammaPt_, unfoldWeight_*phoJetWeight);
+
+	  if(truthGammaPt_ > 0.0){
+	    rooResGammaJetVar_p[centPos][sysI]->Miss(gammaJtDPhiTruth, truthGammaPt_, unfoldWeight_*phoJetWeight);
+	    rooResGammaJetVarMisses_p[centPos][sysI]->Fill(gammaJtDPhiTruth, truthGammaPt_, unfoldWeight_*phoJetWeight);
+	  }
 	}      
 	
 	bool gammaJtPassesDPhiTruth = gammaJtDPhiTruth >= gammaJtDPhiCut;
@@ -2401,12 +2408,12 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	//The jet vector position will be zero unless we are doing jet related systematics
 	Int_t jtVPos = vectContainsStrPos(systStrVect[sysI], &jesJERStrVect);
 	if(jtVPos < 0) jtVPos = 0;
-
+     	
 	//Define booleans on the reco jet pt and eta
 	bool recoJtOutOfBoundsByPt = recoJtPt_[jI][jtVPos] < jtPtBinsLowReco || recoJtPt_[jI][jtVPos] >= jtPtBinsHighReco;
 	if(systStrVect[sysI].find("JTPTCUT") != std::string::npos){
 	  recoJtOutOfBoundsByPt = recoJtOutOfBoundsByPt || recoJtPt_[jI][jtVPos] < jtPtBinsLowRecoSyst;
-	}	
+	}
 	bool recoJtOutOfBoundsByEta = recoJtEta_[jI] < jtEtaBinsLow || recoJtEta_[jI] >= jtEtaBinsHigh;
 	bool recoJtOutOfBounds = recoJtOutOfBoundsByPt || recoJtOutOfBoundsByEta;
 	
@@ -2414,10 +2421,10 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	bool truthJtOutOfBoundsByPt = truthJtPt_[jI] < jtPtBinsLow || truthJtPt_[jI] >= jtPtBinsHigh;
 	bool truthJtOutOfBoundsByEta = truthJtEta_[jI] < jtEtaBinsLow || truthJtEta_[jI] > jtEtaBinsHigh;
 	bool truthJtOutOfBounds = truthJtOutOfBoundsByPt || truthJtOutOfBoundsByEta;
-
-
+	
 	//Define truth DR between jet and photon w/ boolean
-	Float_t gammaJtDRTruth = getDR(truthJtEta_[jI], truthJtPhi_[jI], truthGammaEta_, truthGammaPhi_);
+	Float_t gammaJtDRTruth = -999;
+	if(truthJtPt_[jI] > 0.0 && truthGammaPt_ > 0.0) gammaJtDRTruth = getDR(truthJtEta_[jI], truthJtPhi_[jI], truthGammaEta_, truthGammaPhi_);
 	bool gammaJtPassesDRTruth = gammaJtDRTruth >= gammaJtDRExclusionCut;
 
 	//define reco DR between jet and photon w/ boolean
@@ -2428,14 +2435,15 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	  gammaJtPassesDRReco = gammaJtDRReco >= gammaJtDRExclusionCut;
 	}            
 	
-	Float_t gammaJtDPhiTruth = TMath::Abs(getDPHI(truthJtPhi_[jI], truthGammaPhi_));
+	Float_t gammaJtDPhiTruth = -999;
+	if(truthJtPt_[jI] > 0.0 && truthGammaPt_ > 0.0) gammaJtDPhiTruth = TMath::Abs(getDPHI(truthJtPhi_[jI], truthGammaPhi_));
 	Float_t gammaJtDPhiReco = -999;
 	bool gammaJtPassesDPhiReco = false;
 	if(!recoGammaOutOfBounds){
 	  gammaJtDPhiReco = TMath::Abs(getDPHI(recoJtPhi_[jI], recoGammaPhi_));
 	  gammaJtPassesDPhiReco = gammaJtDPhiReco >= gammaJtDPhiCut;
 	}
-      
+
 	//Find the reweighting bin, first define your observable
 	TLorentzVector truthJetTL;
 	truthJetTL.SetPtEtaPhiM(truthJtPt_[jI], truthJtEta_[jI], truthJtPhi_[jI], 0.0);
@@ -2446,37 +2454,26 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	//Reweight if doReweightVar AND its not the prior variation systematic
 	if(doReweightVar && !isStrSame(systStrVect[sysI], "PRIOR")) phoJetWeight = reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetBinContent(reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetXaxis()->FindBin(truthJetVar), reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetYaxis()->FindBin(truthGammaPt_)); 
 
-	bool isTruthGood = !truthJtOutOfBoundsByEta && !truthJtOutOfBoundsByPt && gammaJtPassesDRTruth;
-	bool isRecoGood = !recoJtOutOfBoundsByEta && !recoJtOutOfBoundsByPt && gammaJtPassesDRReco;
+	bool isJtTruthGood = !truthJtOutOfBoundsByEta && !truthJtOutOfBoundsByPt && gammaJtPassesDRTruth;
+	bool isJtRecoGood = !recoJtOutOfBoundsByEta && !recoJtOutOfBoundsByPt && gammaJtPassesDRReco;
 
+	bool isTruthGood = isJtTruthGood && !truthGammaOutOfBounds;	
+	bool isRecoGood = isJtRecoGood && !recoGammaOutOfBounds;
 
-	//	if(!isTruthGood && !isRecoGood) continue;
-	
-	//DEBUGGING UNFOLDING NONCLOSURE - 2023.04.19 start
-	if(truthJtOutOfBounds || !gammaJtPassesDRTruth){
-	  if(recoJtPt_[jI][jtVPos] < 35.0 && recoJtPt_[jI][jtVPos] > 30.0 && recoGammaPt_[gammaSysPos] >= 90.0 && recoGammaPt_[gammaSysPos] < 180.0 && recoJtEta_[jI] >= jtEtaBinsLow && recoJtEta_[jI] < jtEtaBinsHigh && gammaJtPassesDPhiReco && !truthJtOutOfBoundsByPt && !truthJtOutOfBoundsByEta){
-	    std::cout << "GOOD JET IN ENTRY: " << entry << std::endl;	      
-	    std::cout << " Jet reco pt,eta,phi: " << recoJtPt_[jI][jtVPos] << ", " << recoJtEta_[jI] << ", " << recoJtPhi_[jI] << std::endl;
-	    std::cout << " Jet truth pt,eta,phi: " << truthJtPt_[jI] << ", " << truthJtEta_[jI] << ", " << truthJtPhi_[jI] << std::endl;
-	  }
-	  
-	  if(!truthJtOutOfBoundsByPt) continue;
-	}
-
+	if(!isTruthGood && !isRecoGood) continue;	
 	
 	if(isStrSame(varNameLower, "dphi")){
 	  //Unfolding debugging 2023.04.20 - we will use the fake function but only when truthpt is out of bounds
-	  if((truthGammaOutOfBoundsByPt || truthJtOutOfBoundsByPt) && recoGammaPt_[gammaSysPos] > 0.0){
-
+	  if(isRecoGood && !isTruthGood){
 	    rooResGammaJetVar_p[centPos][sysI]->Fake(gammaJtDPhiReco, recoGammaPt_[gammaSysPos], unfoldWeight_*phoJetWeight);
 	    rooResGammaJetVarFakes_p[centPos][sysI]->Fill(gammaJtDPhiReco, recoGammaPt_[gammaSysPos], unfoldWeight_*phoJetWeight);
 	    //	    rooResGammaJetVarMisses_p[centPos][sysI]->Fill(gammaJtDPhiTruth, truthGammaPt_, unfoldWeight_*phoJetWeight);
 	  }
-	  else if(recoJtOutOfBounds || recoGammaOutOfBounds || !gammaJtPassesDRReco){
+	  else if(isTruthGood && !isRecoGood){
 	    rooResGammaJetVar_p[centPos][sysI]->Miss(gammaJtDPhiTruth, truthGammaPt_, unfoldWeight_*phoJetWeight);
 	    rooResGammaJetVarMisses_p[centPos][sysI]->Fill(gammaJtDPhiTruth, truthGammaPt_, unfoldWeight_*phoJetWeight);
 	  }
-	  else{
+	  else if(isTruthGood && isRecoGood){
 	    rooResGammaJetVar_p[centPos][sysI]->Fill(gammaJtDPhiReco, recoGammaPt_[gammaSysPos], gammaJtDPhiTruth, truthGammaPt_, unfoldWeight_*phoJetWeight);
 	    rooResGammaJetVarMatrixReco_p[centPos][sysI]->Fill(gammaJtDPhiReco, recoGammaPt_[gammaSysPos], unfoldWeight_*phoJetWeight);
 	    rooResGammaJetVarMatrixTruth_p[centPos][sysI]->Fill(gammaJtDPhiTruth, truthGammaPt_, unfoldWeight_*phoJetWeight);
@@ -2492,63 +2489,50 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	    if(doReweightVar && sysI == 0) photonPtJetVarReco_PURCORR_COMBINED_Reweighted_p[centPos][sysI]->Fill(gammaJtDPhiReco, recoGammaPt_[gammaSysPos], unfoldWeight_*phoJetWeight);
 	  }
 	}
-        
+		
 	bool gammaJtPassesDPhiTruth = gammaJtDPhiTruth >= gammaJtDPhiCut;
-	if(!gammaJtPassesDPhiTruth) continue;
+	//  if(!gammaJtPassesDPhiTruth) continue;
+
+	isTruthGood = isTruthGood && gammaJtPassesDPhiTruth;
+	isJtTruthGood = isJtTruthGood && gammaJtPassesDPhiTruth;
+
+	isRecoGood = isRecoGood && gammaJtPassesDPhiReco;
+	isJtRecoGood = isJtRecoGood && gammaJtPassesDPhiReco;
 	
 	//We will add a condition on recoJt being good - passes dphi cut
-	if(!gammaJtPassesDPhiReco) recoJtOutOfBounds = true;
+	//	if(!gammaJtPassesDPhiReco) recoJtOutOfBounds = true;
       
 	//Now that the truth has passed all cuts - fill out the vectors goodRecoJets OR Fill the inclusive jet variables
 	if(isStrSame(varNameLower, "pt")){
 	  //Unfolding debugging 2023.04.20 - we will use the fake function but only when truthpt is out of bounds
-	  if((truthGammaOutOfBoundsByPt || truthJtOutOfBoundsByPt) && recoGammaPt_[gammaSysPos] > 0.0){
-	    if(recoGammaPt_[gammaSysPos] > 90.0 && false){
-	      std::cout << "FILLING FAKE ENTRY: " << entry << std::endl;
-	      std::cout << " Jtptbinslow, high: " << jtPtBinsLow << ", " << jtPtBinsHigh << std::endl;
-	      std::cout << " recojtpt, gammapt: " << recoJtPt_[jI][jtVPos] << ", " << recoGammaPt_[gammaSysPos] << ", " << unfoldWeight_*phoJetWeight << std::endl;
-	      std::cout << " truthjtpt, gammapt: " << truthJtPt_[jI] << ", " << truthGammaPt_ << std::endl;
-	    }
-	    
+	  if(isRecoGood && !isTruthGood){
 	    rooResGammaJetVarFakes_p[centPos][sysI]->Fill(recoJtPt_[jI][jtVPos], recoGammaPt_[gammaSysPos], unfoldWeight_*phoJetWeight);
 	    rooResGammaJetVar_p[centPos][sysI]->Fake(recoJtPt_[jI][jtVPos], recoGammaPt_[gammaSysPos], unfoldWeight_*phoJetWeight);
-	    //	    rooResGammaJetVarMisses_p[centPos][sysI]->Fill(gammaJtDPhiTruth, truthGammaPt_, unfoldWeight_*phoJetWeight);
 	  }
-	  else if(recoJtOutOfBounds || recoGammaOutOfBounds){
+	  else if(!isRecoGood && isTruthGood){
 	    rooResGammaJetVar_p[centPos][sysI]->Miss(truthJtPt_[jI], truthGammaPt_, unfoldWeight_*phoJetWeight);
 	    rooResGammaJetVarMisses_p[centPos][sysI]->Fill(truthJtPt_[jI], truthGammaPt_, unfoldWeight_*phoJetWeight);
 	  }
-	  else{
-	    if(recoJtPt_[jI][jtVPos] >= 35.0 && recoJtPt_[jI][jtVPos] < 50.0){
-	      if(sysI == 0){
-		//		std::cout << "RECO JT PT: " << recoJtPt_[jI][jtVPos] << ", " << recoGammaPt_[gammaSysPos] << ", " << unfoldWeight_ << ", " << phoJetWeight << std::endl;
-		fillsNominal = true;
-		++nFillsNominal;
-	      }
-	      else if(isStrSame("JTPTCUT", systStrVect[sysI])){
-		//		std::cout << "RECO JT PT 2 (sysI==" << sysI << "): " << recoJtPt_[jI][jtVPos] << ", " << recoGammaPt_[gammaSysPos] << ", " << unfoldWeight_ << ", " << phoJetWeight << std::endl;
-		//		std::cout << "SYSTPOS, TruthGammaPt, truthVarPt: " << systPos << ", " << truthGammaPt_ << ", " << truthJtPt_[jI] << ", " << truthJetVar << std::endl;
-		fillsJtPtCut = true;
-		++nFillsJtPtCut;
-	      }
-	    }
-
-	 
-	    
+	  else if(isRecoGood && isTruthGood){
 	    rooResGammaJetVar_p[centPos][sysI]->Fill(recoJtPt_[jI][jtVPos], recoGammaPt_[gammaSysPos], truthJtPt_[jI], truthGammaPt_, unfoldWeight_*phoJetWeight);
 	    rooResGammaJetVarMatrixReco_p[centPos][sysI]->Fill(recoJtPt_[jI][jtVPos], recoGammaPt_[gammaSysPos], unfoldWeight_*phoJetWeight);
 	    rooResGammaJetVarMatrixTruth_p[centPos][sysI]->Fill(truthJtPt_[jI], truthGammaPt_, unfoldWeight_*phoJetWeight);
 
 	    Int_t recoPhoBinPos = ghostPos(nGammaPtBins, gammaPtBins, recoGammaPt_[gammaSysPos]);
 	    Int_t truthPhoBinPos = ghostPos(nGammaPtBins, gammaPtBins, truthGammaPt_);
-	    
-	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
 	    rooResGammaJetVar_JetMatrixForRecoPho_p[centPos][sysI][recoPhoBinPos]->Fill(recoJtPt_[jI][jtVPos], truthJtPt_[jI], unfoldWeight_*phoJetWeight);
 	    rooResGammaJetVar_JetMatrixForTruthPho_p[centPos][sysI][truthPhoBinPos]->Fill(recoJtPt_[jI][jtVPos], truthJtPt_[jI], unfoldWeight_*phoJetWeight);
-	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
-	    
 	    if(doReweightVar && sysI == 0) photonPtJetVarReco_PURCORR_COMBINED_Reweighted_p[centPos][sysI]->Fill(recoJtPt_[jI][jtVPos], recoGammaPt_[gammaSysPos], unfoldWeight_*phoJetWeight);
+	  }
+	  else{
+	    if(recoJtPt_[jI][jtVPos] >= 30.0 && recoJtPt_[jI][jtVPos] < 35.0 && recoGammaPt_[gammaSysPos] >= 90.0 && recoGammaPt_[gammaSysPos] < 180.0 && gammaJtPassesDPhiReco && recoJtEta_[jI] > jtEtaBinsLow && recoJtEta_[jI] < jtEtaBinsHigh){
+	      std::cout << "Entry " << entry << " missed." << std::endl;
+	      std::cout << " Gamma pt, eta, phi: " << recoGammaPt_[gammaSysPos] << ", " << recoGammaEta_ << ", " << recoGammaPhi_ << std::endl;
+	      std::cout << " Jet missed pt, eta, phi: " << recoJtPt_[jI][jtVPos] << ", " << recoJtEta_[jI] << ", " << recoJtPhi_[jI] << std::endl;
+	      std::cout << " Gamma-jet dr, dphi: " << gammaJtDRReco << ", " << gammaJtDPhiReco << std::endl;
+	    }
 	  }
 	}
 	else if(isStrSame(varNameLower, "xj")){
@@ -2607,7 +2591,8 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
 	    Float_t subLeadingJetPt = goodTruthJet1.Pt();
 	    if(goodTruthJet2.Pt() < subLeadingJetPt) subLeadingJetPt = goodTruthJet2.Pt();
-	    Float_t subJtGammaPtValTruth = subJtGammaPtBinFlattener.GetGlobalBinCenterFromBin12Val(truthGammaPt_, subLeadingJetPt, __LINE__);
+	    Float_t subJtGammaPtValTruth = -999;
+	    if(truthGammaPt_ > 0.0) subJtGammaPtValTruth = subJtGammaPtBinFlattener.GetGlobalBinCenterFromBin12Val(truthGammaPt_, subLeadingJetPt, __LINE__);
 	    
 	    Double_t varValTruth = getVar(varNameLower, goodTruthJet1, goodTruthJet2, truthGammaTL);
 	    Double_t phoJetWeight = 1.0;
@@ -2622,7 +2607,8 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	    goodTruthJet2 += goodTruthJet1;
 	    
 	    //Test it passes the only additional multijet cut - dphi
-	    Float_t multiJtTruthDPhi = TMath::Abs(getDPHI(truthGammaPhi_, goodTruthJet2.Phi()));
+	    Float_t multiJtTruthDPhi = -999;
+	    if(truthGammaPt_ > 0.0) multiJtTruthDPhi = TMath::Abs(getDPHI(truthGammaPhi_, goodTruthJet2.Phi()));
 
 	    //Phi truth cut, continue
 	    if(multiJtTruthDPhi < gammaMultiJtDPhiCut) continue;
@@ -2630,9 +2616,11 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	    if(varValTruth < varBinsLow || varValTruth >= varBinsHigh) continue;	  
 
 	    if(sysI == 0) ++(nFillsToRooRes[0]);
-	    
-	    rooResGammaJetVar_p[centPos][sysI]->Miss(varValTruth, subJtGammaPtValTruth, unfoldWeight_*phoJetWeight);
-	    rooResGammaJetVarMisses_p[centPos][sysI]->Fill(varValTruth, subJtGammaPtValTruth, unfoldWeight_*phoJetWeight);
+
+	    if(truthGammaPt_ > 0.0){
+	      rooResGammaJetVar_p[centPos][sysI]->Miss(varValTruth, subJtGammaPtValTruth, unfoldWeight_*phoJetWeight);
+	      rooResGammaJetVarMisses_p[centPos][sysI]->Fill(varValTruth, subJtGammaPtValTruth, unfoldWeight_*phoJetWeight);
+	    }
 	  }
 	}
       
@@ -2647,7 +2635,8 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
 	    Float_t subLeadingJetPt = goodTruthJet1.Pt();
 	    if(goodTruthJet2.Pt() < subLeadingJetPt) subLeadingJetPt = goodTruthJet2.Pt();
-	    Float_t subJtGammaPtValTruth = subJtGammaPtBinFlattener.GetGlobalBinCenterFromBin12Val(truthGammaPt_, subLeadingJetPt, __LINE__);
+	    Float_t subJtGammaPtValTruth = -999;
+	    if(truthGammaPt_ > 0.0) subJtGammaPtValTruth = subJtGammaPtBinFlattener.GetGlobalBinCenterFromBin12Val(truthGammaPt_, subLeadingJetPt, __LINE__);
 	    
 	    Double_t varValTruth = getVar(varNameLower, goodTruthJet1, goodTruthJet2, truthGammaTL);
 	    //Reweight if doReweightVar AND its not the prior variation systematic
@@ -2663,16 +2652,19 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
 	    goodTruthJet2 += goodTruthJet1;
 	    
-	    Float_t multiJtTruthDPhi = TMath::Abs(getDPHI(truthGammaPhi_, goodTruthJet2.Phi()));
+	    Float_t multiJtTruthDPhi = -999;
+	    if(truthGammaPt_ > 0.0) multiJtTruthDPhi = TMath::Abs(getDPHI(truthGammaPhi_, goodTruthJet2.Phi()));
 	    
 	    if(multiJtTruthDPhi < gammaMultiJtDPhiCut) continue;
 	    //	    if(multiJtTruthDR < mixJtDRExclusionCut) continue;
 	    if(varValTruth < varBinsLow || varValTruth >= varBinsHigh) continue;		    
 
 	    if(sysI == 0) ++(nFillsToRooRes[1]);
-	    
-	    rooResGammaJetVar_p[centPos][sysI]->Miss(varValTruth, subJtGammaPtValTruth, unfoldWeight_*phoJetWeight);
-	    rooResGammaJetVarMisses_p[centPos][sysI]->Fill(varValTruth, subJtGammaPtValTruth, unfoldWeight_*phoJetWeight);	  	   
+
+	    if(truthGammaPt_ > 0.0){
+	      rooResGammaJetVar_p[centPos][sysI]->Miss(varValTruth, subJtGammaPtValTruth, unfoldWeight_*phoJetWeight);
+	      rooResGammaJetVarMisses_p[centPos][sysI]->Fill(varValTruth, subJtGammaPtValTruth, unfoldWeight_*phoJetWeight);
+	    }
 	  }
 	
 	  //Then with matched jets
@@ -2689,8 +2681,10 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	      subLeadingJetPtReco = goodRecoJets[jI2].Pt();
 	      subLeadingJetPtTruth = goodTruthJet2.Pt();
 	    }	    
-	    Float_t subJtGammaPtValTruth = subJtGammaPtBinFlattener.GetGlobalBinCenterFromBin12Val(truthGammaPt_, subLeadingJetPtTruth, __LINE__);
-	    Float_t subJtGammaPtValReco = subJtGammaPtBinFlattener.GetGlobalBinCenterFromBin12Val(recoGammaPt_[gammaSysPos], subLeadingJetPtReco, __LINE__);
+	    Float_t subJtGammaPtValTruth = -999;
+	    if(truthGammaPt_ > 0.0) subJtGammaPtValTruth = subJtGammaPtBinFlattener.GetGlobalBinCenterFromBin12Val(truthGammaPt_, subLeadingJetPtTruth, __LINE__);
+	    Float_t subJtGammaPtValReco = -999;
+	    if(recoGammaPt_[gammaSysPos] > 0.0) subJtGammaPtBinFlattener.GetGlobalBinCenterFromBin12Val(recoGammaPt_[gammaSysPos], subLeadingJetPtReco, __LINE__);
 	        
 	    Double_t varValTruth = getVar(varNameLower, goodTruthJet1, goodTruthJet2, truthGammaTL);
 	    Double_t phoJetWeight = 1.0;
@@ -2717,15 +2711,18 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	    goodTruthJet2 += goodTruthJet1;	  
 	    goodRecoJet2 += goodRecoJet1;
 	    
-	    Float_t multiJtRecoDPhi = TMath::Abs(getDPHI(goodRecoJet2.Phi(), recoGammaPhi_));
-	    Float_t multiJtTruthDPhi = TMath::Abs(getDPHI(truthGammaPhi_, goodTruthJet2.Phi()));
+	    Float_t multiJtRecoDPhi = -999;
+	    if(recoGammaPt_[0] > 0.0) multiJtRecoDPhi = TMath::Abs(getDPHI(goodRecoJet2.Phi(), recoGammaPhi_, "L" + std::to_string(__LINE__)));
+	    Float_t multiJtTruthDPhi = -999;
+	    if(truthGammaPt_ > 0.0) multiJtTruthDPhi = TMath::Abs(getDPHI(truthGammaPhi_, goodTruthJet2.Phi()));
 	    	    
 	    if(isStrSame(varNameLower, "xjj")) varValReco = goodRecoJet2.Pt()/recoGammaPt_[gammaSysPos];
 	    else if(isStrSame(varNameLower, "dphijjg")) varValReco = multiJtRecoDPhi;
 
 	    bool truthIsGood = true;
 	    if(varValTruth < varBinsLow || varValTruth >= varBinsHigh) truthIsGood = false;
-	  
+	    if(truthGammaPt_ < 0.0) truthIsGood = false;
+	    
 	    //Continue if the truth is invalid
 	    if(multiJtTruthDPhi < gammaMultiJtDPhiCut) truthIsGood = false;
 	    //  	    if(multiJtTruthDR < mixJtDRExclusionCut) continue;

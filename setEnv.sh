@@ -1,8 +1,9 @@
 #!/bin/bash
 
-GDJDIR=/usatlas/u/cfmcginn/Projects/GDJ/
+GDJDIR=/home/cfm/Projects/GDJ/
 GDJDIRLIB="$GDJDIR"lib
-ROOUNFOLDDIR=/usatlas/u/cfmcginn/Projects/GDJ
+ROOUNFOLDDIR=/home/cfm/Packages/RooUnfold/RooUnfold-build/
+HEPMCLIB=/home/cfm/Packages/HepMC2/hepmc-install/lib/
 #THIS IS A DUMMY FOR MAKE - UNFOLD HAPPENS OFFLINE
 #ROOUNFOLDDIR=$GDJDIR
 

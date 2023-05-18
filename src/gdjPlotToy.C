@@ -243,6 +243,7 @@ int gdjPlotToy(std::string inConfigFileName)
   mixedHist_p->Add(mixedHistCorrection_p, -1);
 
   HIJet::Style::EquipHistogram(bkgdHist_p, 0);
+  bkgdHist_p->SetMarkerStyle(24);
   HIJet::Style::EquipHistogram(signalAndBkgdHist_p, 2);
 
   mixedHist_p->GetYaxis()->SetTitleOffset(1.05);
@@ -390,6 +391,7 @@ int gdjPlotToy(std::string inConfigFileName)
   jet2Hist_p->DrawCopy("HIST E1 SAME");
 
   HIJet::Style::EquipHistogram(jetBkgdHist_p, 1);
+  //  jetBkgdHist_p->SetMarkerStyle();
   jetBkgdHist_p->SetMarkerSize(0.0);
   jetBkgdHist_p->SetLineColor(1);  
   jetBkgdHist_p->SetFillColor(jetBkgdHist_p->GetMarkerColor());  
@@ -399,7 +401,8 @@ int gdjPlotToy(std::string inConfigFileName)
   
   if(specYDoLog) gPad->SetLogy();
 
-  
+
+  label_p->SetTextAlign(31);
   label_p->SetTextSize(titleSizeX/(1.0 - padSplit));
   for(unsigned int gI = 0; gI < globalLabels.size(); ++gI){
     label_p->DrawLatex(specLabelX, specLabelY - gI*0.08, globalLabels[gI].c_str());

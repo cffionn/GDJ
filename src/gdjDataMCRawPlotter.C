@@ -9,9 +9,11 @@
 #include "TCanvas.h"
 #include "TFile.h"
 #include "TH1F.h"
+#include "TH2F.h"
 #include "TLatex.h"
 #include "TLegend.h"
 #include "TLine.h"
+#include "TMath.h"
 #include "TPad.h"
 #include "TStyle.h"
 
@@ -64,8 +66,7 @@ void plotDataMC(std::string saveName, std::vector<TH1F*> hists_p, std::vector<st
 
   const Bool_t doLogX = config_p->GetValue((envStr + "LOGX").c_str(), 0);
   const Bool_t doLogY = config_p->GetValue((envStr + "LOGY").c_str(), 0);
-
-
+   
   std::vector<std::vector<float> > generalBoxes;
   for(int gI = 0; gI < 10; ++gI){
     std::string tempStr = config_p->GetValue((envStr + "GENBOX." + std::to_string(gI)).c_str(), "");
@@ -76,7 +77,7 @@ void plotDataMC(std::string saveName, std::vector<TH1F*> hists_p, std::vector<st
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
-  TCanvas* canv_p = new TCanvas("canv_p", "", 450, 450);
+  TCanvas* canv_p = new TCanvas("canv_p", "", 450*2, 450*2);
   canv_p->SetTopMargin(0.001);
   canv_p->SetBottomMargin(0.001);
   canv_p->SetLeftMargin(0.001);
@@ -105,8 +106,6 @@ void plotDataMC(std::string saveName, std::vector<TH1F*> hists_p, std::vector<st
   pads_p[1]->cd();
   canv_p->cd();
 
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
   pads_p[0]->cd();
   
   Double_t titleSizeX = 0.04;//histData_p->GetXaxis()->GetTitleSize();
@@ -132,8 +131,6 @@ void plotDataMC(std::string saveName, std::vector<TH1F*> hists_p, std::vector<st
   leg_p->SetBorderSize(0);
   leg_p->SetFillColor(0);
   leg_p->SetFillStyle(0);
-
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
   TLatex* label_p = new TLatex();
   label_p->SetTextFont(titleFont);
@@ -160,9 +157,10 @@ void plotDataMC(std::string saveName, std::vector<TH1F*> hists_p, std::vector<st
     
     if(hI == 0) hists_p[hI]->DrawCopy("HIST E1 P");
     else hists_p[hI]->DrawCopy("HIST E1 P SAME");
-
     leg_p->AddEntry(hists_p[hI], legLabels[hI].c_str(), "P L");
   }
+
+  gPad->SetTicks();
   
   if(doLogX) gPad->SetLogx();
   if(doLogY) gPad->SetLogy();
@@ -244,6 +242,8 @@ void plotDataMC(std::string saveName, std::vector<TH1F*> hists_p, std::vector<st
   histDataClone_p->GetYaxis()->SetTitle("Data / MC (Reco.)");
   histDataClone_p->DrawCopy("HIST E1 P");
 
+  gPad->SetTicks();
+  
   if(doLogX) gPad->SetLogx();
 
   if(ratMax > 1.0 && ratMin < 1.0){
@@ -281,6 +281,7 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
   check.doCheckMakeDir("pdfDir");
   check.doCheckMakeDir("pdfDir/" + dateStr);
 
+ 
   TEnv* plotConfig_p = new TEnv(inConfigFileName.c_str());
   
   configParser config(plotConfig_p);
@@ -289,6 +290,7 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
 					      "DATALABEL",
 					      "MCLABEL",
 					      "MCTRUTHLABEL",
+					      "SAVEEXT",
 					      "GAMMAPTMIN",
 					      "GAMMAPTMAX",
 					      "GAMMAPTRATMIN",
@@ -331,8 +333,6 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
 					      "MULTIJTDPHIJJRATMAX",
 					      "DOALLLEG"};
 
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
   if(!config.ContainsParamSet(necessaryParams)) return 1;
 
   const std::string inDataFileName = config.GetConfigVal("INDATAFILENAME");
@@ -357,11 +357,17 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
     }
   }
 
-
   std::string dataLabel = plotConfig_p->GetValue("DATALABEL", "");
   std::string mcLabel = plotConfig_p->GetValue("MCLABEL", "");
   std::string mcTruthLabel = plotConfig_p->GetValue("MCTRUTHLABEL", "");
 
+  const std::string saveExt = plotConfig_p->GetValue("SAVEEXT", "pdf");
+  std::vector<std::string> validExts = {"pdf", "png"};
+  if(!vectContainsStr(saveExt, &validExts)){
+    std::cout << "Given SAVEEXT \'" << saveExt << "\' is not valid. return 1" << std::endl;
+    return 1;
+  }
+  
   TFile* inDataFile_p = new TFile(inDataFileName.c_str(), "READ");
   TEnv* dataEnv_p = (TEnv*)inDataFile_p->Get("config");
   TEnv* dataLabels_p = (TEnv*)inDataFile_p->Get("label");
@@ -371,8 +377,6 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
   TFile* inMCFile_p = new TFile(inMCFileName.c_str(), "READ");
   TEnv* mcEnv_p = (TEnv*)inMCFile_p->Get("config");
   configParser configMC(mcEnv_p);
-
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   std::vector<std::string> paramsToCheck = {"CENTBINS",
 					    "JETR",
@@ -388,16 +392,17 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
 					    "JTPTBINSDOLOG",
 					    "JTPTBINSHIGH",
 					    "JTPTBINSLOW",
-					    "NDPHIBINS",
 					    "NGAMMAETABINSSUB",
 					    "NGAMMAPTBINS",
 					    "NGAMMAPTBINSSUB",
 					    "NJTPTBINS",
 					    "NPHIBINS",
 					    "NXJBINS",
-					    "RECOJTPTMIN",
 					    "XJBINSHIGH",
 					    "XJBINSLOW"};
+  //					    "RECOJTPTMIN",//removed since it doesnt actually matter,
+  //as long as both values are below jtptbins
+  
 
   std::vector<std::string> mcParamsToCheck = {"GAMMAEXCLUSIONDR"};
   
@@ -430,18 +435,14 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
     return 1;
   }
 
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
   const Int_t nMaxBins = 100;
   const std::string centBinsStr = configData.GetConfigVal("CENTBINS");
   std::vector<int> centBins = strToVectI(configData.GetConfigVal("CENTBINS"));
   const Int_t nCentBins = centBins.size()-1;
   const Int_t nGammaEtaBinsSub = std::stoi(configData.GetConfigVal("NGAMMAETABINSSUB"));
-
   const Int_t nGammaPtBinsSub = std::stoi(configData.GetConfigVal("NGAMMAPTBINSSUB"))+1;
 
   TH1F* photonPtVCentEta_MC_p[nMaxBins][nMaxBins+1];
-
   TH1F* photonSubJtDPhiVCentPt_MC_p[nMaxBins][nMaxBins+1];
   TH1F* photonSubJtPtVCentPt_MC_p[nMaxBins][nMaxBins+1];
   TH1F* photonSubMultiJtPtVCentPt_MC_p[nMaxBins][nMaxBins+1];
@@ -458,7 +459,6 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
   TH1F* photonGenJtDPhiVCentPt_MC_p[nMaxBins][nMaxBins+1];
 
   TH1F* photonPtVCentEta_Data_p[nMaxBins][nMaxBins+1];
-
   TH1F* photonSubJtDPhiVCentPt_Data_p[nMaxBins][nMaxBins+1];  
   TH1F* photonSubJtPtVCentPt_Data_p[nMaxBins][nMaxBins+1];
   TH1F* photonSubMultiJtPtVCentPt_Data_p[nMaxBins][nMaxBins+1];
@@ -468,50 +468,173 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
   TH1F* photonSubMultiJtXJJVCentPt_Data_p[nMaxBins][nMaxBins+1];
   TH1F* photonSubMultiJtDPhiJJVCentPt_Data_p[nMaxBins][nMaxBins+1];
   TH1F* photonSubJtMultModVCentPt_Data_p[nMaxBins][nMaxBins+1];
+  
+  //CFM EDit 2021.11.12 - need to do a massive update on this macro to run on latest ntuples, particular the mixMachine MIXMODE0, MIXMODE1, MIXMODE2 output histograms
 
-  /*
-  const double xPos1 = 0.2;
-  const double yPos1 = 0.94;
-  const double xPos2 = 0.7;
-  const double yPos2 = 0.82;
+  std::string barrelECStr = "BarrelAndEC"; //So we can later put it in an nBarrelAndECLoop
+  std::vector<std::string> observables = {"JtPt"};
+  std::vector<std::string> observablesTitle = {"Jet p_{T} [GeV]"};
+  
 
-  const double xPos3 = 0.2;
-  const double yPos3 = 0.54;
-  */
-
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   for(Int_t cI = 0; cI < nCentBins; ++cI){
-    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-
     std::string centStr = "PP";
     if(!isPP) centStr = "Cent" + std::to_string(centBins[cI]) + "to" + std::to_string(centBins[cI+1]);
 
-    std::cout << (centStr + "/photonPtVCentEta_" + centStr + "_AbsEta" + std::to_string(nGammaEtaBinsSub) + "_h") << std::endl;
+    for(unsigned int oI = 0; oI < observables.size(); ++oI){      
+      bool isMultijet = isStrSame(observables[oI], "JtXJJ") || isStrSame(observables[oI], "JtAJJ") || isStrSame(observables[oI], "JtDPhiJJG") || isStrSame(observables[oI], "JtDPhiJJ") || isStrSame(observables[oI], "JtDRJJ");
+      
+      std::string mixModeStr = "MIXMODE1";
+      if(isPP) mixModeStr = "MIXMODE0";
+      else if(isMultijet) mixModeStr = "MIXMODE2";      
 
+      std::string titleStr = ";" + observablesTitle[oI] + ";Temp";
+      std::string upperObsStr = strLowerToUpper(observables[oI]);
+
+      TH1F* histPhoPt_MC_p = (TH1F*)inMCFile_p->Get((centStr + "/photonPtVCent_" + centStr + "_" + barrelECStr + "_PURCORR_h").c_str());
+      TH1F* histPhoPt_MCTRUTH_p = (TH1F*)inMCFile_p->Get((centStr + "/photonPtVCent_" + centStr + "_" + barrelECStr + "_TRUTH_h").c_str());
+      TH1F* histPhoPt_Data_p = (TH1F*)inDataFile_p->Get((centStr + "/photonPtVCent_" + centStr + "_" + barrelECStr + "_PURCORR_h").c_str());      
+
+      TH2F* hist_MC_p = (TH2F*)inMCFile_p->Get((centStr + "/photonPt" + observables[oI] + "VCent_" + centStr + "_" + barrelECStr + "_DPhi0_PURCORR_h" ).c_str());      
+      TH2F* hist_MCTRUTH_p = (TH2F*)inMCFile_p->Get((centStr + "/photonPt" + observables[oI] + "VCent_" + centStr + "_" + barrelECStr + "_DPhi0_" + mixModeStr + "_TRUTH_h" ).c_str());      
+      TH2F* hist_Data_p = (TH2F*)inDataFile_p->Get((centStr + "/photonPt" + observables[oI] + "VCent_" + centStr + "_" + barrelECStr + "_DPhi0_PURCORR_h" ).c_str());
+      
+      //Declare an array and a maxbins value for rebinning purposes
+      const Int_t nMaxBins = 1000;
+      Int_t nBinsX=-1;
+      Double_t newBinsX[nMaxBins+1];
+      for(Int_t bIX = 0; bIX < hist_MC_p->GetXaxis()->GetNbins()+1; ++bIX){
+	newBinsX[bIX] = hist_MC_p->GetXaxis()->GetBinLowEdge(bIX+1);
+	++nBinsX;
+      }
+
+      //We need to process these along the Y-Axis
+      for(Int_t bIY = 0; bIY < hist_MC_p->GetYaxis()->GetNbins()+1; ++bIY){	
+	TH1F* hist1D_MC_p = new TH1F("hist1D_MC_p", titleStr.c_str(), nBinsX, newBinsX);
+	TH1F* hist1D_MCTRUTH_p = new TH1F("hist1D_MCTRUTH_p", titleStr.c_str(), nBinsX, newBinsX);
+	TH1F* hist1D_Data_p = new TH1F("hist1D_Data_p", titleStr.c_str(), nBinsX, newBinsX);
+
+ 	std::vector<TH1F*> histsToConstruct = {hist1D_MC_p, hist1D_MCTRUTH_p, hist1D_Data_p};
+ 	std::vector<TH2F*> histsIn = {hist_MC_p, hist_MCTRUTH_p, hist_Data_p};
+	std::vector<TH1F*> gammaHists = {histPhoPt_MC_p, histPhoPt_MCTRUTH_p, histPhoPt_Data_p};
+	std::vector<Float_t> gammaNormVal = {0.0, 0.0, 0.0};
+	
+	if(bIY == hist_MC_p->GetYaxis()->GetNbins()){
+	  Float_t lowPhoPtVal = hist_MC_p->GetYaxis()->GetBinLowEdge(1);
+	  Float_t highPhoPtVal = hist_MC_p->GetYaxis()->GetBinLowEdge(hist_MC_p->GetYaxis()->GetNbins()+1);	  
+	  
+	  for(unsigned int hI = 0; hI < histsIn.size(); ++hI){	  
+	    //Get our normalizing values of nGamma
+	    for(Int_t bIX = 0; bIX < gammaHists[hI]->GetXaxis()->GetNbins(); ++bIX){
+	      Float_t center = gammaHists[hI]->GetXaxis()->GetBinCenter(bIX+1);
+
+	      if(center < lowPhoPtVal) continue;
+	      if(center >= highPhoPtVal) continue;	      
+
+	      gammaNormVal[hI] += gammaHists[hI]->GetBinContent(bIX+1);
+	    }
+	    
+	    //Construct our histograms
+	    for(Int_t bIX = 0; bIX < hist_MC_p->GetXaxis()->GetNbins(); ++bIX){
+	      for(Int_t bIY2 = 0; bIY2 < hist_MC_p->GetYaxis()->GetNbins(); ++bIY2){	
+		Float_t newVal = histsIn[hI]->GetBinContent(bIX+1, bIY2+1);
+		Float_t newErr = histsIn[hI]->GetBinError(bIX+1, bIY2+1);
+		newVal = newVal + histsToConstruct[hI]->GetBinContent(bIX+1);
+		newErr = TMath::Sqrt(newErr*newErr + histsToConstruct[hI]->GetBinError(bIX+1)*histsToConstruct[hI]->GetBinError(bIX+1));
+		histsToConstruct[hI]->SetBinContent(bIX+1, newVal);
+		histsToConstruct[hI]->SetBinError(bIX+1, newErr);
+	      }
+	    }
+
+	    //And Normalize
+	    histsToConstruct[hI]->Sumw2();
+	    histsToConstruct[hI]->Scale(1.0/gammaNormVal[hI]);	    
+	  }
+	}
+	else{
+	  for(unsigned int hI = 0; hI < histsIn.size(); ++hI){
+	    Float_t lowPhoPtVal = hist_MC_p->GetYaxis()->GetBinLowEdge(bIY+1);
+	    Float_t highPhoPtVal = hist_MC_p->GetYaxis()->GetBinLowEdge(bIY+2);	  
+	  
+	    //Get our normalizing values of nGamma
+	    for(Int_t bIX = 0; bIX < gammaHists[hI]->GetXaxis()->GetNbins(); ++bIX){
+	      Float_t center = gammaHists[hI]->GetXaxis()->GetBinCenter(bIX+1);
+
+	      if(center < lowPhoPtVal) continue;
+	      if(center >= highPhoPtVal) continue;	      
+
+	      gammaNormVal[hI] += gammaHists[hI]->GetBinContent(bIX+1);
+	    }
+	    
+	    //Construct our histograms
+	    for(Int_t bIX = 0; bIX < hist_MC_p->GetXaxis()->GetNbins(); ++bIX){
+	      histsToConstruct[hI]->SetBinContent(bIX+1, histsIn[hI]->GetBinContent(bIX+1, bIY+1));
+	      histsToConstruct[hI]->SetBinError(bIX+1, histsIn[hI]->GetBinError(bIX+1, bIY+1));
+	    }
+
+	    //Normalize our histograms
+	    histsToConstruct[hI]->Sumw2();
+	    histsToConstruct[hI]->Scale(1.0/gammaNormVal[hI]);	    
+	  }
+	}
+	
+	std::vector<TH1F*> hists_p = {hist1D_Data_p, hist1D_MC_p, hist1D_MCTRUTH_p};
+	std::vector<std::string> legLabels = {dataLabel, mcLabel, mcTruthLabel};
+	std::vector<std::string> tempGlobalLabels = globalLabels;
+	std::vector<bool> permaTex;
+	for(unsigned int gI = 0; gI < tempGlobalLabels.size(); ++gI){
+	  permaTex.push_back(false);
+	}
+
+	if(!isPP){
+	  tempGlobalLabels.push_back(labelData.GetConfigVal(centStr));
+	  permaTex.push_back(true);
+	}
+      
+	tempGlobalLabels.push_back(labelData.GetConfigVal("GammaPt" + std::to_string(bIY)));
+	permaTex.push_back(true);
+
+	tempGlobalLabels.push_back(labelData.GetConfigVal("GlobalJtPt0"));
+	permaTex.push_back(false);        
+
+	if(gammaDRStr.size() != 0){
+	  tempGlobalLabels.push_back(gammaDRStr);
+	  permaTex.push_back(false);
+	}          	
+      	
+	std::string canvStr = "pdfDir/" + dateStr + "/photonPt" + observables[oI] + "VCent_" + centStr + "_GammaPt" + std::to_string(bIY) + "_R" + std::to_string(jetR) + "_DataMC_" + dateStr + "." + saveExt;
+	//Note that doRenorm is listed false
+	plotDataMC(canvStr, hists_p, legLabels, tempGlobalLabels, permaTex, plotConfig_p, upperObsStr, false, doGlobalDebug);       	
+	
+	delete hist1D_MC_p;
+	delete hist1D_MCTRUTH_p;
+	delete hist1D_Data_p;
+      }
+    }
+
+    /*
     photonPtVCentEta_MC_p[cI][0] = (TH1F*)inMCFile_p->Get((centStr + "/photonPtVCentEta_" + centStr + "_AbsEta" + std::to_string(nGammaEtaBinsSub) + "_h").c_str());
 
-    photonPtVCentEta_MC_p[cI][0]->Sumw2();
-    photonPtVCentEta_MC_p[cI][0]->Scale(1./photonPtVCentEta_MC_p[cI][0]->Integral());
-    photonPtVCentEta_MC_p[cI][0]->GetYaxis()->SetTitle("Unity normalization");
-    
-    photonPtVCentEta_Data_p[cI][0] = (TH1F*)inDataFile_p->Get((centStr + "/photonPtVCentEta_" + centStr + "_AbsEta" + std::to_string(nGammaEtaBinsSub) + "_h").c_str());
-
-    photonPtVCentEta_Data_p[cI][0]->Sumw2();
-    photonPtVCentEta_Data_p[cI][0]->Scale(1./photonPtVCentEta_Data_p[cI][0]->Integral());
-    photonPtVCentEta_Data_p[cI][0]->GetYaxis()->SetTitle("Unity normalization");
-    
-    for(Int_t pI = 0; pI < nGammaPtBinsSub; ++pI){
-      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-      photonSubJtDPhiVCentPt_MC_p[cI][pI] = (TH1F*)inMCFile_p->Get((centStr + "/photonSubJtDPhiVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_GlobalJtPt0_h").c_str());
-      if(isPP) photonGenJtDPhiVCentPt_MC_p[cI][pI] = (TH1F*)inMCFile_p->Get((centStr + "/photonGenJtDPhiVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_GlobalJtPt0_h").c_str());
-
-      photonSubJtDPhiVCentPt_Data_p[cI][pI] = (TH1F*)inDataFile_p->Get((centStr + "/photonSubJtDPhiVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_GlobalJtPt0_h").c_str());
-
-      photonSubJtEtaVCentPt_MC_p[cI][pI] = (TH1F*)inMCFile_p->Get((centStr + "/photonSubJtEtaVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_GlobalJtPt0_DPhi0_h").c_str());
-      photonSubJtEtaVCentPt_Data_p[cI][pI] = (TH1F*)inDataFile_p->Get((centStr + "/photonSubJtEtaVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_GlobalJtPt0_DPhi0_h").c_str());
-
-      photonSubJtXJVCentPt_MC_p[cI][pI] = (TH1F*)inMCFile_p->Get((centStr + "/photonSubJtXJVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_GlobalJtPt0_DPhi0_h").c_str());
-      if(isPP) photonGenJtXJVCentPt_MC_p[cI][pI] = (TH1F*)inMCFile_p->Get((centStr + "/photonGenJtXJVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_GlobalJtPt0_DPhi0_h").c_str());
+      photonPtVCentEta_MC_p[cI][0]->Sumw2();
+      photonPtVCentEta_MC_p[cI][0]->Scale(1./photonPtVCentEta_MC_p[cI][0]->Integral());
+      photonPtVCentEta_MC_p[cI][0]->GetYaxis()->SetTitle("Unity normalization");
+      
+      photonPtVCentEta_Data_p[cI][0] = (TH1F*)inDataFile_p->Get((centStr + "/photonPtVCentEta_" + centStr + "_AbsEta" + std::to_string(nGammaEtaBinsSub) + "_h").c_str());
+      
+      photonPtVCentEta_Data_p[cI][0]->Sumw2();
+      photonPtVCentEta_Data_p[cI][0]->Scale(1./photonPtVCentEta_Data_p[cI][0]->Integral());
+      photonPtVCentEta_Data_p[cI][0]->GetYaxis()->SetTitle("Unity normalization");
+      
+      for(Int_t pI = 0; pI < nGammaPtBinsSub; ++pI){
+	photonSubJtDPhiVCentPt_MC_p[cI][pI] = (TH1F*)inMCFile_p->Get((centStr + "/photonSubJtDPhiVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_GlobalJtPt0_h").c_str());
+	if(isPP) photonGenJtDPhiVCentPt_MC_p[cI][pI] = (TH1F*)inMCFile_p->Get((centStr + "/photonGenJtDPhiVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_GlobalJtPt0_h").c_str());
+	
+	photonSubJtDPhiVCentPt_Data_p[cI][pI] = (TH1F*)inDataFile_p->Get((centStr + "/photonSubJtDPhiVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_GlobalJtPt0_h").c_str());
+	
+	photonSubJtEtaVCentPt_MC_p[cI][pI] = (TH1F*)inMCFile_p->Get((centStr + "/photonSubJtEtaVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_GlobalJtPt0_DPhi0_h").c_str());
+	photonSubJtEtaVCentPt_Data_p[cI][pI] = (TH1F*)inDataFile_p->Get((centStr + "/photonSubJtEtaVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_GlobalJtPt0_DPhi0_h").c_str());
+	
+	photonSubJtXJVCentPt_MC_p[cI][pI] = (TH1F*)inMCFile_p->Get((centStr + "/photonSubJtXJVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_GlobalJtPt0_DPhi0_h").c_str());
+	if(isPP) photonGenJtXJVCentPt_MC_p[cI][pI] = (TH1F*)inMCFile_p->Get((centStr + "/photonGenJtXJVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_GlobalJtPt0_DPhi0_h").c_str());
       photonSubJtXJVCentPt_Data_p[cI][pI] = (TH1F*)inDataFile_p->Get((centStr + "/photonSubJtXJVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_GlobalJtPt0_DPhi0_h").c_str());
 
       photonSubMultiJtXJVCentPt_MC_p[cI][pI] = (TH1F*)inMCFile_p->Get((centStr + "/photonSubMultiJtXJVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_GlobalJtPt0_DPhi0_MultiJt0_h").c_str());
@@ -637,16 +760,13 @@ int gdjDataMCRawPlotter(std::string inConfigFileName)
       if(isPP) hists_p.push_back(photonGenMultiJtXJJVCentPt_MC_p[cI][pI]);
       plotDataMC("pdfDir/" + dateStr + "/photonSubMultiJtXJJVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_R" + std::to_string(jetR) + "_DataMC_" + dateStr + ".pdf", hists_p, legLabels, tempGlobalLabels, permaTex, plotConfig_p, "MULTIJTXJJ", false, doGlobalDebug);
 
-      
-      
       hists_p = {photonSubMultiJtDPhiJJVCentPt_Data_p[cI][pI], photonSubMultiJtDPhiJJVCentPt_MC_p[cI][pI]};
       if(isPP) hists_p.push_back(photonGenMultiJtDPhiJJVCentPt_MC_p[cI][pI]);
       plotDataMC("pdfDir/" + dateStr + "/photonSubMultiJtDPhiJJVCentPt_" + centStr + "_GammaPt" + std::to_string(pI) + "_R" + std::to_string(jetR) + "_DataMC_" + dateStr + ".pdf", hists_p, legLabels, tempGlobalLabels, permaTex, plotConfig_p, "MULTIJTDPHIJJ", false, doGlobalDebug);
     }
+    */  
   }
 
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-  
   inMCFile_p->Close();
   delete inMCFile_p;
 

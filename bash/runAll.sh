@@ -20,22 +20,22 @@ multiJtDPhi=("pi/2" "2pi/3" "3pi/4" "5pi/6" "7pi/8")
 #genMinPt=(15 25)
 genMinPt=(15)
 
-nomNPtBins=25
+nomNPtBins=26
 #customBinsBase=25,30,36,44,53,64,77,93,112,135,163,196,236,285,344,415,500
 #customBinsBase=40,44,53,64,77,93,112,135,163,196,236,285,344,415,500
 #YJ Bins
-customBinsBase=20,25,30,35,40,45,50,56,63,70,79,89,100,112,125,141,158,177,199,223,251,281,316,354,398,501
+customBinsBase=15,20,25,30,35,40,45,50,56,63,70,79,89,100,112,125,141,158,177,199,223,251,281,316,354,398,501
 
 #Overriding the nominal for quick tests
 #files=(ntupleToHist_PPData)
 #files=(ntupleToHist_PbPbMC ntupleToHist_PbPbData ntupleToHist_PPMC ntupleToHist_PPData)
-files=(ntupleToHist_PPMC)
+files=(ntupleToHist_PPData)
 rs=(2)
 #ptMins=(30 36)
 #ptMinsR2=(30)
 #ptMinsR4=(36)
-ptMinsR2=(20)
-ptMinsR2Reco=(35)
+ptMinsR2=(15)
+ptMinsR2Reco=(30)
 
 ptMinsR4=(35)
 mixJtDRR2=(0.4)
@@ -44,7 +44,7 @@ mixJtDRR4=(0.8)
 dPhi=("pi/2")
 #multiJtDPhi=("pi/2" "7pi/8")
 #multiJtDPhi=("7pi/8")
-multiJtDPhi=("pi/2")
+multiJtDPhi=("7pi/8")
 
 for i in ${rs[@]}
 do

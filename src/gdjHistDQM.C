@@ -92,7 +92,7 @@ int gdjHistDQM(std::string inConfigFileName)
   globalDebugHandler gDebug;
   const bool doGlobalDebug = gDebug.GetDoGlobalDebug();
 
-  if(doGlobalDebug) std::cout << "FILE, LINe: " << __FILE__ << ", " << __LINE__ << std::endl;
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   checkMakeDir check;
   if(!check.checkFileExt(inConfigFileName, ".config")) return 1;
@@ -101,7 +101,7 @@ int gdjHistDQM(std::string inConfigFileName)
   check.doCheckMakeDir("pdfDir");
   check.doCheckMakeDir("pdfDir/" + dateStr);
 
-  if(doGlobalDebug) std::cout << "FILE, LINe: " << __FILE__ << ", " << __LINE__ << std::endl;
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
   TEnv* config_p = new TEnv(inConfigFileName.c_str());
   std::vector<std::string> necessaryParams = {"INOLDFILENAME",
@@ -116,6 +116,8 @@ int gdjHistDQM(std::string inConfigFileName)
 
   std::vector<std::string> stringsToSubOut, stringsToSubIn;
 
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+  
   for(int i = 0; i < 100; ++i){
     std::string stringToSubOut = config_p->GetValue(("STRINGTOSUBOUT." + std::to_string(i)).c_str(), "");
     std::string stringToSubIn = config_p->GetValue(("STRINGTOSUBIN." + std::to_string(i)).c_str(), "");
@@ -130,6 +132,8 @@ int gdjHistDQM(std::string inConfigFileName)
   if(!check.checkFileExt(inOldFileName, ".root")) return 1;
   if(!check.checkFileExt(inNewFileName, ".root")) return 1;
 
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+  
   std::vector<std::string> classFilter = {"TH1F", "TH1D", "TH2F", "TH2D"};  
   std::vector<std::string> goodObjectsOld, goodObjectsNew;
   std::vector<std::string> objectClassOld, objectClassNew;
@@ -138,6 +142,8 @@ int gdjHistDQM(std::string inConfigFileName)
   TIter nextOld(oldFile_p->GetListOfKeys());
   TKey* key = nullptr;
 
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+  
   while((key=(TKey*)nextOld())){
     const std::string name = key->GetName();
     const std::string className = key->GetClassName();
@@ -164,6 +170,8 @@ int gdjHistDQM(std::string inConfigFileName)
   oldFile_p->Close();
   delete oldFile_p;
 
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+  
   TFile* newFile_p = new TFile(inNewFileName.c_str(), "READ");
   TIter nextNew(newFile_p->GetListOfKeys());
   key = nullptr;
@@ -228,7 +236,10 @@ int gdjHistDQM(std::string inConfigFileName)
   //  const double labelSize = titleSize*0.9;
   const double yOffset = 1.5;
 
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+  
   std::vector<std::string> oldHistSkipped;
+  std::vector<std::string> histFailingBins;
   std::vector<std::string> histFailingPrecision;
   std::map<std::string, int> newHistUsedCounter;  
   for(unsigned int sI = 0; sI < goodObjectsNew.size(); ++sI){
@@ -236,6 +247,8 @@ int gdjHistDQM(std::string inConfigFileName)
   }
   
   
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
   for(unsigned int gI = 0; gI < goodObjectsOld.size(); ++gI){
     std::string newStrToFind = goodObjectsOld[gI];
     for(unsigned int sI = 0; sI < stringsToSubOut.size(); ++sI){
@@ -248,6 +261,9 @@ int gdjHistDQM(std::string inConfigFileName)
       }
     }
 
+
+    if(doGlobalDebug) std::cout << "FILE, LINE, gI/nObjects, string: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << goodObjectsOld.size() << ", " << goodObjectsOld[gI] <<  std::endl;
+    
     int pos = vectContainsStrPos(newStrToFind, &goodObjectsNew);
     if(pos < 0){
       oldHistSkipped.push_back(goodObjectsOld[gI]);
@@ -255,6 +271,8 @@ int gdjHistDQM(std::string inConfigFileName)
       continue;
     }
 
+    if(doGlobalDebug) std::cout << "FILE, LINE, gI/nObjects, string: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << goodObjectsOld.size() << ", " << goodObjectsOld[gI] <<  std::endl;
+    
     ++(newHistUsedCounter[goodObjectsNew[pos]]);
     
     TCanvas* canv_p = nullptr;
@@ -330,6 +348,7 @@ int gdjHistDQM(std::string inConfigFileName)
     canv_p->cd();
     pads_p[0]->cd();
 
+    if(doGlobalDebug) std::cout << "FILE, LINE, gI/nObjects, string: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << goodObjectsOld.size() << ", " << goodObjectsOld[gI] <<  std::endl;
     
     TH1F* histOldTH1F_p = nullptr;
     TH1F* histNewTH1F_p = nullptr;
@@ -361,6 +380,22 @@ int gdjHistDQM(std::string inConfigFileName)
       histOldTH1F_p = (TH1F*)oldFile_p->Get(goodObjectsOld[gI].c_str());
       histNewTH1F_p = (TH1F*)newFile_p->Get(goodObjectsNew[pos].c_str());
 
+      if(histOldTH1F_p->GetEntries() < TMath::Power(10,-100) || histNewTH1F_p->GetEntries() < TMath::Power(10,-100)){
+	std::cout << "GDJHISTDQM: Skipping \'" << goodObjectsOld[gI] << "\' as empty..." <<  std::endl;
+
+	for(Int_t pI = 0; pI < nPadForThisHist; ++pI){
+	  delete pads_p[pI];
+	}    
+	delete line_p;
+	delete canv_p;
+	delete leg_p;
+	delete label_p;
+	
+	continue;
+      }
+
+      if(doGlobalDebug) std::cout << "FILE, LINE, gI/nObjects, string: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << goodObjectsOld.size() << ", " << goodObjectsOld[gI] <<  std::endl;
+      
       HIJet::Style::EquipHistogram(histOldTH1F_p, 0);
       HIJet::Style::EquipHistogram(histNewTH1F_p, 1);
       
@@ -384,46 +419,93 @@ int gdjHistDQM(std::string inConfigFileName)
       if(histNewTH1F_p->GetSumw2()->fN == 0) histNewTH1F_p->Sumw2();
 
       bool allGood = true;
-      for(Int_t bIX = 0; bIX < histOldTH1F_p->GetXaxis()->GetNbins()+1; ++bIX){
-	double delta = TMath::Abs(histOldTH1F_p->GetBinContent(bIX+1) - histOldTH1F_p->GetBinContent(bIX+1));
-	if(delta > precision){allGood = false; break;}
+      bool allGoodBins = true;
+      Int_t newNBinsX = histNewTH1F_p->GetXaxis()->GetNbins();
+      Int_t oldNBinsX = histOldTH1F_p->GetXaxis()->GetNbins();
+
+      if(newNBinsX != oldNBinsX) allGoodBins = false;
+
+      if(allGoodBins){
+	for(Int_t bIX = 0; bIX < histOldTH1F_p->GetXaxis()->GetNbins()+2; ++bIX){
+	  //First check bin edges are identical within precision
+	  Float_t binLowEdgeOld = histOldTH1F_p->GetXaxis()->GetBinLowEdge(bIX+1);
+	  Float_t binLowEdgeNew = histNewTH1F_p->GetXaxis()->GetBinLowEdge(bIX+1);
+
+	  if(TMath::Abs(binLowEdgeOld - binLowEdgeNew) > precision){
+	    std::cout << "Bin edges dont match. Precision test failure" << std::endl;
+	    allGoodBins = false;
+	    break;
+	  }
+	  
+	  if(bIX < histOldTH1F_p->GetXaxis()->GetNbins()+1){
+	    double delta = TMath::Abs(histOldTH1F_p->GetBinContent(bIX+1) - histOldTH1F_p->GetBinContent(bIX+1));
+	    if(delta > precision){allGood = false; break;}
+	  }
+
+	}
+      }
+
+      if(!allGoodBins){
+	std::cout << "Histogram \'" << goodObjectsOld[gI] << "\' fails check of binning" << std::endl;
+	histFailingBins.push_back(goodObjectsOld[gI]);
       }
       
       if(!allGood){
 	std::cout << "Histogram \'" << goodObjectsOld[gI] << "\' fails check at precision \'" << precision << "\'" << std::endl;
 	histFailingPrecision.push_back(goodObjectsOld[gI]);
       }
-      
-      histNewTH1F_p->Divide(histOldTH1F_p);
+
       canv_p->cd();
       pads_p[1]->cd();
 
-      histNewTH1F_p->GetYaxis()->SetTitle("New/Old");
-      histNewTH1F_p->SetMaximum(1.25);
-      histNewTH1F_p->SetMinimum(0.75);
+      if(allGoodBins){
+	histNewTH1F_p->Divide(histOldTH1F_p);	
+	histNewTH1F_p->GetYaxis()->SetTitle("New/Old");
+	histNewTH1F_p->SetMaximum(1.25);
+	histNewTH1F_p->SetMinimum(0.75);
+	
+	histNewTH1F_p->GetXaxis()->SetTitleFont(titleFont);
+	histNewTH1F_p->GetYaxis()->SetTitleFont(titleFont);
+	histNewTH1F_p->GetXaxis()->SetLabelFont(titleFont);
+	histNewTH1F_p->GetYaxis()->SetLabelFont(titleFont);
+	
+	histNewTH1F_p->GetXaxis()->SetTitleSize(titleSize*(1.0 - padSplit1D)/padSplit1D);
+	histNewTH1F_p->GetYaxis()->SetTitleSize(titleSize*(1.0 - padSplit1D)/padSplit1D);
+	histNewTH1F_p->GetXaxis()->SetLabelSize(titleSize*(1.0 - padSplit1D)/padSplit1D);
+	histNewTH1F_p->GetYaxis()->SetLabelSize(titleSize*(1.0 - padSplit1D)/padSplit1D);
+	
+	histNewTH1F_p->GetYaxis()->SetTitleOffset(yOffset*padSplit1D/(1.0 - padSplit1D));
+	
+	histNewTH1F_p->GetYaxis()->SetNdivisions(505);
+	
+	histNewTH1F_p->DrawCopy("HIST E1 P");
 
-      histNewTH1F_p->GetXaxis()->SetTitleFont(titleFont);
-      histNewTH1F_p->GetYaxis()->SetTitleFont(titleFont);
-      histNewTH1F_p->GetXaxis()->SetLabelFont(titleFont);
-      histNewTH1F_p->GetYaxis()->SetLabelFont(titleFont);
-
-      histNewTH1F_p->GetXaxis()->SetTitleSize(titleSize*(1.0 - padSplit1D)/padSplit1D);
-      histNewTH1F_p->GetYaxis()->SetTitleSize(titleSize*(1.0 - padSplit1D)/padSplit1D);
-      histNewTH1F_p->GetXaxis()->SetLabelSize(titleSize*(1.0 - padSplit1D)/padSplit1D);
-      histNewTH1F_p->GetYaxis()->SetLabelSize(titleSize*(1.0 - padSplit1D)/padSplit1D);
-
-      histNewTH1F_p->GetYaxis()->SetTitleOffset(yOffset*padSplit1D/(1.0 - padSplit1D));
-      
-      histNewTH1F_p->GetYaxis()->SetNdivisions(505);
-      
-      histNewTH1F_p->DrawCopy("HIST E1 P");
-
-      line_p->DrawLine(histNewTH1F_p->GetBinLowEdge(1), 1.0, histNewTH1F_p->GetBinLowEdge(histNewTH1F_p->GetXaxis()->GetNbins()+1), 1.0);
+	line_p->DrawLine(histNewTH1F_p->GetBinLowEdge(1), 1.0, histNewTH1F_p->GetBinLowEdge(histNewTH1F_p->GetXaxis()->GetNbins()+1), 1.0);
+      }
+      else{
+	label_p->SetTextAlign(21);
+	label_p->DrawLatex(0.5, 0.5, "Bin mismatch; No division performed");
+	label_p->SetTextAlign(11);
+      }
     }
     else if(isStrSame(objectClassOld[gI], "TH1D")){
       histOldTH1D_p = (TH1D*)oldFile_p->Get(goodObjectsOld[gI].c_str());
       histNewTH1D_p = (TH1D*)newFile_p->Get(goodObjectsNew[pos].c_str());
- 
+
+      if(histOldTH1D_p->GetEntries() < TMath::Power(10,-100) || histNewTH1D_p->GetEntries() < TMath::Power(10,-100)){
+	std::cout << "GDJHISTDQM: Skipping \'" << goodObjectsOld[gI] << "\' as empty..." <<  std::endl;
+
+	for(Int_t pI = 0; pI < nPadForThisHist; ++pI){
+	  delete pads_p[pI];
+	}    
+	delete line_p;
+	delete canv_p;
+	delete leg_p;
+	delete label_p;
+
+	continue;
+      }
+      
       HIJet::Style::EquipHistogram(histOldTH1D_p, 0);
       HIJet::Style::EquipHistogram(histNewTH1D_p, 1);
      
@@ -447,45 +529,91 @@ int gdjHistDQM(std::string inConfigFileName)
       if(histNewTH1D_p->GetSumw2()->fN == 0) histNewTH1D_p->Sumw2();
 
       bool allGood = true;
-      for(Int_t bIX = 0; bIX < histOldTH1F_p->GetXaxis()->GetNbins()+1; ++bIX){
-	double delta = TMath::Abs(histOldTH1F_p->GetBinContent(bIX+1) - histOldTH1F_p->GetBinContent(bIX+1));
-	if(delta > precision){allGood = false; break;}
+      bool allGoodBins = true;
+      Int_t newNBinsX = histNewTH1D_p->GetXaxis()->GetNbins();
+      Int_t oldNBinsX = histOldTH1D_p->GetXaxis()->GetNbins();
+
+      if(newNBinsX != oldNBinsX) allGoodBins = false;
+
+      if(allGoodBins){
+	for(Int_t bIX = 0; bIX < histOldTH1D_p->GetXaxis()->GetNbins()+2; ++bIX){
+	  Float_t binLowEdgeOld = histOldTH1D_p->GetXaxis()->GetBinLowEdge(bIX+1);
+	  Float_t binLowEdgeNew = histNewTH1D_p->GetXaxis()->GetBinLowEdge(bIX+1);
+
+	  if(TMath::Abs(binLowEdgeOld - binLowEdgeNew) > precision){
+	    std::cout << "Bin edges dont match. Precision test failure" << std::endl;
+	    allGoodBins = false;
+	    break;
+	  }
+
+	  if(bIX < histOldTH1D_p->GetXaxis()->GetNbins()+1){
+	    double delta = TMath::Abs(histOldTH1D_p->GetBinContent(bIX+1) - histOldTH1D_p->GetBinContent(bIX+1));
+	    if(delta > precision){allGood = false; break;}
+	  }
+	}
       }
       
+      if(!allGoodBins){
+	std::cout << "Histogram \'" << goodObjectsOld[gI] << "\' fails check of binning'" << std::endl;
+	histFailingBins.push_back(goodObjectsOld[gI]);
+      }
+
       if(!allGood){
 	std::cout << "Histogram \'" << goodObjectsOld[gI] << "\' fails check at precision \'" << precision << "\'" << std::endl;
 	histFailingPrecision.push_back(goodObjectsOld[gI]);
       }
       
-      histNewTH1D_p->Divide(histOldTH1D_p);
       canv_p->cd();
       pads_p[1]->cd();
 
-      histNewTH1D_p->GetYaxis()->SetTitle("New/Old");
-      histNewTH1D_p->SetMaximum(1.25);
-      histNewTH1D_p->SetMinimum(0.75);
-
-      histNewTH1D_p->GetXaxis()->SetTitleFont(titleFont);
-      histNewTH1D_p->GetYaxis()->SetTitleFont(titleFont);
-      histNewTH1D_p->GetXaxis()->SetLabelFont(titleFont);
-      histNewTH1D_p->GetYaxis()->SetLabelFont(titleFont);
-
-      histNewTH1D_p->GetXaxis()->SetTitleSize(titleSize*(1.0 - padSplit1D)/padSplit1D);
-      histNewTH1D_p->GetYaxis()->SetTitleSize(titleSize*(1.0 - padSplit1D)/padSplit1D);
-      histNewTH1D_p->GetXaxis()->SetLabelSize(titleSize*(1.0 - padSplit1D)/padSplit1D);
-      histNewTH1D_p->GetYaxis()->SetLabelSize(titleSize*(1.0 - padSplit1D)/padSplit1D);
-
-      histNewTH1D_p->GetYaxis()->SetTitleOffset(yOffset*padSplit1D/(1.0 - padSplit1D));
-      
-      histNewTH1D_p->GetYaxis()->SetNdivisions(505);
-      
-      histNewTH1D_p->DrawCopy("HIST E1 P");    
-      line_p->DrawLine(histNewTH1D_p->GetBinLowEdge(1), 1.0, histNewTH1D_p->GetBinLowEdge(histNewTH1D_p->GetXaxis()->GetNbins()+1), 1.0);
+      if(allGoodBins){
+	histNewTH1D_p->Divide(histOldTH1D_p);
+	
+	histNewTH1D_p->GetYaxis()->SetTitle("New/Old");
+	histNewTH1D_p->SetMaximum(1.25);
+	histNewTH1D_p->SetMinimum(0.75);
+	
+	histNewTH1D_p->GetXaxis()->SetTitleFont(titleFont);
+	histNewTH1D_p->GetYaxis()->SetTitleFont(titleFont);
+	histNewTH1D_p->GetXaxis()->SetLabelFont(titleFont);
+	histNewTH1D_p->GetYaxis()->SetLabelFont(titleFont);
+	
+	histNewTH1D_p->GetXaxis()->SetTitleSize(titleSize*(1.0 - padSplit1D)/padSplit1D);
+	histNewTH1D_p->GetYaxis()->SetTitleSize(titleSize*(1.0 - padSplit1D)/padSplit1D);
+	histNewTH1D_p->GetXaxis()->SetLabelSize(titleSize*(1.0 - padSplit1D)/padSplit1D);
+	histNewTH1D_p->GetYaxis()->SetLabelSize(titleSize*(1.0 - padSplit1D)/padSplit1D);
+	
+	histNewTH1D_p->GetYaxis()->SetTitleOffset(yOffset*padSplit1D/(1.0 - padSplit1D));
+	
+	histNewTH1D_p->GetYaxis()->SetNdivisions(505);
+	
+	histNewTH1D_p->DrawCopy("HIST E1 P");    
+	line_p->DrawLine(histNewTH1D_p->GetBinLowEdge(1), 1.0, histNewTH1D_p->GetBinLowEdge(histNewTH1D_p->GetXaxis()->GetNbins()+1), 1.0);
+      }
+      else{
+	label_p->SetTextAlign(21);
+	label_p->DrawLatex(0.5, 0.5, "Bin mismatch; No division performed");
+	label_p->SetTextAlign(11);
+      }
     }
     else if(isStrSame(objectClassOld[gI], "TH2F")){
       histOldTH2F_p = (TH2F*)oldFile_p->Get(goodObjectsOld[gI].c_str());
       histNewTH2F_p = (TH2F*)newFile_p->Get(goodObjectsNew[pos].c_str());
- 
+
+      if(histOldTH2F_p->GetEntries() < TMath::Power(10,-100) || histNewTH2F_p->GetEntries() < TMath::Power(10,-100)){
+	std::cout << "GDJHISTDQM: Skipping \'" << goodObjectsOld[gI] << "\' as empty..." <<  std::endl;
+
+	for(Int_t pI = 0; pI < nPadForThisHist; ++pI){
+	  delete pads_p[pI];
+	}    
+	delete line_p;
+	delete canv_p;
+	delete leg_p;
+	delete label_p;
+	
+	continue;
+      }
+      
       HIJet::Style::EquipHistogram(histOldTH2F_p, 0);
       HIJet::Style::EquipHistogram(histNewTH2F_p, 1);
      
@@ -520,39 +648,106 @@ int gdjHistDQM(std::string inConfigFileName)
       if(histOldTH2F_p->GetSumw2()->fN == 0) histOldTH2F_p->Sumw2();
 
       bool allGood = true;
-      for(Int_t bIX = 0; bIX < histOldTH2F_p->GetXaxis()->GetNbins()+1; ++bIX){
-	for(Int_t bIY = 0; bIY < histOldTH2F_p->GetYaxis()->GetNbins()+1; ++bIY){
-	  double delta = TMath::Abs(histOldTH2F_p->GetBinContent(bIX+1, bIY+1) - histNewTH2F_p->GetBinContent(bIX+1, bIY+1));
-	  if(delta > precision){allGood = false; break;}
+      bool allGoodBins = true;
+      Int_t newNBinsX = histNewTH2F_p->GetXaxis()->GetNbins();
+      Int_t oldNBinsX = histOldTH2F_p->GetXaxis()->GetNbins();
+      Int_t newNBinsY = histNewTH2F_p->GetYaxis()->GetNbins();
+      Int_t oldNBinsY = histOldTH2F_p->GetYaxis()->GetNbins();
+
+      if(newNBinsX != oldNBinsX) allGoodBins = false;
+      if(newNBinsY != oldNBinsY) allGoodBins = false;
+
+      if(allGoodBins){
+	for(Int_t bIX = 0; bIX < histOldTH2F_p->GetXaxis()->GetNbins()+2; ++bIX){
+	  Float_t binLowEdgeOld = histOldTH2F_p->GetXaxis()->GetBinLowEdge(bIX+1);
+	  Float_t binLowEdgeNew = histNewTH2F_p->GetXaxis()->GetBinLowEdge(bIX+1);
+
+	  if(TMath::Abs(binLowEdgeOld - binLowEdgeNew) > precision){
+	    std::cout << "Bin edges dont match. Precision test failure" << std::endl;
+	    allGoodBins = false;
+	    break;
+	  }
+	  
+	  for(Int_t bIY = 0; bIY < histOldTH2F_p->GetYaxis()->GetNbins()+2; ++bIY){
+	    if(bIX == 0){
+	      binLowEdgeOld = histOldTH2F_p->GetYaxis()->GetBinLowEdge(bIY+1);
+	      binLowEdgeNew = histNewTH2F_p->GetYaxis()->GetBinLowEdge(bIY+1);
+	      
+	      if(TMath::Abs(binLowEdgeOld - binLowEdgeNew) > precision){
+		std::cout << "Bin edges dont match. Precision test failure" << std::endl;
+		allGoodBins = false;
+		break;
+	      }
+	    }	    
+
+	    if(bIX < histOldTH2F_p->GetXaxis()->GetNbins()+1 && bIY < histOldTH2F_p->GetYaxis()->GetNbins()+1){           
+	      double delta = TMath::Abs(histOldTH2F_p->GetBinContent(bIX+1, bIY+1) - histNewTH2F_p->GetBinContent(bIX+1, bIY+1));
+	      if(delta > precision){allGood = false; break;}
+	    }
+	  }
+
+	  if(!allGoodBins) break;
+	  if(!allGood) break;
 	}
       }
 	
+      if(!allGoodBins){
+	std::cout << "Histogram \'" << goodObjectsOld[gI] << "\' fails check of binning" << std::endl;
+	histFailingBins.push_back(goodObjectsOld[gI]);
+      }
+
       if(!allGood){
 	std::cout << "Histogram \'" << goodObjectsOld[gI] << "\' fails check at precision \'" << precision << "\'" << std::endl;
 	histFailingPrecision.push_back(goodObjectsOld[gI]);
       }
       
-      histNewTH2F_p->Divide(histOldTH2F_p);
       canv_p->cd();
       pads_p[2]->cd();
 
-      histNewTH2F_p->SetTitle("New/Old");
-      histNewTH2F_p->SetMaximum(1.25);
-      histNewTH2F_p->SetMinimum(0.75);
-
-      histNewTH2F_p->GetXaxis()->SetTitleFont(titleFont);
-      histNewTH2F_p->GetYaxis()->SetTitleFont(titleFont);
-      histNewTH2F_p->GetXaxis()->SetLabelFont(titleFont);
-      histNewTH2F_p->GetYaxis()->SetLabelFont(titleFont);
-      
-      histNewTH2F_p->GetYaxis()->SetNdivisions(505);
-      
-      histNewTH2F_p->DrawCopy("COLZ");    
+      if(allGoodBins){
+	histNewTH2F_p->Divide(histOldTH2F_p);
+	
+	histNewTH2F_p->SetTitle("New/Old");
+	histNewTH2F_p->SetMaximum(1.25);
+	histNewTH2F_p->SetMinimum(0.75);
+	
+	histNewTH2F_p->GetXaxis()->SetTitleFont(titleFont);
+	histNewTH2F_p->GetYaxis()->SetTitleFont(titleFont);
+	histNewTH2F_p->GetXaxis()->SetLabelFont(titleFont);
+	histNewTH2F_p->GetYaxis()->SetLabelFont(titleFont);
+	
+	histNewTH2F_p->GetYaxis()->SetNdivisions(505);
+	
+	histNewTH2F_p->DrawCopy("COLZ");
+      }
+      else{
+	label_p->SetTextAlign(21);
+	label_p->DrawLatex(0.5, 0.5, "Bin mismatch; No division performed");
+	label_p->SetTextAlign(11);
+      }
     }
     else if(isStrSame(objectClassOld[gI], "TH2D")){
       histOldTH2D_p = (TH2D*)oldFile_p->Get(goodObjectsOld[gI].c_str());
       histNewTH2D_p = (TH2D*)newFile_p->Get(goodObjectsNew[pos].c_str());
- 
+
+      if(doGlobalDebug) std::cout << "FILE, LINE, gI/nObjects, string: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << goodObjectsOld.size() << ", " << goodObjectsOld[gI] <<  std::endl;
+      
+      if(histOldTH2D_p->GetEntries() < TMath::Power(10,-100) || histNewTH2D_p->GetEntries() < TMath::Power(10,-100)){
+	std::cout << "GDJHISTDQM: Skipping \'" << goodObjectsOld[gI] << "\' as empty..." <<  std::endl;
+
+	for(Int_t pI = 0; pI < nPadForThisHist; ++pI){
+	  delete pads_p[pI];
+	}    
+	delete line_p;
+	delete canv_p;
+	delete leg_p;
+	delete label_p;
+	
+	continue;
+      }
+
+      if(doGlobalDebug) std::cout << "FILE, LINE, gI/nObjects, string: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << goodObjectsOld.size() << ", " << goodObjectsOld[gI] <<  std::endl;
+    
       HIJet::Style::EquipHistogram(histOldTH2D_p, 0);
       HIJet::Style::EquipHistogram(histNewTH2D_p, 1);
      
@@ -575,39 +770,103 @@ int gdjHistDQM(std::string inConfigFileName)
       if(histNewTH2D_p->GetSumw2()->fN == 0) histNewTH2D_p->Sumw2();
       if(histOldTH2D_p->GetSumw2()->fN == 0) histOldTH2D_p->Sumw2();
 
+      if(doGlobalDebug) std::cout << "FILE, LINE, gI/nObjects, string: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << goodObjectsOld.size() << ", " << goodObjectsOld[gI] <<  std::endl;
+
       bool allGood = true;
-      for(Int_t bIX = 0; bIX < histOldTH2D_p->GetXaxis()->GetNbins()+1; ++bIX){
-	for(Int_t bIY = 0; bIY < histOldTH2D_p->GetYaxis()->GetNbins()+1; ++bIY){
-	  double delta = TMath::Abs(histOldTH2D_p->GetBinContent(bIX+1, bIY+1) - histNewTH2D_p->GetBinContent(bIX+1, bIY+1));
-	  if(delta > precision){allGood = false; break;}
+      bool allGoodBins = true;
+      Int_t newNBinsX = histNewTH2D_p->GetXaxis()->GetNbins();
+      Int_t oldNBinsX = histOldTH2D_p->GetXaxis()->GetNbins();
+      Int_t newNBinsY = histNewTH2D_p->GetYaxis()->GetNbins();
+      Int_t oldNBinsY = histOldTH2D_p->GetYaxis()->GetNbins();
+
+      if(doGlobalDebug) std::cout << "FILE, LINE, gI/nObjects, string: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << goodObjectsOld.size() << ", " << goodObjectsOld[gI] <<  std::endl;
+      
+      if(newNBinsX != oldNBinsX) allGoodBins = false;
+      if(newNBinsY != oldNBinsY) allGoodBins = false;
+
+      if(doGlobalDebug) std::cout << "FILE, LINE, gI/nObjects, string: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << goodObjectsOld.size() << ", " << goodObjectsOld[gI] <<  std::endl;
+      
+      if(allGoodBins){
+	if(doGlobalDebug) std::cout << "FILE, LINE, gI/nObjects, string: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << goodObjectsOld.size() << ", " << goodObjectsOld[gI] <<  std::endl;
+
+	for(Int_t bIX = 0; bIX < histOldTH2D_p->GetXaxis()->GetNbins()+2; ++bIX){
+	  Float_t binLowEdgeOld = histOldTH2D_p->GetXaxis()->GetBinLowEdge(bIX+1);
+	  Float_t binLowEdgeNew = histNewTH2D_p->GetXaxis()->GetBinLowEdge(bIX+1);
+
+	  if(TMath::Abs(binLowEdgeOld - binLowEdgeNew) > precision){
+	    std::cout << "Bin edges dont match. Precision test failure" << std::endl;
+	    allGoodBins = false;
+	    break;
+	  }
+
+	  for(Int_t bIY = 0; bIY < histOldTH2D_p->GetYaxis()->GetNbins()+2; ++bIY){
+
+	    if(bIX == 0){
+	      binLowEdgeOld = histOldTH2D_p->GetYaxis()->GetBinLowEdge(bIY+1);
+	      binLowEdgeNew = histNewTH2D_p->GetYaxis()->GetBinLowEdge(bIY+1);
+	      
+	      if(TMath::Abs(binLowEdgeOld - binLowEdgeNew) > precision){
+		std::cout << "Bin edges dont match. Precision test failure" << std::endl;
+		allGoodBins = false;
+		break;
+	      }
+	    }	    
+
+	    if(bIX < histOldTH2D_p->GetXaxis()->GetNbins()+1 && bIY < histOldTH2D_p->GetYaxis()->GetNbins()+1){           	      
+	      double delta = TMath::Abs(histOldTH2D_p->GetBinContent(bIX+1, bIY+1) - histNewTH2D_p->GetBinContent(bIX+1, bIY+1));
+	      if(delta > precision){allGood = false; break;}
+	    }
+	  }
+
+	  if(!allGoodBins) break;
+
+	  if(!allGood) break;
 	}
-      }
+
+	if(doGlobalDebug) std::cout << "FILE, LINE, gI/nObjects, string: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << goodObjectsOld.size() << ", " << goodObjectsOld[gI] <<  std::endl;
 	
+      }      
+	
+      if(!allGoodBins){
+	std::cout << "Histogram \'" << goodObjectsOld[gI] << "\' fails check of binning" << std::endl;
+	histFailingBins.push_back(goodObjectsOld[gI]);
+      }
+
       if(!allGood){
 	std::cout << "Histogram \'" << goodObjectsOld[gI] << "\' fails check at precision \'" << precision << "\'" << std::endl;
 	histFailingPrecision.push_back(goodObjectsOld[gI]);
       }
+
+      if(doGlobalDebug) std::cout << "FILE, LINE, gI/nObjects, string: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << goodObjectsOld.size() << ", " << goodObjectsOld[gI] <<  std::endl;
       
-      histNewTH2D_p->Divide(histOldTH2D_p);
       canv_p->cd();
       pads_p[2]->cd();
 
-      histNewTH2D_p->SetTitle("New/Old");
-      histNewTH2D_p->SetMaximum(1.25);
-      histNewTH2D_p->SetMinimum(0.75);
+      if(allGoodBins){
+	histNewTH2D_p->Divide(histOldTH2D_p);
+	
+	histNewTH2D_p->SetTitle("New/Old");
+	histNewTH2D_p->SetMaximum(1.25);
+	histNewTH2D_p->SetMinimum(0.75);
+	
+	histNewTH2D_p->GetXaxis()->SetTitleFont(titleFont);
+	histNewTH2D_p->GetYaxis()->SetTitleFont(titleFont);
+	histNewTH2D_p->GetXaxis()->SetLabelFont(titleFont);
+	histNewTH2D_p->GetYaxis()->SetLabelFont(titleFont);
+	
+	histNewTH2D_p->GetYaxis()->SetNdivisions(505);
+	
+	histNewTH2D_p->DrawCopy("COLZ");    
+      }
+      else{
+	label_p->SetTextAlign(21);
+	label_p->DrawLatex(0.5, 0.5, "Bin mismatch; No division performed");
+	label_p->SetTextAlign(11);
+      }
 
-      histNewTH2D_p->GetXaxis()->SetTitleFont(titleFont);
-      histNewTH2D_p->GetYaxis()->SetTitleFont(titleFont);
-      histNewTH2D_p->GetXaxis()->SetLabelFont(titleFont);
-      histNewTH2D_p->GetYaxis()->SetLabelFont(titleFont);
-      
-      histNewTH2D_p->GetYaxis()->SetNdivisions(505);
-      
-      histNewTH2D_p->DrawCopy("COLZ");    
     }
 
 
-    delete line_p;
     
     gPad->SetTicks();
     gStyle->SetOptStat(0);
@@ -622,11 +881,14 @@ int gdjHistDQM(std::string inConfigFileName)
     for(Int_t pI = 0; pI < nPadForThisHist; ++pI){
       delete pads_p[pI];
     }    
+    delete line_p;
     delete canv_p;
     delete leg_p;
     delete label_p;
   }
 
+  if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+  
   oldFile_p->Close();
   delete oldFile_p;
 
@@ -640,6 +902,10 @@ int gdjHistDQM(std::string inConfigFileName)
   for(unsigned int sI = 0; sI < oldHistSkipped.size(); ++sI){
     std::cout << " " << oldHistSkipped[sI] << std::endl;
   }
+  std::cout << "Histograms failing bin comparisons: " << std::endl;
+  for(unsigned int vI = 0; vI < histFailingBins.size(); ++vI){
+    std::cout << " " << histFailingBins[vI] << std::endl;
+  }  
   std::cout << "Histograms failing precision comparisons: " << std::endl;
   for(unsigned int vI = 0; vI < histFailingPrecision.size(); ++vI){
     std::cout << " " << histFailingPrecision[vI] << std::endl;
