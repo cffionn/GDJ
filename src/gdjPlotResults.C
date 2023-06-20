@@ -78,9 +78,11 @@ std::vector<std::vector<Double_t> > getSyst(TFile* histFile_p, TH1D* nominalHist
 {
   std::vector<std::vector<Double_t> > systVals;
 
-  if(doDebug) std::cout << __FILE__ << ", " << __LINE__ << std::endl;
+  if(doDebug) std::cout << __FILE__ << ", " << __LINE__ << ", systHistNames.size: " << systHistNames.size() << std::endl;
 
   for(unsigned int jI = 0; jI < systHistNames.size(); ++jI){
+    if(doDebug) std::cout << __FILE__ << ", " << __LINE__ << ", jI/nSystHist = " << jI << "/" << systHistNames.size() << ": " << systHistNames[jI] << std::endl;  
+
     TH2D* temp2D_p = nullptr;
     TH1D* temp1D_p = (TH1D*)nominalHist_p->Clone("temp1D_p");
     for(Int_t bIX = 0; bIX < temp1D_p->GetXaxis()->GetNbins(); ++bIX){
@@ -1625,7 +1627,7 @@ int gdjPlotResults(std::string inConfigFileName)
       
       std::vector<std::string> labelsAlt;
       std::vector<std::string> labelsTemp = getLabels(inPbPbFileConfig_p, pbpbHist_p, &labelMap, &labelsAlt);
-      std::vector<std::string> labels = {"#bf{#it{ATLAS Preliminary}}", "2018 Pb+Pb 1.72 nb^{-1}", "2017 #it{pp} 260 pb^{-1}", "#sqrt{s} = 5.02 TeV"};
+      std::vector<std::string> labels = {"#bf{#it{ATLAS Internal}}", "2018 Pb+Pb 1.72 nb^{-1}", "2017 #it{pp} 260 pb^{-1}", "#sqrt{s} = 5.02 TeV"};
     
       for(unsigned int lI = 0; lI < labelsTemp.size(); ++lI){
 	if(isStrSame(labelsTemp[lI], "h")) continue;
