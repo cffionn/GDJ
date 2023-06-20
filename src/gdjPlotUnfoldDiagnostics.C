@@ -1347,7 +1347,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 
 	  if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
 	  
-	  for(Int_t i = 1; i < nIterForLoop; ++i){
+	  for(Int_t i = 1; i < nIterForLoop+1; ++i){
 	    stringsForLeg_p.push_back("Unfolded, " + std::to_string(i));
 	    histsForLeg_p.push_back(unfold_p[gI][i]);
 	    legFillStr.push_back("P L");
@@ -1418,7 +1418,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	    refold_p[gI][i]->SetMarkerSize(0.00001);
 	    refold_p[gI][i]->SetLineStyle(2);
 	  }
-	  for(Int_t i = 1; i < nIterForLoop; ++i){unfold_p[gI][i]->DrawCopy("HIST E1 P SAME");}
+	  for(Int_t i = 1; i < nIterForLoop+1; ++i){unfold_p[gI][i]->DrawCopy("HIST E1 P SAME");}
 	  
 	  canvBest_p->cd();
 	  padsBest_p[0]->cd();
@@ -1430,7 +1430,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  if(doLogY || pI == 0) gPad->SetLogy();
 	
 	  std::vector<double> deltaVals;
-	  for(Int_t i = 1; i < nIterForLoop; ++i){
+	  for(Int_t i = 1; i < nIterForLoop+1; ++i){
 	    bool isGood = false;
 	    if(i == termPos) isGood = true;	    
 	    if(!isGood) continue;
@@ -1457,7 +1457,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  canv_p->cd();
 	  pads_p[1]->cd();    
 	  
-	  for(Int_t i = 1; i < nIterForLoop; ++i){
+	  for(Int_t i = 1; i < nIterForLoop+1; ++i){
 	    TH1D* unfoldClone_p = (TH1D*)unfold_p[gI][i]->Clone("tempClone");
 	    
 	    unfoldClone_p->Divide(reco_p[gI]);
@@ -1522,8 +1522,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	    if(i == termPos){
 	      Float_t tempOpacity = HIJet::Style::GetOpacity(i-1);
 
-	      if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIterForLoop+1 << ", " << termPos << std::endl;
-
+	      if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIterForLoop+1 << ", " << termPos << ", " << deltaVals.size() << std::endl;
+	   
 	      drawBoxAdjacentIterRel(padsBest_p[1], refoldClone_p, tempOpacity, &deltaVals);
 	      if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIterForLoop+1 << std::endl;
 	    }
@@ -1542,7 +1542,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  canv_p->cd();
 	  pads_p[2]->cd();
 	
-	  for(Int_t i = 1; i < nIterForLoop; ++i){
+	  for(Int_t i = 1; i < nIterForLoop+1; ++i){
 	    TH1D* unfoldClone_p = (TH1D*)unfold_p[gI][i]->Clone("tempClone");
 	    
 	    unfoldClone_p->Divide(truth_p[gI]);	
