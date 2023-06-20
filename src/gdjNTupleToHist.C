@@ -234,6 +234,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 					      "DOSTRICTMIX",
                                               "ISPP",
 					      "ISMC",
+					      "EXCLUDETRUTHINDUCEDFAKE",
 					      "KEEPRESPONSETREE",
 					      "CENTBINS",
 					      "DOPTISOCORRECTION",
@@ -551,8 +552,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
       signalMapCounterPost[key] = 0;
     }
   }  
+
   
   const bool isMC = config_p->GetValue("ISMC", 0);
+  const bool excludeTruthInducedFake = config_p->GetValue("EXCLUDETRUTHINDUCEDFAKE", 0);
   const bool keepResponseTree = config_p->GetValue("KEEPRESPONSETREE", 0);
   
   //multiple files are possibly input; check if input is dir or file, and create vector of filenames
@@ -1031,11 +1034,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
     std::cout << "ERROR: systStrVect size \'" << systStrVect.size() << "\' does not match size of systTypeVect, \'" << systTypeVect.size() << "\'. All declared syst must have corresponding type. return 1" << std::endl;
     return 1; 
   }
-
-  //FOR TESTING ONLY
-  systStrVect = {"NOMINAL"};
-  systTypeVect = {"NOMINAL"};
-  
 
   Bool_t is5050FilledHist;
   Int_t sampleTag;
@@ -2236,8 +2234,13 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   
-  int nTotal = 0;
-  int nContinue = 0;
+  //  int nTotal = 0;
+
+  std::vector<int> truthInducedFakeExclude, nTotal;
+  for(unsigned int cI = 0; cI < nCentBins; ++cI){
+    truthInducedFakeExclude.push_back(0);
+    nTotal.push_back(0);
+  }
   
   std::cout << "Begin processing files..." << std::endl;
   for(unsigned int fileI = 0; fileI < inROOTFileNames.size(); ++fileI){
@@ -2314,11 +2317,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
       inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_etajes_jet_phi").c_str(), 1);
       
       for(Int_t jI = 0; jI < nJESSys; ++jI){
-	inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_etajes_jet_pt_sys_JES_" + std::to_string(jI)).c_str(), 1);
+	inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_etajes_jet_pt_sys_JESUp_" + std::to_string(jI)).c_str(), 1);
       }
       
       for(Int_t jI = 0; jI < nJERSys; ++jI){
-	inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_etajes_jet_pt_sys_JER_" + std::to_string(jI)).c_str(), 1);
+	inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_etajes_jet_pt_sys_JERUp_" + std::to_string(jI)).c_str(), 1);
       }      
     }
     inTree_p->SetBranchStatus(("akt" + std::to_string(jetR) + "hi_insitu_jet_pt").c_str(), 1);
@@ -2399,11 +2402,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
       inTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "hi_etajes_jet_phi").c_str(), &aktRhi_etajes_jet_phi_p);
       
       for(Int_t jI = 0; jI < nJESSys; ++jI){
-	inTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "hi_etajes_jet_pt_sys_JES_" + std::to_string(jI)).c_str(), &(aktRhi_etajes_jet_pt_sysJES_p[jI]));
+	inTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "hi_etajes_jet_pt_sys_JESUp_" + std::to_string(jI)).c_str(), &(aktRhi_etajes_jet_pt_sysJES_p[jI]));
       }
       
       for(Int_t jI = 0; jI < nJERSys; ++jI){
-	inTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "hi_etajes_jet_pt_sys_JER_" + std::to_string(jI)).c_str(), &(aktRhi_etajes_jet_pt_sysJER_p[jI]));
+	inTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "hi_etajes_jet_pt_sys_JERUp_" + std::to_string(jI)).c_str(), &(aktRhi_etajes_jet_pt_sysJER_p[jI]));
       }
     }
     inTree_p->SetBranchAddress(("akt" + std::to_string(jetR) + "hi_insitu_jet_pt").c_str(), &aktRhi_insitu_jet_pt_p);
@@ -2435,8 +2438,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
       ++currEntry;
       inTree_p->GetEntry(entry);
 
-      ++nTotal;
-
       //Cut 0: Pileup
       if(!isPP){
 	if(is_pileup || is_oo_pileup) continue;
@@ -2455,6 +2456,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
       
       //Trigger processing
       if(!isMC){
+
+	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 	if(!didOneFireMiss){//only check this once per input
 	  //check at least one of the purported selection triggers fired
 	  bool oneFire = false;
@@ -2470,11 +2473,15 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    didOneFireMiss = true;
 	  }
 	}    
+
+	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 	
 	//Cut 2: data only require single designated trigger fire
 	if(!(*(hltVect[hltPos]))) continue;
       }
       ++(eventCounter[1]);
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
       
       //Grab the pthat of the sample if applicable (i.e. MC)
       Float_t minPthat = -1.0;
@@ -2488,6 +2495,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    break;
 	  }
 	}
+
+	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 	
 	if(minPtHatPos < 0){
 	  std::cout << "Min pthat of event, " << minPthat << ", not found in vector of unique minimum pthats. Please fix. return 1" << std::endl;
@@ -2502,6 +2511,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  std::cout << "WARNING - prescale for \'" << hltList[hI] << "\' has non-unity value, \'" << (*(hltPrescaleVect[hI])) << "\'." << std::endl;
 	}
       }
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
       
       //Grab the centrality position in your array of histograms for this event
       //in the case of p+p, this is always zero
@@ -2512,12 +2523,16 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	centPos = ghostPos(centBins, cent, true, doGlobalDebug);
       }
       else centPos = 0;
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
     
       Int_t isoCentPos = -1;
       if(!isPP){
 	isoCentPos = ghostPos(isoCentBins, cent, true, doGlobalDebug);
       }
       else isoCentPos = 0;
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
 
       //Cut 3: Centrality within selected range
       if(centPos < 0){
@@ -2530,7 +2545,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
       }
       centPassing_p->Fill(cent);
       ++(eventCounter[2]);
-      
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+     
       //In data, since we deal in unprescaled data, the event-by-event weights should always be 1
       if(!isMC) fullWeight = 1.0;
       
@@ -2542,6 +2559,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	}
       }
       if(!fullWeightFound) fullWeightVals.push_back(fullWeight);
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
       
       if(isMC){
 	//Cut 4: Make sure the photon is w/in the designated MC sample range
@@ -2566,6 +2585,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	mixWeight *= centMixCorrectionFactorMap[cent];       
       }
 
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+
       unsigned long long tempKey = runLumiKey.GetKey({(unsigned long long)runNumber, (unsigned long long)lumiBlock});    
       runLumiIsFired[tempKey] = true;
       
@@ -2574,6 +2595,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	fillTH1(centrality_p, cent, fullWeight);
 	if(isMC) centrality_Unweighted_p->Fill(cent);
       }
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
       
       if(isMC){
 	fillTH1(pthat_p, pthat, fullWeight);
@@ -2612,6 +2635,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	else truthPhoIsGood = true;
       }
       ++(eventCounter[4]);
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
     
       //0.2 or less is the defined matching dR found in ATL-COM-PHYS-2021-215
       const Float_t truthPhoRecoDR = 0.2;
@@ -2627,62 +2652,76 @@ int gdjNTupleToHist(std::string inConfigFileName)
       }
       photon_correctedIso_p = new std::vector<float>;
 
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+
       //2023.05.17 - unfolding debug - we want to test something so lets skip MC events with a reco jet thats a split truth jet
       //What we will do is check all reco jets - if a reco jet has no truth match but there is a highpt truth jet nearby that it is split from we will attempt a resum and reject the event if its more compatible
-      bool continueOnEntry = false;
-      for(unsigned int jI = 0; jI < aktRhi_etajes_jet_pt_p->size(); ++jI){
-	int truthPos = aktRhi_truthpos_p->at(jI);       
-	
-	if(truthPos < 0 && aktRhi_insitu_jet_pt_p->at(jI) > jtPtBinsLowReco){
-	  //	  std::cout << "Checking Jet " << jI << ", pt phi eta: " << aktRhi_etajes_jet_pt_p->at(jI) << ", " << aktRhi_etajes_jet_phi_p->at(jI) << ", " << aktRhi_etajes_jet_eta_p->at(jI) << std::endl;
-	  //Find the closest truth jet (max distance of 0.4)
-	  Float_t dRRecoTruth = 0.4;
-	  int truthMatchPos = -1;
+    
+      ++(nTotal[centPos]);
 
-	  for(unsigned int tI = 0; tI < aktR_truth_jet_pt_p->size(); ++tI){
-	    Float_t truthRecoDR = getDR(aktR_truth_jet_eta_p->at(tI), aktR_truth_jet_phi_p->at(tI), aktRhi_insitu_jet_eta_p->at(jI), aktRhi_insitu_jet_phi_p->at(jI));
+      if(isMC && excludeTruthInducedFake){
+	bool continueOnEntry = false;
+	for(unsigned int jI = 0; jI < aktRhi_etajes_jet_pt_p->size(); ++jI){
+	  int truthPos = aktRhi_truthpos_p->at(jI);       
+	  
+	  if(truthPos < 0 && aktRhi_insitu_jet_pt_p->at(jI) > jtPtBinsLowReco){
+	    //	  std::cout << "Checking Jet " << jI << ", pt phi eta: " << aktRhi_etajes_jet_pt_p->at(jI) << ", " << aktRhi_etajes_jet_phi_p->at(jI) << ", " << aktRhi_etajes_jet_eta_p->at(jI) << std::endl;
+	    //Find the closest truth jet (max distance of 0.4)
+	    
+	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
+	    
+	    Float_t dRRecoTruth = 0.4;
+	    int truthMatchPos = -1;
+	    
+	    for(unsigned int tI = 0; tI < aktR_truth_jet_pt_p->size(); ++tI){
+	      Float_t truthRecoDR = getDR(aktR_truth_jet_eta_p->at(tI), aktR_truth_jet_phi_p->at(tI), aktRhi_insitu_jet_eta_p->at(jI), aktRhi_insitu_jet_phi_p->at(jI));
 
-	    if(truthRecoDR < dRRecoTruth){
-	      truthMatchPos = tI;
-	      dRRecoTruth = truthRecoDR;
+	      if(truthRecoDR < dRRecoTruth){
+		truthMatchPos = tI;
+		dRRecoTruth = truthRecoDR;
+	      }
 	    }
-	  }
-
-	  //	  std::cout << " Closest truth match pos: " << truthMatchPos << std::endl;
-
-	  if(truthMatchPos >= 0){
-	    int recoPosOfTruthMatch = aktR_truth_jet_recopos_p->at(truthMatchPos);
-
-	    //	    std::cout << " Truth jet pt eta phi: " << aktR_truth_jet_pt_p->at(truthMatchPos) << ", " << aktR_truth_jet_eta_p->at(truthMatchPos) << ", " << aktR_truth_jet_phi_p->at(truthMatchPos) << std::endl;	    
-
-	    if(recoPosOfTruthMatch >= 0){
-	      //	      std::cout << " Reco-matched-to-truth jet pt eta phi: " << aktRhi_etajes_jet_pt_p->at(recoPosOfTruthMatch) << ", " << aktRhi_etajes_jet_eta_p->at(recoPosOfTruthMatch) << ", " << aktRhi_etajes_jet_phi_p->at(recoPosOfTruthMatch) << std::endl;	    
-	      TLorentzVector tL1, tL2;
-	      tL1.SetPtEtaPhiM(aktRhi_etajes_jet_pt_p->at(jI), aktRhi_etajes_jet_eta_p->at(jI), aktRhi_etajes_jet_phi_p->at(jI), 0.0);
+	    
+	    //	  std::cout << " Closest truth match pos: " << truthMatchPos << std::endl;
+	    
+	    if(truthMatchPos >= 0){
+	      int recoPosOfTruthMatch = aktR_truth_jet_recopos_p->at(truthMatchPos);
 	      
+	      //	    std::cout << " Truth jet pt eta phi: " << aktR_truth_jet_pt_p->at(truthMatchPos) << ", " << aktR_truth_jet_eta_p->at(truthMatchPos) << ", " << aktR_truth_jet_phi_p->at(truthMatchPos) << std::endl;	    
 	      
-	      tL2.SetPtEtaPhiM(aktRhi_etajes_jet_pt_p->at(recoPosOfTruthMatch), aktRhi_etajes_jet_eta_p->at(recoPosOfTruthMatch), aktRhi_etajes_jet_phi_p->at(recoPosOfTruthMatch), 0.0);
-	      
-	      //New 'jet'
-	      tL1 += tL2;
-	      
-	      Float_t origPtScale = aktRhi_etajes_jet_pt_p->at(recoPosOfTruthMatch)/aktR_truth_jet_pt_p->at(truthMatchPos);
-	      Float_t newPtScale = tL1.Pt()/aktR_truth_jet_pt_p->at(truthMatchPos);
-
-	      //	      if(TMath::Abs(1.0 - newPtScale) < TMath::Abs(1.0 - origPtScale)){
+	      if(recoPosOfTruthMatch >= 0){
+		//	      std::cout << " Reco-matched-to-truth jet pt eta phi: " << aktRhi_etajes_jet_pt_p->at(recoPosOfTruthMatch) << ", " << aktRhi_etajes_jet_eta_p->at(recoPosOfTruthMatch) << ", " << aktRhi_etajes_jet_phi_p->at(recoPosOfTruthMatch) << std::endl;	    
+		TLorentzVector tL1, tL2;
+		tL1.SetPtEtaPhiM(aktRhi_etajes_jet_pt_p->at(jI), aktRhi_etajes_jet_eta_p->at(jI), aktRhi_etajes_jet_phi_p->at(jI), 0.0);
+		
+		
+		tL2.SetPtEtaPhiM(aktRhi_etajes_jet_pt_p->at(recoPosOfTruthMatch), aktRhi_etajes_jet_eta_p->at(recoPosOfTruthMatch), aktRhi_etajes_jet_phi_p->at(recoPosOfTruthMatch), 0.0);
+		
+		//New 'jet'
+		tL1 += tL2;
+		
+		Float_t origPtScale = aktRhi_etajes_jet_pt_p->at(recoPosOfTruthMatch)/aktR_truth_jet_pt_p->at(truthMatchPos);
+		Float_t newPtScale = tL1.Pt()/aktR_truth_jet_pt_p->at(truthMatchPos);
+		
+		//	      if(TMath::Abs(1.0 - newPtScale) < TMath::Abs(1.0 - origPtScale)){
 		//		std::cout << "CONTINUE ON EVENT: " << entry << std::endl;
 		continueOnEntry = true;
 		break;
 		//	      }
-
-	    }	    
+		
+	      }	    
+	    }
 	  }
 	}
-      }
-      if(continueOnEntry){
-	++nContinue;
-	continue;
-      }
+
+	if(continueOnEntry){
+	  ++(truthInducedFakeExclude[centPos]);
+	  continue;
+	}
+
+      }//end if(isMC && excludeTruthInducedFake)
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
         
       //We will have to construct some alt histograms for systematics so we will do this in a loop
       for(unsigned int systI = 0; systI < systStrVect.size(); ++systI){
@@ -2795,7 +2834,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    else if(!isIsolatedPhoton(isPP, doPtIsoCorrection, tempCorrectedIso)) goodTruthPhoHasRecoMatch[tI] = false;    
 	  }
 	}     
-           
+
+                 
 	//Response TTree filling
 	if(isMC && systI == 0){
 	  is5050FilledHist = randGen5050MC_p->Uniform(0.0, 1.0) < 0.5;
@@ -2853,10 +2893,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		
 		if(recoPos >= 0){
 		  recoJtPt_[nRecoJt_][0] = aktRhi_etajes_jet_pt_p->at(recoPos);
-		  		  
-		  /*
+		  		  		  
 		    for(Int_t jsI = 0; jsI < nJESSys; ++jsI){
-		    recoJtPt_[nRecoJt_][1 + jsI] = aktRhi_etajes_jet_pt_sysJES_p[jsI]->at(recoPos);
+		      recoJtPt_[nRecoJt_][1 + jsI] = aktRhi_etajes_jet_pt_sysJES_p[jsI]->at(recoPos);
 		    }
 		    
 		    //Manually insert the rtrk centrality dependent Pb+Pb specific uncertainty
@@ -2873,9 +2912,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		    recoJtPt_[nRecoJt_][3+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos)*(1.0 + qgResponseFit_p->Eval(aktR_truth_jet_pt_p->at(jI)));
 		    
 		    for(Int_t jsI = 0; jsI < nJERSys; ++jsI){
-		    recoJtPt_[nRecoJt_][4 + nJESSys + jsI] = aktRhi_etajes_jet_pt_sysJER_p[jsI]->at(recoPos);
+		      recoJtPt_[nRecoJt_][4 + nJESSys + jsI] = aktRhi_etajes_jet_pt_sysJER_p[jsI]->at(recoPos);
 		    }
-		  */
+		  
 		  
 		  recoJtPhi_[nRecoJt_] = aktRhi_etajes_jet_phi_p->at(recoPos);
 		  recoJtEta_[nRecoJt_] = aktRhi_etajes_jet_eta_p->at(recoPos);
@@ -2896,7 +2935,12 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		  ++nTruthJtUnmatched_;
 		}
 	      }
+	    
 	      unfoldTree_p->Fill();
+	      if(TMath::Abs(unfoldTree_p->GetEntries() - 5240) < 2){
+		std::cout << "BAD EVENT IS ENTRY: " << entry << std::endl;
+	      }
+
 	    }
 	   
 	    //Since truth is independent of syst., define truth pho. position here
@@ -2968,29 +3012,28 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		if(recoPos >= 0){
 		  recoJtPt_[nRecoJt_][0] = aktRhi_etajes_jet_pt_p->at(recoPos);
 		  		  
-		  /*
-		    for(Int_t jsI = 0; jsI < nJESSys; ++jsI){
-		    recoJtPt_[nRecoJt_][1 + jsI] = aktRhi_etajes_jet_pt_sysJES_p[jsI]->at(recoPos);
-		    }
-		    
-		    //Manually insert the rtrk centrality dependent Pb+Pb specific uncertainty
-		    //in pp, just set it to zero for simplicity
-		    
-		    //JESRTRK handling
-		    if(!isPP) recoJtPt_[nRecoJt_][1+nJESSys] = getRTrkJESSysPt(cent, aktRhi_etajes_jet_pt_p->at(recoPos));
-		    else recoJtPt_[nRecoJt_][1+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos);
-		    
-		    //QG Fraction handling - note how the eval is on truth pt
-		    recoJtPt_[nRecoJt_][2+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos)*(1.0 + qgFractionFit_p->Eval(aktR_truth_jet_pt_p->at(jI)));
-		    
-		    //QG Response handling - similar to fraction but w/ a different fit function
-		    recoJtPt_[nRecoJt_][3+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos)*(1.0 + qgResponseFit_p->Eval(aktR_truth_jet_pt_p->at(jI)));
-		    
-		    for(Int_t jsI = 0; jsI < nJERSys; ++jsI){
-		    recoJtPt_[nRecoJt_][4 + nJESSys + jsI] = aktRhi_etajes_jet_pt_sysJER_p[jsI]->at(recoPos);
-		    }
-		  */
 		  
+		  for(Int_t jsI = 0; jsI < nJESSys; ++jsI){
+		    recoJtPt_[nRecoJt_][1 + jsI] = aktRhi_etajes_jet_pt_sysJES_p[jsI]->at(recoPos);
+		  }
+		  
+		  //Manually insert the rtrk centrality dependent Pb+Pb specific uncertainty
+		  //in pp, just set it to zero for simplicity
+		  
+		  //JESRTRK handling
+		  if(!isPP) recoJtPt_[nRecoJt_][1+nJESSys] = getRTrkJESSysPt(cent, aktRhi_etajes_jet_pt_p->at(recoPos));
+		  else recoJtPt_[nRecoJt_][1+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos);
+		  
+		  //QG Fraction handling - note how the eval is on truth pt
+		  recoJtPt_[nRecoJt_][2+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos)*(1.0 + qgFractionFit_p->Eval(aktR_truth_jet_pt_p->at(jI)));
+		  
+		  //QG Response handling - similar to fraction but w/ a different fit function
+		  recoJtPt_[nRecoJt_][3+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos)*(1.0 + qgResponseFit_p->Eval(aktR_truth_jet_pt_p->at(jI)));
+		  
+		  for(Int_t jsI = 0; jsI < nJERSys; ++jsI){
+		    recoJtPt_[nRecoJt_][4 + nJESSys + jsI] = aktRhi_etajes_jet_pt_sysJER_p[jsI]->at(recoPos);
+		  }
+		    
 		  recoJtPhi_[nRecoJt_] = aktRhi_etajes_jet_phi_p->at(recoPos);
 		  recoJtEta_[nRecoJt_] = aktRhi_etajes_jet_eta_p->at(recoPos);
 		  
@@ -3010,6 +3053,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		  ++nTruthJtUnmatched_;
 		}
 	      }
+	    
 	      unfoldTree_p->Fill();	      
 	    }
 	  }
@@ -3916,7 +3960,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
       
 	//Fill truth 2023.05.12 - fix these fills next
 	if(isMC){
-
 	  for(unsigned int tI = 0; tI < goodTruthPhoPos.size(); ++tI){
 	    Int_t truthPhoPos = goodTruthPhoPos[tI];
 
@@ -3939,8 +3982,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	    }      
 
 	    std::vector<TLorentzVector> goodTruthJets;
-	    std::vector<int> goodTruthJetsPos, goodTruthJetsRecoPos;
-	    
+	    std::vector<int> goodTruthJetsPos, goodTruthJetsRecoPos;	    
 	    for(unsigned int jI = 0; jI < aktR_truth_jet_pt_p->size(); ++jI){	  
 	      //Continue if the Truth jet is no good
 	      Float_t dRTruthGammaJet = TMath::Abs(getDR(aktR_truth_jet_eta_p->at(jI), aktR_truth_jet_phi_p->at(jI), truthPhotonEta[truthPhoPos], truthPhotonPhi[truthPhoPos]));
@@ -3964,7 +4006,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		  else photonPtJtDPhiVCent_MixMachineHalf_p[centPos][barrelECTruth][systI]->FillXYTruthNoRecoMatch(dPhiTruthGammaJet, truthPhotonPt[truthPhoPos], fullWeight);	    
 		}
 	      }//end barrelECTruth for loop
-	      
+	    	      
 	      //Now add dphi cutting
 	      if(isGoodTruthJet){
 		if(dPhiTruthGammaJet < gammaJtDPhiCut) isGoodTruthJet = false;
@@ -4003,7 +4045,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	      }//end barrelECTruth for loop
 	    } //end  for(unsigned int jI = 0; jI < aktR_truth_jet_pt_p->size(); ++jI){	  
 
-	    //Construct multijet truth w/o reco fills
+   	    //Construct multijet truth w/o reco fills
 	    for(unsigned int jI = 0; jI < goodTruthJets.size(); ++jI){
 	      TLorentzVector goodTruthJet1 = goodTruthJets[jI];
 	      int truthID1 = goodTruthJetsPos[jI];
@@ -4022,9 +4064,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		Float_t dRJJValue = getDR(goodTruthJet1.Eta(), goodTruthJet1.Phi(), goodTruthJet2.Eta(), goodTruthJet2.Phi());
 		Bool_t dRJJValueGood = dRJJValue >= drBinsLow && dRJJValue < drBinsHigh;
 		
-		//	      if(dRJJValue < mixJetExclusionDR) continue;
-		
-		
+		if(dRJJValue < mixJetExclusionDR) continue;
+				
 		Float_t subLeadingJetPt = goodTruthJet1.Pt();
 		if(goodTruthJet2.Pt() < subLeadingJetPt) subLeadingJetPt = goodTruthJet2.Pt();
 		Float_t subJtGammaPtValTruth = subJtGammaPtBinFlattener.GetGlobalBinCenterFromBin12Val(truthPhotonPt[truthPhoPos], subLeadingJetPt, __LINE__);
@@ -4054,9 +4095,21 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		}	  
 		
 		if(multiJtDPhiValue < gammaMultiJtDPhiCut) continue; //We dont fill truth that fails this cut
-		
+	      		
 		for(auto const barrelECTruth : barrelECFillTruth){
 		  bool truthFillWithRecoPos = photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->IsInTrackingMap(truthCompID1) || photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->IsInTrackingMap(truthCompID2);
+		  
+		  if(xJJValue > 2.4 && xJJValueGood && false){
+		    
+		    std::cout << "Photon pt eta phi: " << truthPhotonPt[truthPhoPos] << ", " << truthPhotonPt[truthPhoPos] << ", " << truthPhotonPhi[truthPhoPos] << std::endl;
+		    std::cout << "Jet1 pt eta phi: " << goodTruthJets[jI].Pt() << ", " << goodTruthJets[jI].Eta() << ", " << goodTruthJets[jI].Phi() << std::endl;
+		    std::cout << "Jet2 pt eta phi: " << goodTruthJets[jI2].Pt() << ", " << goodTruthJets[jI2].Eta() << ", " << goodTruthJets[jI2].Phi() << std::endl;
+		    
+		    std::cout << "Multijt DRJJ: " << dRJJValue << std::endl;
+		    std::cout << "Multijt DPhiJJG: " << multiJtDPhiValue << std::endl;
+		    
+		  }
+
 		  photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruth(xJJValue, subJtGammaPtValTruth, fullWeight);
 		  if(truthFillWithRecoPos) photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruthWithRecoMatch(xJJValue, subJtGammaPtValTruth, fullWeight);
 		  else{
@@ -4152,7 +4205,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
     }
   }
 
-  std::cout << "Fraction continue for splitting: " << nContinue << "/" << nTotal << "=" << ((double)nContinue)/((double)nTotal) << std::endl;
+  for(int cI = 0; cI < nCentBins; ++cI){
+    std::cout << "Fraction continue for truth-induced-fakes (" << centBinsStr[cI] << "): " << truthInducedFakeExclude[cI]  << "/" << nTotal[cI] << "=" << ((double)truthInducedFakeExclude[cI])/((double)nTotal[cI]) << std::endl;
+  }
+
+  //  std::cout << "Fraction continue for splitting: " << nContinue << "/" << nTotal << "=" << ((double)nContinue)/((double)nTotal) << std::endl;
 
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl; 
