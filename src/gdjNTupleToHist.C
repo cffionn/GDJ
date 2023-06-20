@@ -2788,11 +2788,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  if(isTruthMatched) goodRecoPhoNoTruthPos.erase(goodRecoPhoNoTruthPos.begin()+phoPosI);
 	  else ++phoPosI;
 	}
-         	
+
 	//Check the reco is good
 	for(unsigned int tI = 0; tI < goodTruthPhoPos.size(); ++tI){
 	  Int_t truthPhoRecoPos = goodTruthPhoRecoMatchPos[tI];	 
-
+	  
 	  if(truthPhoRecoPos >= 0){
 	    recoGammaPt_[0] = photon_pt_p->at(truthPhoRecoPos);
 	    recoGammaPt_[1] = photon_pt_sys1_p->at(truthPhoRecoPos);
@@ -2835,7 +2835,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  }
 	}     
 
-                 
 	//Response TTree filling
 	if(isMC && systI == 0){
 	  is5050FilledHist = randGen5050MC_p->Uniform(0.0, 1.0) < 0.5;

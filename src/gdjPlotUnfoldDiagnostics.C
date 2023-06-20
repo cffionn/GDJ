@@ -119,7 +119,7 @@ bool setupLegends(int font, float size, std::vector<TLegend*>* leg_p, std::vecto
     }
   }
 
-  for(unsigned int lI = 0; lI < legX.size(); ++lI){
+ for(unsigned int lI = 0; lI < legX.size(); ++lI){
     leg_p->push_back(nullptr);
     leg_p->at(lI) = new TLegend(legX[lI], legY[lI] - ((Float_t)legN->at(lI))*0.0455, legX[lI] + maxLegXChar*0.02, legY[lI]);
   
