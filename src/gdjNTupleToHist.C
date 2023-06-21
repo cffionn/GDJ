@@ -1024,6 +1024,12 @@ int gdjNTupleToHist(std::string inConfigFileName)
   //We need to declare some systematics (like jet pt cut unfolding variation)
   std::vector<std::string> systStrVect = {"NOMINAL", "JTPTCUT", "PURSIDEBANDLOOSE", "PURSIDEBANDTIGHT", "PURBINORFIT", "PURSIDEBANDISO", "ISO85", "ISO95"};
   std::vector<std::string> systTypeVect = {"NOMINAL", "UNFOLDING", "PHOISOANDPUR", "PHOISOANDPUR", "PHOISOANDPUR", "PHOISOANDPUR", "PHOISOANDPUR", "PHOISOANDPUR"};
+
+  //Temp override for simplicity
+  systStrVect = {"NOMINAL"};
+  systTypeVect = {"NOMINAL"};
+
+
   std::vector<bool> isPhoSyst;
   for(unsigned int systI = 0; systI < systTypeVect.size(); ++ systI){
     if(isStrSame(systTypeVect[systI], "PHOISOANDPUR")) isPhoSyst.push_back(true);

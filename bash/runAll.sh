@@ -7,7 +7,7 @@ DATE=`date +%Y%m%d`
 mkdir -p logs/$DATE/
 
 rs=(2 4)
-files=(ntupleToHist_PbPbMC)
+files=(ntupleToHist_PPMC)
 
 dPhi=("pi/2" "2pi/3" "3pi/4" "5pi/6")
 multiJtDPhi=("pi/2" "2pi/3" "3pi/4" "5pi/6" "7pi/8")
@@ -18,24 +18,27 @@ multiJtDPhi=("pi/2" "2pi/3" "3pi/4" "5pi/6" "7pi/8")
 #nPtBins=(16 15 14)
 
 #genMinPt=(15 25)
-genMinPt=(15)
+genMinPt=(20)
 
 nomNPtBins=26
 #customBinsBase=25,30,36,44,53,64,77,93,112,135,163,196,236,285,344,415,500
 #customBinsBase=40,44,53,64,77,93,112,135,163,196,236,285,344,415,500
 #YJ Bins
 customBinsBase=15,20,25,30,35,40,45,50,56,63,70,79,89,100,112,125,141,158,177,199,223,251,281,316,354,398,501
+nomNSubPtBins=2
+customSubBinsBase=15,30,501
 
 #Overriding the nominal for quick tests
 #files=(ntupleToHist_PPData)
 #files=(ntupleToHist_PbPbMC ntupleToHist_PbPbData ntupleToHist_PPMC ntupleToHist_PPData)
-files=(ntupleToHist_PPData)
+files=(ntupleToHist_PPMC)
 rs=(2)
 #ptMins=(30 36)
 #ptMinsR2=(30)
 #ptMinsR4=(36)
 ptMinsR2=(15)
 ptMinsR2Reco=(30)
+ptMinsR2RecoSyst=(35)
 
 ptMinsR4=(35)
 mixJtDRR2=(0.4)
@@ -43,8 +46,8 @@ mixJtDRR4=(0.8)
 
 dPhi=("pi/2")
 #multiJtDPhi=("pi/2" "7pi/8")
-#multiJtDPhi=("7pi/8")
 multiJtDPhi=("7pi/8")
+#multiJtDPhi=("pi/2")
 
 for i in ${rs[@]}
 do
@@ -52,6 +55,7 @@ do
 
     ptMins=()
     ptMinsReco=()
+    ptMinsRecoSyst=()
 
     if [[ $i -eq 2 ]]
     then
@@ -60,6 +64,7 @@ do
 	do
  	    ptMins+=($tempI)
 	    ptMinsReco+=(${ptMinsR2Reco[$pos]})
+	    ptMinsRecoSyst+=(${ptMinsR2RecoSyst[$pos]})
 	    pos=$((pos+1))
 	done
     elif [[ $i -eq 4 ]]
@@ -115,12 +120,14 @@ do
 		    for l in ${ptMins[@]}
 		    do
 			nPtBinsTemp=$nomNPtBins
+			nSubPtBinsTemp=$nomNSubPtBins
+
 			ptBins=$customBinsBase
+			subPtBins=$customSubBinsBase
 			
 			startVal=${ptBins#*,}
 			startVal=${ptBins%,$startVal}
-
-
+ 
 			while [[ $startVal -ne $l ]]
 			do
 			    ptBins=${ptBins#*,}
@@ -137,6 +144,25 @@ do
 			    exit 1
 			fi
 
+			startVal=${subPtBins#*,}
+			startVal=${subPtBins%,$startVal}
+ 
+			while [[ $startVal -ne $l ]]
+			do
+			    subPtBins=${subPtBins#*,}
+			    nSubPtBinsTemp=$((nSubPtBinsTemp - 1))
+
+#			    startVal=${ptBins%,*}
+			    startVal=${subPtBins#*,}
+			    startVal=${subPtBins%,$startVal}
+			done
+
+			if [[ $startVal -ne $l ]]
+			then
+			    echo "Requested ptMin='$l' not found in custom subPtbins array $subPtBins. return"
+			    exit 1
+			fi
+
 			ptMax=$ptBins		     
 			while [[ $ptMax == *","* ]]
 			do
@@ -150,13 +176,7 @@ do
 			done
 
 			ptMinReco=${ptMinsReco[$pos]}
-
-
-#			echo "PtBins: $ptBins" 
-#			echo "PtMax: $ptMax" 
-#			echo "PtMinReco: $ptMinReco" 
-#			echo "PtMaxReco: $ptMaxReco" 
-#			exit 1
+			ptMinRecoSyst=${ptMinsRecoSyst[$pos]}
 
 
 			echo "   ptMin=$l, ptMax=$ptMax, nPtBins=$nPtBinsTemp, ptBins=$ptBins"
@@ -170,13 +190,16 @@ do
 			    
 			    cp input/ntupleToHist/$m.config $newFile
 			    sed -i "s@INNJTPTBINS@$nPtBinsTemp@g" $newFile
+			    sed -i "s@INNSUBJTPTBINS@$nSubPtBinsTemp@g" $newFile
 			    sed -i "s@INRVAL@$i@g" $newFile
 			    sed -i "s@INGENMINPT@$p@g" $newFile
+			    sed -i "s@INJTPTBINSLOWRECOSYST@$ptMinRecoSyst@g" $newFile
 			    sed -i "s@INJTPTBINSLOWRECO@$ptMinReco@g" $newFile
 			    sed -i "s@INJTPTBINSHIGHRECO@$ptMaxReco@g" $newFile
 			    sed -i "s@INJTPTBINSLOW@$l@g" $newFile
 			    sed -i "s@INJTPTBINSHIGH@$ptMax@g" $newFile
 			    sed -i "s@INJTPTBINSCUSTOM@$ptBins@g" $newFile
+			    sed -i "s@INSUBJTPTBINSCUSTOM@$subPtBins@g" $newFile
 			    sed -i "s@INGAMMAJTDPHINAME@$dPhiName@g" $newFile
 			    sed -i "s@INGAMMAMULTIJTDPHINAME@$multiJtDPhiName@g" $newFile
 			    sed -i "s@INGAMMAJTDPHI@$j@g" $newFile
