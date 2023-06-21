@@ -207,7 +207,7 @@ do
 			    sed -i "s@INMIXJETEXCLUSIONDRNAME@$mixJtDRName@g" $newFile
 			    sed -i "s@INMIXJETEXCLUSIONDR@$n@g" $newFile
 			
-			    ./bin/gdjNTupleToHist.exe $newFile &> $logFile &
+			    echo "./bin/gdjNTupleToHist.exe $newFile &> $logFile &"
 			    exit 1
 			done
 			wait
