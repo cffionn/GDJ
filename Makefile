@@ -18,6 +18,10 @@ define ROOUNFOLDDIRERR
  ROOUNFOLDDIR is not set at all. Please set this environment variable to point to your RooUnfold - source setEnv.sh if you have made appropriate changes. For more, see README for full setup recommendations
 endef
 
+define HEPMCDIRERR
+ HEPMCDIR is not set at all. Please set this environment variable to point to your RooUnfold - source setEnv.sh if you have made appropriate changes. For more, see README for full setup recommendations
+endef
+
 ifndef GDJDIR
 $(error "$(GDJDIRERR)")	
 endif
@@ -26,12 +30,13 @@ ifndef ROOUNFOLDDIR
 $(error "$(ROOUNFOLDDIRERR)")	
 endif
 
-#HEPMC=/home/cfm/Packages/HepMC2/hepmc-install
-HEPMC=/cvmfs/sft.cern.ch/lcg/releases/LCG_97a/HepMC/2.06.11/x86_64-centos7-gcc8-opt/
+ifndef HEPMCDIR
+$(error "$(HEPMCDIRERR)")	
+endif
 
 #ROOUNFOLDDIR=/home/cfm/Packages/RooUnfold/RooUnfold-build/
-INCLUDE=-I$(GDJDIR) -I$(ROOUNFOLDDIR) -I$(HEPMC)/include
-LIB=-L$(GDJDIR)/lib  -L$(HEPMC)/lib -lHepMC
+INCLUDE=-I$(GDJDIR) -I$(ROOUNFOLDDIR) -I$(HEPMCDIR)/include
+LIB=-L$(GDJDIR)/lib  -L$(HEPMCDIR)/lib -lHepMC
 ROOUNFOLDLIB=-L$(ROOUNFOLDDIR) -lRooUnfold
 
 ROOT=`root-config --cflags --glibs`

@@ -2,20 +2,15 @@
 
 GDJDIR=/home/cfm/Projects/GDJ/
 ROOUNFOLDDIR=/home/cfm/Packages/RooUnfold/RooUnfold-build/
+HEPMCDIR=/home/cfm/Packages/HepMC2/hepmc-install/
+
 #HEPMCLIB=/home/cfm/Packages/HepMC2/hepmc-install/lib/
 
 if [[ $HOME == "/usatlas/u/cfmcginn" ]]
 then
-    HEPMCPATH=/cvmfs/sft.cern.ch/lcg/releases/LCG_97a/HepMC/2.06.11/x86_64-centos7-gcc8-opt/lib
-    if [[ $LD_LIBRARY_PATH == *"$HEPMCPATH"* ]]
-    then
-	dummy=0
-    else
-	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/cvmfs/sft.cern.ch/lcg/releases/LCG_97a/HepMC/2.06.11/x86_64-centos7-gcc8-opt/lib
-    fi
-
     GDJDIR=/usatlas/u/cfmcginn/Projects/GDJ/
     ROOUNFOLDDIR=/usatlas/u/cfmcginn/Packages/RooUnfold-build/
+    HEPMCDIR=/cvmfs/sft.cern.ch/lcg/releases/LCG_97a/HepMC/2.06.11/x86_64-centos7-gcc8-opt/
 fi
 
 GDJDIRLIB="$GDJDIR"lib
@@ -48,6 +43,20 @@ then
 	fi
     else
 	echo "NOTE: ROOUNFOLDDIR MISSING"	
+    fi    
+
+    if [[ -d $HEPMCDIR ]]
+    then
+	export HEPMCDIR=$HEPMCDIR
+	
+	if [[ $LD_LIBRARY_PATH == *"$HEPMCDIR"* ]]
+	then
+	    dummy=0
+	else
+	    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HEPMCDIR
+	fi
+    else
+	echo "NOTE: HEPMCDIR MISSING"	
     fi    
 else
     echo "GDJDIR given, '$GDJDIR' not found!!! Please fix" 
