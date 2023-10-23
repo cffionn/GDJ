@@ -527,6 +527,72 @@ std::vector<Double_t> plotSyst(TH1D* nominalHist_p, std::vector<std::vector<Doub
 }
 
 
+void constructJETSCAPEHist(std::string fileName, TH1D** histPointer_p, int color)
+{
+  const Int_t nMaxPtBins = 100;
+  std::ifstream inJETSCAPEFile(fileName.c_str());
+  std::string binStr;
+  
+  Int_t nBinsJETSCAPE = 0;
+  Double_t binsJETSCAPE[nMaxPtBins];
+  std::vector<double> values;
+  std::vector<double> errors;
+  
+  while(std::getline(inJETSCAPEFile, binStr)){
+    while(binStr.find("  ") != std::string::npos) binStr.replace(binStr.find("  "), 1,"");
+    while(binStr.substr(0,1).find(" ") != std::string::npos) binStr.replace(0,1,"");
+    while(binStr.substr(binStr.size()-1,1).find(" ") != std::string::npos) binStr.replace(binStr.size()-1,1,"");
+    while(binStr.find(" ") != std::string::npos) binStr.replace(binStr.find(" "), 1,",");
+    
+    std::vector<double> binVect = strToVectD(binStr);
+    //       std::cout << "BIN STR: " << binStr << std::endl;
+    //       for(unsigned int i = 0; i < binVect.size(); ++i){
+    //	 std::cout << " " << i << ": " << binVect[i] << std::endl;
+    //       }
+
+    /*
+    if(fileName.find("Jetscape") != std::string::npos){
+      if(binVect[2] >= 1.3) break;
+    }
+    */
+
+    if(nBinsJETSCAPE == 0) binsJETSCAPE[0] = binVect[1];              
+    ++nBinsJETSCAPE;
+    binsJETSCAPE[nBinsJETSCAPE] = binVect[2];
+    values.push_back(binVect[3]);
+    errors.push_back(binVect[4]);
+  }     
+  inJETSCAPEFile.close();
+  
+  //     std::cout << "BINS: " << std::endl;
+  //     for(Int_t iter = 0; iter < nBinsJETSCAPE; ++iter){
+  //       std::cout << " " << iter << ": " << binsJETSCAPE[iter] << "-" << binsJETSCAPE[iter+1] << std::endl;
+  //     }
+
+  std::string histName = fileName;
+  while(histName.find("/") != std::string::npos){
+    histName.replace(0, histName.find("/")+1, "");
+  }
+  
+  (*histPointer_p) = new TH1D(histName.c_str(), ";;", nBinsJETSCAPE, binsJETSCAPE);
+  for(unsigned int jI = 0; jI < values.size(); ++jI){
+    (*histPointer_p)->SetBinContent(jI+1, values[jI]);
+    (*histPointer_p)->SetBinError(jI+1, errors[jI]);
+  }     
+
+  (*histPointer_p)->SetMarkerStyle(1);
+  (*histPointer_p)->SetMarkerSize(0.1);
+  (*histPointer_p)->SetLineWidth(4);
+  (*histPointer_p)->SetMarkerColor(color);       
+  (*histPointer_p)->SetLineColor(color);
+  if(fileName.find("Jetscape") != std::string::npos) (*histPointer_p)->SetFillColorAlpha(color, 0.3);
+
+  (*histPointer_p)->Print("ALL");
+  
+  return;
+}
+
+
 int gdjPlotResults(std::string inConfigFileName)
 {
   const int titleFont = 42;
@@ -589,6 +655,12 @@ int gdjPlotResults(std::string inConfigFileName)
   const std::string inPPTermFileName = config_p->GetValue("INPPTERMFILENAME", "");
 
   const std::string inUnfoldNonClosureFileName = config_p->GetValue("INUNFNONCLOSUREFILENAME", "");
+
+  const std::string inJETSCAPEPPFile = config_p->GetValue("JETSCAPEPP", "");
+  const std::string inJETSCAPEPbPbFile = config_p->GetValue("JETSCAPEPBPB", "");
+
+  const std::string inLBTPPFile = config_p->GetValue("LBTPP", "");
+  const std::string inLBTPbPbFile = config_p->GetValue("LBTPBPB", "");
   
   //Check all files exist before continuing to grab params
   if(!check.checkFileExt(inPbPbFileName, ".root")) return 1;
@@ -648,6 +720,11 @@ int gdjPlotResults(std::string inConfigFileName)
  const Double_t scaleFactorPYT = 1.2;
  //Do jewel overlay only if pp and at least one valid Pb+Pb file exist
  bool doJEWEL = check.checkFileExt(inJEWELPPFileName, ".root") && inJEWELPbPbFileNames.size() > 0;
+ 
+ bool doJETSCAPE = check.checkFileExt(inJETSCAPEPPFile, ".txt") && check.checkFileExt(inJETSCAPEPbPbFile, ".txt");
+
+ bool doLBT = check.checkFileExt(inLBTPPFile, ".txt") && check.checkFileExt(inLBTPbPbFile, ".txt");
+
  //Check that the jewel inputs are matched to our input files (this guarantees things like same-binning
  TFile* ppJEWELFile_p = nullptr;
  TEnv* ppJEWELConfig_p = nullptr;
@@ -1252,7 +1329,7 @@ int gdjPlotResults(std::string inConfigFileName)
    else ppHist_p->GetYaxis()->SetTitle(("#frac{1}{N_{#gamma}} #frac{dN_{J#gamma}}{d" + varNameLabel + "}}").c_str());
    ppHist_p->GetXaxis()->SetTitle(varNameLabel.c_str());
 
- if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
    
    // JEWEL handling for pp
    TH1D* inJEWELPPHist_p = nullptr;
@@ -1261,7 +1338,30 @@ int gdjPlotResults(std::string inConfigFileName)
      inJEWELPPHist_p = (TH1D*)ppJEWELFile_p->Get((varNameLower + "_R" + std::to_string(jetR) + "_GammaPt" + std::to_string(gI) + "_h").c_str());
      inJEWELPPHistCurve_p = (TH1D*)ppJEWELFile_p->Get((varNameLower + "Curve_R" + std::to_string(jetR) + "_GammaPt" + std::to_string(gI) + "_h").c_str());
    }        
-    
+
+
+   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+   
+   //JETSCAPE handling   
+   TH1D* inJETSCAPEPPHist_p = nullptr;   
+   if(doJETSCAPE){
+     constructJETSCAPEHist(inJETSCAPEPPFile, &inJETSCAPEPPHist_p, kGreen+2);
+     inJETSCAPEPPHist_p->SetLineStyle(2);
+   }
+   //END JETSCAPE HANDLING
+
+   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+   
+   //LBT handling   
+   TH1D* inLBTPPHist_p = nullptr;   
+   if(doLBT){ constructJETSCAPEHist(inLBTPPFile, &inLBTPPHist_p, kMagenta);
+     inLBTPPHist_p->SetLineStyle(2);
+     inLBTPPHist_p->Print("ALL");
+   }
+   //END LBT HANDLING
+
+   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+   
    for(unsigned int cI = 0; cI < centBinsStr.size(); ++cI){   
      TH1D* pyt8Truth_p = nullptr;
 
@@ -1305,7 +1405,16 @@ int gdjPlotResults(std::string inConfigFileName)
   	inJEWELPPHistCurve_p->SetLineColor(1);
  	inJEWELPPHistCurve_p->SetLineStyle(1);
      }        
+     //END DO JEWEL
 
+     TH1D* inJETSCAPEPbPbHist_p = nullptr;
+     bool doJETSCAPEPbPb = doJETSCAPE && centBinsStr[cI].find("Cent0to10") != std::string::npos;
+     if(doJETSCAPEPbPb) constructJETSCAPEHist(inJETSCAPEPbPbFile, &inJETSCAPEPbPbHist_p, kGreen+2);
+
+     TH1D* inLBTPbPbHist_p = nullptr;
+     bool doLBTPbPb = doLBT && centBinsStr[cI].find("Cent0to10") != std::string::npos;
+     if(doLBTPbPb) constructJETSCAPEHist(inLBTPbPbFile, &inLBTPbPbHist_p, kMagenta);
+     
      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
  
      const Int_t iterPbPbPhoPt = inPbPbTermFileConfig_p->GetValue(("GAMMAPT_" + centBinsStr[cI] + "_Nominal").c_str(), -1);
@@ -1550,6 +1659,21 @@ int gdjPlotResults(std::string inConfigFileName)
 	}
       }
 
+     if(doJETSCAPE){
+       inJETSCAPEPPHist_p->DrawCopy("SAME C E3");
+       //       inJETSCAPEPPHist_p->DrawCopy("SAME E P HIST");
+       if(doJETSCAPEPbPb){
+	 inJETSCAPEPbPbHist_p->DrawCopy("SAME E3 C");	 
+	 //	 inJETSCAPEPbPbHist_p->DrawCopy("SAME E P HIST ");
+       }
+     }
+
+     if(doLBT){
+       inLBTPPHist_p->DrawCopy("HIST C SAME");
+       if(doLBTPbPb) inLBTPbPbHist_p->DrawCopy("HIST C SAME");
+     }
+     
+  
       if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
 
       pads_p[0]->cd();
@@ -1627,7 +1751,7 @@ int gdjPlotResults(std::string inConfigFileName)
       
       std::vector<std::string> labelsAlt;
       std::vector<std::string> labelsTemp = getLabels(inPbPbFileConfig_p, pbpbHist_p, &labelMap, &labelsAlt);
-      std::vector<std::string> labels = {"#bf{#it{ATLAS Internal}}", "2018 Pb+Pb 1.72 nb^{-1}", "2017 #it{pp} 260 pb^{-1}", "#sqrt{s} = 5.02 TeV"};
+      std::vector<std::string> labels = {"#bf{#it{ATLAS Preliminary}}", "2018 Pb+Pb 1.72 nb^{-1}", "2017 #it{pp} 260 pb^{-1}", "#sqrt{s} = 5.02 TeV"};
     
       for(unsigned int lI = 0; lI < labelsTemp.size(); ++lI){
 	if(isStrSame(labelsTemp[lI], "h")) continue;
@@ -1899,6 +2023,17 @@ int gdjPlotResults(std::string inConfigFileName)
 
 	jewelPbPbHistCurve_p->DrawCopy("E X0 HIST SAME");
       }
+
+      if(doJETSCAPEPbPb){
+	inJETSCAPEPbPbHist_p->Divide(inJETSCAPEPPHist_p);
+	inJETSCAPEPbPbHist_p->DrawCopy("E3 C SAME");
+	//	inJETSCAPEPbPbHist_p->DrawCopy("E HIST P SAME");	
+      }
+
+      if(doLBTPbPb){
+	inLBTPbPbHist_p->Divide(inLBTPPHist_p);
+	inLBTPbPbHist_p->DrawCopy("HIST C SAME");
+      }
       
       //drawSyst here returns the quadrature sum of the syst error for convenience just put it right in the push_back
       //     HIJet::Style::EquipHistogram(pbpbHist_p, 1); 
@@ -2114,6 +2249,15 @@ int gdjPlotResults(std::string inConfigFileName)
 	  delete jewelPbPbHistCurve_p;
 	}
       }
+
+      if(doJETSCAPEPbPb){
+	delete inJETSCAPEPbPbHist_p;
+      }
+
+      if(doLBTPbPb){
+	delete inLBTPbPbHist_p;
+      }
+      
       delete pyt8Truth_p;
     }
 
@@ -2372,7 +2516,7 @@ int gdjPlotResults(std::string inConfigFileName)
 
     }
     delete ratioJEWEL0to10Curve_p;
-   
+ 
     if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << std::endl;
     
     for(unsigned int cI = 0; cI < ratioHistsPerCentrality.size(); ++cI){
@@ -2381,6 +2525,14 @@ int gdjPlotResults(std::string inConfigFileName)
     ratioHistsPerCentrality.clear();
     ratioSystsPerCentrality.clear();
 
+
+    if(doJETSCAPE){
+      delete inJETSCAPEPPHist_p;
+    }
+
+    if(doLBT){
+      delete inLBTPPHist_p;
+    }
     
     delete integralPerCentrality_h;
     delete meanPerCentrality_h;
