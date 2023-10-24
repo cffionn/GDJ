@@ -53,7 +53,7 @@ then
 	then
 	    dummy=0
 	else
-	    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HEPMCDIR
+	    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HEPMCDIR/lib
 	fi
     else
 	echo "NOTE: HEPMCDIR MISSING"	
