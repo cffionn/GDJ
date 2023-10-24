@@ -31,7 +31,7 @@ customSubBinsBase=15,30,501
 #Overriding the nominal for quick tests
 #files=(ntupleToHist_PPData)
 #files=(ntupleToHist_PbPbMC ntupleToHist_PbPbData ntupleToHist_PPMC ntupleToHist_PPData)
-files=(ntupleToHist_PPMC)
+files=(ntupleToHist_PPMC ntupleToHist_PPData)
 rs=(2)
 #ptMins=(30 36)
 #ptMinsR2=(30)
@@ -207,8 +207,8 @@ do
 			    sed -i "s@INMIXJETEXCLUSIONDRNAME@$mixJtDRName@g" $newFile
 			    sed -i "s@INMIXJETEXCLUSIONDR@$n@g" $newFile
 			
-			    echo "./bin/gdjNTupleToHist.exe $newFile &> $logFile &"
-			    exit 1
+			    ./bin/gdjNTupleToHist.exe $newFile &> $logFile &
+#			    exit 1
 			done
 			wait
 		    done
