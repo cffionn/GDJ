@@ -2572,11 +2572,13 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	
 	  if(recoJtOutOfBounds && isJtTruthGood) goodUnmatchedTruthJets.push_back(tL);
 	  else if(isJtTruthGood){
+	    // 2023.11.28
+	    // Old versions of the code that was bugged in absolute yield determination
+	    //	  if(recoJtOutOfBounds) goodUnmatchedTruthJets.push_back(tL);
+	    //	  else{
 	    goodRecoTruthMatchJets.push_back(tL);
 	    truthIsGoodVect.push_back(isJtTruthGood);
 	    
-	    //	    std::cout << "HERE IS A GOOD RECO JET" << std::endl;
-
 	    tL.SetPtEtaPhiM(recoJtPt_[jI][jtVPos], recoJtEta_[jI], recoJtPhi_[jI], 0.0);
 	    goodRecoJets.push_back(tL);
 	    recoIsGoodVect.push_back(isJtRecoGood);
@@ -2704,11 +2706,16 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	    bool goodTruth = truthIsGoodVect[jI] && truthIsGoodVect[jI2];
 	    bool goodReco = recoIsGoodVect[jI] && recoIsGoodVect[jI2];
 
-	    if(truthGammaPt_ > 0.0 && goodTruth) subJtGammaPtValTruth = subJtGammaPtBinFlattener.GetGlobalBinCenterFromBin12Val(truthGammaPt_, subLeadingJetPtTruth, __LINE__);
+	    if(truthGammaPt_ > 0.0 && goodTruth){
+	      subJtGammaPtValTruth = subJtGammaPtBinFlattener.GetGlobalBinCenterFromBin12Val(truthGammaPt_, subLeadingJetPtTruth, __LINE__);
+	    }
 
+	    
 	    Float_t subJtGammaPtValReco = -999;
-	    if(recoGammaPt_[gammaSysPos] > 0.0) subJtGammaPtValReco = subJtGammaPtBinFlattener.GetGlobalBinCenterFromBin12Val(recoGammaPt_[gammaSysPos], subLeadingJetPtReco, __LINE__);
-	        
+	    if(recoGammaPt_[gammaSysPos] > 0.0){
+	      subJtGammaPtValReco = subJtGammaPtBinFlattener.GetGlobalBinCenterFromBin12Val(recoGammaPt_[gammaSysPos], subLeadingJetPtReco, __LINE__);
+	    }
+	    
 	    Double_t varValTruth = -999;
 	    if(goodTruth) varValTruth = getVar(varNameLower, goodTruthJet1, goodTruthJet2, truthGammaTL);
 	    Double_t phoJetWeight = 1.0;
@@ -2816,7 +2823,11 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	      }
 	    }
 	    else if(goodReco && !goodTruth){
-	      //		std::cout << "FILLING FAKE" << std::endl;		
+	      //	      std::cout << "FILLING FAKE" << std::endl;		
+	      //	      std::cout << " VAR VAL RECO, TRUTH: " << varValReco << ", " << varValTruth << std::endl;
+	      //	      std::cout << " dRJJPassesTruth, multiJtTruthDR: " << dRJJPassesTruth << ", " << multiJtTruthDR << std::endl;
+	      //	      std::cout << " dphiJJGPassesTruth, multiJtTruthDphiJJG: " << passesMultiJtDPhiTruth << ", " << multiJtTruthDPhi << std::endl;
+	      
 	      rooResGammaJetVar_p[centPos][sysI]->Fake(varValReco, subJtGammaPtValReco, unfoldWeight_*phoJetWeight);	    
 	    }
 	  }

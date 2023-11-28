@@ -259,6 +259,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 					      "TERM2D",
 					      "TERMBOTH",
 					      "DORELATIVETERM",
+					      "DOBINWIDTHANDSELFNORM",
 					      "SAVETAG",
 					      "SAVEEXT",
 					      "DOLOGX",
@@ -319,6 +320,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   //Continue grabbing parameters from config file
   const std::string saveTag = config_p->GetValue("SAVETAG", "");
   const std::string saveExt = config_p->GetValue("SAVEEXT", "");
+  const bool doBinWidthAndSelfNorm = config_p->GetValue("DOBINWIDTHANDSELFNORM", 0);
   const bool doRelativeTerm = config_p->GetValue("DORELATIVETERM",  0);
   std::string deltaStr = "Rel";
   if(!doRelativeTerm) deltaStr = "Abs";
@@ -1373,7 +1375,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  
 	  if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
 	
-	  binWidthAndSelfNorm(reco_p[gI]);
+	  if(doBinWidthAndSelfNorm) binWidthAndSelfNorm(reco_p[gI]);
 	  prepTH1(reco_p[gI], titleFont, titleSize/(1.0-padSplit1), labelSize/(1.0 - padSplit1), 1, reco_p[gI]->GetMarkerStyle(), reco_p[gI]->GetMarkerSize(), 2, reco_p[gI]->GetXaxis()->GetTitleOffset(), yOffset);
 
 	  if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
@@ -1385,16 +1387,31 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  
 	  Float_t recoMin = getMinGTZero(reco_p[gI]);
 	  if(truth_p[gI] != nullptr){
-	    binWidthAndSelfNorm(truth_p[gI]);
+	    if(doBinWidthAndSelfNorm) binWidthAndSelfNorm(truth_p[gI]);
 	    
 	    Float_t tempMin = getMinGTZero(truth_p[gI]);
 	    if(tempMin < recoMin) recoMin = tempMin;
 	  }
 	  
 	  if(pI == 1){
-	    reco_p[gI]->SetMinimum(jetVarMinGlobal);
-	    reco_p[gI]->SetMaximum(jetVarMaxGlobal);
-	  }
+
+	    if(doBinWidthAndSelfNorm || true){
+	      reco_p[gI]->SetMinimum(jetVarMinGlobal);
+	      reco_p[gI]->SetMaximum(jetVarMaxGlobal);
+	    }
+	    else{//Quickly calculate a proper maximum
+	      double maxVal = 0.0;
+	      if(reco_p[gI]->GetMaximum() > maxVal) maxVal = reco_p[gI]->GetMaximum();
+	      if(truth_p[gI] != nullptr){
+		if(truth_p[gI]->GetMaximum() > maxVal) maxVal = truth_p[gI]->GetMaximum();
+		for(Int_t i = 1; i < nIterForLoop+1; ++i){
+		  if(unfold_p[gI][i]->GetMaximum() > maxVal) maxVal = unfold_p[gI][i]->GetMaximum();
+		}
+	      }
+
+	      reco_p[gI]->SetMaximum(maxVal*1.1);
+	    }
+	  }	  
 	  else reco_p[gI]->SetMinimum(recoMin/2.0);
 	  
 	  if(pI == 0) reco_p[gI]->GetYaxis()->SetTitle("#frac{1}{N_{#gamma}} #frac{dN_{#gamma}}{dp_{T}}");
@@ -1410,10 +1427,10 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  	  
 	  for(Int_t i = 1; i < nIterForLoop+1; ++i){
 	    HIJet::Style::EquipHistogram(unfold_p[gI][i], i-1);
-	    binWidthAndSelfNorm(unfold_p[gI][i]);
+	    if(doBinWidthAndSelfNorm) binWidthAndSelfNorm(unfold_p[gI][i]);
 	    
 	    HIJet::Style::EquipHistogram(refold_p[gI][i], i-1);
-	    binWidthAndSelfNorm(refold_p[gI][i]);
+	    if(doBinWidthAndSelfNorm) binWidthAndSelfNorm(refold_p[gI][i]);
 	    
 	    refold_p[gI][i]->SetMarkerSize(0.00001);
 	    refold_p[gI][i]->SetLineStyle(2);
