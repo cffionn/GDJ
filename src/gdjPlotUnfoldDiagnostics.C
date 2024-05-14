@@ -1413,11 +1413,16 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	    }
 	  }	  
 	  else reco_p[gI]->SetMinimum(recoMin/2.0);
+
+	  if(doBinWidthAndSelfNorm){
+	    if(pI == 0) reco_p[gI]->GetYaxis()->SetTitle("#frac{1}{N_{#gamma}} #frac{dN_{#gamma}}{dp_{T}}");
+	    else if(varNameLower.find("jj") != std::string::npos) reco_p[gI]->GetYaxis()->SetTitle(("#frac{1}{N_{JJ#gamma}} #frac{dN_{JJ#gamma}}{d" + varNameLabel + "}").c_str());	
+	    else reco_p[gI]->GetYaxis()->SetTitle(("#frac{1}{N_{J#gamma}} #frac{dN_{J#gamma}}{d" + varNameLabel + "}").c_str());
+	  }
+	  else{
+	    reco_p[gI]->GetYaxis()->SetTitle("Weighted Counts");
+	  }
 	  
-	  if(pI == 0) reco_p[gI]->GetYaxis()->SetTitle("#frac{1}{N_{#gamma}} #frac{dN_{#gamma}}{dp_{T}}");
-	  else if(varNameLower.find("jj") != std::string::npos) reco_p[gI]->GetYaxis()->SetTitle(("#frac{1}{N_{JJ#gamma}} #frac{dN_{JJ#gamma}}{d" + varNameLabel + "}").c_str());	
-	  else reco_p[gI]->GetYaxis()->SetTitle(("#frac{1}{N_{J#gamma}} #frac{dN_{J#gamma}}{d" + varNameLabel + "}").c_str());
-	  	  
 	  reco_p[gI]->DrawCopy("HIST E1");
 	  
 	  if(doLogX || pI == 0) gPad->SetLogx();

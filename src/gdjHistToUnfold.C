@@ -1423,7 +1423,19 @@ int gdjHistToUnfold(std::string inConfigFileName)
   TH1D* rooResGammaMisses_p[nMaxCentBins][nMaxSyst];
   TH1D* rooResGammaFakes_p[nMaxCentBins][nMaxSyst];
 
+  //For the flavor check we will save Q, G, and untagged truth going into rooResGammaJetVar
+  const Int_t nQG = 3;
+  std::vector<std::string> qgStr = {"Quark", "Gluon", "NoFlavor"};
+  //Create a quick map for flavor
+  std::map<Int_t, Int_t> qgFlavorToVectPos;
+  for(Int_t qgI = 1; qgI <= 8; ++qgI){
+    qgFlavorToVectPos[qgI] = 0;
+    qgFlavorToVectPos[-qgI] = 0;
+  }
+  qgFlavorToVectPos[21] = 1;
+  
   RooUnfoldResponse* rooResGammaJetVar_p[nMaxCentBins][nMaxSyst]; 
+  TH1D* rooResGammaJetVar_QG_p[nMaxCentBins][nQG];
   TH2D* rooResGammaJetVarMatrixReco_p[nMaxCentBins][nMaxSyst];
   TH2D* rooResGammaJetVarMatrixTruth_p[nMaxCentBins][nMaxSyst];
   TH2D* rooResGammaJetVarMisses_p[nMaxCentBins][nMaxSyst];
@@ -2115,11 +2127,13 @@ int gdjHistToUnfold(std::string inConfigFileName)
   Float_t truthJtPt_[nMaxJets];
   Float_t truthJtPhi_[nMaxJets];
   Float_t truthJtEta_[nMaxJets];
+  Int_t truthJtFlavor_[nMaxJets];
 
   Int_t nTruthJtUnmatched_;
   Float_t truthJtUnmatchedPt_[nMaxJets];
   Float_t truthJtUnmatchedPhi_[nMaxJets];
   Float_t truthJtUnmatchedEta_[nMaxJets];
+  Int_t truthJtUnmatchedFlavor_[nMaxJets];
 
   Double_t unfoldWeight_;
   Float_t unfoldCent_;
@@ -2147,11 +2161,13 @@ int gdjHistToUnfold(std::string inConfigFileName)
   unfoldTree_p->SetBranchAddress("truthJtPt", truthJtPt_);
   unfoldTree_p->SetBranchAddress("truthJtPhi", truthJtPhi_);
   unfoldTree_p->SetBranchAddress("truthJtEta", truthJtEta_);
+  unfoldTree_p->SetBranchAddress("truthJtFlavor", truthJtFlavor_);
   
   unfoldTree_p->SetBranchAddress("nTruthJtUnmatched", &nTruthJtUnmatched_);
   unfoldTree_p->SetBranchAddress("truthJtUnmatchedPt", truthJtUnmatchedPt_);
   unfoldTree_p->SetBranchAddress("truthJtUnmatchedPhi", truthJtUnmatchedPhi_);
   unfoldTree_p->SetBranchAddress("truthJtUnmatchedEta", truthJtUnmatchedEta_);
+  unfoldTree_p->SetBranchAddress("truthJtUnmatchedFlavor", truthJtUnmatchedFlavor_);
   
   unfoldTree_p->SetBranchAddress("unfoldWeight", &unfoldWeight_);
   unfoldTree_p->SetBranchAddress("unfoldCent", &unfoldCent_);    
@@ -2194,6 +2210,16 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
       rooResGammaJetVar_p[cI][sI] = new RooUnfoldResponse(photonPtJetVarReco_p[cI][systPos], photonPtJetVarTruth_p[cI][systPos], ("rooResGammaJetVar_" + centBinsStr[cI] + "_" + systStrVect[sI]).c_str(), ("rooResGammaJet" + varName + "_" + centBinsStr[cI] + "_" + systStrVect[sI]).c_str());
 
+      //For Q/G check
+      if(sI == 0){//only do it for nominal, nosyst
+	for(Int_t qgI = 0; qgI < nQG; ++qgI){
+	  std::string qgName = "rooResGammaJetVar_" + centBinsStr[cI] + "_" + qgStr[qgI] + "_h";
+	  rooResGammaJetVar_QG_p[cI][qgI] = new TH1D(qgName.c_str(), ";Jet p_{T} [GeV];Counts", 17, 30, 200);
+	  rooResGammaJetVar_QG_p[cI][qgI]->Sumw2();
+	}
+      }
+      
+      
       if(isMultijet){
 	rooResGammaJetVarMatrixReco_p[cI][sI] = new TH2D(("rooResJt" + varName + "GammaMatrixReco_" + centBinsStr[cI] + "_" + systStrVect[sI] + "_h").c_str(), (";Reco. " + varNameStyle + "; Reco. Sub. Jet p_{T} x #gamma p_{T} [Arbitrary Units]").c_str(), nVarBins, varBins, nSubJtGammaPtBins, subJtGammaPtBins);
 	rooResGammaJetVarMatrixTruth_p[cI][sI] = new TH2D(("rooResJt" + varName + "GammaMatrixTruth_" + centBinsStr[cI] + "_" + systStrVect[sI] + "_h").c_str(), (";Truth " + varNameStyle + "; Truth Sub. Jet p_{T} x #gamma p_{T} [Arbitrary Units]").c_str(), nVarBins, varBins, nSubJtGammaPtBins, subJtGammaPtBins);
@@ -2337,7 +2363,8 @@ int gdjHistToUnfold(std::string inConfigFileName)
       TLorentzVector tL;      
       int systPos = systPosToInSystPos[sysI];      
       std::vector<TLorentzVector> goodUnmatchedTruthJets;      
-
+      //      std::vector<int> goodUnmatchedTruthJetsFlavor;
+      
       int systPosForWeights = systPos;
       if(isStrSame("JTPTCUT", systStrVect[sysI])) systPosForWeights = 0;
 		
@@ -2395,10 +2422,12 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	else if(isMultijet){
 	  tL.SetPtEtaPhiM(truthJtUnmatchedPt_[tI], truthJtUnmatchedEta_[tI], truthJtUnmatchedPhi_[tI], 0.0);
 	  goodUnmatchedTruthJets.push_back(tL);
+	  //	  goodUnmatchedTruthJetsFlavor.push_back(truthJtUnmatchedFlavor_[tI]);
 	}
       }
 
       std::vector<TLorentzVector> goodRecoJets, goodRecoTruthMatchJets;
+      std::vector<int> goodRecoTruthMatchJetsFlavor;
       std::vector<bool> recoIsGoodVect, truthIsGoodVect;
       //Now process reco-truth jet matched pairs
       for(Int_t jI = 0; jI < nRecoJt_; ++jI){
@@ -2477,6 +2506,11 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	  }
 	  else if(isTruthGood && isRecoGood){
 	    rooResGammaJetVar_p[centPos][sysI]->Fill(gammaJtDPhiReco, recoGammaPt_[gammaSysPos], gammaJtDPhiTruth, truthGammaPt_, unfoldWeight_*phoJetWeight);
+	    if(sysI == 0){
+	      if(qgFlavorToVectPos.count(truthJtFlavor_[jI]) == 0) rooResGammaJetVar_QG_p[centPos][2]->Fill(truthJtPt_[jI], unfoldWeight_*phoJetWeight);
+	      else rooResGammaJetVar_QG_p[centPos][qgFlavorToVectPos[truthJtFlavor_[jI]]]->Fill(truthJtPt_[jI], unfoldWeight_*phoJetWeight);
+	    }
+	    
 	    rooResGammaJetVarMatrixReco_p[centPos][sysI]->Fill(gammaJtDPhiReco, recoGammaPt_[gammaSysPos], unfoldWeight_*phoJetWeight);
 	    rooResGammaJetVarMatrixTruth_p[centPos][sysI]->Fill(gammaJtDPhiTruth, truthGammaPt_, unfoldWeight_*phoJetWeight);
 
@@ -2519,6 +2553,11 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	  }
 	  else if(isRecoGood && isTruthGood){
 	    rooResGammaJetVar_p[centPos][sysI]->Fill(recoJtPt_[jI][jtVPos], recoGammaPt_[gammaSysPos], truthJtPt_[jI], truthGammaPt_, unfoldWeight_*phoJetWeight);
+	    if(sysI == 0){
+	      if(qgFlavorToVectPos.count(truthJtFlavor_[jI]) == 0) rooResGammaJetVar_QG_p[centPos][2]->Fill(truthJtPt_[jI], unfoldWeight_*phoJetWeight);
+	      else rooResGammaJetVar_QG_p[centPos][qgFlavorToVectPos[truthJtFlavor_[jI]]]->Fill(truthJtPt_[jI], unfoldWeight_*phoJetWeight);
+	    }
+
 	    rooResGammaJetVarMatrixReco_p[centPos][sysI]->Fill(recoJtPt_[jI][jtVPos], recoGammaPt_[gammaSysPos], unfoldWeight_*phoJetWeight);
 	    rooResGammaJetVarMatrixTruth_p[centPos][sysI]->Fill(truthJtPt_[jI], truthGammaPt_, unfoldWeight_*phoJetWeight);
 
@@ -2553,6 +2592,11 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	    }
 	    else{
 	      rooResGammaJetVar_p[centPos][sysI]->Fill(varValReco, recoGammaPt_[gammaSysPos], varValTruth, truthGammaPt_, unfoldWeight_*phoJetWeight);
+	      if(sysI == 0){
+		if(qgFlavorToVectPos.count(truthJtFlavor_[jI]) == 0) rooResGammaJetVar_QG_p[centPos][2]->Fill(truthJtPt_[jI], unfoldWeight_*phoJetWeight);
+		else rooResGammaJetVar_QG_p[centPos][qgFlavorToVectPos[truthJtFlavor_[jI]]]->Fill(truthJtPt_[jI], unfoldWeight_*phoJetWeight);
+	      }
+
 	      rooResGammaJetVarMatrixReco_p[centPos][sysI]->Fill(varValReco, recoGammaPt_[gammaSysPos], unfoldWeight_*phoJetWeight);
 	      rooResGammaJetVarMatrixTruth_p[centPos][sysI]->Fill(varValTruth, truthGammaPt_, unfoldWeight_*phoJetWeight);
 
@@ -2570,13 +2614,17 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	else if(isMultijet){
 	  tL.SetPtEtaPhiM(truthJtPt_[jI], truthJtEta_[jI], truthJtPhi_[jI], 0.0);
 	
-	  if(recoJtOutOfBounds && isJtTruthGood) goodUnmatchedTruthJets.push_back(tL);
+	  if(recoJtOutOfBounds && isJtTruthGood){
+	    goodUnmatchedTruthJets.push_back(tL);
+	    //	    goodUnmatchedTruthJetsFlavor.push_back(truthJtFlavor_[jI]);
+	  }
 	  else if(isJtTruthGood){
 	    // 2023.11.28
 	    // Old versions of the code that was bugged in absolute yield determination
 	    //	  if(recoJtOutOfBounds) goodUnmatchedTruthJets.push_back(tL);
 	    //	  else{
 	    goodRecoTruthMatchJets.push_back(tL);
+	    goodRecoTruthMatchJetsFlavor.push_back(truthJtFlavor_[jI]);
 	    truthIsGoodVect.push_back(isJtTruthGood);
 	    
 	    tL.SetPtEtaPhiM(recoJtPt_[jI][jtVPos], recoJtEta_[jI], recoJtPhi_[jI], 0.0);
@@ -2595,9 +2643,11 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	//First do it for unmatched truth jets
 	for(unsigned int tI = 0; tI < goodUnmatchedTruthJets.size(); ++tI){
 	  TLorentzVector goodTruthJet1 = goodUnmatchedTruthJets[tI];
-
+	  //	  Int_t goodTruthJet1Flavor = goodUnmatchedTruthJetsFlavor[tI];
+	  
 	  for(unsigned int tI2 = tI+1; tI2 < goodUnmatchedTruthJets.size(); ++tI2){
 	    TLorentzVector goodTruthJet2 = goodUnmatchedTruthJets[tI2];	   
+	    //	    Int_t goodTruthJet2Flavor = goodUnmatchedTruthJetsFlavor[tI2];	   
 
 	    if(goodTruthJet1.Pt() < jtPtBinsLow || goodTruthJet1.Pt() >= jtPtBinsHigh) continue;
 	    if(goodTruthJet2.Pt() < jtPtBinsLow || goodTruthJet2.Pt() >= jtPtBinsHigh) continue;
@@ -2640,6 +2690,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	//Now process matched jets...
 	for(unsigned int jI = 0; jI < goodRecoJets.size(); ++jI){
 	  TLorentzVector goodTruthJet1 = goodRecoTruthMatchJets[jI];
+	  Int_t goodTruthJet1Flavor = goodRecoTruthMatchJetsFlavor[jI];
 	  TLorentzVector goodRecoJet1 = goodRecoJets[jI];	 	  
 	  
 	  //First w/ unmatched jets
@@ -2689,7 +2740,8 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	   
 	    TLorentzVector goodRecoJet2 = goodRecoJets[jI2];
 	    TLorentzVector goodTruthJet2 = goodRecoTruthMatchJets[jI2];
-
+	    Int_t goodTruthJet2Flavor = goodRecoTruthMatchJetsFlavor[jI2];
+	    
 	    Float_t subLeadingJetPtReco = goodRecoJets[jI].Pt();
 	    Float_t subLeadingJetPtTruth = goodTruthJet1.Pt();
 	    
@@ -2789,8 +2841,15 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	    else if(goodReco && goodTruth){
 	      if(sysI == 0) ++(nFillsToRooRes[3]);
 
-	      rooResGammaJetVar_p[centPos][sysI]->Fill(varValReco, subJtGammaPtValReco, varValTruth, subJtGammaPtValTruth, unfoldWeight_*phoJetWeight);	    
+	      rooResGammaJetVar_p[centPos][sysI]->Fill(varValReco, subJtGammaPtValReco, varValTruth, subJtGammaPtValTruth, unfoldWeight_*phoJetWeight);	   
+	      if(sysI == 0){
+		if(qgFlavorToVectPos.count(goodTruthJet1Flavor) == 0) rooResGammaJetVar_QG_p[centPos][2]->Fill(goodTruthJet1.Pt(), unfoldWeight_*phoJetWeight);
+		else rooResGammaJetVar_QG_p[centPos][qgFlavorToVectPos[goodTruthJet1Flavor]]->Fill(goodTruthJet1.Pt(), unfoldWeight_*phoJetWeight);
 
+		if(qgFlavorToVectPos.count(goodTruthJet2Flavor) == 0) rooResGammaJetVar_QG_p[centPos][2]->Fill(goodTruthJet2.Pt(), unfoldWeight_*phoJetWeight);
+		else rooResGammaJetVar_QG_p[centPos][qgFlavorToVectPos[goodTruthJet2Flavor]]->Fill(goodTruthJet2.Pt(), unfoldWeight_*phoJetWeight);	   
+	      }
+	    
 	      if(false){
 		std::cout << "Filling on Entry: " << entry << std::endl;
 		std::cout << " Truth Pho: " << truthGammaPt_ << ", " << truthGammaEta_ << ", " << truthGammaPhi_ << std::endl;
@@ -3137,6 +3196,13 @@ int gdjHistToUnfold(std::string inConfigFileName)
       }      
 
       std::cout << "SYSTI : " << sysI << "/" << nSyst << std::endl;
+
+      //QG Write
+      if(sysI == 0){
+	for(Int_t qgI = 0; qgI < nQG; ++qgI){
+	  rooResGammaJetVar_QG_p[cI][qgI]->Write("", TObject::kOverwrite);
+	}
+      }
       
       Int_t gammaSysPos = vectContainsStrPos(systStrVect[sysI], &gesGERStrVect);
       const bool isGammaSyst = gammaSysPos >= 0;
@@ -3367,6 +3433,12 @@ int gdjHistToUnfold(std::string inConfigFileName)
       }
       
       delete rooResGammaJetVar_p[cI][sysI];
+      if(sysI == 0){
+	for(Int_t qgI = 0; qgI < nQG; ++qgI){
+	  delete rooResGammaJetVar_QG_p[cI][qgI];
+	}
+      }
+
       delete rooResGammaJetVarMatrixReco_p[cI][sysI];
       delete rooResGammaJetVarMatrixTruth_p[cI][sysI];
       delete rooResGammaJetVarMisses_p[cI][sysI];
@@ -3441,6 +3513,16 @@ int gdjHistToUnfold(std::string inConfigFileName)
   }
   
   inUnfoldFileConfigCopy_p->Write("config", TObject::kOverwrite);
+
+  //We will save the full input config at this step so we know what we ran
+  std::string unfoldConfigName = __FILE__;//name it after the macro
+  while(unfoldConfigName.find("/") != std::string::npos){//remove path
+    unfoldConfigName.replace(0, unfoldConfigName.find("/")+1, "");
+  }
+  //remove extension
+  if(unfoldConfigName.find(".") != std::string::npos) unfoldConfigName.replace(unfoldConfigName.find("."), unfoldConfigName.size(), "");
+  unfoldConfigName = unfoldConfigName + "Config";
+  config_p->Write(unfoldConfigName.c_str(), TObject::kOverwrite);
   
   inResponseFile_p->Close();
   delete inResponseFile_p;  

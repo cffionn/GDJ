@@ -109,6 +109,8 @@ std::string plotMixClosure(const bool doGlobalDebug, std::map<std::string, std::
       yLabelNominal = "#frac{1}{N_{#gamma}} #frac{dN_{J#gamma}}{d#Delta#phi_{J#gamma}}";
     }
   }
+
+  std::cout << "ENVSTR: " << envStr << std::endl;
   
   const bool doVaryMax = plotConfig_p->GetValue(("MIXEDEVTPLOT." + envStr + "DOVARYMAX").c_str(), 0);
   const double max = plotConfig_p->GetValue(("MIXEDEVTPLOT." + envStr + "MAX").c_str(), 0.5);

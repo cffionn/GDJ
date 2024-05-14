@@ -717,7 +717,7 @@ int gdjPlotResults(std::string inConfigFileName)
  }
 
  //Scaling factor taking from HEP 13 TeV Photon+multijet
- const Double_t scaleFactorPYT = 1.2;
+ // const Double_t scaleFactorPYT = 1.0;
  //Do jewel overlay only if pp and at least one valid Pb+Pb file exist
  bool doJEWEL = check.checkFileExt(inJEWELPPFileName, ".root") && inJEWELPbPbFileNames.size() > 0;
  
@@ -1527,6 +1527,8 @@ int gdjPlotResults(std::string inConfigFileName)
  	for(unsigned int jewelI = 0; jewelI < inJEWELPbPbFileNames.size(); ++jewelI){
  	  std::string jewelCent = pbpbJEWELConfig_p[jewelI]->GetValue("CENT", "");
 
+	  std::cout << "JEWELCENT: " << jewelCent << std::endl;
+	  
  	  while(jewelCent.find("/") != std::string::npos){
  	    jewelCent.replace(jewelCent.rfind("/"), jewelCent.size(), "");
  	  }
@@ -1543,7 +1545,7 @@ int gdjPlotResults(std::string inConfigFileName)
 
  	if(jewelCentPos == -1){
  	  std::cout << "JEWEL CENT STR MATCHING \'" << centBinsStr[cI] << "\' not found. Pb+Pb in this bin will not be plotted, please fix for overlay" << std::endl;
- 		  doJEWEL = false;
+	  doJEWEL = false;
  	}
  	else{
  	  inJEWELPbPbHist_p = (TH1D*)pbpbJEWELFile_p[jewelCentPos]->Get((varNameLower + "_R" + std::to_string(jetR) + "_GammaPt" + std::to_string(gI) + "_h").c_str());
@@ -1640,8 +1642,9 @@ int gdjPlotResults(std::string inConfigFileName)
  	  jewelPbPbHistCurve_p->SetMarkerStyle(1);
  	}
 
- 	jewelPPHistCurve_p->Scale(scaleFactorPYT);
- 	jewelPPHist_p->Scale(scaleFactorPYT);
+	//Getting rid of scale factor!!!
+	// 	jewelPPHistCurve_p->Scale(scaleFactorPYT);
+	// 	jewelPPHist_p->Scale(scaleFactorPYT);
 	
  	pads_p[0]->cd();
  	jewelPPHistCurve_p->DrawCopy("E X0 HIST SAME");
@@ -1649,12 +1652,13 @@ int gdjPlotResults(std::string inConfigFileName)
  	//Change the line color to black for the tlegend and add both jewels
 	// 	jewelPPHistCurve_p->SetLineColor(1);
 	//	jewelLeg_p->AddEntry(inJEWELPPHist_p, "Data", "L");
-	jewelLeg_p->AddEntry(jewelPPHistCurve_p, ("JEWEL (x " + prettyString(scaleFactorPYT,1,false) + ")").c_str(), "L F");
+	//	jewelLeg_p->AddEntry(jewelPPHistCurve_p, ("JEWEL (x " + prettyString(scaleFactorPYT,1,false) + ")").c_str(), "L F");
+	jewelLeg_p->AddEntry(jewelPPHistCurve_p, "JEWEL", "L F");
 
 	//	jewelLeg_p->Draw("SAME");
 	
 	if(jewelPbPbHistCurve_p != nullptr){
-	  jewelPbPbHistCurve_p->Scale(scaleFactorPYT);
+	  //	  jewelPbPbHistCurve_p->Scale(scaleFactorPYT);
 	  jewelPbPbHistCurve_p->DrawCopy("E X0 HIST SAME");
 	}
       }
@@ -1704,11 +1708,11 @@ int gdjPlotResults(std::string inConfigFileName)
 	
 	HIJet::Style::EquipHistogram(pyt8Truth_p, 5);
 	pyt8Truth_p->SetLineWidth(8);
-	pyt8Truth_p->Scale(scaleFactorPYT);
+	//	pyt8Truth_p->Scale(scaleFactorPYT);
 	pyt8Truth_p->SetMarkerSize(0.00001);
 	pyt8Truth_p->SetMarkerStyle(1);
 	pyt8Truth_p->DrawCopy("E X0 HIST SAME");
-	pyt8Truth_p->Scale(1.0/scaleFactorPYT);
+	//	pyt8Truth_p->Scale(1.0/scaleFactorPYT);
 
 	
 	if(doJEWEL){
@@ -1942,8 +1946,12 @@ int gdjPlotResults(std::string inConfigFileName)
       leg_p->AddEntry(pbpbHist_p, ("Pb+Pb #bf{" + centBins2Str + "}").c_str(), "P L F");
       leg_p->AddEntry(ppHist_p, "#it{pp}", "P L F");      
       if(doJEWEL){
-	leg_p->AddEntry(jewelPPHistCurve_p, ("JEWEL #it{pp} (x " + prettyString(scaleFactorPYT, 1, false) + ")").c_str(), "L");
-	if(jewelPbPbHistCurve_p != nullptr) leg_p->AddEntry(jewelPbPbHistCurve_p, ("JEWEL Pb+Pb (x " + prettyString(scaleFactorPYT, 1, false) + ")").c_str(), "L");
+	//	leg_p->AddEntry(jewelPPHistCurve_p, ("JEWEL #it{pp} (x " + prettyString(scaleFactorPYT, 1, false) + ")").c_str(), "L");
+	//	if(jewelPbPbHistCurve_p != nullptr) leg_p->AddEntry(jewelPbPbHistCurve_p, ("JEWEL Pb+Pb (x " + prettyString(scaleFactorPYT, 1, false) + ")").c_str(), "L");
+
+	leg_p->AddEntry(jewelPPHistCurve_p, "JEWEL #it{pp}", "L");
+	if(jewelPbPbHistCurve_p != nullptr) leg_p->AddEntry(jewelPbPbHistCurve_p, "JEWEL Pb+Pb", "L");
+
       }      
       leg_p->Draw("SAME");
       
@@ -2049,7 +2057,7 @@ int gdjPlotResults(std::string inConfigFileName)
 	padsPP_p[1]->cd();
 	if(doJEWEL){
 	  //	  jewelPPHist_p->Scale(scaleFactorPP);
-	  pyt8Truth_p->Scale(scaleFactorPYT);
+	  //	  pyt8Truth_p->Scale(scaleFactorPYT);
 
 	  jewelPPHist_p->Divide(ppHist_p);
 	  pyt8Truth_p->Divide(ppHist_p);
@@ -2186,9 +2194,14 @@ int gdjPlotResults(std::string inConfigFileName)
   
 	legPP_p->AddEntry(ppHist_p, "#it{pp}", "P L F");
 
+	/*
 	legPP_p->AddEntry(pyt8Truth_p, ("PYTHIA 8 (x " + prettyString(scaleFactorPYT, 1, false) + ")").c_str(), "L P");
 	if(doJEWEL) legPP_p->AddEntry(jewelPPHist_p, ("JEWEL #it{pp} (x " + prettyString(scaleFactorPYT, 1, false) + ")").c_str(), "L P");
-	  
+	*/
+	
+	legPP_p->AddEntry(pyt8Truth_p, "PYTHIA 8", "L P");
+	if(doJEWEL) legPP_p->AddEntry(jewelPPHist_p, "JEWEL #it{pp}", "L P");
+	
 	legPP_p->Draw("SAME");
 
 	TLatex* label_p = new TLatex();
