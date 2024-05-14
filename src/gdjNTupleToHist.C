@@ -1972,10 +1972,14 @@ int gdjNTupleToHist(std::string inConfigFileName)
       //TTree processing; Range of entry handling - default is full range but you can set a start and an endpoint - this just handles that in a somewhat smart way
       ULong64_t nEntriesTemp = inTree_p->GetEntries();
       ULong64_t nEntriesStart = 0;     
-      
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;      
+
       if(nStartEvtStr.size() != 0) nEntriesStart = TMath::Min(nEntriesTemp-1, (ULong64_t)nStartEvt);
       if(nMaxEvtStr.size() != 0) nEntriesTemp = TMath::Min(nEntriesTemp, (ULong64_t)nMaxEvt);
       const ULong64_t nSigEntries = nEntriesTemp;
+
+      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
       
       for(ULong64_t entry = nEntriesStart; entry < nEntriesStart + nSigEntries; ++entry){
 	inTree_p->GetEntry(entry);
@@ -1985,6 +1989,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  vert_z_p->at(0);
 	  vert_z /= mmToCMDivFactor;
 	}
+
+	//      if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
 	//Commenting out this is a relic of CMS analysis
 	//if(vert_z <= -15. || vert_z >= 15.) continue;      
@@ -2151,6 +2157,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
     unsigned long long minKey = 0;
     unsigned long long minimumVal = 2147483647; //hardcoded max value of a signed integer
     
+
+
     double aveVal = 0;
     double tempCounter = 0;
 
