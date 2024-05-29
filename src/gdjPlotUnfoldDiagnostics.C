@@ -228,8 +228,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   //Hard-code some latex/legend parameters
   const int titleFont = 42;
   const double titleSize = 0.03;
-  const double labelSize = titleSize*0.9;
-  const double yOffset = 1.0;
+  const double labelSize = titleSize*0.8;
+  const double yOffset = 1.2;
 
   //Internal stopwatch for code timing tests
   cppWatch globalTimer;
@@ -260,6 +260,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 					      "TERMBOTH",
 					      "DORELATIVETERM",
 					      "DOBINWIDTHANDSELFNORM",
+					      "DOBINWIDTHNORM",
 					      "SAVETAG",
 					      "SAVEEXT",
 					      "DOLOGX",
@@ -321,6 +322,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
   const std::string saveTag = config_p->GetValue("SAVETAG", "");
   const std::string saveExt = config_p->GetValue("SAVEEXT", "");
   const bool doBinWidthAndSelfNorm = config_p->GetValue("DOBINWIDTHANDSELFNORM", 0);
+  const bool doBinWidthNorm = config_p->GetValue("DOBINWIDTHNORM", 0);
   const bool doRelativeTerm = config_p->GetValue("DORELATIVETERM",  0);
   std::string deltaStr = "Rel";
   if(!doRelativeTerm) deltaStr = "Abs";
@@ -1376,6 +1378,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
 
 	  if(doBinWidthAndSelfNorm) binWidthAndSelfNorm(reco_p[gI]);
+	  else if(doBinWidthNorm) binWidthNorm(reco_p[gI]);
+
 	  prepTH1(reco_p[gI], titleFont, titleSize/(1.0-padSplit1), labelSize/(1.0 - padSplit1), 1, reco_p[gI]->GetMarkerStyle(), reco_p[gI]->GetMarkerSize(), 2, reco_p[gI]->GetXaxis()->GetTitleOffset(), yOffset);
 
 	  if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
@@ -1388,6 +1392,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  Float_t recoMin = getMinGTZero(reco_p[gI]);
 	  if(truth_p[gI] != nullptr){
 	    if(doBinWidthAndSelfNorm) binWidthAndSelfNorm(truth_p[gI]);
+	    else if(doBinWidthNorm) binWidthNorm(truth_p[gI]);
 
 	    Float_t tempMin = getMinGTZero(truth_p[gI]);
 	    if(tempMin < recoMin) recoMin = tempMin;
@@ -1419,6 +1424,10 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	    else if(varNameLower.find("jj") != std::string::npos) reco_p[gI]->GetYaxis()->SetTitle(("#frac{1}{N_{JJ#gamma}} #frac{dN_{JJ#gamma}}{d" + varNameLabel + "}").c_str());
 	    else reco_p[gI]->GetYaxis()->SetTitle(("#frac{1}{N_{J#gamma}} #frac{dN_{J#gamma}}{d" + varNameLabel + "}").c_str());
 	  }
+	  else if(doBinWidthNorm){
+	    if(pI == 0) reco_p[gI]->GetYaxis()->SetTitle("#frac{d(Weighted Counts)}{dp_{T}}");
+	    else reco_p[gI]->GetYaxis()->SetTitle(("#frac{d(Weighted Counts)}{d" + varNameLabel + "}").c_str());
+	  }
 	  else{
 	    reco_p[gI]->GetYaxis()->SetTitle("Weighted Counts");
 	  }
@@ -1433,12 +1442,14 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  for(Int_t i = 1; i < nIterForLoop+1; ++i){
 	    HIJet::Style::EquipHistogram(unfold_p[gI][i], i-1);
 	    if(doBinWidthAndSelfNorm) binWidthAndSelfNorm(unfold_p[gI][i]);
+	    else if(doBinWidthNorm) binWidthNorm(unfold_p[gI][i]);
 
 	    HIJet::Style::EquipHistogram(refold_p[gI][i], i-1);
 	    if(doBinWidthAndSelfNorm) binWidthAndSelfNorm(refold_p[gI][i]);
+	    else if(doBinWidthNorm) binWidthNorm(refold_p[gI][i]);
 
-	    refold_p[gI][i]->SetMarkerSize(0.00001);
-	    refold_p[gI][i]->SetLineStyle(2);
+	    //	    refold_p[gI][i]->SetMarkerSize(0.00001);
+	    //	    refold_p[gI][i]->SetLineStyle(2);
 	  }
 	  for(Int_t i = 1; i < nIterForLoop+1; ++i){unfold_p[gI][i]->DrawCopy("HIST E1 P SAME");}
 
@@ -1459,8 +1470,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 
 	    HIJet::Style::EquipHistogram(unfold_p[gI][i], i-1);
 	    HIJet::Style::EquipHistogram(refold_p[gI][i], i-1);
-	    refold_p[gI][i]->SetMarkerSize(0.00001);
-	    refold_p[gI][i]->SetLineStyle(2);
+	    //	    refold_p[gI][i]->SetMarkerSize(0.00001);
+	    //	    refold_p[gI][i]->SetLineStyle(2);
 
 	    unfold_p[gI][i]->DrawCopy("HIST E1 P SAME");
 	    refold_p[gI][i]->DrawCopy("HIST E1 SAME");
@@ -1479,6 +1490,8 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  canv_p->cd();
 	  pads_p[1]->cd();
 
+	  //2024.05.22 0 replace the unfold w/ refold
+	  /*
 	  for(Int_t i = 1; i < nIterForLoop+1; ++i){
 	    TH1D* unfoldClone_p = (TH1D*)unfold_p[gI][i]->Clone("tempClone");
 
@@ -1498,31 +1511,47 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 
 	    delete unfoldClone_p;
 	  }
+	  */ // INSTEAD PLOT ALL REFOLDS:
+	  bool hasDrawn = false;
+	  for(Int_t i = 1; i < nIterForLoop+1; ++i){
+	    TH1D* refoldClone_p = (TH1D*)refold_p[gI][i]->Clone("tempClone2");
+	    refoldClone_p->Divide(reco_p[gI]);
+	    refoldClone_p->SetTitle("");
+
+	    if(!hasDrawn){
+	      refoldClone_p->GetYaxis()->SetTitle("#frac{Refold}{Reco.}");
+
+	      prepTH1(refoldClone_p, titleFont, titleSize/(padSplit1 - padSplit2), labelSize/(padSplit1 - padSplit2), refoldClone_p->GetMarkerColor(), refoldClone_p->GetMarkerStyle(), refoldClone_p->GetMarkerSize(), refoldClone_p->GetLineWidth(), 1.2, yOffset*(padSplit1 - padSplit2)/(1.0-padSplit1));
+
+	      refoldClone_p->GetYaxis()->SetNdivisions(404);
+
+	      refoldClone_p->SetMaximum(1.25);
+	      refoldClone_p->SetMinimum(0.75);
+
+	      refoldClone_p->DrawCopy("HIST E1 P");
+	      hasDrawn = true;
+	    }
+	    else refoldClone_p->DrawCopy("HIST E1 P SAME");
+	    delete refoldClone_p;
+	  }
+
+	  if(pI == 1) line_p->DrawLine(varBins[0], 1.0, varBins[nVarBins], 1.0);
+          else line_p->DrawLine(gammaPtBins[0], 1.0, gammaPtBins[nGammaPtBins], 1.0);
+	  
 	  if(doLogX || pI == 0) gPad->SetLogx();
 
 	  canvBest_p->cd();
 	  padsBest_p[1]->cd();
 
-	  if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
-
-	  bool hasDrawn = false;
+	  hasDrawn = false;
 	  for(Int_t i = 1; i < nIterForLoop+1; ++i){
 	    bool isGood = false;
 	    if(i == termPos) isGood = true;
 	    if(!isGood) continue;
 
-	    if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIterForLoop+1 << std::endl;
-
-	    TH1D* unfoldClone_p = (TH1D*)unfold_p[gI][i]->Clone("tempClone");
-	    unfoldClone_p->Divide(reco_p[gI]);
-
 	    TH1D* refoldClone_p = (TH1D*)refold_p[gI][i]->Clone("tempClone2");
 	    refoldClone_p->Divide(reco_p[gI]);
-
-	    unfoldClone_p->SetTitle("");
 	    refoldClone_p->SetTitle("");
-
-	    if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIterForLoop+1 << std::endl;
 
 	    if(!hasDrawn){
 	      refoldClone_p->GetYaxis()->SetTitle("#frac{Refold}{Reco.}");
@@ -1539,21 +1568,12 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	    }
 	    else refoldClone_p->DrawCopy("HIST E1 P SAME");
 
-	    if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIterForLoop+1 << std::endl;
-
 	    if(i == termPos){
 	      Float_t tempOpacity = HIJet::Style::GetOpacity(i-1);
-
-	      if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIterForLoop+1 << ", " << termPos << ", " << deltaVals.size() << std::endl;
-
 	      drawBoxAdjacentIterRel(padsBest_p[1], refoldClone_p, tempOpacity, &deltaVals);
-	      if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIterForLoop+1 << std::endl;
 	    }
 
-	    if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << ", " << i << "/" << nIterForLoop+1 << std::endl;
-
 	    delete refoldClone_p;
-	    delete unfoldClone_p;
 	  }
 
 	  if(doGlobalDebug) std::cout << "FILE, LINE, gI/nGammaPtBinsForUnfold: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBinsForUnfold << std::endl;
