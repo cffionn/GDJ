@@ -2690,6 +2690,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  phoIsGood = phoIsGood && truthPhotonIso4[tI] < truthIsoCutInGeV;
 	  */
 	  bool phoIsGood = truthPhotonPt[tI] >= gammaPtBinsLow && truthPhotonPt[tI] < gammaPtBinsHigh;
+	  phoIsGood = phoIsGood && truthPhotonIso4[tI] < truthIsoCutInGeV;
+	  phoIsGood = phoIsGood && TMath::Abs(truthPhotonEta[tI]) < 2.37;
 
 	  if(phoIsGood){
 	    goodTruthPhoPos.push_back(tI);
@@ -3556,7 +3558,18 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		      multijetDPhiJJ_h[centPos]->Fill(TMath::Abs(getDPHI(goodRecoJets[gI].Phi(), goodRecoJets[gI2].Phi())), fullWeight);
 		    }
 
-		    if(xJJValueGood) photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRaw(xJJValue, subJtGammaPtValReco, fullWeight);
+		    if(xJJValueGood){
+		      if(false && barrelEC == 2){
+			std::cout << "Photon pt eta phi (" << entry << "): " << photon_pt_p->at(pI) << ", " << photon_eta_p->at(pI) << ", " << photon_phi_p->at(pI) << std::endl;
+			std::cout << " Jet1 pt eta phi: " << goodRecoJets[gI].Pt() << ", " << goodRecoJets[gI].Eta() << ", " << goodRecoJets[gI].Phi() << std::endl;
+			std::cout << " Jet2 pt eta phi: " << goodRecoJets[gI2].Pt() << ", " << goodRecoJets[gI2].Eta() << ", " << goodRecoJets[gI2].Phi() << std::endl;
+			std::cout << " Multijt DRJJ: " << dRJJValue << std::endl;
+			std::cout << " Multijt DPhiJJG: " << multiJtDPhiReco << std::endl;
+			std::cout << " Multijt XJJ: " << xJJValue << std::endl;
+		      }
+
+		      photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRaw(xJJValue, subJtGammaPtValReco, fullWeight);
+		    }
 		    if(aJJValueGood) photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRaw(aJJValue, subJtGammaPtValReco, fullWeight);
 
 		    photonPtJtDPhiJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRaw(dPhiJJValue, subJtGammaPtValReco, fullWeight);
@@ -4192,15 +4205,13 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		for(auto const barrelECTruth : barrelECFillTruth){
 		  bool truthFillWithRecoPos = photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->IsInTrackingMap(truthCompID1) || photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->IsInTrackingMap(truthCompID2);
 
-		  if(xJJValue > 2.4 && xJJValueGood && false){
-
-		    std::cout << "Photon pt eta phi: " << truthPhotonPt[truthPhoPos] << ", " << truthPhotonPt[truthPhoPos] << ", " << truthPhotonPhi[truthPhoPos] << std::endl;
-		    std::cout << "Jet1 pt eta phi: " << goodTruthJets[jI].Pt() << ", " << goodTruthJets[jI].Eta() << ", " << goodTruthJets[jI].Phi() << std::endl;
-		    std::cout << "Jet2 pt eta phi: " << goodTruthJets[jI2].Pt() << ", " << goodTruthJets[jI2].Eta() << ", " << goodTruthJets[jI2].Phi() << std::endl;
-
-		    std::cout << "Multijt DRJJ: " << dRJJValue << std::endl;
-		    std::cout << "Multijt DPhiJJG: " << multiJtDPhiValue << std::endl;
-
+		  if(false && barrelECTruth == 2){
+		    std::cout << "Photon pt eta phi (" << entry << "): " << truthPhotonPt[truthPhoPos] << ", " << truthPhotonEta[truthPhoPos] << ", " << truthPhotonPhi[truthPhoPos] << std::endl;
+		    std::cout << " Jet1 pt eta phi: " << goodTruthJets[jI].Pt() << ", " << goodTruthJets[jI].Eta() << ", " << goodTruthJets[jI].Phi() << std::endl;
+		    std::cout << " Jet2 pt eta phi: " << goodTruthJets[jI2].Pt() << ", " << goodTruthJets[jI2].Eta() << ", " << goodTruthJets[jI2].Phi() << std::endl;
+		    std::cout << " Multijt DRJJ: " << dRJJValue << std::endl;
+		    std::cout << " Multijt DPhiJJG: " << multiJtDPhiValue << std::endl;
+		    std::cout << " Multijt XJJ: " << xJJValue << std::endl;
 		  }
 
 		  photonPtJtXJJVCent_MixMachine_p[centPos][barrelECTruth][systI]->FillXYTruth(xJJValue, subJtGammaPtValTruth, fullWeight);

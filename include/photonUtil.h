@@ -39,6 +39,7 @@ inline std::string getPhotonTypeString(photonType inPhotonType)
 {
   if(inPhotonType == TIGHT_ISO) return "TIGHT_ISO";
   else if(inPhotonType == TIGHT_NONISO) return "TIGHT_NONISO";
+
   else if(inPhotonType == NONTIGHT_ISO) return "NONTIGHT_ISO";
   else if(inPhotonType == NONTIGHT_NONISO) return "NONTIGHT_NONISO";
   else if(inPhotonType == NONISO) return "NONISO";

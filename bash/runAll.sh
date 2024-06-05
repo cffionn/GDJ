@@ -31,7 +31,7 @@ customSubBinsBase=15,30,501
 #Overriding the nominal for quick tests
 #files=(ntupleToHist_PPData)
 #files=(ntupleToHist_PbPbMC ntupleToHist_PbPbData ntupleToHist_PPMC ntupleToHist_PPData)
-files=(ntupleToHist_PPMCHerwig)
+files=(ntupleToHist_PPMC ntupleToHist_PbPbMC)
 rs=(2)
 #ptMins=(30 36)
 #ptMinsR2=(30)

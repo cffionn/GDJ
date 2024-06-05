@@ -1,7 +1,7 @@
 #!/bin/bash
 
 lowDir=20200515
-upDir=20240320
+upDir=20240605
 targDir=/atlasgpfs01/usatlas/data/cfmcginn/ATLASNTuples/GammaMultiJet/GDJBackup/output
 mkdir -p $targDir
 
