@@ -1437,7 +1437,24 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 	  if(doLogX || pI == 0) gPad->SetLogx();
 	  if(doLogY || pI == 0) gPad->SetLogy();
 
-	  if(truth_p[gI] != nullptr) truth_p[gI]->DrawCopy("HIST E1 SAME");
+
+	  if(pI == 1){
+	    std::cout << "Reco BIN-BY-BIN AT GAMMA " << gammaPtBins[gI] << "-" << gammaPtBins[gI+1] << ": " << std::endl;
+	    for(Int_t bIX = 0; bIX < reco_p[gI]->GetXaxis()->GetNbins(); ++bIX){
+	      std::cout << " Bin " << bIX << ", " << reco_p[gI]->GetXaxis()->GetBinLowEdge(bIX+1) << "-" << reco_p[gI]->GetXaxis()->GetBinLowEdge(bIX+2) << ": " << reco_p[gI]->GetBinContent(bIX+1) << std::endl;
+	    }
+	  }
+
+	  if(truth_p[gI] != nullptr){
+	    if(pI == 1){
+	      std::cout << "Truth BIN-BY-BIN AT GAMMA " << gammaPtBins[gI] << "-" << gammaPtBins[gI+1] << ": " << std::endl;
+	      for(Int_t bIX = 0; bIX < truth_p[gI]->GetXaxis()->GetNbins(); ++bIX){
+		std::cout << " Bin " << bIX << ", " << truth_p[gI]->GetXaxis()->GetBinLowEdge(bIX+1) << "-" << truth_p[gI]->GetXaxis()->GetBinLowEdge(bIX+2) << ": " << truth_p[gI]->GetBinContent(bIX+1) << std::endl;
+	      }
+	    }
+
+	    truth_p[gI]->DrawCopy("HIST E1 SAME");
+	  }
 
 	  for(Int_t i = 1; i < nIterForLoop+1; ++i){
 	    HIJet::Style::EquipHistogram(unfold_p[gI][i], i-1);
@@ -1537,7 +1554,7 @@ int gdjPlotUnfoldDiagnostics(std::string inConfigFileName)
 
 	  if(pI == 1) line_p->DrawLine(varBins[0], 1.0, varBins[nVarBins], 1.0);
           else line_p->DrawLine(gammaPtBins[0], 1.0, gammaPtBins[nGammaPtBins], 1.0);
-	  
+
 	  if(doLogX || pI == 0) gPad->SetLogx();
 
 	  canvBest_p->cd();
