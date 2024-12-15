@@ -53,12 +53,11 @@
 #include "include/treeUtil.h"
 #include "include/varUtil.h"
 
-
 template <typename T>
 void makeReweightHist(T* weightHist_p, T* numHist_p, T* denomHist_p, std::string saveName, std::map<int, std::map<int, std::pair<int, int> > >* binMap_p = nullptr)
 {
   Double_t zeroThresh = TMath::Power(10, -100);
-  
+
   std::string className = numHist_p->ClassName();
   bool isTH1 = false;
   if(isStrSame(className, "TH1D") || isStrSame(className, "TH1F")) isTH1 = true;
@@ -67,31 +66,29 @@ void makeReweightHist(T* weightHist_p, T* numHist_p, T* denomHist_p, std::string
     std::cout << "MAKEREWEIGHTHIST ERROR: Class \'" << className << "\' is not recognized. Please fix. return" << std::endl;
     return;
   }
-  
+
   std::vector<double> weightVals;
   Int_t nYBins = 1;
   if(!isTH1) nYBins = numHist_p->GetYaxis()->GetNbins();
-  
+
   for(Int_t bIX = 0; bIX < numHist_p->GetXaxis()->GetNbins(); ++bIX){
     for(Int_t bIY = 0; bIY < nYBins; ++bIY){
       Float_t ratioVal = 0.0;
       Float_t numeratorVal = 0.0;
       Float_t denominatorVal = 0.0;
-      
+
       if(isTH1){
 	numeratorVal = numHist_p->GetBinContent(bIX+1);
 	denominatorVal = denomHist_p->GetBinContent(bIX+1);
       }
       else{
 	numeratorVal = numHist_p->GetBinContent(bIX+1, bIY+1);
-	denominatorVal = denomHist_p->GetBinContent(bIX+1, bIY+1);	
+	denominatorVal = denomHist_p->GetBinContent(bIX+1, bIY+1);
       }
 
-      //      std::cout << "   Num, denom: " << numeratorVal << ", " << denominatorVal << std::endl;
-	
       if(denominatorVal > zeroThresh){
 	ratioVal = numeratorVal/denominatorVal;
-	weightVals.push_back(ratioVal);     
+	weightVals.push_back(ratioVal);
       }
 
       if(isTH1){
@@ -104,15 +101,15 @@ void makeReweightHist(T* weightHist_p, T* numHist_p, T* denomHist_p, std::string
       }
     }
   }
-  
+
   std::sort(std::begin(weightVals), std::end(weightVals));
   Double_t scaleVal = 0.0;
   std::cout << "Weightvals size: " << weightVals.size() << std::endl;
   if(weightVals.size()%2 == 0) scaleVal = weightVals[(weightVals.size()-1)/2];
   else scaleVal = (weightVals[weightVals.size()/2] + weightVals[weightVals.size()/2 - 1])/2.0;
-  
+
   weightHist_p->Scale(1.0/scaleVal);
-  
+
   if(binMap_p != nullptr){
     for(Int_t bIX = 0; bIX < weightHist_p->GetXaxis()->GetNbins()+1; ++bIX){
       for(Int_t bIY = 0; bIY < nYBins; ++bIY){
@@ -120,19 +117,19 @@ void makeReweightHist(T* weightHist_p, T* numHist_p, T* denomHist_p, std::string
 	  if((*binMap_p)[bIX][bIY].first != bIX){
 	    Double_t weightVal = weightHist_p->GetBinContent((*binMap_p)[bIX][bIY].first+1);
 	    weightHist_p->SetBinContent(bIX+1, weightVal);
-	  }	  
+	  }
 	}
 	else{
 	  if((*binMap_p)[bIX][bIY].first != bIX || (*binMap_p)[bIX][bIY].second != bIY){
 	    Double_t weightVal = weightHist_p->GetBinContent((*binMap_p)[bIX][bIY].first+1, (*binMap_p)[bIX][bIY].second+1);
 	    weightHist_p->SetBinContent(bIX+1, bIY+1, weightVal);
 	  }
-	}	
-      }      
+	}
+      }
     }
   }
-  
-  
+
+
   //Dump the reweighting matrix to a canvas
   const int titleFont = 42;
   const double titleSize = 0.03;
@@ -163,12 +160,12 @@ void makeReweightHist(T* weightHist_p, T* numHist_p, T* denomHist_p, std::string
   }
 
   gPad->SetTicks();
-  
+
   gStyle->SetOptStat(0);
-  
+
   quietSaveAs(canv_p, saveName);
   delete canv_p;
-  
+
   return;
 }
 
@@ -214,7 +211,7 @@ void plotReweightHists(TH1D* reweight_p, TH1D* data_p, TH1D* reweighted_p, std::
   pads_p[0]->cd();
 
   pads_p[0]->SetTicks();
-  
+
   HIJet::Style::EquipHistogram(reweight_p, 2);
   HIJet::Style::EquipHistogram(data_p, 0);
   HIJet::Style::EquipHistogram(reweighted_p, 1);
@@ -237,14 +234,14 @@ void plotReweightHists(TH1D* reweight_p, TH1D* data_p, TH1D* reweighted_p, std::
   reweight_p->GetYaxis()->SetLabelFont(titleFont);
   reweight_p->GetYaxis()->SetLabelSize(labelSize/(1.0-padSplit));
   reweight_p->GetYaxis()->SetTitleOffset(yOffset);
-  
+
   reweight_p->DrawCopy("HIST E1 P");
   data_p->DrawCopy("HIST E1 P SAME");
   reweighted_p->DrawCopy("HIST E1 P SAME");
 
   pads_p[1]->cd();
   pads_p[1]->SetTicks();
-    
+
   reweight_p->Divide(data_p);
   reweighted_p->Divide(data_p);
 
@@ -261,7 +258,7 @@ void plotReweightHists(TH1D* reweight_p, TH1D* data_p, TH1D* reweighted_p, std::
   reweight_p->GetXaxis()->SetTitleSize(titleSize/(padSplit));
   reweight_p->GetXaxis()->SetLabelFont(titleFont);
   reweight_p->GetXaxis()->SetLabelSize(labelSize/(padSplit));
-  
+
   reweight_p->GetYaxis()->SetTitle("Ratio MC/Data");
   reweight_p->DrawCopy("HIST E1 P");
   reweighted_p->DrawCopy("HIST E1 P SAME");
@@ -278,7 +275,7 @@ void plotReweightHists(TH1D* reweight_p, TH1D* data_p, TH1D* reweighted_p, std::
   Float_t xLow = 0.5;
   if(saveName.find("DRJJ") != std::string::npos) xLow = 0.3;
   Float_t xHigh = xLow + 0.25;
-  
+
   TLegend* leg_p = new TLegend(xLow, 0.7, xHigh, 0.9);
   leg_p->SetTextFont(titleFont);
   leg_p->SetTextSize(titleSize/(1.0 - padSplit));
@@ -291,27 +288,26 @@ void plotReweightHists(TH1D* reweight_p, TH1D* data_p, TH1D* reweighted_p, std::
   leg_p->AddEntry(data_p, "Data", "P L");
 
   leg_p->Draw("SAME");
-  
+
   TLatex* label_p = new TLatex();
-  xLow = 0.94;  
+  xLow = 0.94;
   Float_t yLow = 0.65;
-  
+
   if(saveName.find("DRJJ") != std::string::npos){
     xLow = 0.3;
     yLow = 0.2;
     initLabel(label_p, titleFont, titleSize/(1.0 - padSplit), 0);
   }
   else initLabel(label_p, titleFont, titleSize/(1.0 - padSplit), 1);
-  
-  
+
   for(unsigned int lI = 0; lI < labels.size(); ++lI){
     label_p->DrawLatex(xLow, yLow - lI*0.07, labels[lI].c_str());
   }
-  
+
   gStyle->SetOptStat(0);
-  
+
   quietSaveAs(canv_p, saveName);
-  
+
   //Cleanup
   delete leg_p;
   delete label_p;
@@ -352,7 +348,7 @@ bool appendSyst(std::vector<std::string>* systNames_p, std::vector<std::string>*
     std::cout << "ERROR APPENDSYST L" << __LINE__ << ": systNames_p size \'" << systNames_p->size() << "\' and systTypes_p size \'" << systTypes_p->size() << "\' do not match. return false" << std::endl;
     return false;
   }
-  
+
   //Check requested type is the last in the systTypes_p vect or the type doesnt exist
   if(systTypes_p->size() != 0){
     if(vectContainsStr(systType, systTypes_p)){
@@ -362,14 +358,14 @@ bool appendSyst(std::vector<std::string>* systNames_p, std::vector<std::string>*
       }
     }
   }
-  
+
   for(unsigned int sI = 0; sI < inSystNames.size(); ++sI){
     if(isStrSame(inSystTypes[sI], systType)){
       systNames_p->push_back(inSystNames[sI]);
       systTypes_p->push_back(inSystTypes[sI]);
     }
   }
-  
+
   return true;
 }
 
@@ -388,7 +384,7 @@ bool combineHistTH2D(Int_t inNHist, TH2D* inHist_p[], TH2D* outHist_p)
     for(Int_t bIY = 0; bIY < outHist_p->GetYaxis()->GetNbins(); ++bIY){
       Double_t content = 0.0;
       Double_t error = 0.0;
-      
+
       for(Int_t hI = 0; hI < inNHist; ++hI){
 	content += inHist_p[hI]->GetBinContent(bIX+1, bIY+1);
 	error += inHist_p[hI]->GetBinError(bIX+1, bIY+1)*inHist_p[hI]->GetBinError(bIX+1, bIY+1);
@@ -398,8 +394,8 @@ bool combineHistTH2D(Int_t inNHist, TH2D* inHist_p[], TH2D* outHist_p)
       outHist_p->SetBinError(bIX+1, bIY+1, TMath::Sqrt(error));
     }
   }
-  
-  
+
+
   return true;
 }
 
@@ -411,7 +407,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
   globalTimer.start();
 
   //Random number generator seed is fixed but determined randomly for debuggable results
-  const Int_t randSeed = 5573; // from coin flips -> binary number 1010111000101             
+  const Int_t randSeed = 5573; // from coin flips -> binary number 1010111000101
   TRandom3* randGen_p = new TRandom3(randSeed);
 
   //Class for checking file/dir existence + creation
@@ -428,7 +424,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
   check.doCheckMakeDir("pdfDir");
   check.doCheckMakeDir(pdfStr);
-  
+
   //Debugging is set as an environment variable - we use a simple class to pick up
   globalDebugHandler gDebug;
   const bool doGlobalDebug = gDebug.GetDoGlobalDebug();
@@ -473,13 +469,13 @@ int gdjHistToUnfold(std::string inConfigFileName)
   const bool doROOFakeTest = (bool)config_p->GetValue("DOROOFAKETEST", 0);
   const std::string saveTag = config_p->GetValue("SAVETAG", "");
 
-  // isolation file handling 
+  // isolation file handling
   const std::string inIsoFileName = config_p->GetValue("INISOFILENAME", "");
   if(!check.checkFileExt(inIsoFileName, ".root")) return 1;
 
   //Multijet variables are a well defined list and we must handle differently, so define a bool
-  const bool isMultijet = isStrSame(varNameLower, "ajj") || isStrSame(varNameLower, "xjj") || isStrSame(varNameLower, "dphijjg") || isStrSame(varNameLower, "dphijj") || isStrSame(varNameLower, "drjj");  
-  
+  const bool isMultijet = isStrSame(varNameLower, "ajj") || isStrSame(varNameLower, "xjj") || isStrSame(varNameLower, "dphijjg") || isStrSame(varNameLower, "dphijj") || isStrSame(varNameLower, "drjj");
+
   const int nIter = config_p->GetValue("NITER", -1);
   const bool doReweightVar = config_p->GetValue("DOREWEIGHTVAR", 0);
 
@@ -505,13 +501,13 @@ int gdjHistToUnfold(std::string inConfigFileName)
   //Since arrays require predefined sizes, just define a large cap on them lie 1000 - we will limit ourselves to the subset of the array we need when we get to it
   const int nMaxBins = 100;
   Int_t nRebinX, nRebinY;
-  Double_t rebinX[nMaxBins+1], rebinY[nMaxBins+1];  
+  Double_t rebinX[nMaxBins+1], rebinY[nMaxBins+1];
   std::vector<float> rebinXVect, rebinYVect;
 
   //We need some param delta defining when two bin edges are the same - here I pick something small
   const Float_t deltaValue = 0.001;
 
-  //If we are doing rebin, grab the new arrays of bins 
+  //If we are doing rebin, grab the new arrays of bins
   if(doRebin){
     if(!checkEnvForParams(config_p, rebinParams)) return 1;
 
@@ -545,17 +541,17 @@ int gdjHistToUnfold(std::string inConfigFileName)
     nRebinY = rebinYVect.size() - 1;
     for(Int_t bIY = 0; bIY < nRebinY+1; ++bIY){
       rebinY[bIY] = rebinYVect[bIY];
-    }   
+    }
   }
 
   //RooUnfold allows for many different methods for error calculation
   //My preference is toys - simple to understand, precision well defined by number of toys
-  //Downside: Not exact, significant CPU time increase 
+  //Downside: Not exact, significant CPU time increase
   const int unfoldErrType = config_p->GetValue("UNFOLDERRTYPE", 0);
   const int systUnfoldErrType = config_p->GetValue("SYSTUNFOLDERRTYPE", 2);
   const int nToys = config_p->GetValue("NTOYS", 0);
   if(unfoldErrType < 0 || unfoldErrType > 2){//Valid error types are 0: default kErrors bin-by-bin errors (diagonal covariance matrix), 1: toys, 2: no errors
-    std::cout << "Given UNFOLDERRTYPE, " << unfoldErrType << ", is invalid. Please give valid type, return 1" << std::endl;    
+    std::cout << "Given UNFOLDERRTYPE, " << unfoldErrType << ", is invalid. Please give valid type, return 1" << std::endl;
     return 1;
   }
   if(nToys <= 0 && unfoldErrType == 1){
@@ -563,7 +559,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
     return 1;
   }
   if(systUnfoldErrType < 0 || systUnfoldErrType > 2){//Valid error types are 0: default kErrors bin-by-bin errors (diagonal covariance matrix), 1: toys, 2: no errors
-    std::cout << "Given SYSTUNFOLDERRTYPE, " << systUnfoldErrType << ", is invalid. Please give valid type, return 1" << std::endl;    
+    std::cout << "Given SYSTUNFOLDERRTYPE, " << systUnfoldErrType << ", is invalid. Please give valid type, return 1" << std::endl;
     return 1;
   }
 
@@ -581,9 +577,9 @@ int gdjHistToUnfold(std::string inConfigFileName)
   if(outFileName.find("/") == std::string::npos){
     outFileName = outputStr + "/" + outFileName;
   }
-    
+
   //Define some unfolding variables in arrays along with paired-by-position stylized versions
-  //Previously i rebuilt everything from a stripped down unfolding TTree - ive re-worked this to be histogram based and temporarily comment out the *Tree variabls  
+  //Previously i rebuilt everything from a stripped down unfolding TTree - ive re-worked this to be histogram based and temporarily comment out the *Tree variabls
   std::vector<std::string> validUnfoldVar = {"Pt", "XJ", "DPhi", "XJJ", "AJJ", "DPHIJJ", "DPHIJJG", "DRJJ"};
   //  std::vector<std::string> validUnfoldVarTree = {"XJ", "XJ", "XJJ"};
   std::vector<std::string> validUnfoldVarStyle = {"Jet p_{T}", "x_{J}", "#Delta#phi_{J#gamma}", "#vec{x}_{JJ#gamma}", "A_{JJ}", "#Delta#phi_{JJ}", "#Delta#phi_{JJ#gamma}", "#DeltaR_{JJ}"};
@@ -600,20 +596,20 @@ int gdjHistToUnfold(std::string inConfigFileName)
   }
   //  std::string varNameTree = validUnfoldVarTree[vectPos];
   std::string varNameStyle = validUnfoldVarStyle[vectPos];
-  
+
   //check that our given input files exist
   if(!check.checkFileExt(inResponseFileName, ".root")) return 1;
   if(!check.checkFileExt(inUnfoldFileName, ".root")) return 1;
-  
+
   //We  need to define a cap here too - given we are extremely unlikely to ever drop below 10% level 10 is sufficient
   const Int_t nMaxCentBins = 10;
 
 
-  
+
   //Grab the response file - this will also be the unfold file while working with MC - with data it will differ
-  TFile* inResponseFile_p = new TFile(inResponseFileName.c_str(), "READ");  
+  TFile* inResponseFile_p = new TFile(inResponseFileName.c_str(), "READ");
   TEnv* inResponseFileConfig_p = (TEnv*)inResponseFile_p->Get("config");
-  
+
   //declare as nullptr; actual file / configs will depend on if its data or MC
   TFile* inUnfoldFile_p = nullptr;
   TEnv* inUnfoldFileConfig_p = nullptr;
@@ -629,12 +625,12 @@ int gdjHistToUnfold(std::string inConfigFileName)
     inUnfoldFileLabels_p = (TEnv*)inUnfoldFile_p->Get("label");
   }
   else{
-    inUnfoldFile_p = new TFile(inUnfoldFileName.c_str(), "READ");  
-    inUnfoldFileConfig_p = (TEnv*)inUnfoldFile_p->Get("config");    
+    inUnfoldFile_p = new TFile(inUnfoldFileName.c_str(), "READ");
+    inUnfoldFileConfig_p = (TEnv*)inUnfoldFile_p->Get("config");
     inUnfoldFileLabels_p = (TEnv*)inUnfoldFile_p->Get("label");
   }
 
-  //there is an additional set of parameters that we must make sure are defined from the file we are passed 
+  //there is an additional set of parameters that we must make sure are defined from the file we are passed
   std::vector<std::string> necessaryInFileParams = {"ISMC",
 						    "DOUNIFIEDPURITY",
 						    "NGAMMAPTBINS",
@@ -668,7 +664,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 						    "SYSTNAMES",
 						    "SYSTTYPES"};
 
- 
+
   std::vector<std::string> pbpbParams = {"CENTBINS"};
   //  std::vector<std::string> mcParams = {"ASSOCGENMINPT"};
 
@@ -727,7 +723,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
   //dont remember
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   const std::string jtPtBinsGlobalStr = "GlobalJtPt0";
- 
+
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   //Return failed if we are missing required parameters
@@ -754,9 +750,9 @@ int gdjHistToUnfold(std::string inConfigFileName)
     std::cout << "BOOL doHalfTest is set to true, but sample \'" << inUnfoldFileName << "\' is not Monte Carlo. return 1" << std::endl;
     return 1;
   }
-  
+
   //Declare the file that will be used for handling photon iso variations
-  //also fit names, as given by Yeonju                                                                 
+  //also fit names, as given by Yeonju
   TFile* inIsoFile_p = new TFile(inIsoFileName.c_str(), "READ");
   std::vector<int> isoCentBins = {0, 10, 20, 30, 40, 50, 60, 70, 80};
   std::vector<TF1*> isoFits85_p, isoFits95_p;
@@ -771,9 +767,9 @@ int gdjHistToUnfold(std::string inConfigFileName)
       isoFits95_p.push_back((TF1*)inIsoFile_p->Get(("f1_probRecoIso_ptDep_" + isoCentStr + "_Eta0p00to2p37_Eff95").c_str()));
     }
   }
-  
+
   if(!isPP && !checkEnvForParams(config_p, {"INMIXSYSTFILENAME"})) return 1;
-  
+
   //Now check on mixsyst file name if pbpb
   if(!isPP){
     if(!check.checkFileExt(inMixSystFileName, ".root")) return 1;
@@ -800,7 +796,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
   std::vector<std::string> inSystTypeVect = strToVect(inUnfoldFileConfig_p->GetValue("SYSTTYPES", ""));
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-  
+
   //We will check our final syst list doesn't exceed this cap (we need a const for hist arrays)
   const Int_t nMaxSyst = 100;
   //Grab the number of jet systematics
@@ -809,7 +805,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
   const Int_t nGammaSysAndNomInput = inResponseFileConfig_p->GetValue("NGAMMASYSANDNOM", -1);
   std::vector<std::string> gesGERStrVect = strToVect(inResponseFileConfig_p->GetValue("GAMMASYSANDNOM", ""));
-  
+
   //Declare set of unfolding syst
   const Int_t nUnfSyst = 2;
   std::vector<std::string> unfSystStrVect = {"PRIOR", "MCSTAT"};
@@ -817,10 +813,10 @@ int gdjHistToUnfold(std::string inConfigFileName)
   //Declare set of mixing syst
   const Int_t nMixSyst = 1;
   std::vector<std::string> mixSystStrVect = {"MIXNONCLOSURE"};
-  
+
   if(!doReweightVar){
-    std::cout << "WARNING: doReweightVar=false; Unfolding error associated w/ prior variation will be zero by construction!" << std::endl;    
-  } 
+    std::cout << "WARNING: doReweightVar=false; Unfolding error associated w/ prior variation will be zero by construction!" << std::endl;
+  }
 
   //Create systematics vector combining all relevant systematics
   //We will also need to order them for convenience by type
@@ -830,7 +826,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
   std::vector<std::string> systTypeVect;
   for(unsigned int sI = 0; sI < systStrVect.size(); ++sI){
     if(sI == 0) systTypeVect.push_back("NOMINAL");
-    else systTypeVect.push_back("JESJER");			       				
+    else systTypeVect.push_back("JESJER");
   }
   //Now add gamma systematics
 
@@ -860,7 +856,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
     systStrVect.push_back(mixSystStrVect[sI]);
     systTypeVect.push_back("MIXING");
   }
-  
+
   /*
   std::cout << "SYST LIST: " << std::endl;
   for(unsigned int sI = 0; sI < systStrVect.size(); ++sI){
@@ -868,7 +864,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
   }
   return 1;
   */
-  
+
   //Create a map between the input syst and the full syst
   std::map<Int_t, Int_t> systPosToInSystPos;
   for(Int_t sI = 0; sI < nSyst; ++sI){
@@ -889,14 +885,14 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
   return 1;
   */
-      
-  
+
+
   //Now that we've constructed our full syst vectors, check we don't exceed the max cap
   if(nMaxSyst < systStrVect.size()){
     std::cout << "gdjHistToUnfold ERROR L" << __LINE__ << ": systStrVect size \'" << systStrVect.size() << "\' exceeds the nMaxSyst \'" << nMaxSyst << "\'. return 1" << std::endl;
     return 1;
   }
-  
+
   //Grab the in-file defined bins
   Int_t nGammaPtBins = inResponseFileConfig_p->GetValue("NGAMMAPTBINS", 0);
   Float_t gammaPtBinsLow = inResponseFileConfig_p->GetValue("GAMMAPTBINSLOW", 80.0);
@@ -907,14 +903,14 @@ int gdjHistToUnfold(std::string inConfigFileName)
   Float_t gammaPtBinsLowReco = inResponseFileConfig_p->GetValue("GAMMAPTBINSLOWRECO", gammaPtBinsLow);
   Float_t gammaPtBinsHighReco = inResponseFileConfig_p->GetValue("GAMMAPTBINSHIGHRECO", gammaPtBinsHigh);
   std::string gammaPtBinsStr = "";
-  
+
   const Int_t nGammaFinePtBins = inResponseFileConfig_p->GetValue("NGAMMAFINEPTBINS", 0);
   std::string gammaFinePtBinsStr = inResponseFileConfig_p->GetValue("GAMMAFINEPTBINS", "");
   std::vector<float> gammaFinePtBinsVect = strToVectF(gammaFinePtBinsStr);
   Double_t gammaFinePtBins[nMaxBins+1];
 
   for(unsigned int i = 0; i < gammaFinePtBinsVect.size(); ++i){gammaFinePtBins[i] = gammaFinePtBinsVect[i];}
-  
+
   if(gammaPtBinsDoLog) getLogBins(gammaPtBinsLow, gammaPtBinsHigh, nGammaPtBins, gammaPtBins);
   else if(gammaPtBinsDoCustom){
     gammaPtBinsStr = inResponseFileConfig_p->GetValue("GAMMAPTBINSCUSTOM", "");
@@ -956,7 +952,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
   const Bool_t subJtPtBinsDoCustom = (bool)inResponseFileConfig_p->GetValue("SUBJTPTBINSDOCUSTOM", 1);
   Double_t subJtPtBins[nMaxBins+1];
 
-  
+
   //Get the eta cuts - default absurd to break things when not stored
   const Float_t jtEtaBinsLow = inResponseFileConfig_p->GetValue("JTETABINSLOW", -100000.0);
   const Float_t jtEtaBinsHigh = inResponseFileConfig_p->GetValue("JTETABINSHIGH", -100000.0);
@@ -1007,7 +1003,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
   const Float_t subJtGammaPtMin = inResponseFileConfig_p->GetValue("SUBJTGAMMAPTMIN", -1.0);
   const Float_t subJtGammaPtMax = inResponseFileConfig_p->GetValue("SUBJTGAMMAPTMAX", -1.0);
   Double_t subJtGammaPtBins[nMaxBins+1];
-  
+
   //Now construct the flattened subjt pt-gamma pt bins
   binFlattener subJtGammaPtBinFlattener;
   //Now create your flattened bins using the binFlattener class
@@ -1022,27 +1018,27 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
   /*
   std::cout << "subJtGammaPtBins: " << std ::endl;
-  for(Int_t sgI = 0; sgI < nSubJtGammaPtBins; ++sgI){                                                  
+  for(Int_t sgI = 0; sgI < nSubJtGammaPtBins; ++sgI){
     std::cout << " " << sgI << ": " << subJtGammaPtBins[sgI] << "-" << subJtGammaPtBins[sgI+1] << " (gammaBin=" << subJtGammaPtBinFlattener.GetBin1PosFromGlobal(sgI) << ", subJtPtBins=" << subJtGammaPtBinFlattener.GetBin2PosFromGlobal(sgI) << ")" << std::endl;
   }
   std::cout << std::endl;
   std::cout << "Gamma,subjtptbins: " << std::endl;
-  for(Int_t gI = 0; gI < nGammaPtBins; ++gI){                                                          
+  for(Int_t gI = 0; gI < nGammaPtBins; ++gI){
     std::cout << " gI=" << gI << ", " << gammaPtBins[gI] << "-" << gammaPtBins[gI+1] << ": " << std::endl;
-    for(Int_t sI = 0; sI < nSubJtPtBins; ++sI){                                                        
+    for(Int_t sI = 0; sI < nSubJtPtBins; ++sI){
       std::cout << "  sI=" << sI << ", " << subJtPtBins[sI] << "-" << subJtPtBins[sI+1] << ", globalBin=" << subJtGammaPtBinFlattener.GetGlobalFromBin12Pos(gI, sI) << std::endl;
     }
   }
-   
+
   return 1;
   */
-  
-  
+
+
   const Double_t gammaJtDRExclusionCut = inResponseFileConfig_p->GetValue("GAMMAEXCLUSIONDR", 100.0);
   const Double_t mixJtDRExclusionCut = inResponseFileConfig_p->GetValue("MIXJETEXCLUSIONDR", 100.0);
   const Double_t gammaJtDPhiCut = mathStringToNum(inResponseFileConfig_p->GetValue("GAMMAJTDPHI", ""), doGlobalDebug);
   const Double_t gammaMultiJtDPhiCut = mathStringToNum(inResponseFileConfig_p->GetValue("GAMMAMULTIJTDPHI", ""), doGlobalDebug);
-  
+
   const Int_t nXJBins = inResponseFileConfig_p->GetValue("NXJBINS", 20);
   const Float_t xjBinsLow = inResponseFileConfig_p->GetValue("XJBINSLOW", 0.0);
   const Float_t xjBinsHigh = inResponseFileConfig_p->GetValue("XJBINSHIGH", 2.0);
@@ -1094,7 +1090,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
       ajBins[i] = ajBinsCustomVect[i];
     }
   }
-  
+
   const Int_t nDPhiBins = inResponseFileConfig_p->GetValue("NDPHIBINS", 20);
   const Float_t dphiBinsLow = inResponseFileConfig_p->GetValue("DPHIBINSLOW", 0.0);
   const Float_t dphiBinsHigh = inResponseFileConfig_p->GetValue("DPHIBINSHIGH", TMath::Pi());
@@ -1124,7 +1120,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
       drBins[i] = drBinsCustomVect[i];
     }
   }
-  
+
   //Enforce additional requirements on config depending on first set
   //  if(isMC){
   //    if(!checkEnvForParams(inResponseFileConfig_p, mcParams)) return 1;
@@ -1147,7 +1143,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
     nCentBins = centBinsStr.size();
   }
-  
+
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   //Enforce matching over specified parameters
   if(!isSameInputFile){
@@ -1164,7 +1160,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
   Float_t varBinsHighReco = xjBinsHighReco;
 
   std::string varBinsStr = "";
-  
+
   if(isStrSame(varNameLower, "pt")){
     nVarBins = nJtPtBins;
     for(Int_t vI = 0; vI < nVarBins+1; ++vI){
@@ -1224,7 +1220,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
     varBinsHighReco = drBinsHighReco;
   }
 
-  //We will need a bin map for the reweighting scheme  
+  //We will need a bin map for the reweighting scheme
   std::map<int, std::map<int, bool> > goodBinMapPho;
   std::map<int, std::map<int, std::pair<int, int> > > binWeightMapPho;
   std::map<int, std::map<int, bool> > goodBinMap;
@@ -1243,21 +1239,21 @@ int gdjHistToUnfold(std::string inConfigFileName)
     binWeightMapPho[bIY][0] = {bIY, 0};
     Int_t xPos = binWeightMapPho[bIY][0].first;
 
-    while(!goodBinMapPho[xPos][0]){      
+    while(!goodBinMapPho[xPos][0]){
       Double_t gammaBinCenter = (gammaPtBins[xPos] + gammaPtBins[xPos+1])/2.0;
       bool gammaBinLow = gammaBinCenter < gammaPtBinsLowReco;
       bool gammaBinHigh = gammaBinCenter > gammaPtBinsHighReco;
 
       if(gammaBinLow) ++xPos;
-      else if(gammaBinHigh) --xPos;      
+      else if(gammaBinHigh) --xPos;
     }
 
     binWeightMapPho[bIY][0] = {xPos, 0};
-  }  
-  
+  }
+
   //First pass for rewighting to fill out the goodBinMap
   for(Int_t bIX = 0; bIX < nVarBins; ++bIX){
-    if(isMultijet){//Yaxis is a flattened 2-D array, handle as follows                                 
+    if(isMultijet){//Yaxis is a flattened 2-D array, handle as follows
       for(Int_t bIY = 0; bIY < nGammaPtBins*nSubJtPtBins; ++bIY){
         bool isBinGood = true;
         Double_t binCenterX = (varBins[bIX] + varBins[bIX+1])/2.0;
@@ -1278,24 +1274,24 @@ int gdjHistToUnfold(std::string inConfigFileName)
       }
     }
     else{//y-axis defined by gamma pt bins
-      for(Int_t gI = 0; gI < nGammaPtBins; ++gI){ 
+      for(Int_t gI = 0; gI < nGammaPtBins; ++gI){
         bool isBinGood = true;
         Double_t binCenterX = (varBins[bIX] + varBins[bIX+1])/2.0;
 	Double_t binCenterY = (gammaPtBins[gI] + gammaPtBins[gI+1])/2.0;
 
 	if(binCenterX < varBinsLowReco) isBinGood = false;
         else if(binCenterX > varBinsHighReco) isBinGood = false;
-	
+
 	if(binCenterY < gammaPtBinsLowReco) isBinGood = false;
 	else if(binCenterY > gammaPtBinsHighReco) isBinGood = false;
 
         goodBinMap[bIX][gI] = isBinGood;
-      }            
+      }
     }
   }
   //Now convert the goodbinmap to a weight maps
   for(Int_t bIX = 0; bIX < nVarBins; ++bIX){
-    if(isMultijet){//Yaxis is a flattened 2-D array, handle as follows                                 
+    if(isMultijet){//Yaxis is a flattened 2-D array, handle as follows
       for(Int_t bIY = 0; bIY < nGammaPtBins*nSubJtPtBins; ++bIY){
 	binWeightMap[bIX][bIY] = {bIX, bIY};
 
@@ -1304,14 +1300,14 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
 	while(!goodBinMap[xPos][yPos]){
 	  Double_t binCenterX = (varBins[xPos] + varBins[xPos+1])/2.0;
-	  
+
 	  Int_t gammaBinPos = subJtGammaPtBinFlattener.GetBin1PosFromGlobal(yPos);
 	  Int_t subJtPtBinPos = subJtGammaPtBinFlattener.GetBin2PosFromGlobal(yPos);
 	  Double_t gammaBinCenter = (gammaPtBins[gammaBinPos] + gammaPtBins[gammaBinPos+1])/2.0;
 	  Double_t subJtPtBinCenter = (subJtPtBins[subJtPtBinPos] + subJtPtBins[subJtPtBinPos+1])/2.0;
 
 	  bool binXLow = binCenterX < varBinsLowReco;
-	  bool binXHigh = binCenterX > varBinsHighReco;	
+	  bool binXHigh = binCenterX > varBinsHighReco;
 
 	  bool subJtPtBinLow = subJtPtBinCenter < jtPtBinsLowReco;
 
@@ -1332,23 +1328,23 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	    --gammaBinPos;
 	    yPos = subJtGammaPtBinFlattener.GetGlobalFromBin12Pos(gammaBinPos, subJtPtBinPos);
 	  }
-	  binWeightMap[bIX][bIY] = {xPos, yPos};	
+	  binWeightMap[bIX][bIY] = {xPos, yPos};
 	}
       }
     }
     else{//y-axis defined by gamma pt bins
-      for(Int_t gI = 0; gI < nGammaPtBins; ++gI){ 
+      for(Int_t gI = 0; gI < nGammaPtBins; ++gI){
 	binWeightMap[bIX][gI] = {bIX, gI};
 
 	Int_t xPos = binWeightMap[bIX][gI].first;
 	Int_t yPos = binWeightMap[bIX][gI].second;
-	
-	while(!goodBinMap[xPos][yPos]){	  
+
+	while(!goodBinMap[xPos][yPos]){
 	  Double_t binCenterX = (varBins[xPos] + varBins[xPos+1])/2.0;
 	  Double_t binCenterY = (gammaPtBins[yPos] + gammaPtBins[yPos+1])/2.0;
 
 	  bool binXLow = binCenterX < varBinsLowReco;
-	  bool binXHigh = binCenterX > varBinsHighReco;	
+	  bool binXHigh = binCenterX > varBinsHighReco;
 	  bool binYLow = binCenterY < gammaPtBinsLowReco;
 	  bool binYHigh = binCenterY > gammaPtBinsHighReco;
 
@@ -1356,7 +1352,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	  else if(binXHigh) --xPos;
 	  else if(binYLow) ++yPos;
 	  else if(binYHigh) --yPos;
-	}      
+	}
 	binWeightMap[bIX][gI] = {xPos, yPos};
       }
     }
@@ -1371,19 +1367,19 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	std::cout << " bIY, goodBin, matchBin: " << bIY << ", " << goodBinMap[bIX][bIY] << ", " << binWeightMap[bIX][bIY].first << ", " << binWeightMap[bIX][bIY].second << std::endl;
       }
     }
-  }  
+  }
   return 1;
   */
-  
+
   //Construct matrices
-  TFile* outFile_p = new TFile(outFileName.c_str(), "RECREATE");  
+  TFile* outFile_p = new TFile(outFileName.c_str(), "RECREATE");
 
   TH1D* photonPtReco_p[nMaxCentBins];
-  TH1D* photonPtTruth_p[nMaxCentBins];  
+  TH1D* photonPtTruth_p[nMaxCentBins];
 
   TH2D* photonPtJetVarReco_p[nMaxCentBins][nMaxSyst];
-  TH2D* photonPtJetVarTruth_p[nMaxCentBins][nMaxSyst]; 
-  
+  TH2D* photonPtJetVarTruth_p[nMaxCentBins][nMaxSyst];
+
   //  const Int_t nBarrelAndEC = 2;
   //  const std::string barrelAndECStr[nBarrelAndEC] = {"Barrel", "EC"};
 
@@ -1398,11 +1394,11 @@ int gdjHistToUnfold(std::string inConfigFileName)
     std::cout << "SWITCHING TO UNIFIED PURITY MODE" << std::endl;
   }
 
-  TH1D* photonPtReco_PURCORR_p[nMaxCentBins][nMaxSyst][nBarrelAndECMax];  
-  TH1D* photonPtReco_PURCORR_COMBINED_p[nMaxCentBins][nMaxSyst];  
-  TH1D* photonPtReco_PURCORR_ForReweight_p[nMaxCentBins][nMaxSyst][nBarrelAndECMax];  
-  TH1D* photonPtReco_PURCORR_COMBINED_ForReweight_p[nMaxCentBins][nMaxSyst];  
-  TH1D* photonPtReco_PURCORR_COMBINED_Reweighted_p[nMaxCentBins][nMaxSyst];  
+  TH1D* photonPtReco_PURCORR_p[nMaxCentBins][nMaxSyst][nBarrelAndECMax];
+  TH1D* photonPtReco_PURCORR_COMBINED_p[nMaxCentBins][nMaxSyst];
+  TH1D* photonPtReco_PURCORR_ForReweight_p[nMaxCentBins][nMaxSyst][nBarrelAndECMax];
+  TH1D* photonPtReco_PURCORR_COMBINED_ForReweight_p[nMaxCentBins][nMaxSyst];
+  TH1D* photonPtReco_PURCORR_COMBINED_Reweighted_p[nMaxCentBins][nMaxSyst];
   TH1D* photonPtReco_TRUTH_p[nMaxCentBins][nBarrelAndECMax];
   TH1D* photonPtReco_TRUTH_COMBINED_p[nMaxCentBins];
 
@@ -1417,7 +1413,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
   //Mixed versions are needed for correct calculation of mixing non-closure
   TH2D* photonPtJetVarReco_MIX_p[nMaxCentBins][nBarrelAndECMax];
   TH2D* photonPtJetVarReco_MIX_COMBINED_p[nMaxCentBins];
-  
+
   RooUnfoldResponse* rooResGamma_p[nMaxCentBins][nMaxSyst];
   TH2D* rooResGammaMatrix_p[nMaxCentBins][nMaxSyst];
   TH1D* rooResGammaMisses_p[nMaxCentBins][nMaxSyst];
@@ -1433,8 +1429,8 @@ int gdjHistToUnfold(std::string inConfigFileName)
     qgFlavorToVectPos[-qgI] = 0;
   }
   qgFlavorToVectPos[21] = 1;
-  
-  RooUnfoldResponse* rooResGammaJetVar_p[nMaxCentBins][nMaxSyst]; 
+
+  RooUnfoldResponse* rooResGammaJetVar_p[nMaxCentBins][nMaxSyst];
   TH1D* rooResGammaJetVar_QG_p[nMaxCentBins][nQG];
   TH2D* rooResGammaJetVarMatrixReco_p[nMaxCentBins][nMaxSyst];
   TH2D* rooResGammaJetVarMatrixTruth_p[nMaxCentBins][nMaxSyst];
@@ -1442,20 +1438,20 @@ int gdjHistToUnfold(std::string inConfigFileName)
   TH2D* rooResGammaJetVarFakes_p[nMaxCentBins][nMaxSyst];
   TH2D* rooResGammaJetVar_JetMatrixForRecoPho_p[nMaxCentBins][nMaxSyst][nMaxBins];
   TH2D* rooResGammaJetVar_JetMatrixForTruthPho_p[nMaxCentBins][nMaxSyst][nMaxBins];
-  
+
 
   //Declare some additional histograms for reweighting
   TH2D* photonPtDRJJReco_PURCORR_p[nMaxCentBins][nBarrelAndECMax];
   TH2D* photonPtDRJJReco_PURCORR_COMBINED_p[nMaxCentBins];
   TH2D* photonPtDRJJReco_PURCORR_ForReweight_p[nMaxCentBins][nBarrelAndECMax];
-  TH2D* photonPtDRJJReco_PURCORR_COMBINED_ForReweight_p[nMaxCentBins];  
-  TH2D* photonPtDRJJReco_PURCORR_COMBINED_Reweighted_p[nMaxCentBins];  
+  TH2D* photonPtDRJJReco_PURCORR_COMBINED_ForReweight_p[nMaxCentBins];
+  TH2D* photonPtDRJJReco_PURCORR_COMBINED_Reweighted_p[nMaxCentBins];
 
   TH2D* photonPtAJJReco_PURCORR_p[nMaxCentBins][nBarrelAndECMax];
   TH2D* photonPtAJJReco_PURCORR_COMBINED_p[nMaxCentBins];
   TH2D* photonPtAJJReco_PURCORR_ForReweight_p[nMaxCentBins][nBarrelAndECMax];
-  TH2D* photonPtAJJReco_PURCORR_COMBINED_ForReweight_p[nMaxCentBins];  
-  TH2D* photonPtAJJReco_PURCORR_COMBINED_Reweighted_p[nMaxCentBins];  
+  TH2D* photonPtAJJReco_PURCORR_COMBINED_ForReweight_p[nMaxCentBins];
+  TH2D* photonPtAJJReco_PURCORR_COMBINED_Reweighted_p[nMaxCentBins];
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
@@ -1464,9 +1460,9 @@ int gdjHistToUnfold(std::string inConfigFileName)
     std::string histName = centBinsStr[0] + "/photonPtJt" + varName + "VCent_" + centBinsStr[0] + "_" + barrelAndECStr[0] + "_NOMINAL_" + gammaJtDPhiStr + "_" + mixModeStr + "_SUB_h";
     TH2D* tempTH2DorCheck_p = (TH2D*)inUnfoldFile_p->Get(histName.c_str());
 
-    //Check that the macro histogram bins align with requested new binning                      
+    //Check that the macro histogram bins align with requested new binning
     if(!checkHistContainsBins(rebinXVect, tempTH2DorCheck_p, deltaValue, false)) return 1;
-    if(!checkHistContainsBins(rebinYVect, tempTH2DorCheck_p, deltaValue, true)) return 1;    
+    if(!checkHistContainsBins(rebinYVect, tempTH2DorCheck_p, deltaValue, true)) return 1;
 
     //Since we got out of previous check, reset the varbins!
     nVarBins = nRebinX;
@@ -1484,10 +1480,10 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	  newStr = newStr.substr(0, newStr.size()-1);
 	}
       }
-      
+
       varBinsStr = varBinsStr + newStr + ",";
-    }    
-        
+    }
+
     nGammaPtBins = nRebinY;
     for(Int_t vI = 0; vI < nRebinY+1; ++vI){
       gammaPtBins[vI] = rebinYVect[vI];
@@ -1506,13 +1502,13 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	  newStr = newStr.substr(0, newStr.size()-1);
 	}
       }
-      
+
       gammaPtBinsStr = gammaPtBinsStr + newStr + ",";
-    }    
+    }
   }
 
-  
-  for(Int_t cI = 0; cI < nCentBins; ++ cI){    
+
+  for(Int_t cI = 0; cI < nCentBins; ++ cI){
     photonPtReco_p[cI] = new TH1D(("photonPtReco_" + centBinsStr[cI] + "_h").c_str(), ";Reco. Photon p_{T};Counts", nGammaPtBins, gammaPtBins);
     photonPtTruth_p[cI] = new TH1D(("photonPtTruth_" + centBinsStr[cI] + "_h").c_str(), ";Truth Photon p_{T};Counts", nGammaPtBins, gammaPtBins);
 
@@ -1523,7 +1519,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	if(isMultijet) repStr = "MIXMODE2";
 	else repStr = "MIXMODE1";
       }
-      
+
       repStr = repStr + "_RAWWITHTRUTHMATCH";
     }
     else if(doHalfTest) repStr = "PURCORRHalf";
@@ -1538,25 +1534,25 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	photonPtJetVarTruth_p[cI][systI] = new TH2D(("photonPtJet" + varName + "Truth_" + centBinsStr[cI] + "_" + inSystStrVect[systI] +  "_h").c_str(), (";Truth " + varNameStyle + ";Truth Photon p_{T}").c_str(), nVarBins, varBins, nGammaPtBins, gammaPtBins);
       }
     }
-    
+
     for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
       std::string baseName = centBinsStr[cI] + "/photonPt";
       std::string jtName = "Jt" + varName;
       std::string midName =  "VCent_" + centBinsStr[cI] + "_" + barrelAndECStr[eI];
-      
+
       TFile* tempFilePointer_p = inUnfoldFile_p;
       if(!isMC) tempFilePointer_p = inResponseFile_p;
-      
+
       if(doRebin){
 	  std::string photonPtJtVarTruthName = baseName + jtName + midName + "_NOMINAL_" + gammaJtDPhiStr + "_" + mixModeStr + "_TRUTH_h";
 
 	  std::cout << "PHOTONPTJTVARTRUTHNAME: " << photonPtJtVarTruthName << std::endl;
-	  
+
 	  for(unsigned int systI = 0; systI < inSystStrVect.size(); ++systI){
 	  std::string photonPtPurCorrName = baseName + midName + "_NOMINAL_PURCORR_h";
 	  if(isStrSame(inSystTypeVect[systI], "PHOISOANDPUR")) photonPtPurCorrName = baseName + midName + "_" + inSystStrVect[systI]; + "_PURCORR_h";
-	  std::string photonPtTruthName = baseName + midName + "_TRUTH_h";	  
-	  
+	  std::string photonPtTruthName = baseName + midName + "_TRUTH_h";
+
 	  std::cout << __LINE__ << ", " << photonPtPurCorrName << std::endl;
 	  TH1D* tempHistTH1D_p = (TH1D*)inUnfoldFile_p->Get(photonPtPurCorrName.c_str());
 	  strReplace(&photonPtPurCorrName, "PURCORR_h", "PURCORR_REBIN_h");
@@ -1566,11 +1562,11 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	  photonPtReco_PURCORR_p[cI][systI][eI] = new TH1D(photonPtPurCorrName.c_str(), titleStr.c_str(), nGammaPtBins, gammaPtBins);
 	  fineHistToCoarseHist(tempHistTH1D_p, photonPtReco_PURCORR_p[cI][systI][eI]);
 	  std::cout << "PASSED FINE TO COARSE" << std::endl;
-	
+
 	  //For reweighting
 	  std::string photonPtPurCorrNameReweight = baseName + midName + "_NOMINAL_PURCORR_h";
 	  if(!isStrSame(systTypeVect[systI], "PHOISOANDPUR")) photonPtPurCorrNameReweight = baseName + midName + "_" + inSystStrVect[systI] + "_PURCORR_h";
-	  
+
 	  tempHistTH1D_p = (TH1D*)tempFilePointer_p->Get(photonPtPurCorrNameReweight.c_str());
 	  strReplace(&photonPtPurCorrNameReweight, "PURCORR_h", "PURCORR_REBIN_ForReweight_h");
 	  xTitle = tempHistTH1D_p->GetXaxis()->GetTitle();
@@ -1578,31 +1574,31 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	  titleStr = ";" + xTitle + ";" + yTitle;
 	  photonPtReco_PURCORR_ForReweight_p[cI][systI][eI] = new TH1D(photonPtPurCorrNameReweight.c_str(), titleStr.c_str(), nGammaPtBins, gammaPtBins);
 	  fineHistToCoarseHist(tempHistTH1D_p, photonPtReco_PURCORR_ForReweight_p[cI][systI][eI]);
-	  
+
 	  //Truth
 	  if(systI == 0){
 	    tempHistTH1D_p = (TH1D*)tempFilePointer_p->Get(photonPtTruthName.c_str());
 	    strReplace(&photonPtTruthName, "TRUTH_h", "TRUTH_REBIN_h");
 	    xTitle = tempHistTH1D_p->GetXaxis()->GetTitle();
 	    yTitle = tempHistTH1D_p->GetYaxis()->GetTitle();
-	    titleStr = ";" + xTitle + ";" + yTitle;	
+	    titleStr = ";" + xTitle + ";" + yTitle;
 	    photonPtReco_TRUTH_p[cI][eI] = new TH1D(photonPtTruthName.c_str(), titleStr.c_str(), nGammaPtBins, gammaPtBins);
 	    fineHistToCoarseHist(tempHistTH1D_p, photonPtReco_TRUTH_p[cI][eI]);
 	  }
-	  	  
+
 	  std::string photonPtJtVarPurCorrName = baseName + jtName + midName + "_" + inSystStrVect[systI] + "_" + gammaJtDPhiStr + "_" + repStr + "_h";
-	  	  
+
 	  TH2D* tempHistTH2D_p = (TH2D*)inUnfoldFile_p->Get(photonPtJtVarPurCorrName.c_str());
-	  strReplace(&photonPtJtVarPurCorrName, repStr, repStr + "_REBIN");		  
+	  strReplace(&photonPtJtVarPurCorrName, repStr, repStr + "_REBIN");
 	  xTitle = tempHistTH2D_p->GetXaxis()->GetTitle();
 	  yTitle = tempHistTH2D_p->GetYaxis()->GetTitle();
 	  titleStr = ";" + xTitle + ";" + yTitle;
 
-	  if(isMultijet) photonPtJetVarReco_PURCORR_p[cI][systI][eI] = new TH2D(photonPtJtVarPurCorrName.c_str(), titleStr.c_str(), nVarBins, varBins, nSubJtGammaPtBins, subJtGammaPtBins);	
-	  else photonPtJetVarReco_PURCORR_p[cI][systI][eI] = new TH2D(photonPtJtVarPurCorrName.c_str(), titleStr.c_str(), nVarBins, varBins, nGammaPtBins, gammaPtBins);	
+	  if(isMultijet) photonPtJetVarReco_PURCORR_p[cI][systI][eI] = new TH2D(photonPtJtVarPurCorrName.c_str(), titleStr.c_str(), nVarBins, varBins, nSubJtGammaPtBins, subJtGammaPtBins);
+	  else photonPtJetVarReco_PURCORR_p[cI][systI][eI] = new TH2D(photonPtJtVarPurCorrName.c_str(), titleStr.c_str(), nVarBins, varBins, nGammaPtBins, gammaPtBins);
 	  fineHistToCoarseHist(tempHistTH2D_p, photonPtJetVarReco_PURCORR_p[cI][systI][eI]);
 
-	  
+
 	  //mixing histograms (only need one so systI == 0)
 	  if(systI == 0 && !isPP){
  	    std::string tempMixName = photonPtJtVarPurCorrName;
@@ -1614,84 +1610,84 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	    xTitle = tempHistTH2D_p->GetXaxis()->GetTitle();
 	    yTitle = tempHistTH2D_p->GetYaxis()->GetTitle();
 	    titleStr = ";" + xTitle + ";" + yTitle;
-	    
+
 	    if(isMultijet) photonPtJetVarReco_MIX_p[cI][eI] = new TH2D(tempMixName.c_str(), titleStr.c_str(), nVarBins, varBins, nSubJtGammaPtBins, subJtGammaPtBins);
 	    else photonPtJetVarReco_MIX_p[cI][eI] = new TH2D(tempMixName.c_str(), titleStr.c_str(), nVarBins, varBins, nGammaPtBins, gammaPtBins);
 	    fineHistToCoarseHist(tempHistTH2D_p, photonPtJetVarReco_MIX_p[cI][eI]);
 	  }
-	     
+
 	  std::string photonPtJtVarPurCorrNameReweight = baseName + jtName + midName + "_NOMINAL_" + repStr + "_h";
 	  if(!isStrSame(systTypeVect[systI], "PHOISOANDPUR")) photonPtJtVarPurCorrNameReweight = baseName + jtName + midName + "_" + inSystStrVect[systI] + "_" + repStr + "_h";
 
 	  //Reweighted histograms
 	  //	  strReplace(&photonPtJtVarPurCorrNameReweight, repStr + "_REBIN_h", _h");
 	  tempHistTH2D_p = (TH2D*)tempFilePointer_p->Get(photonPtJtVarPurCorrNameReweight.c_str());
-	  strReplace(&photonPtJtVarPurCorrNameReweight, repStr + "_h", repStr + "_REBIN_ForReweight_h"); 
+	  strReplace(&photonPtJtVarPurCorrNameReweight, repStr + "_h", repStr + "_REBIN_ForReweight_h");
 	  xTitle = tempHistTH2D_p->GetXaxis()->GetTitle();
 	  yTitle = tempHistTH2D_p->GetYaxis()->GetTitle();
 	  titleStr = ";" + xTitle + ";" + yTitle;
-	  if(isMultijet) photonPtJetVarReco_PURCORR_ForReweight_p[cI][systI][eI] = new TH2D(photonPtJtVarPurCorrNameReweight.c_str(), titleStr.c_str(), nVarBins, varBins, nSubJtGammaPtBins, subJtGammaPtBins);	
-	  else photonPtJetVarReco_PURCORR_ForReweight_p[cI][systI][eI] = new TH2D(photonPtJtVarPurCorrNameReweight.c_str(), titleStr.c_str(), nVarBins, varBins, nGammaPtBins, gammaPtBins);	
+	  if(isMultijet) photonPtJetVarReco_PURCORR_ForReweight_p[cI][systI][eI] = new TH2D(photonPtJtVarPurCorrNameReweight.c_str(), titleStr.c_str(), nVarBins, varBins, nSubJtGammaPtBins, subJtGammaPtBins);
+	  else photonPtJetVarReco_PURCORR_ForReweight_p[cI][systI][eI] = new TH2D(photonPtJtVarPurCorrNameReweight.c_str(), titleStr.c_str(), nVarBins, varBins, nGammaPtBins, gammaPtBins);
 	  fineHistToCoarseHist(tempHistTH2D_p, photonPtJetVarReco_PURCORR_ForReweight_p[cI][systI][eI]);
 	}
-     	
+
 	//Truth histogram
 	{
 	  TH2D* tempHistTH2D_p = (TH2D*)tempFilePointer_p->Get(photonPtJtVarTruthName.c_str());
-	  strReplace(&photonPtJtVarTruthName, "TRUTH_h", "TRUTH_REBIN_h");		  
+	  strReplace(&photonPtJtVarTruthName, "TRUTH_h", "TRUTH_REBIN_h");
 	  std::string xTitle = tempHistTH2D_p->GetXaxis()->GetTitle();
 	  std::string yTitle = tempHistTH2D_p->GetYaxis()->GetTitle();
 	  std::string titleStr = ";" + xTitle + ";" + yTitle;
 	  if(isMultijet) photonPtJetVarReco_TRUTH_p[cI][eI] = new TH2D(photonPtJtVarTruthName.c_str(), titleStr.c_str(), nVarBins, varBins, nSubJtGammaPtBins, subJtGammaPtBins);
 	  else photonPtJetVarReco_TRUTH_p[cI][eI] = new TH2D(photonPtJtVarTruthName.c_str(), titleStr.c_str(), nVarBins, varBins, nGammaPtBins, gammaPtBins);
-	  
+
 	  fineHistToCoarseHist(tempHistTH2D_p, photonPtJetVarReco_TRUTH_p[cI][eI]);
 	}
-	
+
      	//For reweighting DR - note we want to check this even when the doReweightDR = false;
 	if(doReweightVar){
 	  std::string photonPtJtVarPurCorrName = baseName + "JtDRJJ" + midName + "_NOMINAL_" + gammaJtDPhiStr + "_PURCORR_h";
 
 	  TH2D* tempHistTH2D_p = (TH2D*)inUnfoldFile_p->Get(photonPtJtVarPurCorrName.c_str());
-	  strReplace(&photonPtJtVarPurCorrName, "PURCORR_h", "PURCORR_REBIN_h"); 
+	  strReplace(&photonPtJtVarPurCorrName, "PURCORR_h", "PURCORR_REBIN_h");
 	  std::string xTitle = tempHistTH2D_p->GetXaxis()->GetTitle();
 	  std::string yTitle = tempHistTH2D_p->GetYaxis()->GetTitle();
 	  std::string titleStr = ";" + xTitle + ";" + yTitle;
-	  photonPtDRJJReco_PURCORR_p[cI][eI] = new TH2D(photonPtJtVarPurCorrName.c_str(), titleStr.c_str(), nDRBins, drBins, nSubJtGammaPtBins, subJtGammaPtBins);	
+	  photonPtDRJJReco_PURCORR_p[cI][eI] = new TH2D(photonPtJtVarPurCorrName.c_str(), titleStr.c_str(), nDRBins, drBins, nSubJtGammaPtBins, subJtGammaPtBins);
 	  fineHistToCoarseHist(tempHistTH2D_p, photonPtDRJJReco_PURCORR_p[cI][eI]);
 
 	  strReplace(&photonPtJtVarPurCorrName, "PURCORR_REBIN_h", "PURCORR_h");
 	  tempHistTH2D_p = (TH2D*)tempFilePointer_p->Get(photonPtJtVarPurCorrName.c_str());
-	  strReplace(&photonPtJtVarPurCorrName, "PURCORR_h", "PURCORR_REBIN_ForReweight_h"); 
+	  strReplace(&photonPtJtVarPurCorrName, "PURCORR_h", "PURCORR_REBIN_ForReweight_h");
 	  xTitle = tempHistTH2D_p->GetXaxis()->GetTitle();
 	  yTitle = tempHistTH2D_p->GetYaxis()->GetTitle();
 	  titleStr = ";" + xTitle + ";" + yTitle;
-	  photonPtDRJJReco_PURCORR_ForReweight_p[cI][eI] = new TH2D(photonPtJtVarPurCorrName.c_str(), titleStr.c_str(), nDRBins, drBins, nSubJtGammaPtBins, subJtGammaPtBins);	
+	  photonPtDRJJReco_PURCORR_ForReweight_p[cI][eI] = new TH2D(photonPtJtVarPurCorrName.c_str(), titleStr.c_str(), nDRBins, drBins, nSubJtGammaPtBins, subJtGammaPtBins);
 	  fineHistToCoarseHist(tempHistTH2D_p, photonPtDRJJReco_PURCORR_ForReweight_p[cI][eI]);
 
 	  strReplace(&photonPtJtVarPurCorrName, "PURCORR_REBIN_ForReweight_h", "PURCORR_h");
 	  strReplace(&photonPtJtVarPurCorrName, "JtDRJJ", "JtAJJ");
 
 	  tempHistTH2D_p = (TH2D*)inUnfoldFile_p->Get(photonPtJtVarPurCorrName.c_str());
-	  strReplace(&photonPtJtVarPurCorrName, "PURCORR_h", "PURCORR_REBIN_h"); 
+	  strReplace(&photonPtJtVarPurCorrName, "PURCORR_h", "PURCORR_REBIN_h");
 	  xTitle = tempHistTH2D_p->GetXaxis()->GetTitle();
 	  yTitle = tempHistTH2D_p->GetYaxis()->GetTitle();
 	  titleStr = ";" + xTitle + ";" + yTitle;
-	  photonPtAJJReco_PURCORR_p[cI][eI] = new TH2D(photonPtJtVarPurCorrName.c_str(), titleStr.c_str(), nAJBins, ajBins, nSubJtGammaPtBins, subJtGammaPtBins);	
+	  photonPtAJJReco_PURCORR_p[cI][eI] = new TH2D(photonPtJtVarPurCorrName.c_str(), titleStr.c_str(), nAJBins, ajBins, nSubJtGammaPtBins, subJtGammaPtBins);
 	  fineHistToCoarseHist(tempHistTH2D_p, photonPtAJJReco_PURCORR_p[cI][eI]);
 
 	  strReplace(&photonPtJtVarPurCorrName, "PURCORR_REBIN_h", "PURCORR_h");
 	  tempHistTH2D_p = (TH2D*)tempFilePointer_p->Get(photonPtJtVarPurCorrName.c_str());
-	  strReplace(&photonPtJtVarPurCorrName, "PURCORR_h", "PURCORR_REBIN_ForReweight_h"); 
+	  strReplace(&photonPtJtVarPurCorrName, "PURCORR_h", "PURCORR_REBIN_ForReweight_h");
 	  xTitle = tempHistTH2D_p->GetXaxis()->GetTitle();
 	  yTitle = tempHistTH2D_p->GetYaxis()->GetTitle();
 	  titleStr = ";" + xTitle + ";" + yTitle;
-	  photonPtAJJReco_PURCORR_ForReweight_p[cI][eI] = new TH2D(photonPtJtVarPurCorrName.c_str(), titleStr.c_str(), nAJBins, ajBins, nSubJtGammaPtBins, subJtGammaPtBins);	
+	  photonPtAJJReco_PURCORR_ForReweight_p[cI][eI] = new TH2D(photonPtJtVarPurCorrName.c_str(), titleStr.c_str(), nAJBins, ajBins, nSubJtGammaPtBins, subJtGammaPtBins);
  	  fineHistToCoarseHist(tempHistTH2D_p, photonPtAJJReco_PURCORR_ForReweight_p[cI][eI]);
 	}
       }
-      else{     
-	std::string photonPtTruthName = baseName + midName + "_TRUTH_h";	  
+      else{
+	std::string photonPtTruthName = baseName + midName + "_TRUTH_h";
 	photonPtReco_TRUTH_p[cI][eI] = (TH1D*)tempFilePointer_p->Get(photonPtTruthName.c_str());
 
 	std::string photonPtJtVarTruthName = baseName + jtName + midName + "_NOMINAL_" + gammaJtDPhiStr + "_" + mixModeStr + "_TRUTH_h";
@@ -1706,42 +1702,42 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
 	  if(isStrSame(inSystTypeVect[systI], "PHOISOANDPUR")) photonPtPurCorrName = baseName + midName + "_" + inSystStrVect[systI] + "_PURCORR_h";
 
-	  photonPtReco_PURCORR_p[cI][systI][eI] = (TH1D*)inUnfoldFile_p->Get(photonPtPurCorrName.c_str());     
+	  photonPtReco_PURCORR_p[cI][systI][eI] = (TH1D*)inUnfoldFile_p->Get(photonPtPurCorrName.c_str());
 
-	  photonPtReco_PURCORR_ForReweight_p[cI][systI][eI] = (TH1D*)tempFilePointer_p->Get(photonPtPurCorrNameReweight.c_str());     
+	  photonPtReco_PURCORR_ForReweight_p[cI][systI][eI] = (TH1D*)tempFilePointer_p->Get(photonPtPurCorrNameReweight.c_str());
 
 	  std::string photonPtJtVarPurCorrName = baseName + jtName + midName + "_" + inSystStrVect[systI] + "_" + gammaJtDPhiStr + "_" + repStr + "_h";
 	  std::string photonPtJtVarPurCorrNameReweight= baseName + jtName + midName + "_NOMINAL_" + gammaJtDPhiStr + "_" + repStr + "_h";
 
-	  photonPtJetVarReco_PURCORR_p[cI][systI][eI] = (TH2D*)inUnfoldFile_p->Get(photonPtJtVarPurCorrName.c_str());     
-	  
+	  photonPtJetVarReco_PURCORR_p[cI][systI][eI] = (TH2D*)inUnfoldFile_p->Get(photonPtJtVarPurCorrName.c_str());
+
 	  if(systI == 0 && !isPP){
  	    std::string tempMixName = photonPtJtVarPurCorrName;
 	    if(!isMultijet) strReplace(&tempMixName, repStr + "_h", "MIXMODE1_MIX_h");
 	    else strReplace(&tempMixName, repStr + "_h", "MIXMODE2_MIXCORRECTED_h");
-	    
+
 	    photonPtJetVarReco_MIX_p[cI][eI] = (TH2D*)inUnfoldFile_p->Get(tempMixName.c_str());
 	  }
 
-	  photonPtJetVarReco_PURCORR_ForReweight_p[cI][systI][eI] = (TH2D*)tempFilePointer_p->Get(photonPtJtVarPurCorrNameReweight.c_str());     
-	}      
-	
+	  photonPtJetVarReco_PURCORR_ForReweight_p[cI][systI][eI] = (TH2D*)tempFilePointer_p->Get(photonPtJtVarPurCorrNameReweight.c_str());
+	}
+
      	//For reweighting DR - note we want to check this even when the doReweightDR = false;
 	if(doReweightVar){
 	  std::string photonPtJtVarPurCorrName = baseName + "JtDRJJ" + midName + "_NOMINAL_" + gammaJtDPhiStr + "_PURCORR_h";
 	  //For dR based reweighitng
-	  photonPtDRJJReco_PURCORR_p[cI][eI] = (TH2D*)inUnfoldFile_p->Get(photonPtJtVarPurCorrName.c_str());     
-	  photonPtDRJJReco_PURCORR_ForReweight_p[cI][eI] = (TH2D*)tempFilePointer_p->Get(photonPtJtVarPurCorrName.c_str());     
+	  photonPtDRJJReco_PURCORR_p[cI][eI] = (TH2D*)inUnfoldFile_p->Get(photonPtJtVarPurCorrName.c_str());
+	  photonPtDRJJReco_PURCORR_ForReweight_p[cI][eI] = (TH2D*)tempFilePointer_p->Get(photonPtJtVarPurCorrName.c_str());
 
 	  //For AJJ based reweighitng
 	  photonPtJtVarPurCorrName.replace(photonPtJtVarPurCorrName.find("JtDRJJ"), 6, "JtAJJ");
-	  photonPtAJJReco_PURCORR_p[cI][eI] = (TH2D*)inUnfoldFile_p->Get(photonPtJtVarPurCorrName.c_str());     
+	  photonPtAJJReco_PURCORR_p[cI][eI] = (TH2D*)inUnfoldFile_p->Get(photonPtJtVarPurCorrName.c_str());
 	  photonPtAJJReco_PURCORR_ForReweight_p[cI][eI] = (TH2D*)tempFilePointer_p->Get(photonPtJtVarPurCorrName.c_str());
 	}
       }
     }
 
-  
+
 
     for(unsigned int systI = 0; systI < inSystStrVect.size(); ++systI){
       photonPtReco_PURCORR_COMBINED_p[cI][systI] = new TH1D(("photonPtVCent_" + centBinsStr[cI] + "_" +inSystStrVect[systI] + "_" + repStr + "_COMBINED_h").c_str(), ";Reco. Photon p_{T};Counts (Purity Corrected)", nGammaPtBins, gammaPtBins);
@@ -1753,23 +1749,23 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	if(isMultijet) photonPtJetVarReco_MIX_COMBINED_p[cI] = new TH2D(("photonPtJt" + varName + "VCent_" + centBinsStr[cI] + "_" + gammaJtDPhiStr + "_MIX_COMBINED_h").c_str(), (";Reco. " + varNameStyle + ";Reco. Photon p_{T}").c_str(), nVarBins, varBins, nSubJtGammaPtBins, subJtGammaPtBins);
 	else photonPtJetVarReco_MIX_COMBINED_p[cI] = new TH2D(("photonPtJt" + varName + "VCent_" + centBinsStr[cI] + "_" + gammaJtDPhiStr + "_MIX_COMBINED_h").c_str(), (";Reco. " + varNameStyle + ";Reco. Photon p_{T}").c_str(), nVarBins, varBins, nGammaPtBins, gammaPtBins);
       }
-    }    
+    }
 
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
     photonPtDRJJReco_PURCORR_COMBINED_p[cI] = new TH2D(("photonPtJtDRJJVCent_" + centBinsStr[cI] + "_" + gammaJtDPhiStr + "_" + repStr + "_COMBINED_h").c_str(), ";Reco. #DeltaR_{JJ};Reco. Sub. Jet p_{T} x Photon p_{T}", nDRBins, drBins, nSubJtGammaPtBins, subJtGammaPtBins);
     photonPtAJJReco_PURCORR_COMBINED_p[cI] = new TH2D(("photonPtJtAJJVCent_" + centBinsStr[cI] + "_" + gammaJtDPhiStr + "_" + repStr + "_COMBINED_h").c_str(), ";Reco. A_{JJ};Reco. Sub. Jet p_{T} x Photon p_{T}", nAJBins, ajBins, nSubJtGammaPtBins, subJtGammaPtBins);
-    
+
     photonPtReco_TRUTH_COMBINED_p[cI] = new TH1D(("photonPtVCent_" + centBinsStr[cI] + "_" + gammaJtDPhiStr + "_TRUTH_COMBINED_h").c_str(), (";Reco. " + varNameStyle + ";Reco. Photon p_{T}").c_str(), nGammaPtBins, gammaPtBins);
 
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-  
+
     if(isMultijet) photonPtJetVarReco_TRUTH_COMBINED_p[cI] = new TH2D(("photonPtJt" + varName + "VCent_" + centBinsStr[cI] + "_NOMINAL_" + gammaJtDPhiStr + "_TRUTH_COMBINED_h").c_str(), (";Reco. " + varNameStyle + ";Reco. Sub. Jet p_{T} x Photon p_{T}").c_str(), nVarBins, varBins, nSubJtGammaPtBins, subJtGammaPtBins);
     else photonPtJetVarReco_TRUTH_COMBINED_p[cI] = new TH2D(("photonPtJt" + varName + "VCent_" + centBinsStr[cI] + "_NOMINAL_" + gammaJtDPhiStr + "_TRUTH_COMBINED_h").c_str(), (";Reco. " + varNameStyle + ";Reco. Photon p_{T}").c_str(), nVarBins, varBins, nGammaPtBins, gammaPtBins);
-    
+
 
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-    
+
     for(unsigned int systI = 0; systI < inSystStrVect.size(); ++systI){
       photonPtReco_PURCORR_COMBINED_ForReweight_p[cI][systI] = new TH1D(("photonPtVCent_" + centBinsStr[cI] + "_" + inSystStrVect[systI] + "_" + repStr + "_COMBINED_ForReweight_h").c_str(), ";Reco. Photon p_{T};Counts (Purity Corrected)", nGammaPtBins, gammaPtBins);
       photonPtReco_PURCORR_COMBINED_Reweighted_p[cI][systI] = new TH1D(("photonPtVCent_" + centBinsStr[cI] + "_" + inSystStrVect[systI] + "_" + repStr + "_COMBINED_Reweighted_h").c_str(), ";Reco. Photon p_{T};Counts (Purity Corrected)", nGammaPtBins, gammaPtBins);
@@ -1785,7 +1781,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	photonPtJetVarReco_PURCORR_COMBINED_Reweighted_p[cI][systI] = new TH2D(("photonPtJt" + varName + "VCent_" + centBinsStr[cI] + "_" + inSystStrVect[systI] + "_" + gammaJtDPhiStr + "_" + repStr + "_COMBINED_Reweighted_h").c_str(), (";Reco. " + varNameStyle + ";Reco. Photon p_{T}").c_str(), nVarBins, varBins, nGammaPtBins, gammaPtBins);
       }
     }
-    
+
     photonPtDRJJReco_PURCORR_COMBINED_ForReweight_p[cI] = new TH2D(("photonPtJtDRJJVCent_" + centBinsStr[cI] + "_" + gammaJtDPhiStr + "_" + repStr + "_COMBINED_ForReweight_h").c_str(), ";Reco. #DeltaR_{JJ};Reco. Sub. Jet p_{T} x Photon p_{T}", nDRBins, drBins, nSubJtGammaPtBins, subJtGammaPtBins);
     photonPtDRJJReco_PURCORR_COMBINED_Reweighted_p[cI] = new TH2D(("photonPtJtDRJJVCent_" + centBinsStr[cI] + "_" + gammaJtDPhiStr + "_" + repStr + "_COMBINED_Reweighted_h").c_str(), ";Reco. #DeltaR_{JJ};Reco. Sub. Jet p_{T} x Photon p_{T}", nDRBins, drBins, nSubJtGammaPtBins, subJtGammaPtBins);
 
@@ -1797,11 +1793,11 @@ int gdjHistToUnfold(std::string inConfigFileName)
     for(Int_t bIX = 0; bIX < photonPtReco_TRUTH_COMBINED_p[cI]->GetXaxis()->GetNbins(); ++bIX){
       Float_t content = 0.0;
       Float_t error = 0.0;
-    
+
       for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
 	Float_t tempContent = photonPtReco_TRUTH_p[cI][eI]->GetBinContent(bIX+1);
 	Float_t tempError = photonPtReco_TRUTH_p[cI][eI]->GetBinError(bIX+1);
-	
+
 	content += tempContent;
 	error = TMath::Sqrt(error*error + tempError*tempError);
       }
@@ -1811,11 +1807,11 @@ int gdjHistToUnfold(std::string inConfigFileName)
     }
 
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-    
+
     for(unsigned int systI = 0; systI < inSystStrVect.size(); ++systI){
       if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << inSystStrVect[systI] << std::endl;
 
-      
+
       for(Int_t bIX = 0; bIX < photonPtReco_PURCORR_COMBINED_p[cI][systI]->GetXaxis()->GetNbins(); ++bIX){
 	Float_t content = 0.0;
 	Float_t error = 0.0;
@@ -1825,59 +1821,59 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
 	  Float_t tempContent = photonPtReco_PURCORR_p[cI][systI][eI]->GetBinContent(bIX+1);
 	  Float_t tempError = photonPtReco_PURCORR_p[cI][systI][eI]->GetBinError(bIX+1);
-	  
+
 	  content += tempContent;
 	  error = TMath::Sqrt(error*error + tempError*tempError);
 	}
 
 	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << inSystStrVect[systI] << std::endl;
-	
+
 	photonPtReco_PURCORR_COMBINED_p[cI][systI]->SetBinContent(bIX+1, content);
 	photonPtReco_PURCORR_COMBINED_p[cI][systI]->SetBinError(bIX+1, error);
-	
+
 	content = 0.0;
 	error = 0.0;
 
 	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << inSystStrVect[systI] << std::endl;
-	
+
 	for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
 	  Float_t tempContent = photonPtReco_PURCORR_ForReweight_p[cI][systI][eI]->GetBinContent(bIX+1);
 	  Float_t tempError = photonPtReco_PURCORR_ForReweight_p[cI][systI][eI]->GetBinError(bIX+1);
-	  
+
 	  content += tempContent;
 	  error = TMath::Sqrt(error*error + tempError*tempError);
 	}
-	
+
 	photonPtReco_PURCORR_COMBINED_ForReweight_p[cI][systI]->SetBinContent(bIX+1, content);
 	photonPtReco_PURCORR_COMBINED_ForReweight_p[cI][systI]->SetBinError(bIX+1, error);
 
 	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << inSystStrVect[systI] << std::endl;
       }
-    
+
       if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
       //    for(unsigned int systI = 0; systI < inSystStrVect.size(); ++systI){
       for(Int_t bIX = 0; bIX < photonPtJetVarReco_PURCORR_COMBINED_p[cI][systI]->GetXaxis()->GetNbins(); ++bIX){
       if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	for(Int_t bIY = 0; bIY < photonPtJetVarReco_PURCORR_COMBINED_p[cI][systI]->GetYaxis()->GetNbins(); ++bIY){
-	  
+
 	  Float_t content = 0.0;
 	  Float_t error = 0.0;
-	  
+
 	  for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
 	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	    Float_t tempContent = photonPtJetVarReco_PURCORR_p[cI][systI][eI]->GetBinContent(bIX+1, bIY+1);
 	    Float_t tempError = photonPtJetVarReco_PURCORR_p[cI][systI][eI]->GetBinError(bIX+1, bIY+1);
-	  
+
 	    content += tempContent;
 	    error = TMath::Sqrt(error*error + tempError*tempError);
 	  }
 
 	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-	  
+
 	  photonPtJetVarReco_PURCORR_COMBINED_p[cI][systI]->SetBinContent(bIX+1, bIY+1, content);
-	  photonPtJetVarReco_PURCORR_COMBINED_p[cI][systI]->SetBinError(bIX+1, bIY+1, error);	
-	  
+	  photonPtJetVarReco_PURCORR_COMBINED_p[cI][systI]->SetBinError(bIX+1, bIY+1, error);
+
 	  content = 0.0;
 	  error = 0.0;
 
@@ -1885,13 +1881,13 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	    for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
 	      Float_t tempContent = photonPtJetVarReco_MIX_p[cI][eI]->GetBinContent(bIX+1, bIY+1);
 	      Float_t tempError = photonPtJetVarReco_MIX_p[cI][eI]->GetBinError(bIX+1, bIY+1);
-	      
+
 	      content += tempContent;
 	      error = TMath::Sqrt(error*error + tempError*tempError);
 	    }
 
 	    photonPtJetVarReco_MIX_COMBINED_p[cI]->SetBinContent(bIX+1, bIY+1, content);
-	    photonPtJetVarReco_MIX_COMBINED_p[cI]->SetBinError(bIX+1, bIY+1, error);	
+	    photonPtJetVarReco_MIX_COMBINED_p[cI]->SetBinError(bIX+1, bIY+1, error);
 
 	    content = 0.0;
 	    error = 0.0;
@@ -1901,31 +1897,31 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	    for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
 	      Float_t tempContent = photonPtJetVarReco_TRUTH_p[cI][eI]->GetBinContent(bIX+1, bIY+1);
 	      Float_t tempError = photonPtJetVarReco_TRUTH_p[cI][eI]->GetBinError(bIX+1, bIY+1);
-	      
+
 	      content += tempContent;
 	      error = TMath::Sqrt(error*error + tempError*tempError);
 	    }
-	    
+
 	    photonPtJetVarReco_TRUTH_COMBINED_p[cI]->SetBinContent(bIX+1, bIY+1, content);
 	    photonPtJetVarReco_TRUTH_COMBINED_p[cI]->SetBinError(bIX+1, bIY+1, error);
-	    
+
 	    content = 0.0;
 	    error = 0.0;
 	  }
 
-	  
+
 	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
 	  for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
 	    Float_t tempContent = photonPtJetVarReco_PURCORR_ForReweight_p[cI][systI][eI]->GetBinContent(bIX+1, bIY+1);
 	    Float_t tempError = photonPtJetVarReco_PURCORR_ForReweight_p[cI][systI][eI]->GetBinError(bIX+1, bIY+1);
-	    
+
 	    content += tempContent;
 	    error = TMath::Sqrt(error*error + tempError*tempError);
 	  }
-	  
+
 	  photonPtJetVarReco_PURCORR_COMBINED_ForReweight_p[cI][systI]->SetBinContent(bIX+1, bIY+1, content);
-	  photonPtJetVarReco_PURCORR_COMBINED_ForReweight_p[cI][systI]->SetBinError(bIX+1, bIY+1, error);	
+	  photonPtJetVarReco_PURCORR_COMBINED_ForReweight_p[cI][systI]->SetBinError(bIX+1, bIY+1, error);
 	}
 
 	if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
@@ -1934,11 +1930,11 @@ int gdjHistToUnfold(std::string inConfigFileName)
     }
 
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-	 
+
     if(doReweightVar){
       for(Int_t bIX = 0; bIX < photonPtDRJJReco_PURCORR_COMBINED_p[cI]->GetXaxis()->GetNbins(); ++bIX){
 	for(Int_t bIY = 0; bIY < photonPtDRJJReco_PURCORR_COMBINED_p[cI]->GetYaxis()->GetNbins(); ++bIY){
-	  
+
 	  Float_t content = 0.0;
 	  Float_t error = 0.0;
 
@@ -1952,10 +1948,10 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	  }
 
 	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-	  
+
 	  photonPtDRJJReco_PURCORR_COMBINED_p[cI]->SetBinContent(bIX+1, bIY+1, content);
-	  photonPtDRJJReco_PURCORR_COMBINED_p[cI]->SetBinError(bIX+1, bIY+1, error);	
-	  
+	  photonPtDRJJReco_PURCORR_COMBINED_p[cI]->SetBinError(bIX+1, bIY+1, error);
+
 	  content = 0.0;
 	  error = 0.0;
 
@@ -1963,7 +1959,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	  for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
 	    Float_t tempContent = photonPtDRJJReco_PURCORR_ForReweight_p[cI][eI]->GetBinContent(bIX+1, bIY+1);
 	    Float_t tempError = photonPtDRJJReco_PURCORR_ForReweight_p[cI][eI]->GetBinError(bIX+1, bIY+1);
-	    
+
 	    content += tempContent;
 	    error = TMath::Sqrt(error*error + tempError*tempError);
 	  }
@@ -1977,24 +1973,24 @@ int gdjHistToUnfold(std::string inConfigFileName)
       //Repeat for AJJ / consider rewriting as function
       for(Int_t bIX = 0; bIX < photonPtAJJReco_PURCORR_COMBINED_p[cI]->GetXaxis()->GetNbins(); ++bIX){
 	for(Int_t bIY = 0; bIY < photonPtAJJReco_PURCORR_COMBINED_p[cI]->GetYaxis()->GetNbins(); ++bIY){
-	  
+
 	  Float_t content = 0.0;
 	  Float_t error = 0.0;
-	  
+
 	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 	  for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
 	    Float_t tempContent = photonPtAJJReco_PURCORR_p[cI][eI]->GetBinContent(bIX+1, bIY+1);
 	    Float_t tempError = photonPtAJJReco_PURCORR_p[cI][eI]->GetBinError(bIX+1, bIY+1);
-	    
+
 	    content += tempContent;
 	    error = TMath::Sqrt(error*error + tempError*tempError);
 	  }
-	  
+
 	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-	  
+
 	  photonPtAJJReco_PURCORR_COMBINED_p[cI]->SetBinContent(bIX+1, bIY+1, content);
-	  photonPtAJJReco_PURCORR_COMBINED_p[cI]->SetBinError(bIX+1, bIY+1, error);	
-	  
+	  photonPtAJJReco_PURCORR_COMBINED_p[cI]->SetBinError(bIX+1, bIY+1, error);
+
 	  content = 0.0;
 	  error = 0.0;
 
@@ -2002,14 +1998,14 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	  for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
 	    Float_t tempContent = photonPtAJJReco_PURCORR_ForReweight_p[cI][eI]->GetBinContent(bIX+1, bIY+1);
 	    Float_t tempError = photonPtAJJReco_PURCORR_ForReweight_p[cI][eI]->GetBinError(bIX+1, bIY+1);
-	    
+
 	    content += tempContent;
 	    error = TMath::Sqrt(error*error + tempError*tempError);
 	  }
 
 	  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
-	  
+
 	  photonPtAJJReco_PURCORR_COMBINED_ForReweight_p[cI]->SetBinContent(bIX+1, bIY+1, content);
 	  photonPtAJJReco_PURCORR_COMBINED_ForReweight_p[cI]->SetBinError(bIX+1, bIY+1, error);
 	}
@@ -2017,12 +2013,12 @@ int gdjHistToUnfold(std::string inConfigFileName)
     }
 
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-    
+
     std::vector<TH1*> hists_p;
-    
+
     hists_p.push_back(photonPtJetVarReco_TRUTH_COMBINED_p[cI]);
-      
-      
+
+
     for(unsigned int systI = 0; systI < inSystStrVect.size(); ++systI){
       hists_p.push_back(photonPtJetVarTruth_p[cI][systI]);
       hists_p.push_back(photonPtJetVarReco_p[cI][systI]);
@@ -2031,15 +2027,15 @@ int gdjHistToUnfold(std::string inConfigFileName)
     }
 
     if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-    
-    if(doReweightDR){     
+
+    if(doReweightDR){
       hists_p.push_back(photonPtDRJJReco_PURCORR_COMBINED_p[cI]);
       hists_p.push_back(photonPtDRJJReco_PURCORR_COMBINED_ForReweight_p[cI]);
 
       hists_p.push_back(photonPtAJJReco_PURCORR_COMBINED_p[cI]);
       hists_p.push_back(photonPtAJJReco_PURCORR_COMBINED_ForReweight_p[cI]);
     }
-    
+
     setSumW2(hists_p);
   }
 
@@ -2048,44 +2044,44 @@ int gdjHistToUnfold(std::string inConfigFileName)
   TH2D* reweightPhoPtJetVar_p[nMaxCentBins][nMaxSyst];
   TH2D* reweightPhoPtDRJJ_p[nMaxCentBins];
   TH2D* reweightPhoPtAJJ_p[nMaxCentBins];
-  
+
   if(!isMC){
     if(doReweightVar){
-      for(Int_t cI = 0; cI < nCentBins; ++cI){    
+      for(Int_t cI = 0; cI < nCentBins; ++cI){
 	for(unsigned int systI = 0; systI < inSystStrVect.size(); ++systI){
-	  reweightPhoPt_p[cI][systI] = new TH1D(("reweightPhoPt_" + centBinsStr[cI] + "_" + inSystStrVect[systI] + "_h").c_str(), ";#gamma p_{T} [GeV];Weight Factor", nGammaPtBins, gammaPtBins);		
+	  reweightPhoPt_p[cI][systI] = new TH1D(("reweightPhoPt_" + centBinsStr[cI] + "_" + inSystStrVect[systI] + "_h").c_str(), ";#gamma p_{T} [GeV];Weight Factor", nGammaPtBins, gammaPtBins);
 	  if(isMultijet) reweightPhoPtJetVar_p[cI][systI] = new TH2D(("reweightPhoPtJetVar_" + centBinsStr[cI] + "_" + inSystStrVect[systI] + "_h").c_str(), (";Reco. " + varNameStyle + ";Sub. Jet p_{T} x #gamma p_{T} [Arbitrary Units]").c_str(), nVarBins, varBins, nSubJtGammaPtBins, subJtGammaPtBins);
 	  else reweightPhoPtJetVar_p[cI][systI] = new TH2D(("reweightPhoPtJetVar_" + centBinsStr[cI] + "_" + inSystStrVect[systI] + "_h").c_str(), (";Reco. " + varNameStyle + ";#gamma p_{T} [GeV]").c_str(), nVarBins, varBins, nGammaPtBins, gammaPtBins);
 
 	  std::string saveName = pdfStr + "/reweightPhoPt_" + centBinsStr[cI] + "_" + inSystStrVect[systI] + "_" + dateStr + ".png";
 	  makeReweightHist(reweightPhoPt_p[cI][systI], photonPtReco_PURCORR_COMBINED_p[cI][systI], photonPtReco_PURCORR_COMBINED_ForReweight_p[cI][systI], saveName, &binWeightMapPho);
-	  
-	  saveName = pdfStr + "/reweightPhoPtJt" + varName + "_" + centBinsStr[cI] + "_" + inSystStrVect[systI] + "_" + dateStr + ".png";	      
-	  
+
+	  saveName = pdfStr + "/reweightPhoPtJt" + varName + "_" + centBinsStr[cI] + "_" + inSystStrVect[systI] + "_" + dateStr + ".png";
+
 	  makeReweightHist(reweightPhoPtJetVar_p[cI][systI], photonPtJetVarReco_PURCORR_COMBINED_p[cI][systI], photonPtJetVarReco_PURCORR_COMBINED_ForReweight_p[cI][systI], saveName, &binWeightMap);
 	}
-      }     
-      
-      for(Int_t cI = 0; cI < nCentBins; ++cI){    
-	reweightPhoPtDRJJ_p[cI] = new TH2D(("reweightPhoPtDRJJ_" + centBinsStr[cI] + "_h").c_str(), ";Reco. #DeltaR_{JJ};#gamma p_{T}", nDRBins, drBins, nGammaPtBins, gammaPtBins);
-	
-	std::string saveName = pdfStr + "/reweightPhoPtDRJJ_" + centBinsStr[cI] + "_" + dateStr + ".png";
-	makeReweightHist(reweightPhoPtDRJJ_p[cI], photonPtDRJJReco_PURCORR_COMBINED_p[cI], photonPtDRJJReco_PURCORR_COMBINED_ForReweight_p[cI], saveName); 
+      }
 
-	reweightPhoPtAJJ_p[cI] = new TH2D(("reweightPhoPtAJJ_" + centBinsStr[cI] + "_h").c_str(), ";Reco. #DeltaR_{JJ};#gamma p_{T}", nDRBins, drBins, nGammaPtBins, gammaPtBins);	
+      for(Int_t cI = 0; cI < nCentBins; ++cI){
+	reweightPhoPtDRJJ_p[cI] = new TH2D(("reweightPhoPtDRJJ_" + centBinsStr[cI] + "_h").c_str(), ";Reco. #DeltaR_{JJ};#gamma p_{T}", nDRBins, drBins, nGammaPtBins, gammaPtBins);
+
+	std::string saveName = pdfStr + "/reweightPhoPtDRJJ_" + centBinsStr[cI] + "_" + dateStr + ".png";
+	makeReweightHist(reweightPhoPtDRJJ_p[cI], photonPtDRJJReco_PURCORR_COMBINED_p[cI], photonPtDRJJReco_PURCORR_COMBINED_ForReweight_p[cI], saveName);
+
+	reweightPhoPtAJJ_p[cI] = new TH2D(("reweightPhoPtAJJ_" + centBinsStr[cI] + "_h").c_str(), ";Reco. #DeltaR_{JJ};#gamma p_{T}", nDRBins, drBins, nGammaPtBins, gammaPtBins);
 	saveName = pdfStr + "/reweightPhoPtAJJ_" + centBinsStr[cI] + "_" + dateStr + ".png";
-	makeReweightHist(reweightPhoPtAJJ_p[cI], photonPtAJJReco_PURCORR_COMBINED_p[cI], photonPtAJJReco_PURCORR_COMBINED_ForReweight_p[cI], saveName); 
+	makeReweightHist(reweightPhoPtAJJ_p[cI], photonPtAJJReco_PURCORR_COMBINED_p[cI], photonPtAJJReco_PURCORR_COMBINED_ForReweight_p[cI], saveName);
       }
     }
   }
-  
+
   //Grab the unfolding ttree for matrix filling
   TTree* unfoldTree_p = (TTree*)inResponseFile_p->Get("unfoldTree_p");
 
   //Before declaring variables define array size for JES/JER syst. + check it matches input
   const Int_t nJESSys = 18;
   const Int_t nJERSys = 9;
-  //1 (nominal) + nJESSys + 1 (centrality dependent rtrk JESSys manual) + QG Frac + QG Response+ nJERSys                
+  //1 (nominal) + nJESSys + 1 (centrality dependent rtrk JESSys manual) + QG Frac + QG Response+ nJERSys
   const Int_t nJetSysAndNom = 1 + nJESSys + 1 + 1 + 1 + nJERSys;
 
   if(nJetSysAndNom != nJetSysAndNomInput){
@@ -2096,7 +2092,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
   //We need to do the same for gamma ES/ER
   const Int_t nGESSys = 2;
   const Int_t nGERSys = 2;
-  
+
   const Int_t nGammaSysAndNom = 1 + nGESSys + nGERSys;
   std::string gammaSysAndNomStr[nGammaSysAndNom] = {"Nominal", "GES0", "GES1", "GER0", "GER1"};
 
@@ -2110,15 +2106,15 @@ int gdjHistToUnfold(std::string inConfigFileName)
   UInt_t runNumber;
   UInt_t lumiBlock;
   ULong64_t eventNumber;
-  
+
   //Declare unfolding TTree variables
   const Int_t nMaxJets = 100;
 
   Float_t recoGammaPt_[nGammaSysAndNom];
   Float_t recoGammaPhi_;
-  Float_t recoGammaEta_;  
-  Float_t recoGammaIso_;  
-  Float_t recoGammaCorrectedIso_;  
+  Float_t recoGammaEta_;
+  Float_t recoGammaIso_;
+  Float_t recoGammaCorrectedIso_;
 
   Float_t truthGammaPt_;
   Float_t truthGammaPhi_;
@@ -2142,53 +2138,53 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
   Double_t unfoldWeight_;
   Float_t unfoldCent_;
-  
+
   unfoldTree_p->SetBranchAddress("is5050FilledHist", &is5050FilledHist);
   unfoldTree_p->SetBranchAddress("runNumber", &runNumber);
   unfoldTree_p->SetBranchAddress("lumiBlock", &lumiBlock);
   unfoldTree_p->SetBranchAddress("eventNumber", &eventNumber);
-  
+
   unfoldTree_p->SetBranchAddress("recoGammaPt", recoGammaPt_);
   unfoldTree_p->SetBranchAddress("recoGammaPhi", &recoGammaPhi_);
   unfoldTree_p->SetBranchAddress("recoGammaEta", &recoGammaEta_);
   unfoldTree_p->SetBranchAddress("recoGammaIso", &recoGammaIso_);
   unfoldTree_p->SetBranchAddress("recoGammaCorrectedIso", &recoGammaCorrectedIso_);
-  
+
   unfoldTree_p->SetBranchAddress("truthGammaPt", &truthGammaPt_);
   unfoldTree_p->SetBranchAddress("truthGammaPhi", &truthGammaPhi_);
   unfoldTree_p->SetBranchAddress("truthGammaEta", &truthGammaEta_);
-  
+
   unfoldTree_p->SetBranchAddress("nRecoJt", &nRecoJt_);
   unfoldTree_p->SetBranchAddress("recoJtPt", recoJtPt_);
   unfoldTree_p->SetBranchAddress("recoJtPhi", recoJtPhi_);
   unfoldTree_p->SetBranchAddress("recoJtEta", recoJtEta_);
-  
+
   unfoldTree_p->SetBranchAddress("truthJtPt", truthJtPt_);
   unfoldTree_p->SetBranchAddress("truthJtPhi", truthJtPhi_);
   unfoldTree_p->SetBranchAddress("truthJtEta", truthJtEta_);
   unfoldTree_p->SetBranchAddress("truthJtFlavor", truthJtFlavor_);
-  
+
   unfoldTree_p->SetBranchAddress("nTruthJtUnmatched", &nTruthJtUnmatched_);
   unfoldTree_p->SetBranchAddress("truthJtUnmatchedPt", truthJtUnmatchedPt_);
   unfoldTree_p->SetBranchAddress("truthJtUnmatchedPhi", truthJtUnmatchedPhi_);
   unfoldTree_p->SetBranchAddress("truthJtUnmatchedEta", truthJtUnmatchedEta_);
   unfoldTree_p->SetBranchAddress("truthJtUnmatchedFlavor", truthJtUnmatchedFlavor_);
-  
+
   unfoldTree_p->SetBranchAddress("unfoldWeight", &unfoldWeight_);
-  unfoldTree_p->SetBranchAddress("unfoldCent", &unfoldCent_);    
+  unfoldTree_p->SetBranchAddress("unfoldCent", &unfoldCent_);
 
   bool varIsPhi = varName.find("DPhiJJ") != std::string::npos;
-  
+
   //Starting out we need to calc our gamma normalization
   outFile_p->cd();
 
   if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
   for(Int_t cI = 0; cI < nCentBins; ++cI){
-    for(Int_t sI = 0; sI < nSyst; ++sI){            
+    for(Int_t sI = 0; sI < nSyst; ++sI){
       //If you wish to only check one syst, skip others - else it will say "ALL"
       if(!unfoldAll){
 	if(!vectContainsStr(returnAllCapsString(systStrVect[sI]), &inUnfoldNames)) continue;
-      }      
+      }
       int systPos = systPosToInSystPos[sI];
 
       int gesGERSystPos = vectContainsStrPos(systStrVect[sI], &gesGERStrVect);
@@ -2197,7 +2193,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	else if(isStrSame(systStrVect[sI], "ISO95")) gesGERSystPos = 0;
       }
       bool isGammaSyst = gesGERSystPos >= 0;
-      
+
       if(isGammaSyst){//Each gamma syst we need to recalc this
 	std::cout << " BUILDING: rooResGamma_" << centBinsStr[cI] << "_" << systStrVect[sI] << std::endl;
 
@@ -2206,7 +2202,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	rooResGammaMisses_p[cI][sI] = new TH1D(("rooResGammaMisses_" + centBinsStr[cI] + "_" + systStrVect[sI] + "_h").c_str(), ";Truth #gamma p_{T} [GeV]; Counts (weighted)", nGammaPtBins, gammaPtBins);
 	rooResGammaFakes_p[cI][sI] = new TH1D(("rooResGammaFakes_" + centBinsStr[cI] + "_" + systStrVect[sI] + "_h").c_str(), ";Reco #gamma p_{T} [GeV]; Counts (weighted)", nGammaPtBins, gammaPtBins);
       }
-      else{//Give it a pointer to the nominal position	
+      else{//Give it a pointer to the nominal position
 	rooResGamma_p[cI][sI] = rooResGamma_p[cI][0];
 	rooResGammaMatrix_p[cI][sI] = rooResGammaMatrix_p[cI][0];
 	rooResGammaMisses_p[cI][sI] = rooResGammaMisses_p[cI][0];
@@ -2223,8 +2219,8 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	  rooResGammaJetVar_QG_p[cI][qgI]->Sumw2();
 	}
       }
-      
-      
+
+
       if(isMultijet){
 	rooResGammaJetVarMatrixReco_p[cI][sI] = new TH2D(("rooResJt" + varName + "GammaMatrixReco_" + centBinsStr[cI] + "_" + systStrVect[sI] + "_h").c_str(), (";Reco. " + varNameStyle + "; Reco. Sub. Jet p_{T} x #gamma p_{T} [Arbitrary Units]").c_str(), nVarBins, varBins, nSubJtGammaPtBins, subJtGammaPtBins);
 	rooResGammaJetVarMatrixTruth_p[cI][sI] = new TH2D(("rooResJt" + varName + "GammaMatrixTruth_" + centBinsStr[cI] + "_" + systStrVect[sI] + "_h").c_str(), (";Truth " + varNameStyle + "; Truth Sub. Jet p_{T} x #gamma p_{T} [Arbitrary Units]").c_str(), nVarBins, varBins, nSubJtGammaPtBins, subJtGammaPtBins);
@@ -2244,7 +2240,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	Float_t binCenter = (gammaPtBins[gI] + gammaPtBins[gI+1])/2.0;
         if(binCenter < gammaPtBinsLowReco) continue;
         if(binCenter > gammaPtBinsHighReco) continue;
-       
+
 	rooResGammaJetVar_JetMatrixForRecoPho_p[cI][sI][gI] = new TH2D(("rooResJt" + varName + "_JetVarMatrixForRecoPho_" + centBinsStr[cI] + "_GammaPt" + std::to_string(gI) + "_" + systStrVect[sI] + "_h").c_str(), (";Reco. " + varNameStyle + ";Truth " + varNameStyle).c_str(), nVarBins, varBins, nVarBins, varBins);
       }
     }
@@ -2264,18 +2260,18 @@ int gdjHistToUnfold(std::string inConfigFileName)
     nGoodUnmatchedTruth[i] = 0;
     nFillsToRooRes[i] = 0;
   }
-  
+
   for(ULong64_t entry = unfoldStart; entry < unfoldStart+nEntriesUnfold; ++entry){
     if(entry%nDiv == 0) std::cout << " Entry " << entry << "/" << unfoldStart+nEntriesUnfold << "..." << std::endl;
     unfoldTree_p->GetEntry(entry);
 
     if(doHalfTest && is5050FilledHist) continue;
-    
+
     //pushbacks
     runNumbers.push_back(runNumber);
     lumiBlocks.push_back(lumiBlock);
     eventNumbers.push_back(eventNumber);
-    
+
     Int_t centPos = -1;
     if(isPP) centPos = 0;
     else centPos = ghostPos(centBinsF, unfoldCent_, true, doGlobalDebug);
@@ -2286,14 +2282,14 @@ int gdjHistToUnfold(std::string inConfigFileName)
       isoCentPos = ghostPos(isoCentBins, unfoldCent_, true, doGlobalDebug);
     }
     else isoCentPos = 0;
-    
+
     //Only process photons passing truth pt, eta, and isolation cuts
     //Note these are enforced online already, double checking here
     bool truthGammaOutOfBoundsByPt = truthGammaPt_ < gammaPtBinsLow || truthGammaPt_ >= gammaPtBinsHigh;
     bool truthGammaOutOfBoundsByEta = !photonEtaIsGood(truthGammaEta_);
     bool truthGammaOutOfBounds = truthGammaOutOfBoundsByPt || truthGammaOutOfBoundsByEta;
     //    if(truthGammaOutOfBounds) continue;
-    
+
     TLorentzVector truthGammaTL;
     truthGammaTL.SetPtEtaPhiM(truthGammaPt_, truthGammaEta_, truthGammaPhi_, 0.0);
 
@@ -2301,13 +2297,13 @@ int gdjHistToUnfold(std::string inConfigFileName)
     int nFillsNominal = 0;
     bool fillsJtPtCut = false;
     int nFillsJtPtCut = 0;
-    
+
     //We have to do this for all syst.
-    for(Int_t sysI = 0; sysI < nSyst; ++sysI){    
+    for(Int_t sysI = 0; sysI < nSyst; ++sysI){
       //If you wish to only check one syst, skip others - else it will say "ALL"
       if(!unfoldAll){
 	if(!vectContainsStr(returnAllCapsString(systStrVect[sysI]), &inUnfoldNames)) continue;
-      }      
+      }
 
       Double_t phoWeight = 1.0;
       Int_t inSystStrPos = vectContainsStrPos(systStrVect[sysI], &inSystStrVect);
@@ -2316,7 +2312,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
       if(doReweightVar){
 	phoWeight = reweightPhoPt_p[centPos][inSystStrPos]->GetBinContent(reweightPhoPt_p[centPos][inSystStrPos]->FindBin(truthGammaPt_));
       }
-      
+
       Int_t gammaSysPos = vectContainsStrPos(systStrVect[sysI], &gesGERStrVect);
       bool isGammaSyst = gammaSysPos >= 0;
       if(!isGammaSyst){
@@ -2326,7 +2322,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
       }
 
       //Construct 1-D unfold response matrix for gamma-pt (required in normalization)
-      bool recoGammaOutOfBounds = recoGammaPt_[gammaSysPos] < gammaPtBinsLowReco || recoGammaPt_[gammaSysPos] >= gammaPtBinsHighReco;   
+      bool recoGammaOutOfBounds = recoGammaPt_[gammaSysPos] < gammaPtBinsLowReco || recoGammaPt_[gammaSysPos] >= gammaPtBinsHighReco;
       recoGammaOutOfBounds = recoGammaOutOfBounds || !photonEtaIsGood(recoGammaEta_);
 
       if(isStrSame(systStrVect[sysI], "ISO85")){
@@ -2342,12 +2338,12 @@ int gdjHistToUnfold(std::string inConfigFileName)
       else{
 	if(!isIsolatedPhoton(isPP, true, recoGammaCorrectedIso_)) recoGammaOutOfBounds = true;
       }
-      
+
       if(isGammaSyst){
 	if(truthGammaOutOfBounds && !recoGammaOutOfBounds){
 	  rooResGamma_p[centPos][sysI]->Fake(recoGammaPt_[gammaSysPos], unfoldWeight_*phoWeight);
 	  rooResGammaFakes_p[centPos][sysI]->Fill(recoGammaPt_[gammaSysPos], unfoldWeight_*phoWeight);
-	}	
+	}
 	else if(recoGammaOutOfBounds && !truthGammaOutOfBounds){
 	  rooResGamma_p[centPos][sysI]->Miss(truthGammaPt_, unfoldWeight_*phoWeight);
 	  rooResGammaMisses_p[centPos][sysI]->Fill(truthGammaPt_, unfoldWeight_*phoWeight);
@@ -2355,24 +2351,24 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	else if(!recoGammaOutOfBounds && !truthGammaOutOfBounds){
 	  rooResGamma_p[centPos][sysI]->Fill(recoGammaPt_[gammaSysPos], truthGammaPt_, unfoldWeight_*phoWeight);
 	  rooResGammaMatrix_p[centPos][sysI]->Fill(recoGammaPt_[gammaSysPos], truthGammaPt_, unfoldWeight_*phoWeight);
-	
+
 	  //For checking the reweighting is effective
  	  if(doReweightVar){
 	    if(sysI == inSystStrPos || inSystStrPos > 0) photonPtReco_PURCORR_COMBINED_Reweighted_p[centPos][inSystStrPos]->Fill(recoGammaPt_[gammaSysPos], unfoldWeight_*phoWeight);
 	  }
 	}
       }
-    
-      //Now construct 2-D unfold response matrix for gammapt-jetvariable    
-      //Start w/ truth jets, no reco    
-      TLorentzVector tL;      
-      int systPos = systPosToInSystPos[sysI];      
-      std::vector<TLorentzVector> goodUnmatchedTruthJets;      
+
+      //Now construct 2-D unfold response matrix for gammapt-jetvariable
+      //Start w/ truth jets, no reco
+      TLorentzVector tL;
+      int systPos = systPosToInSystPos[sysI];
+      std::vector<TLorentzVector> goodUnmatchedTruthJets;
       //      std::vector<int> goodUnmatchedTruthJetsFlavor;
-      
+
       int systPosForWeights = systPos;
       if(isStrSame("JTPTCUT", systStrVect[sysI])) systPosForWeights = 0;
-		
+
       //Process unmatched truth jets
       for(Int_t tI = 0; tI < nTruthJtUnmatched_; ++tI){
 	bool truthJetOutOfBounds = truthJtUnmatchedPt_[tI] < jtPtBinsLow || truthJtUnmatchedPt_[tI] >= jtPtBinsHigh;
@@ -2384,7 +2380,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
 	TLorentzVector truthJetTL;
 	truthJetTL.SetPtEtaPhiM(truthJtUnmatchedPt_[tI], truthJtUnmatchedEta_[tI], truthJtUnmatchedPhi_[tI], 0.0);
-      
+
 	Double_t truthJetVar = getVar(varNameLower, truthJetTL, truthJetTL, truthGammaTL);
 	Double_t phoJetWeight = 1.0;
 
@@ -2392,11 +2388,11 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	if(doReweightVar && !isStrSame(systStrVect[sysI], "PRIOR")){
 	  phoJetWeight = reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetBinContent(reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetXaxis()->FindBin(truthJetVar), reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetYaxis()->FindBin(truthGammaPt_));
 	}
-	
+
 	Float_t gammaJtDRTruth = getDR(truthJtUnmatchedEta_[tI], truthJtUnmatchedPhi_[tI], truthGammaEta_, truthGammaPhi_);
 	bool gammaJtPassesDRTruth = gammaJtDRTruth >= gammaJtDRExclusionCut;
-	if(!gammaJtPassesDRTruth) continue;	
-      	
+	if(!gammaJtPassesDRTruth) continue;
+
 	Float_t gammaJtDPhiTruth = -999;
 	if(truthGammaPt_ > 0.0) gammaJtDPhiTruth = TMath::Abs(getDPHI(truthJtUnmatchedPhi_[tI], truthGammaPhi_));
 	if(isStrSame(varNameLower, "dphi")){
@@ -2404,10 +2400,10 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	    rooResGammaJetVar_p[centPos][sysI]->Miss(gammaJtDPhiTruth, truthGammaPt_, unfoldWeight_*phoJetWeight);
 	    rooResGammaJetVarMisses_p[centPos][sysI]->Fill(gammaJtDPhiTruth, truthGammaPt_, unfoldWeight_*phoJetWeight);
 	  }
-	}      
-	
+	}
+
 	bool gammaJtPassesDPhiTruth = gammaJtDPhiTruth >= gammaJtDPhiCut;
-	if(!gammaJtPassesDPhiTruth) continue;		
+	if(!gammaJtPassesDPhiTruth) continue;
 
 	if(isStrSame(varNameLower, "pt")){
 	  if(!truthGammaOutOfBoundsByPt){
@@ -2431,18 +2427,18 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	}
       }
 
-      std::vector<TLorentzVector> goodRecoJets, goodRecoTruthMatchJets;
+      std::vector<TLorentzVector> goodRecoJets, goodRecoTruthMatchJets, goodRecoTruthMatchOutOfBounds;
       std::vector<int> goodRecoTruthMatchJetsFlavor;
       std::vector<bool> recoIsGoodVect, truthIsGoodVect;
       //Now process reco-truth jet matched pairs
       for(Int_t jI = 0; jI < nRecoJt_; ++jI){
 	//We only need reco jets w/ a proper truth match
 	if(truthJtPt_[jI] < 0.0) continue;
-	
+
 	//The jet vector position will be zero unless we are doing jet related systematics
 	Int_t jtVPos = vectContainsStrPos(systStrVect[sysI], &jesJERStrVect);
 	if(jtVPos < 0) jtVPos = 0;
-     	
+
 	//Define booleans on the reco jet pt and eta
 	bool recoJtOutOfBoundsByPt = recoJtPt_[jI][jtVPos] < jtPtBinsLowReco || recoJtPt_[jI][jtVPos] >= jtPtBinsHighReco;
 	if(systStrVect[sysI].find("JTPTCUT") != std::string::npos){
@@ -2450,12 +2446,12 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	}
 	bool recoJtOutOfBoundsByEta = recoJtEta_[jI] < jtEtaBinsLow || recoJtEta_[jI] >= jtEtaBinsHigh;
 	bool recoJtOutOfBounds = recoJtOutOfBoundsByPt || recoJtOutOfBoundsByEta;
-	
+
 	//Define booleans on the truth jet pt and eta
 	bool truthJtOutOfBoundsByPt = truthJtPt_[jI] < jtPtBinsLow || truthJtPt_[jI] >= jtPtBinsHigh;
 	bool truthJtOutOfBoundsByEta = truthJtEta_[jI] < jtEtaBinsLow || truthJtEta_[jI] > jtEtaBinsHigh;
 	bool truthJtOutOfBounds = truthJtOutOfBoundsByPt || truthJtOutOfBoundsByEta;
-	
+
 	//Define truth DR between jet and photon w/ boolean
 	Float_t gammaJtDRTruth = -999;
 	if(truthJtPt_[jI] > 0.0 && truthGammaPt_ > 0.0) gammaJtDRTruth = getDR(truthJtEta_[jI], truthJtPhi_[jI], truthGammaEta_, truthGammaPhi_);
@@ -2467,8 +2463,8 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	if(!recoGammaOutOfBounds){
 	  gammaJtDRReco = getDR(recoJtEta_[jI], recoJtPhi_[jI], recoGammaEta_, recoGammaPhi_);
 	  gammaJtPassesDRReco = gammaJtDRReco >= gammaJtDRExclusionCut;
-	}            
-	
+	}
+
 	Float_t gammaJtDPhiTruth = -999;
 	if(truthJtPt_[jI] > 0.0 && truthGammaPt_ > 0.0) gammaJtDPhiTruth = TMath::Abs(getDPHI(truthJtPhi_[jI], truthGammaPhi_));
 	Float_t gammaJtDPhiReco = -999;
@@ -2483,21 +2479,21 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	truthJetTL.SetPtEtaPhiM(truthJtPt_[jI], truthJtEta_[jI], truthJtPhi_[jI], 0.0);
 
 	Double_t truthJetVar = getVar(varNameLower, truthJetTL, truthJetTL, truthGammaTL);
-           
+
 	Double_t phoJetWeight = 1.0;
 	//Reweight if doReweightVar AND its not the prior variation systematic
-	if(doReweightVar && !isStrSame(systStrVect[sysI], "PRIOR")) phoJetWeight = reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetBinContent(reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetXaxis()->FindBin(truthJetVar), reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetYaxis()->FindBin(truthGammaPt_)); 
+	if(doReweightVar && !isStrSame(systStrVect[sysI], "PRIOR")) phoJetWeight = reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetBinContent(reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetXaxis()->FindBin(truthJetVar), reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetYaxis()->FindBin(truthGammaPt_));
 
 	bool isJtTruthGood = !truthJtOutOfBoundsByEta && !truthJtOutOfBoundsByPt && gammaJtPassesDRTruth;
 	bool isJtRecoGood = !recoJtOutOfBoundsByEta && !recoJtOutOfBoundsByPt && gammaJtPassesDRReco;
 
-	bool isTruthGood = isJtTruthGood && !truthGammaOutOfBounds;	
+	bool isTruthGood = isJtTruthGood && !truthGammaOutOfBounds;
 	bool isRecoGood = isJtRecoGood && !recoGammaOutOfBounds;
 
 	recoJtOutOfBounds = recoJtOutOfBounds || !gammaJtPassesDRReco;
-	
-	if(!isTruthGood && !isRecoGood) continue;	
-	
+
+	if(!isTruthGood && !isRecoGood) continue;
+
 	if(isStrSame(varNameLower, "dphi")){
 	  //Unfolding debugging 2023.04.20 - we will use the fake function but only when truthpt is out of bounds
 	  if(isRecoGood && !isTruthGood){
@@ -2515,7 +2511,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	      if(qgFlavorToVectPos.count(truthJtFlavor_[jI]) == 0) rooResGammaJetVar_QG_p[centPos][2]->Fill(truthJtPt_[jI], unfoldWeight_*phoJetWeight);
 	      else rooResGammaJetVar_QG_p[centPos][qgFlavorToVectPos[truthJtFlavor_[jI]]]->Fill(truthJtPt_[jI], unfoldWeight_*phoJetWeight);
 	    }
-	    
+
 	    rooResGammaJetVarMatrixReco_p[centPos][sysI]->Fill(gammaJtDPhiReco, recoGammaPt_[gammaSysPos], unfoldWeight_*phoJetWeight);
 	    rooResGammaJetVarMatrixTruth_p[centPos][sysI]->Fill(gammaJtDPhiTruth, truthGammaPt_, unfoldWeight_*phoJetWeight);
 
@@ -2526,11 +2522,11 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	    rooResGammaJetVar_JetMatrixForRecoPho_p[centPos][sysI][recoPhoBinPos]->Fill(gammaJtDPhiReco, gammaJtDPhiTruth, unfoldWeight_*phoJetWeight);
 	    rooResGammaJetVar_JetMatrixForTruthPho_p[centPos][sysI][truthPhoBinPos]->Fill(gammaJtDPhiReco, gammaJtDPhiTruth, unfoldWeight_*phoJetWeight);
 	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
-	    
+
 	    if(doReweightVar && sysI == 0) photonPtJetVarReco_PURCORR_COMBINED_Reweighted_p[centPos][sysI]->Fill(gammaJtDPhiReco, recoGammaPt_[gammaSysPos], unfoldWeight_*phoJetWeight);
 	  }
 	}
-		
+
 	bool gammaJtPassesDPhiTruth = gammaJtDPhiTruth >= gammaJtDPhiCut;
 	//  if(!gammaJtPassesDPhiTruth) continue;
 
@@ -2541,10 +2537,10 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	isJtRecoGood = isJtRecoGood && gammaJtPassesDPhiReco;
 
 	recoJtOutOfBounds = recoJtOutOfBounds || !gammaJtPassesDPhiReco;
-	
+
 	//We will add a condition on recoJt being good - passes dphi cut
 	//	if(!gammaJtPassesDPhiReco) recoJtOutOfBounds = true;
-      
+
 	//Now that the truth has passed all cuts - fill out the vectors goodRecoJets OR Fill the inclusive jet variables
 	if(isStrSame(varNameLower, "pt")){
 	  //Unfolding debugging 2023.04.20 - we will use the fake function but only when truthpt is out of bounds
@@ -2635,11 +2631,11 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	  Float_t varValTruth = truthJtPt_[jI]/truthGammaPt_;
 	  Bool_t varValTruthGood = varValTruth >= varBins[0] && varValTruth < varBins[nVarBins];
 
-	  
+
 	  if(varValTruthGood){
 	    Float_t varValReco = recoJtPt_[jI][jtVPos]/recoGammaPt_[gammaSysPos];
 	    Bool_t varValRecoGood = varValReco >= varBinsLowReco && varValReco < varBinsHighReco;
-	    
+
 	    if(recoJtOutOfBounds || recoGammaOutOfBounds || !varValRecoGood){
 	      rooResGammaJetVar_p[centPos][sysI]->Miss(varValTruth, truthGammaPt_, unfoldWeight_*phoJetWeight);
 	      rooResGammaJetVarMisses_p[centPos][sysI]->Fill(varValTruth, truthGammaPt_, unfoldWeight_*phoJetWeight);
@@ -2655,18 +2651,18 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	      rooResGammaJetVarMatrixTruth_p[centPos][sysI]->Fill(varValTruth, truthGammaPt_, unfoldWeight_*phoJetWeight);
 
 	      Int_t recoPhoBinPos = ghostPos(nGammaPtBins, gammaPtBins, recoGammaPt_[gammaSysPos]);
-	      Int_t truthPhoBinPos = ghostPos(nGammaPtBins, gammaPtBins, truthGammaPt_);	      
+	      Int_t truthPhoBinPos = ghostPos(nGammaPtBins, gammaPtBins, truthGammaPt_);
 	      rooResGammaJetVar_JetMatrixForRecoPho_p[centPos][sysI][recoPhoBinPos]->Fill(varValReco, varValTruth, unfoldWeight_*phoJetWeight);
 	      rooResGammaJetVar_JetMatrixForTruthPho_p[centPos][sysI][truthPhoBinPos]->Fill(varValReco, varValTruth, unfoldWeight_*phoJetWeight);
-	      	      
-	    if(doReweightVar && sysI == 0) photonPtJetVarReco_PURCORR_COMBINED_Reweighted_p[centPos][sysI]->Fill(varValReco, recoGammaPt_[gammaSysPos], unfoldWeight_*phoJetWeight);	      
+
+	    if(doReweightVar && sysI == 0) photonPtJetVarReco_PURCORR_COMBINED_Reweighted_p[centPos][sysI]->Fill(varValReco, recoGammaPt_[gammaSysPos], unfoldWeight_*phoJetWeight);
 	    }
  	  }
 	  */
 	}
 	else if(isMultijet){
 	  tL.SetPtEtaPhiM(truthJtPt_[jI], truthJtEta_[jI], truthJtPhi_[jI], 0.0);
-	
+
 	  if(recoJtOutOfBounds && isJtTruthGood){
 	    goodUnmatchedTruthJets.push_back(tL);
 	    //	    goodUnmatchedTruthJetsFlavor.push_back(truthJtFlavor_[jI]);
@@ -2679,49 +2675,53 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	    goodRecoTruthMatchJets.push_back(tL);
 	    goodRecoTruthMatchJetsFlavor.push_back(truthJtFlavor_[jI]);
 	    truthIsGoodVect.push_back(isJtTruthGood);
-	    
+
 	    tL.SetPtEtaPhiM(recoJtPt_[jI][jtVPos], recoJtEta_[jI], recoJtPhi_[jI], 0.0);
 	    goodRecoJets.push_back(tL);
 	    recoIsGoodVect.push_back(isJtRecoGood);
 	  }
-	}	
+	  else if(!recoJtOutOfBounds){ //6/5 adding this to I think handle the remnant nonclosure
+	    tL.SetPtEtaPhiM(recoJtPt_[jI][jtVPos], recoJtEta_[jI], recoJtPhi_[jI], 0.0);
+	    goodRecoTruthMatchOutOfBounds.push_back(tL);
+	  }
+	}
       }//end for(Int_t jI = 0; jI < nRecoJt_; ....
-              
+
       if(isMultijet){
 	if(sysI == 0){
 	  ++(nGoodRecoJets[goodRecoJets.size()]);
 	  ++(nGoodUnmatchedTruth[goodUnmatchedTruthJets.size()]);
 	}
-	
+
 	//First do it for unmatched truth jets
 	for(unsigned int tI = 0; tI < goodUnmatchedTruthJets.size(); ++tI){
 	  TLorentzVector goodTruthJet1 = goodUnmatchedTruthJets[tI];
 	  //	  Int_t goodTruthJet1Flavor = goodUnmatchedTruthJetsFlavor[tI];
-	  
+
 	  for(unsigned int tI2 = tI+1; tI2 < goodUnmatchedTruthJets.size(); ++tI2){
-	    TLorentzVector goodTruthJet2 = goodUnmatchedTruthJets[tI2];	   
-	    //	    Int_t goodTruthJet2Flavor = goodUnmatchedTruthJetsFlavor[tI2];	   
+	    TLorentzVector goodTruthJet2 = goodUnmatchedTruthJets[tI2];
+	    //	    Int_t goodTruthJet2Flavor = goodUnmatchedTruthJetsFlavor[tI2];
 
 	    if(goodTruthJet1.Pt() < jtPtBinsLow || goodTruthJet1.Pt() >= jtPtBinsHigh) continue;
 	    if(goodTruthJet2.Pt() < jtPtBinsLow || goodTruthJet2.Pt() >= jtPtBinsHigh) continue;
-	    
+
 	    Float_t subLeadingJetPt = goodTruthJet1.Pt();
 	    if(goodTruthJet2.Pt() < subLeadingJetPt) subLeadingJetPt = goodTruthJet2.Pt();
 	    Float_t subJtGammaPtValTruth = -999;
 	    if(truthGammaPt_ > 0.0) subJtGammaPtValTruth = subJtGammaPtBinFlattener.GetGlobalBinCenterFromBin12Val(truthGammaPt_, subLeadingJetPt, __LINE__);
-	    
+
 	    Double_t varValTruth = getVar(varNameLower, goodTruthJet1, goodTruthJet2, truthGammaTL);
 	    Double_t phoJetWeight = 1.0;
 	    //Reweight if doReweightVar AND its not the prior variation systematic
-	    if(doReweightVar && !isStrSame(systStrVect[sysI], "PRIOR")) phoJetWeight = reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetBinContent(reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetXaxis()->FindBin(varValTruth), reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetYaxis()->FindBin(subJtGammaPtValTruth));       
-	    
+	    if(doReweightVar && !isStrSame(systStrVect[sysI], "PRIOR")) phoJetWeight = reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetBinContent(reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetXaxis()->FindBin(varValTruth), reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetYaxis()->FindBin(subJtGammaPtValTruth));
+
 	    Float_t multiJtTruthDR = getDR(goodTruthJet1.Eta(), goodTruthJet1.Phi(), goodTruthJet2.Eta(), goodTruthJet2.Phi());
 	    //Reweight if doReweightDR AND its not the prior variation systematic
 	    if(doReweightDR && !isStrSame(systStrVect[sysI], "PRIOR")){
 	      phoJetWeight *= reweightPhoPtDRJJ_p[centPos]->GetBinContent(reweightPhoPtDRJJ_p[centPos]->GetXaxis()->FindBin(multiJtTruthDR), reweightPhoPtDRJJ_p[centPos]->GetYaxis()->FindBin(subJtGammaPtValTruth));
 	    }
 	    goodTruthJet2 += goodTruthJet1;
-	    
+
 	    //Test it passes the only additional multijet cut - dphi
 	    Float_t multiJtTruthDPhi = -999;
 	    if(truthGammaPt_ > 0.0) multiJtTruthDPhi = TMath::Abs(getDPHI(truthGammaPhi_, goodTruthJet2.Phi()));
@@ -2729,7 +2729,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	    //Phi truth cut, continue
 	    if(multiJtTruthDPhi < gammaMultiJtDPhiCut) continue;
 	    if(multiJtTruthDR < mixJtDRExclusionCut) continue;
-	    if(varValTruth < varBinsLow || varValTruth >= varBinsHigh) continue;	  
+	    if(varValTruth < varBinsLow || varValTruth >= varBinsHigh) continue;
 
 	    if(sysI == 0) ++(nFillsToRooRes[0]);
 
@@ -2739,30 +2739,30 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	    }
 	  }
 	}
-      
+
 	//Now process matched jets...
 	for(unsigned int jI = 0; jI < goodRecoJets.size(); ++jI){
 	  TLorentzVector goodTruthJet1 = goodRecoTruthMatchJets[jI];
 	  Int_t goodTruthJet1Flavor = goodRecoTruthMatchJetsFlavor[jI];
-	  TLorentzVector goodRecoJet1 = goodRecoJets[jI];	 	  
-	  
+	  TLorentzVector goodRecoJet1 = goodRecoJets[jI];
+
 	  //First w/ unmatched jets
 	  for(unsigned int tI = 0; tI < goodUnmatchedTruthJets.size(); ++tI){
-	    TLorentzVector goodTruthJet2 = goodUnmatchedTruthJets[tI];	
-	    
+	    TLorentzVector goodTruthJet2 = goodUnmatchedTruthJets[tI];
+
 	    if(goodTruthJet1.Pt() < jtPtBinsLow || goodTruthJet1.Pt() >= jtPtBinsHigh) continue;
 	    if(goodTruthJet2.Pt() < jtPtBinsLow || goodTruthJet2.Pt() >= jtPtBinsHigh) continue;
-	    
+
 	    Float_t subLeadingJetPt = goodTruthJet1.Pt();
 	    if(goodTruthJet2.Pt() < subLeadingJetPt) subLeadingJetPt = goodTruthJet2.Pt();
 	    Float_t subJtGammaPtValTruth = -999;
 	    if(truthGammaPt_ > 0.0) subJtGammaPtValTruth = subJtGammaPtBinFlattener.GetGlobalBinCenterFromBin12Val(truthGammaPt_, subLeadingJetPt, __LINE__);
-	    
+
 	    Double_t varValTruth = getVar(varNameLower, goodTruthJet1, goodTruthJet2, truthGammaTL);
 	    //Reweight if doReweightVar AND its not the prior variation systematic
 	    Double_t phoJetWeight = 1.0;
-	    if(doReweightVar && !isStrSame(systStrVect[sysI], "PRIOR")) phoJetWeight = reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetBinContent(reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetXaxis()->FindBin(varValTruth), reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetYaxis()->FindBin(subJtGammaPtValTruth));       
-	    
+	    if(doReweightVar && !isStrSame(systStrVect[sysI], "PRIOR")) phoJetWeight = reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetBinContent(reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetXaxis()->FindBin(varValTruth), reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetYaxis()->FindBin(subJtGammaPtValTruth));
+
 	    Float_t multiJtTruthDR = getDR(goodTruthJet1.Eta(), goodTruthJet1.Phi(), goodTruthJet2.Eta(), goodTruthJet2.Phi());
 
 	    //Reweight if doReweightDR AND its not the prior variation systematic
@@ -2771,13 +2771,13 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	    }
 
 	    goodTruthJet2 += goodTruthJet1;
-	    
+
 	    Float_t multiJtTruthDPhi = -999;
 	    if(truthGammaPt_ > 0.0) multiJtTruthDPhi = TMath::Abs(getDPHI(truthGammaPhi_, goodTruthJet2.Phi()));
-	    
+
 	    if(multiJtTruthDPhi < gammaMultiJtDPhiCut) continue;
 	    if(multiJtTruthDR < mixJtDRExclusionCut) continue;
-	    if(varValTruth < varBinsLow || varValTruth >= varBinsHigh) continue;		    
+	    if(varValTruth < varBinsLow || varValTruth >= varBinsHigh) continue;
 
 	    if(sysI == 0) ++(nFillsToRooRes[1]);
 
@@ -2786,26 +2786,26 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	      rooResGammaJetVarMisses_p[centPos][sysI]->Fill(varValTruth, subJtGammaPtValTruth, unfoldWeight_*phoJetWeight);
 	    }
 	  }
-	
+
 	  //Then with matched jets
 	  for(unsigned int jI2 = jI+1; jI2 < goodRecoJets.size(); ++jI2){
 	    Float_t varValReco = -9999.0;
-	   
+
 	    TLorentzVector goodRecoJet2 = goodRecoJets[jI2];
 	    TLorentzVector goodTruthJet2 = goodRecoTruthMatchJets[jI2];
 	    Int_t goodTruthJet2Flavor = goodRecoTruthMatchJetsFlavor[jI2];
-	    
+
 	    Float_t subLeadingJetPtReco = goodRecoJets[jI].Pt();
 	    Float_t subLeadingJetPtTruth = goodTruthJet1.Pt();
-	    
+
 	    if(goodRecoJets[jI2].Pt() < subLeadingJetPtReco){
 	      subLeadingJetPtReco = goodRecoJets[jI2].Pt();
 	      //	      subLeadingJetPtTruth = goodTruthJet2.Pt();
-	    }	    	    
+	    }
 	    if(goodTruthJet2.Pt() < subLeadingJetPtTruth){
 	      subLeadingJetPtTruth = goodTruthJet2.Pt();
 	    }
-	   
+
 	    Float_t subJtGammaPtValTruth = -999;
 
 	    bool goodTruth = truthIsGoodVect[jI] && truthIsGoodVect[jI2];
@@ -2815,53 +2815,53 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	      subJtGammaPtValTruth = subJtGammaPtBinFlattener.GetGlobalBinCenterFromBin12Val(truthGammaPt_, subLeadingJetPtTruth, __LINE__);
 	    }
 
-	    
+
 	    Float_t subJtGammaPtValReco = -999;
 	    if(recoGammaPt_[gammaSysPos] > 0.0){
 	      subJtGammaPtValReco = subJtGammaPtBinFlattener.GetGlobalBinCenterFromBin12Val(recoGammaPt_[gammaSysPos], subLeadingJetPtReco, __LINE__);
 	    }
-	    
+
 	    Double_t varValTruth = -999;
 	    if(goodTruth) varValTruth = getVar(varNameLower, goodTruthJet1, goodTruthJet2, truthGammaTL);
 	    Double_t phoJetWeight = 1.0;
 	    //Reweight if doReweightVar AND its not the prior variation systematic
 
-	    if(doReweightVar && !isStrSame(systStrVect[sysI], "PRIOR")) phoJetWeight = reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetBinContent(reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetXaxis()->FindBin(varValTruth), reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetYaxis()->FindBin(subJtGammaPtValTruth));       
-	    
+	    if(doReweightVar && !isStrSame(systStrVect[sysI], "PRIOR")) phoJetWeight = reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetBinContent(reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetXaxis()->FindBin(varValTruth), reweightPhoPtJetVar_p[centPos][systPosForWeights]->GetYaxis()->FindBin(subJtGammaPtValTruth));
+
 	    if(isStrSame(varNameLower, "ajj")) varValReco = TMath::Abs(goodRecoJet1.Pt() - goodRecoJet2.Pt())/recoGammaPt_[gammaSysPos];
 	    else if(isStrSame(varNameLower, "dphijj")) varValReco = TMath::Abs(getDPHI(goodRecoJet1.Phi(), goodRecoJet2.Phi()));
 	    else if(isStrSame(varNameLower, "drjj")) varValReco = getDR(goodRecoJet1.Eta(), goodRecoJet1.Phi(), goodRecoJet2.Eta(), goodRecoJet2.Phi());
-	    
+
 	    Float_t multiJtTruthDR = getDR(goodTruthJet1.Eta(), goodTruthJet1.Phi(), goodTruthJet2.Eta(), goodTruthJet2.Phi());
 	    //Reweight if doReweightDR AND its not the prior variation systematic
 	    if(doReweightDR && !isStrSame(systStrVect[sysI], "PRIOR")){
 	      phoJetWeight *= reweightPhoPtDRJJ_p[centPos]->GetBinContent(reweightPhoPtDRJJ_p[centPos]->GetXaxis()->FindBin(multiJtTruthDR), reweightPhoPtDRJJ_p[centPos]->GetYaxis()->FindBin(subJtGammaPtValTruth));
 	    }
 
-	    Float_t multiJtRecoDR = getDR(goodRecoJet1.Eta(), goodRecoJet1.Phi(), goodRecoJet2.Eta(), goodRecoJet2.Phi());	  
+	    Float_t multiJtRecoDR = getDR(goodRecoJet1.Eta(), goodRecoJet1.Phi(), goodRecoJet2.Eta(), goodRecoJet2.Phi());
 	    Float_t multiJtRecoAJJ = TMath::Abs(goodRecoJet1.Pt() - goodRecoJet2.Pt())/recoGammaPt_[gammaSysPos];
 
-	    //Edit 2022.09.27 - need to check cut flow again ya dope	    
+	    //Edit 2022.09.27 - need to check cut flow again ya dope
 	    Bool_t dRJJPassesReco = multiJtRecoDR >= mixJtDRExclusionCut;
 	    goodReco = goodReco && dRJJPassesReco;
 
 	    Float_t dRJJPassesTruth = multiJtTruthDR >= mixJtDRExclusionCut;
 	    goodTruth = goodTruth && dRJJPassesTruth;
-	    
-	    goodTruthJet2 += goodTruthJet1;	  
+
+	    goodTruthJet2 += goodTruthJet1;
 	    goodRecoJet2 += goodRecoJet1;
-	    
+
 	    Float_t multiJtRecoDPhi = -999;
 	    if(recoGammaPt_[0] > 0.0) multiJtRecoDPhi = TMath::Abs(getDPHI(goodRecoJet2.Phi(), recoGammaPhi_, "L" + std::to_string(__LINE__)));
 	    Float_t multiJtTruthDPhi = -999;
 	    if(truthGammaPt_ > 0.0) multiJtTruthDPhi = TMath::Abs(getDPHI(truthGammaPhi_, goodTruthJet2.Phi()));
-	    	    
+
 	    if(isStrSame(varNameLower, "xjj")) varValReco = goodRecoJet2.Pt()/recoGammaPt_[gammaSysPos];
 	    else if(isStrSame(varNameLower, "dphijjg")) varValReco = multiJtRecoDPhi;
 
 	    bool varValPassesTruth = varValTruth >= varBinsLow && varValTruth < varBinsHigh;
 	    goodTruth = goodTruth && varValPassesTruth;
-	      
+
 	    bool varValPassesReco = varValReco >= varBinsLowReco && varValReco < varBinsHighReco;
 	    goodReco = goodReco && varValPassesReco;
 
@@ -2879,12 +2879,12 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
 	    bool passesMultiJtDPhiReco = multiJtRecoDPhi >= gammaMultiJtDPhiCut;
 	    goodReco = goodReco && passesMultiJtDPhiReco;
-	    
+
 	    //	    Bool_t varValRecoGood = varValReco >= varBinsLowReco && varValReco < varBinsHighReco;
 
 	    goodTruth = goodTruth && !truthGammaOutOfBounds;
 	    goodReco = goodReco && !recoGammaOutOfBounds;
-	    
+
 	    if(!goodReco && goodTruth){
 	      if(sysI == 0) ++(nFillsToRooRes[2]);
 
@@ -2894,15 +2894,16 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	    else if(goodReco && goodTruth){
 	      if(sysI == 0) ++(nFillsToRooRes[3]);
 
-	      rooResGammaJetVar_p[centPos][sysI]->Fill(varValReco, subJtGammaPtValReco, varValTruth, subJtGammaPtValTruth, unfoldWeight_*phoJetWeight);	   
+
+	      rooResGammaJetVar_p[centPos][sysI]->Fill(varValReco, subJtGammaPtValReco, varValTruth, subJtGammaPtValTruth, unfoldWeight_*phoJetWeight);
 	      if(sysI == 0){
 		if(qgFlavorToVectPos.count(goodTruthJet1Flavor) == 0) rooResGammaJetVar_QG_p[centPos][2]->Fill(goodTruthJet1.Pt(), unfoldWeight_*phoJetWeight);
 		else rooResGammaJetVar_QG_p[centPos][qgFlavorToVectPos[goodTruthJet1Flavor]]->Fill(goodTruthJet1.Pt(), unfoldWeight_*phoJetWeight);
 
 		if(qgFlavorToVectPos.count(goodTruthJet2Flavor) == 0) rooResGammaJetVar_QG_p[centPos][2]->Fill(goodTruthJet2.Pt(), unfoldWeight_*phoJetWeight);
-		else rooResGammaJetVar_QG_p[centPos][qgFlavorToVectPos[goodTruthJet2Flavor]]->Fill(goodTruthJet2.Pt(), unfoldWeight_*phoJetWeight);	   
+		else rooResGammaJetVar_QG_p[centPos][qgFlavorToVectPos[goodTruthJet2Flavor]]->Fill(goodTruthJet2.Pt(), unfoldWeight_*phoJetWeight);
 	      }
-	    
+
 	      if(false){
 		std::cout << "Filling on Entry: " << entry << std::endl;
 		std::cout << " Truth Pho: " << truthGammaPt_ << ", " << truthGammaEta_ << ", " << truthGammaPhi_ << std::endl;
@@ -2911,39 +2912,145 @@ int gdjHistToUnfold(std::string inConfigFileName)
 		std::cout << " Truth Jet 2 pt eta phi: " << goodRecoTruthMatchJets[jI2].Pt() << ", " << goodRecoTruthMatchJets[jI2].Eta() << ", " << goodRecoTruthMatchJets[jI2].Phi() << std::endl;
 		std::cout << " Truth DRJJ: " << multiJtTruthDR << std::endl;
 		std::cout << " Truth DPhiJJG: " << multiJtTruthDPhi << std::endl;
-		
-	      
+
+
 		std::cout << " Reco Jet 1 pt eta phi: " << goodRecoJets[jI].Pt() << ", " << goodRecoJets[jI].Eta() << ", " << goodRecoJets[jI].Phi() << std::endl;
 		std::cout << " Reco Jet 2 pt eta phi: " << goodRecoJets[jI2].Pt() << ", " << goodRecoJets[jI2].Eta() << ", " << goodRecoJets[jI2].Phi() << std::endl;
 		std::cout << " Reco DRJJ: " << multiJtRecoDR << std::endl;
 		std::cout << " Reco DPhiJJG: " << multiJtRecoDPhi << std::endl;
+		std::cout << " Reco VarVal: " << varValReco << std::endl;
 	      }
-	      
+
 	      rooResGammaJetVarMatrixTruth_p[centPos][sysI]->Fill(varValTruth, subJtGammaPtValTruth, unfoldWeight_*phoJetWeight);
 	      rooResGammaJetVarMatrixReco_p[centPos][sysI]->Fill(varValReco, subJtGammaPtValReco, unfoldWeight_*phoJetWeight);
-	      
+
 	      Int_t recoPhoBinPos = ghostPos(nGammaPtBins, gammaPtBins, recoGammaPt_[gammaSysPos]);
-	      Int_t truthPhoBinPos = ghostPos(nGammaPtBins, gammaPtBins, truthGammaPt_);	      
+	      Int_t truthPhoBinPos = ghostPos(nGammaPtBins, gammaPtBins, truthGammaPt_);
 	      rooResGammaJetVar_JetMatrixForRecoPho_p[centPos][sysI][recoPhoBinPos]->Fill(varValReco, varValTruth, unfoldWeight_*phoJetWeight);
 	      rooResGammaJetVar_JetMatrixForTruthPho_p[centPos][sysI][truthPhoBinPos]->Fill(varValReco, varValTruth, unfoldWeight_*phoJetWeight);
-	      
-	      
+
+
 	      if(doReweightVar && sysI == 0){
 		photonPtJetVarReco_PURCORR_COMBINED_Reweighted_p[centPos][sysI]->Fill(varValReco, subJtGammaPtValReco, unfoldWeight_*phoJetWeight);
-		photonPtDRJJReco_PURCORR_COMBINED_Reweighted_p[centPos]->Fill(multiJtRecoDR, subJtGammaPtValReco, unfoldWeight_*phoJetWeight);	      
-		photonPtAJJReco_PURCORR_COMBINED_Reweighted_p[centPos]->Fill(multiJtRecoAJJ, subJtGammaPtValReco, unfoldWeight_*phoJetWeight);	      
+		photonPtDRJJReco_PURCORR_COMBINED_Reweighted_p[centPos]->Fill(multiJtRecoDR, subJtGammaPtValReco, unfoldWeight_*phoJetWeight);
+		photonPtAJJReco_PURCORR_COMBINED_Reweighted_p[centPos]->Fill(multiJtRecoAJJ, subJtGammaPtValReco, unfoldWeight_*phoJetWeight);
 	      }
 	    }
 	    else if(goodReco && !goodTruth){
-	      //	      std::cout << "FILLING FAKE" << std::endl;		
+	      //	      std::cout << "FILLING FAKE" << std::endl;
 	      //	      std::cout << " VAR VAL RECO, TRUTH: " << varValReco << ", " << varValTruth << std::endl;
 	      //	      std::cout << " dRJJPassesTruth, multiJtTruthDR: " << dRJJPassesTruth << ", " << multiJtTruthDR << std::endl;
 	      //	      std::cout << " dphiJJGPassesTruth, multiJtTruthDphiJJG: " << passesMultiJtDPhiTruth << ", " << multiJtTruthDPhi << std::endl;
 
+	      if(false){
+		std::cout << "Faking on Entry: " << entry << std::endl;
+		std::cout << " Reco Pho: " << recoGammaPt_[gammaSysPos] << ", " << recoGammaEta_ << ", " << recoGammaPhi_ << std::endl;
+		std::cout << " Reco Jet 1 pt eta phi: " << goodRecoJets[jI].Pt() << ", " << goodRecoJets[jI].Eta() << ", " << goodRecoJets[jI].Phi() << std::endl;
+		std::cout << " Reco Jet 2 pt eta phi: " << goodRecoJets[jI2].Pt() << ", " << goodRecoJets[jI2].Eta() << ", " << goodRecoJets[jI2].Phi() << std::endl;
+		std::cout << " Reco DRJJ: " << multiJtRecoDR << std::endl;
+		std::cout << " Reco DPhiJJG: " << multiJtRecoDPhi << std::endl;
+		std::cout << " Reco VarVal: " << varValReco << std::endl;
+	      }
+
 	      rooResGammaJetVar_p[centPos][sysI]->Fake(varValReco, subJtGammaPtValReco, unfoldWeight_*phoJetWeight);
 	    }
+	  }//end goodreco jets subloop
+
+	  //"Fake" (i.e. has a truth jet but outside of kinematics) loop
+	  for(unsigned int jI2 = 0; jI2 < goodRecoTruthMatchOutOfBounds.size(); ++jI2){
+	    Float_t varValReco = -9999.0;
+	    TLorentzVector recoJet2 = goodRecoTruthMatchOutOfBounds[jI2];
+	    Float_t subLeadingJetPtReco = goodRecoJets[jI].Pt();
+
+	    if(recoJet2.Pt() < subLeadingJetPtReco){
+	      subLeadingJetPtReco = recoJet2.Pt();
+	    }
+
+	    bool goodReco = recoIsGoodVect[jI];
+
+	    Float_t subJtGammaPtValReco = -999;
+            if(recoGammaPt_[gammaSysPos] > 0.0){
+              subJtGammaPtValReco = subJtGammaPtBinFlattener.GetGlobalBinCenterFromBin12Val(recoGammaPt_[gammaSysPos], subLeadingJetPtReco, __LINE__);
+            }
+
+
+	    if(isStrSame(varNameLower, "ajj")) varValReco = TMath::Abs(goodRecoJet1.Pt() - recoJet2.Pt())/recoGammaPt_[gammaSysPos];
+            else if(isStrSame(varNameLower, "dphijj")) varValReco = TMath::Abs(getDPHI(goodRecoJet1.Phi(), recoJet2.Phi()));
+            else if(isStrSame(varNameLower, "drjj")) varValReco = getDR(goodRecoJet1.Eta(), goodRecoJet1.Phi(), recoJet2.Eta(), recoJet2.Phi());
+
+	    Float_t multiJtRecoDR = getDR(goodRecoJet1.Eta(), goodRecoJet1.Phi(), recoJet2.Eta(), recoJet2.Phi());
+            Float_t multiJtRecoAJJ = TMath::Abs(goodRecoJet1.Pt() - recoJet2.Pt())/recoGammaPt_[gammaSysPos];
+
+	    Bool_t dRJJPassesReco = multiJtRecoDR >= mixJtDRExclusionCut;
+	    goodReco = goodReco && dRJJPassesReco;
+
+	    recoJet2 += goodRecoJet1;
+
+	    Float_t multiJtRecoDPhi = -999;
+            if(recoGammaPt_[0] > 0.0) multiJtRecoDPhi = TMath::Abs(getDPHI(recoJet2.Phi(), recoGammaPhi_, "L" + std::to_string(__LINE__)));
+
+	    if(isStrSame(varNameLower, "xjj")) varValReco = recoJet2.Pt()/recoGammaPt_[gammaSysPos];
+            else if(isStrSame(varNameLower, "dphijjg")) varValReco = multiJtRecoDPhi;
+
+	    bool varValPassesReco = varValReco >= varBinsLowReco && varValReco < varBinsHighReco;
+	    goodReco = goodReco && varValPassesReco;
+
+	    bool passesMultiJtDPhiReco = multiJtRecoDPhi >= gammaMultiJtDPhiCut;
+            goodReco = goodReco && passesMultiJtDPhiReco;
+
+	    goodReco = goodReco && !recoGammaOutOfBounds;
+
+	    if(goodReco) rooResGammaJetVar_p[centPos][sysI]->Fake(varValReco, subJtGammaPtValReco, unfoldWeight_);
+	  }//end "fake" (truth matched but kinematics out of bounds) jets subloop
+	}//end goodreco jets loop
+
+
+	//"Fake" (i.e. has a truth jet but outside of kinematics) loop with other "fakes"
+	for(unsigned int jI = 0; jI < goodRecoTruthMatchOutOfBounds.size(); ++jI){
+	  TLorentzVector recoJet1 = goodRecoTruthMatchOutOfBounds[jI];
+
+	  for(unsigned int jI2 = jI+1; jI2 < goodRecoTruthMatchOutOfBounds.size(); ++jI2){
+	    Float_t varValReco = -9999.0;
+	    TLorentzVector recoJet2 = goodRecoTruthMatchOutOfBounds[jI2];
+	    Float_t subLeadingJetPtReco = recoJet1.Pt();
+
+	    if(recoJet2.Pt() < subLeadingJetPtReco) subLeadingJetPtReco = recoJet2.Pt();
+	    Float_t subJtGammaPtValReco = -999;
+            if(recoGammaPt_[gammaSysPos] > 0.0){
+              subJtGammaPtValReco = subJtGammaPtBinFlattener.GetGlobalBinCenterFromBin12Val(recoGammaPt_[gammaSysPos], subLeadingJetPtReco, __LINE__);
+            }
+
+
+	    if(isStrSame(varNameLower, "ajj")) varValReco = TMath::Abs(recoJet1.Pt() - recoJet2.Pt())/recoGammaPt_[gammaSysPos];
+            else if(isStrSame(varNameLower, "dphijj")) varValReco = TMath::Abs(getDPHI(recoJet1.Phi(), recoJet2.Phi()));
+            else if(isStrSame(varNameLower, "drjj")) varValReco = getDR(recoJet1.Eta(), recoJet1.Phi(), recoJet2.Eta(), recoJet2.Phi());
+
+	    Float_t multiJtRecoDR = getDR(recoJet1.Eta(), recoJet1.Phi(), recoJet2.Eta(), recoJet2.Phi());
+            Float_t multiJtRecoAJJ = TMath::Abs(recoJet1.Pt() - recoJet2.Pt())/recoGammaPt_[gammaSysPos];
+
+	    Bool_t dRJJPassesReco = multiJtRecoDR >= mixJtDRExclusionCut;
+	    bool goodReco = dRJJPassesReco;
+
+	    recoJet2 += recoJet1;
+
+	    Float_t multiJtRecoDPhi = -999;
+            if(recoGammaPt_[0] > 0.0) multiJtRecoDPhi = TMath::Abs(getDPHI(recoJet2.Phi(), recoGammaPhi_, "L" + std::to_string(__LINE__)));
+
+	    if(isStrSame(varNameLower, "xjj")) varValReco = recoJet2.Pt()/recoGammaPt_[gammaSysPos];
+            else if(isStrSame(varNameLower, "dphijjg")) varValReco = multiJtRecoDPhi;
+
+	    bool varValPassesReco = varValReco >= varBinsLowReco && varValReco < varBinsHighReco;
+	    goodReco = goodReco && varValPassesReco;
+
+	    bool passesMultiJtDPhiReco = multiJtRecoDPhi >= gammaMultiJtDPhiCut;
+            goodReco = goodReco && passesMultiJtDPhiReco;
+
+	    goodReco = goodReco && !recoGammaOutOfBounds;
+
+	    if(goodReco) rooResGammaJetVar_p[centPos][sysI]->Fake(varValReco, subJtGammaPtValReco, unfoldWeight_);
 	  }
-	}//end goodreco jets loop      
+	}//end fake jet double loop
+
       }//if(isStrSame("xjj", varNameLower){ ending
     } //end for(Int_t sysI = 0; sysI < nSyst; ++sysI){
 
@@ -2955,7 +3062,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
   }//end nEntries loop
 
   //  return 1;
-  
+
   std::cout << "Ngoodrecojets: " << std::endl;
   for(auto const & val : nGoodRecoJets){
     std::cout << " " << val.first << ": " << val.second << std::endl;
@@ -2970,19 +3077,19 @@ int gdjHistToUnfold(std::string inConfigFileName)
   for(auto const & val : nFillsToRooRes){
     std::cout << " " << val.first << ": " << val.second << std::endl;
   }
-  
+
 
   if(doReweightVar){
     for(Int_t cI = 0; cI < nCentBins; ++cI){
       //1-D case is easy - just declare a saveName plug into function
       std::string saveName = pdfStr + "/photonPtReco_Reweight_" + centBinsStr[cI] + "_" + saveTag + "_" + dateStr + ".png";
       std::vector<std::string> labels = {"#bf{#it{ATLAS Internal}}", centBinsStr[cI]};
-      
+
       //      plotReweightHists(photonPtReco_PURCORR_COMBINED_ForReweight_p[cI], photonPtReco_PURCORR_COMBINED_p[cI], photonPtReco_PURCORR_COMBINED_Reweighted_p[cI], saveName, labels);
 
       //2-D case, do projections along gamma-pt (y-axis)
       //Iterate over photon pTBins
-      for(Int_t gI = 0; gI < nGammaPtBins; ++gI){	
+      for(Int_t gI = 0; gI < nGammaPtBins; ++gI){
 	Float_t binCenter = (gammaPtBins[gI] + gammaPtBins[gI+1])/2.0;
 	if(binCenter < gammaPtBinsLowReco) continue;
 	if(binCenter > gammaPtBinsHighReco) continue;
@@ -2996,24 +3103,24 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
 	std::vector<std::string> tempLabels = labels;
 	tempLabels.push_back("#bf{" + prettyString(gammaPtBins[gI], 1, false) + " < p_{T,#gamma} < " + prettyString(gammaPtBins[gI+1], 1, false) + "}");
-	
+
 	//Set content of each 1D histogram
 	for(Int_t bIX = 0; bIX < nVarBins; ++bIX){
 	  Float_t content = photonPtJetVarReco_PURCORR_COMBINED_ForReweight_p[cI][0]->GetBinContent(bIX+1, gI+1);
 	  Float_t error = photonPtJetVarReco_PURCORR_COMBINED_ForReweight_p[cI][0]->GetBinError(bIX+1, gI+1);
-	    
+
 	  histMCForReweight_p->SetBinContent(bIX+1, content);
 	  histMCForReweight_p->SetBinError(bIX+1, error);
 
 	  content = photonPtJetVarReco_PURCORR_COMBINED_p[cI][0]->GetBinContent(bIX+1, gI+1);
 	  error = photonPtJetVarReco_PURCORR_COMBINED_p[cI][0]->GetBinError(bIX+1, gI+1);
-	    
+
 	  histData_p->SetBinContent(bIX+1, content);
 	  histData_p->SetBinError(bIX+1, error);
 
 	  content = photonPtJetVarReco_PURCORR_COMBINED_Reweighted_p[cI][0]->GetBinContent(bIX+1, gI+1);
 	  error = photonPtJetVarReco_PURCORR_COMBINED_Reweighted_p[cI][0]->GetBinError(bIX+1, gI+1);
-	    
+
 	  histMCReweighted_p->SetBinContent(bIX+1, content);
 	  histMCReweighted_p->SetBinError(bIX+1, error);
 	}
@@ -3021,7 +3128,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	//Run reweight plotter and clean
 	saveName = pdfStr + "/photonPtJt" + varName + "Reco_Reweight_" + centBinsStr[cI] + "_GammaPt" + std::to_string(gI) + "_" + saveTag + "_" + dateStr + ".png";
 	//	plotReweightHists(histMCForReweight_p, histData_p, histMCReweighted_p, saveName, tempLabels);
-	
+
 	delete histMCForReweight_p;
 	delete histData_p;
 	delete histMCReweighted_p;
@@ -3038,26 +3145,26 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	for(Int_t bIX = 0; bIX < nDRBins; ++bIX){
 	  Float_t content = photonPtDRJJReco_PURCORR_COMBINED_ForReweight_p[cI]->GetBinContent(bIX+1, gI+1);
 	  Float_t error = photonPtDRJJReco_PURCORR_COMBINED_ForReweight_p[cI]->GetBinError(bIX+1, gI+1);
-	    
+
 	  histMCForReweight_p->SetBinContent(bIX+1, content);
 	  histMCForReweight_p->SetBinError(bIX+1, error);
 
 	  content = photonPtDRJJReco_PURCORR_COMBINED_p[cI]->GetBinContent(bIX+1, gI+1);
 	  error = photonPtDRJJReco_PURCORR_COMBINED_p[cI]->GetBinError(bIX+1, gI+1);
-	    
+
 	  histData_p->SetBinContent(bIX+1, content);
 	  histData_p->SetBinError(bIX+1, error);
 
 	  content = photonPtDRJJReco_PURCORR_COMBINED_Reweighted_p[cI]->GetBinContent(bIX+1, gI+1);
 	  error = photonPtDRJJReco_PURCORR_COMBINED_Reweighted_p[cI]->GetBinError(bIX+1, gI+1);
-	    
+
 	  histMCReweighted_p->SetBinContent(bIX+1, content);
 	  histMCReweighted_p->SetBinError(bIX+1, error);
 	}
 	//Run reweight plotter and clean
 	saveName = pdfStr + "/photonPtJtDRJJReco_Reweight_" + centBinsStr[cI] + "_GammaPt" + std::to_string(gI) + "_" + saveTag + "_" + dateStr + ".png";
 	//	plotReweightHists(histMCForReweight_p, histData_p, histMCReweighted_p, saveName, tempLabels);
-	
+
 	delete histMCForReweight_p;
 	delete histData_p;
 	delete histMCReweighted_p;
@@ -3074,47 +3181,47 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	for(Int_t bIX = 0; bIX < nAJBins; ++bIX){
 	  Float_t content = photonPtAJJReco_PURCORR_COMBINED_ForReweight_p[cI]->GetBinContent(bIX+1, gI+1);
 	  Float_t error = photonPtAJJReco_PURCORR_COMBINED_ForReweight_p[cI]->GetBinError(bIX+1, gI+1);
-	    
+
 	  histMCForReweight_p->SetBinContent(bIX+1, content);
 	  histMCForReweight_p->SetBinError(bIX+1, error);
 
 	  content = photonPtAJJReco_PURCORR_COMBINED_p[cI]->GetBinContent(bIX+1, gI+1);
 	  error = photonPtAJJReco_PURCORR_COMBINED_p[cI]->GetBinError(bIX+1, gI+1);
-	    
+
 	  histData_p->SetBinContent(bIX+1, content);
 	  histData_p->SetBinError(bIX+1, error);
 
 	  content = photonPtAJJReco_PURCORR_COMBINED_Reweighted_p[cI]->GetBinContent(bIX+1, gI+1);
 	  error = photonPtAJJReco_PURCORR_COMBINED_Reweighted_p[cI]->GetBinError(bIX+1, gI+1);
-	    
+
 	  histMCReweighted_p->SetBinContent(bIX+1, content);
 	  histMCReweighted_p->SetBinError(bIX+1, error);
 	}
 	//Run reweight plotter and clean
 	saveName = pdfStr + "/photonPtJtAJJReco_Reweight_" + centBinsStr[cI] + "_GammaPt" + std::to_string(gI) + "_" + saveTag + "_" + dateStr + ".png";
-	//	plotReweightHists(histMCForReweight_p, histData_p, histMCReweighted_p, saveName, tempLabels);      
-	
+	//	plotReweightHists(histMCForReweight_p, histData_p, histMCReweighted_p, saveName, tempLabels);
+
 	delete histMCForReweight_p;
 	delete histData_p;
 	delete histMCReweighted_p;
       }
-    }    
+    }
   }
-  
+
   if(doGlobalDebug) std::cout << __FILE__ << ", " << __LINE__ << std::endl;
   std::cout << "Construction of response matrices is complete."   << std::endl;
   if(doGlobalDebug) std::cout << __FILE__ << ", " << __LINE__ << std::endl;
-  
+
   outFile_p->cd();
   if(doGlobalDebug) std::cout << __FILE__ << ", " << __LINE__ << std::endl;
-    
+
   for(Int_t cI = 0; cI < nCentBins; ++cI){
     if(doGlobalDebug) std::cout << __FILE__ << ", " << __LINE__ << std::endl;
     for(Int_t systI = 0; systI < inSystStrVect.size(); ++systI){
       if(doGlobalDebug) std::cout << __FILE__ << ", " << __LINE__ << std::endl;
       if(!unfoldAll){
 	if(!vectContainsStr(inSystStrVect[systI], &inUnfoldNames)) continue;
-      }      
+      }
 
       if(doGlobalDebug) std::cout << __FILE__ << ", " << __LINE__ << std::endl;
 
@@ -3122,7 +3229,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
     }
 
     if(doGlobalDebug) std::cout << __FILE__ << ", " << __LINE__ << std::endl;
-    
+
     photonPtReco_TRUTH_COMBINED_p[cI]->Write(("photonPtReco_" + centBinsStr[cI] + "_TRUTH_COMBINED_h").c_str(), TObject::kOverwrite);
 
     for(int gI = 0; gI < nGammaPtBins; ++gI){
@@ -3131,16 +3238,16 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
       for(int xI = 0; xI < nVarBins; ++xI){
 	if(isMultijet){
-	  for(int yI = 0; yI < photonPtJetVarReco_PURCORR_COMBINED_p[cI][0]->GetYaxis()->GetNbins(); ++yI){	    
+	  for(int yI = 0; yI < photonPtJetVarReco_PURCORR_COMBINED_p[cI][0]->GetYaxis()->GetNbins(); ++yI){
 	    int gammaPtBinPos = subJtGammaPtBinFlattener.GetBin1PosFromGlobal(yI);
 	    if(gammaPtBinPos != gI) continue;
-	    
+
 	    Float_t value = xjRecoProjection_PURCORR_COMBINED_p->GetBinContent(xI+1);
 	    Float_t error = xjRecoProjection_PURCORR_COMBINED_p->GetBinError(xI+1);
 
 	    value += photonPtJetVarReco_PURCORR_COMBINED_p[cI][0]->GetBinContent(xI+1, yI+1);
 	    error = TMath::Sqrt(error*error + photonPtJetVarReco_PURCORR_COMBINED_p[cI][0]->GetBinError(xI+1, yI+1)*photonPtJetVarReco_PURCORR_COMBINED_p[cI][0]->GetBinError(xI+1, yI+1));
-	    
+
 	    xjRecoProjection_PURCORR_COMBINED_p->SetBinContent(xI+1, value);
 	    xjRecoProjection_PURCORR_COMBINED_p->SetBinError(xI+1, error);
 
@@ -3149,20 +3256,20 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
 	    value += photonPtJetVarReco_TRUTH_COMBINED_p[cI]->GetBinContent(xI+1, yI+1);
 	    error = TMath::Sqrt(error*error + photonPtJetVarReco_TRUTH_COMBINED_p[cI]->GetBinError(xI+1, yI+1)*photonPtJetVarReco_TRUTH_COMBINED_p[cI]->GetBinError(xI+1, yI+1));
-	    
-	    xjRecoProjection_TRUTH_COMBINED_p->SetBinContent(xI+1, value);       
+
+	    xjRecoProjection_TRUTH_COMBINED_p->SetBinContent(xI+1, value);
 	    xjRecoProjection_TRUTH_COMBINED_p->SetBinError(xI+1, error);
 	  }
 	}
 	else{
 	  xjRecoProjection_PURCORR_COMBINED_p->SetBinContent(xI+1, photonPtJetVarReco_PURCORR_COMBINED_p[cI][0]->GetBinContent(xI+1, gI+1));
 	  xjRecoProjection_PURCORR_COMBINED_p->SetBinError(xI+1, photonPtJetVarReco_PURCORR_COMBINED_p[cI][0]->GetBinError(xI+1, gI+1));
-	  
-	  xjRecoProjection_TRUTH_COMBINED_p->SetBinContent(xI+1, photonPtJetVarReco_TRUTH_COMBINED_p[cI]->GetBinContent(xI+1, gI+1));       
-	  xjRecoProjection_TRUTH_COMBINED_p->SetBinError(xI+1, photonPtJetVarReco_TRUTH_COMBINED_p[cI]->GetBinError(xI+1, gI+1));	  
-	}	  
+
+	  xjRecoProjection_TRUTH_COMBINED_p->SetBinContent(xI+1, photonPtJetVarReco_TRUTH_COMBINED_p[cI]->GetBinContent(xI+1, gI+1));
+	  xjRecoProjection_TRUTH_COMBINED_p->SetBinError(xI+1, photonPtJetVarReco_TRUTH_COMBINED_p[cI]->GetBinError(xI+1, gI+1));
+	}
       }
-      
+
       xjRecoProjection_PURCORR_COMBINED_p->Write("", TObject::kOverwrite);
       delete xjRecoProjection_PURCORR_COMBINED_p;
 
@@ -3171,13 +3278,13 @@ int gdjHistToUnfold(std::string inConfigFileName)
     }
 
   if(doGlobalDebug) std::cout << __FILE__ << ", " << __LINE__ << std::endl;
-    
+
     //Write the full histograms at reco level to file
-    
+
     for(Int_t systI = 0; systI < inSystStrVect.size(); ++systI){
       if(!unfoldAll){
 	if(!vectContainsStr(inSystStrVect[systI], &inUnfoldNames)) continue;
-      }      
+      }
 
       photonPtReco_PURCORR_COMBINED_p[cI][systI]->Write(("photonPtReco_PreUnfold_" + centBinsStr[cI] + "_" + inSystStrVect[systI] + "_PURCORR_COMBINED_h").c_str(), TObject::kOverwrite);
       if(doReweightVar){
@@ -3185,17 +3292,17 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	photonPtReco_PURCORR_COMBINED_Reweighted_p[cI][systI]->Write(("photonPtReco_PreUnfold_" + centBinsStr[cI] + "_" + inSystStrVect[systI] + "_PURCORR_COMBINED_Reweighted_h").c_str(), TObject::kOverwrite);
       }
     }
-    
+
     photonPtReco_TRUTH_COMBINED_p[cI]->Write(("photonPtTruth_PreUnfold_" + centBinsStr[cI] + "_TRUTH_COMBINED_h").c_str(), TObject::kOverwrite);
 
 
-    
+
     photonPtJetVarReco_PURCORR_COMBINED_p[cI][0]->Write(("photonPtJet" + varName + "Reco_PreUnfold_" + centBinsStr[cI] + "_PURCORR_COMBINED_h").c_str(), TObject::kOverwrite);
 
     for(unsigned int sI = 0; sI < inSystStrVect.size(); ++sI){
       if(!unfoldAll){
 	if(!vectContainsStr(inSystStrVect[sI], &inUnfoldNames)) continue;
-      }      
+      }
 
       photonPtJetVarReco_PURCORR_COMBINED_p[cI][sI]->Write(("photonPtJet" + varName + "Reco_PreUnfold_" + centBinsStr[cI] + "_" + inSystStrVect[sI] + "_PURCORR_COMBINED_h").c_str(), TObject::kOverwrite);
     }
@@ -3210,43 +3317,43 @@ int gdjHistToUnfold(std::string inConfigFileName)
       photonPtAJJReco_PURCORR_COMBINED_ForReweight_p[cI]->Write(("photonPtJetAJJReco_PreUnfold_" + centBinsStr[cI] + "_PURCORR_COMBINED_ForReweight_h").c_str(), TObject::kOverwrite);
       if(doReweightDR) photonPtAJJReco_PURCORR_COMBINED_Reweighted_p[cI]->Write(("photonPtJetAJJReco_PreUnfold_" + centBinsStr[cI] + "_PURCORR_COMBINED_Reweighted_h").c_str(), TObject::kOverwrite);
     }
-      
+
     photonPtJetVarReco_TRUTH_COMBINED_p[cI]->Write(("photonPtJet" + varName + "Truth_PreUnfold_" + centBinsStr[cI] + "_TRUTH_COMBINED_h").c_str(), TObject::kOverwrite);
 
     if(unfoldAll || vectContainsStr("NOMINAL", &inUnfoldNames)){
       TH2D* tempTruthHist_p = (TH2D*)rooResGammaJetVar_p[cI][0]->Htruth();
-      tempTruthHist_p->Write(("photonPtJet" + varName + "Truth_PreUnfold_" + centBinsStr[cI] + "_TRUTH2_COMBINED_h").c_str(), TObject::kOverwrite); 
-      
+      tempTruthHist_p->Write(("photonPtJet" + varName + "Truth_PreUnfold_" + centBinsStr[cI] + "_TRUTH2_COMBINED_h").c_str(), TObject::kOverwrite);
+
       if(doGlobalDebug) std::cout << __FILE__ << ", " << __LINE__ << std::endl;
-      
+
       TH2D* tempRecoHist_p = (TH2D*)rooResGammaJetVar_p[cI][0]->Hmeasured();
-      tempRecoHist_p->Write(("photonPtJet" + varName + "Reco_PreUnfold_" + centBinsStr[cI] + "_PURCORR2_COMBINED_h").c_str(), TObject::kOverwrite);     
+      tempRecoHist_p->Write(("photonPtJet" + varName + "Reco_PreUnfold_" + centBinsStr[cI] + "_PURCORR2_COMBINED_h").c_str(), TObject::kOverwrite);
     }
 
     photonPtJetVarReco_TRUTH_COMBINED_p[cI]->Write(("photonPtJet" + varName + "Truth_PreUnfold_" + centBinsStr[cI] + "_NOMINAL_TRUTH_COMBINED_h").c_str(), TObject::kOverwrite);
-    
+
     for(unsigned int sI = 0; sI < systStrVect.size(); ++sI){
       if(!unfoldAll){
 	if(!vectContainsStr(systStrVect[sI], &inUnfoldNames)) continue;
-      }      
+      }
 
       if(doGlobalDebug) std::cout << __FILE__ << ", " << __LINE__ << std::endl;
 
       TH2D* tempTruthHist_p = (TH2D*)rooResGammaJetVar_p[cI][sI]->Htruth();
-      tempTruthHist_p->Write(("photonPtJet" + varName + "Truth_PreUnfold_" + centBinsStr[cI] + "_" + systStrVect[sI] + "_TRUTH2_COMBINED_h").c_str(), TObject::kOverwrite); 
+      tempTruthHist_p->Write(("photonPtJet" + varName + "Truth_PreUnfold_" + centBinsStr[cI] + "_" + systStrVect[sI] + "_TRUTH2_COMBINED_h").c_str(), TObject::kOverwrite);
 
       if(doGlobalDebug) std::cout << __FILE__ << ", " << __LINE__ << std::endl;
 
       TH2D* tempRecoHist_p = (TH2D*)rooResGammaJetVar_p[cI][sI]->Hmeasured();
-      tempRecoHist_p->Write(("photonPtJet" + varName + "Reco_PreUnfold_" + centBinsStr[cI] + "_" + systStrVect[sI] + "_PURCORR2_COMBINED_h").c_str(), TObject::kOverwrite);            
+      tempRecoHist_p->Write(("photonPtJet" + varName + "Reco_PreUnfold_" + centBinsStr[cI] + "_" + systStrVect[sI] + "_PURCORR2_COMBINED_h").c_str(), TObject::kOverwrite);
     }
 
     if(doGlobalDebug) std::cout << __FILE__ << ", " << __LINE__ << std::endl;
-    
+
     for(Int_t sysI = 0; sysI < nSyst; ++sysI){
       if(!unfoldAll){
 	if(!vectContainsStr(returnAllCapsString(systStrVect[sysI]), &inUnfoldNames)) continue;
-      }      
+      }
 
       std::cout << "SYSTI : " << sysI << "/" << nSyst << std::endl;
 
@@ -3256,7 +3363,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	  rooResGammaJetVar_QG_p[cI][qgI]->Write("", TObject::kOverwrite);
 	}
       }
-      
+
       Int_t gammaSysPos = vectContainsStrPos(systStrVect[sysI], &gesGERStrVect);
       const bool isGammaSyst = gammaSysPos >= 0;
       if(isGammaSyst){
@@ -3264,7 +3371,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	rooResGammaMisses_p[cI][sysI]->Write("", TObject::kOverwrite);
 	rooResGammaFakes_p[cI][sysI]->Write("", TObject::kOverwrite);
       }
-      
+
       rooResGammaJetVarMatrixReco_p[cI][sysI]->Write("", TObject::kOverwrite);
       rooResGammaJetVarMatrixTruth_p[cI][sysI]->Write("", TObject::kOverwrite);
       rooResGammaJetVarMisses_p[cI][sysI]->Write("", TObject::kOverwrite);
@@ -3285,25 +3392,25 @@ int gdjHistToUnfold(std::string inConfigFileName)
     for(Int_t sysI = 0; sysI < nSyst; ++sysI){
       if(!unfoldAll){
 	if(!vectContainsStr(returnAllCapsString(systStrVect[sysI]), &inUnfoldNames)) continue;
-      }      
+      }
 
       //Check the systematic is relevant to photon, then process
       Int_t gammaSysPos = vectContainsStrPos(systStrVect[sysI], &gesGERStrVect);
       const bool isGammaSyst = gammaSysPos >= 0 || isStrSame(systStrVect[sysI], "ISO85") || isStrSame(systStrVect[sysI], "ISO95");
-      
-      if(!isGammaSyst) continue;      
+
+      if(!isGammaSyst) continue;
       Int_t systPos = systPosToInSystPos[sysI];
-      
+
       for(int i = 1; i <= nIter; ++i){
 	std::cout << "  Iter " << i << "/" << nIter << "..." << std::endl;
 	RooUnfoldBayes* rooBayes_p = new RooUnfoldBayes(rooResGamma_p[cI][sysI], photonPtReco_PURCORR_COMBINED_p[cI][systPos], i);
 	rooBayes_p->SetVerbose(0);
-	
-	TH1D* unfolded_p = nullptr;	
+
+	TH1D* unfolded_p = nullptr;
 	Int_t currErrType = unfoldErrType;
 	if(!isStrSame(systStrVect[sysI], "Nominal")) currErrType = systUnfoldErrType;
 
-	//Double check if this is needed 
+	//Double check if this is needed
 	//Get the uncertainty coming from MC Stat
 	//	if(isStrSame(systStrVect[sysI], "MCSTAT")) rooBayes_p->IncludeSystematics(1);
 
@@ -3313,12 +3420,12 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	  unfolded_p = (TH1D*)rooBayes_p->Hreco(RooUnfold::kCovToy)->Clone(("photonPtReco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_h").c_str());
 	}
 	else if(currErrType == 2) unfolded_p = (TH1D*)rooBayes_p->Hreco(RooUnfold::kNoError)->Clone(("photonPtReco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_h").c_str());
-	
+
 	TH1D* refolded_p = (TH1D*)rooResGamma_p[cI][sysI]->ApplyToTruth(unfolded_p)->Clone(("photonPtReco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_Refolded_h").c_str());
-	
+
 	unfolded_p->Write(("photonPtReco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_h").c_str(), TObject::kOverwrite);
 	refolded_p->Write(("photonPtReco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_Refolded_h").c_str(), TObject::kOverwrite);
-	
+
 	delete unfolded_p;
 	delete refolded_p;
 	delete rooBayes_p;
@@ -3326,44 +3433,44 @@ int gdjHistToUnfold(std::string inConfigFileName)
     }
 
     std::cout << "Photon unfold, " << centBinsStr[cI] << ", complete." << std::endl;
-    
+
     //Gamma-jet unfold
     std::cout << "Photon-jet unfold, " << centBinsStr[cI] << "..." << std::endl;
     for(Int_t sysI = 0; sysI < nSyst; ++sysI){
       if(!unfoldAll){
 	if(!vectContainsStr(returnAllCapsString(systStrVect[sysI]), &inUnfoldNames)) continue;
-      }      
+      }
 
       std::cout << " " << systStrVect[sysI] << std::endl;
       Int_t systPos = systPosToInSystPos[sysI];
 
       for(int i = 1; i <= nIter; ++ i){
-	std::cout << "  Iter " << i << "/" << nIter << std::endl;	
+	std::cout << "  Iter " << i << "/" << nIter << std::endl;
 
 	TH2D* histForUnfold_p = photonPtJetVarReco_PURCORR_COMBINED_p[cI][systPos];
 	if(isStrSame(systStrVect[sysI], "MIXNONCLOSURE") && !isPP){
 	  histForUnfold_p = (TH2D*)photonPtJetVarReco_PURCORR_COMBINED_p[cI][systPos]->Clone("mixNonClosureClone_h");
 
-	  TFile* inMixNonClosureFile_p = new TFile(inMixSystFileName.c_str(), "READ");  
-	  
+	  TFile* inMixNonClosureFile_p = new TFile(inMixSystFileName.c_str(), "READ");
+
 	  for(Int_t bIY = 0; bIY < histForUnfold_p->GetYaxis()->GetNbins(); ++bIY){
 	    int gammaPtBinPos = bIY;
 	    if(isMultijet) gammaPtBinPos = subJtGammaPtBinFlattener.GetBin1PosFromGlobal(bIY);
 	    std::string histName = "photonPtJt" + varName + "VCent_" + centBinsStr[cI] + "_BarrelAndEC_GammaPt" + std::to_string(gammaPtBinPos) + "_h";
 
 	    TH1D* nonClosure_p = (TH1D*)inMixNonClosureFile_p->Get(histName.c_str());
-		
-	    for(Int_t bIX = 0; bIX < histForUnfold_p->GetXaxis()->GetNbins(); ++bIX){	
+
+	    for(Int_t bIX = 0; bIX < histForUnfold_p->GetXaxis()->GetNbins(); ++bIX){
 	      Float_t tempContent = histForUnfold_p->GetBinContent(bIX+1, bIY+1);
 	      if(TMath::Abs(tempContent) < TMath::Power(10,-100)) continue;
-	      
+
 	      Float_t purCorr = photonPtJetVarReco_MIX_COMBINED_p[cI]->GetBinContent(bIX+1, bIY+1) - tempContent;
 	      Float_t newContent = (tempContent + purCorr)*nonClosure_p->GetBinContent(bIX+1) - purCorr;
 	      Float_t newErr = histForUnfold_p->GetBinError(bIX+1, bIY+1)*newContent/tempContent;
-	      
-	      histForUnfold_p->SetBinContent(bIX+1, bIY+1, newContent);	
+
+	      histForUnfold_p->SetBinContent(bIX+1, bIY+1, newContent);
 	      histForUnfold_p->SetBinError(bIX+1, bIY+1, newErr);
-      
+
 	    }
 	  }
 
@@ -3377,7 +3484,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	//	rooResGammaJetVar_p[cI][sysI]->Print("ALL");
 	//	std::cout << "END PRINTING ROORESGAMMA JET VAR: " << std::endl;
 
-	
+
 	RooUnfoldBayes* rooBayes_p = new RooUnfoldBayes(rooResGammaJetVar_p[cI][sysI], histForUnfold_p, i);
 	rooBayes_p->SetVerbose(0);
 
@@ -3394,8 +3501,8 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
 	//TESTING ISSUE IN UNFOLD FOR MCSTAT
 	if(isStrSame(systStrVect[sysI], "MCSTAT")) rooBayes_p->IncludeSystematics(2);
-	
-	
+
+
 	if(currErrType == 0) unfolded_p = (TH2D*)rooBayes_p->Hreco()->Clone(("photonPtJetVarReco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_h").c_str());
 	else if(currErrType == 1){
 	  if(doGlobalDebug) std::cout << "UNFOLDING WITH TOY ERROR, L" << __LINE__ << std::endl;
@@ -3409,7 +3516,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
 	unfolded_p->Write(("photonPtJet" + varName + "Reco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_h").c_str(), TObject::kOverwrite);
 	refolded_p->Write(("photonPtJet" + varName + "Reco_Iter" + std::to_string(i) + "_" + centBinsStr[cI] + "_" + systStrVect[sysI] + "_PURCORR_COMBINED_Refolded_h").c_str(), TObject::kOverwrite);
-	
+
 	delete unfolded_p;
 	delete refolded_p;
 	delete rooBayes_p;
@@ -3417,20 +3524,20 @@ int gdjHistToUnfold(std::string inConfigFileName)
     }
     std::cout << "Photon-jet unfold, " << centBinsStr[cI] << ", complete." << std::endl;
   }
-  
+
   for(Int_t cI = 0; cI < nCentBins; ++cI){
     delete photonPtReco_p[cI];
     delete photonPtTruth_p[cI];
 
-    for(unsigned int sI = 0; sI < inSystStrVect.size(); ++sI){    
+    for(unsigned int sI = 0; sI < inSystStrVect.size(); ++sI){
       if(!unfoldAll){
 	if(!vectContainsStr(inSystStrVect[sI], &inUnfoldNames)) continue;
-      }      
+      }
 
       delete photonPtJetVarReco_p[cI][sI];
       delete photonPtJetVarTruth_p[cI][sI];
     }
-    
+
     if(doRebin){
       for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
 	delete photonPtReco_TRUTH_p[cI][eI];
@@ -3439,23 +3546,23 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	for(unsigned int sI = 0; sI < inSystStrVect.size(); ++sI){
 	  if(!unfoldAll){
 	    if(!vectContainsStr(inSystStrVect[sI], &inUnfoldNames)) continue;
-	  }      
+	  }
 
 	  delete photonPtReco_PURCORR_p[cI][sI][eI];
 	  delete photonPtJetVarReco_PURCORR_p[cI][sI][eI];
 	}
-      }	
+      }
     }
 
     for(unsigned int sI = 0; sI < inSystStrVect.size(); ++sI){
       if(!unfoldAll){
 	if(!vectContainsStr(inSystStrVect[sI], &inUnfoldNames)) continue;
       }
-      
+
       delete photonPtReco_PURCORR_COMBINED_p[cI][sI];
       delete photonPtJetVarReco_PURCORR_COMBINED_p[cI][sI];
     }
-    
+
     if(doReweightVar){
 
       for(unsigned int sI = 0; sI < inSystStrVect.size(); ++sI){
@@ -3466,11 +3573,11 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	delete photonPtJetVarReco_PURCORR_COMBINED_Reweighted_p[cI][sI];
       }
     }
-    
+
     delete photonPtReco_TRUTH_COMBINED_p[cI];
-    
+
     delete photonPtJetVarReco_TRUTH_COMBINED_p[cI];
-    
+
     for(Int_t sysI = 0; sysI < nSyst; ++sysI){
       if(!unfoldAll){
 	if(!vectContainsStr(returnAllCapsString(systStrVect[sysI]), &inUnfoldNames)) continue;
@@ -3484,7 +3591,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	delete rooResGammaMisses_p[cI][sysI];
 	delete rooResGammaFakes_p[cI][sysI];
       }
-      
+
       delete rooResGammaJetVar_p[cI][sysI];
       if(sysI == 0){
 	for(Int_t qgI = 0; qgI < nQG; ++qgI){
@@ -3497,7 +3604,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
       delete rooResGammaJetVarMisses_p[cI][sysI];
       delete rooResGammaJetVarFakes_p[cI][sysI];
     }
-    
+
     if(!isSameInputFile && doReweightVar){
       for(unsigned int systI = 0; systI < inSystStrVect.size(); ++systI){
 	delete reweightPhoPtJetVar_p[cI][systI];
@@ -3541,7 +3648,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
   }
   inUnfoldFileConfig_p->SetValue("SYST", systStr.c_str());
   inUnfoldFileConfig_p->SetValue("SYSTTYPE", typeStr.c_str());
-  
+
   inUnfoldFileConfig_p->SetValue("VARNAME", varName.c_str());
   inUnfoldFileConfig_p->SetValue("NITER", nIter);
   inUnfoldFileConfig_p->SetValue("UNFOLD", inUnfoldName.c_str());
@@ -3550,7 +3657,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
   inUnfoldFileLabels_p->Write("label", TObject::kOverwrite);
 
-  
+
   //Want to remove a few values before terminating; so we make a copy and skip the lines we want removed
   TEnv* inUnfoldFileConfigCopy_p = new TEnv();
   THashList* tempList = (THashList*)inUnfoldFileConfig_p->GetTable();
@@ -3561,10 +3668,10 @@ int gdjHistToUnfold(std::string inConfigFileName)
     //Skip SYSTNAMES and SYSTTYPES - this is a set that was introduced during histogram construction
     //We want to remove because we now have a full set, and in particular SYSTTYPES should be used w/ the full set (now stored in config param SYST, see above)
     if(isStrSame(configName, "SYSTNAMES")) continue;
-    
+
     inUnfoldFileConfigCopy_p->SetValue(configName.c_str(), inUnfoldFileConfig_p->GetValue(configName.c_str(), ""));
   }
-  
+
   inUnfoldFileConfigCopy_p->Write("config", TObject::kOverwrite);
 
   //We will save the full input config at this step so we know what we ran
@@ -3576,12 +3683,12 @@ int gdjHistToUnfold(std::string inConfigFileName)
   if(unfoldConfigName.find(".") != std::string::npos) unfoldConfigName.replace(unfoldConfigName.find("."), unfoldConfigName.size(), "");
   unfoldConfigName = unfoldConfigName + "Config";
   config_p->Write(unfoldConfigName.c_str(), TObject::kOverwrite);
-  
-  inResponseFile_p->Close();
-  delete inResponseFile_p;  
 
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;  
-  
+  inResponseFile_p->Close();
+  delete inResponseFile_p;
+
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
   if(!isSameInputFile){
     inUnfoldFile_p->Close();
     delete inUnfoldFile_p;
@@ -3590,7 +3697,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
   outFile_p->Close();
   delete outFile_p;
 
-  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;  
+  if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
   globalTimer.stop();
   double globalTimeCPU = globalTimer.totalCPU();
@@ -3599,7 +3706,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
   std::cout << "FINAL TIME: " << std::endl;
   std::cout << " WALL: " << globalTimeWall << std::endl;
   std::cout << " CPU:  " << globalTimeCPU << std::endl;
-  
+
   std::cout << "GDJHISTTOUNFOLD COMPLETE. return 0." << std::endl;
   return 0;
 }
@@ -3615,7 +3722,7 @@ int main(int argc, char* argv[])
     std::cout << "return 1." << std::endl;
     return 1;
   }
- 
+
   int retVal = 0;
   retVal += gdjHistToUnfold(argv[1]);
   return retVal;

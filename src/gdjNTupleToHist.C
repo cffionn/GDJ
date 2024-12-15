@@ -2815,7 +2815,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	  }
 
 	  if(isMC){
-	  //Continue on anything < 15
+	    //Continue on anything < 15
 	    if(photon_pt_p->at(pI) < 15.0) continue;
 
 	    goodRecoPhoNoTruthPos.push_back(pI);
@@ -2979,27 +2979,26 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
 		if(recoPos >= 0){
 		  recoJtPt_[nRecoJt_][0] = aktRhi_etajes_jet_pt_p->at(recoPos);
-		    for(Int_t jsI = 0; jsI < nJESSys; ++jsI){
-		      recoJtPt_[nRecoJt_][1 + jsI] = aktRhi_etajes_jet_pt_sysJES_p[jsI]->at(recoPos);
-		    }
+		  for(Int_t jsI = 0; jsI < nJESSys; ++jsI){
+		    recoJtPt_[nRecoJt_][1 + jsI] = aktRhi_etajes_jet_pt_sysJES_p[jsI]->at(recoPos);
+		  }
 
-		    //Manually insert the rtrk centrality dependent Pb+Pb specific uncertainty
-		    //in pp, just set it to zero for simplicity
+		  //Manually insert the rtrk centrality dependent Pb+Pb specific uncertainty
+		  //in pp, just set it to zero for simplicity
 
-		    //JESRTRK handling
-		    if(!isPP) recoJtPt_[nRecoJt_][1+nJESSys] = getRTrkJESSysPt(cent, aktRhi_etajes_jet_pt_p->at(recoPos));
-		    else recoJtPt_[nRecoJt_][1+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos);
+		  //JESRTRK handling
+		  if(!isPP) recoJtPt_[nRecoJt_][1+nJESSys] = getRTrkJESSysPt(cent, aktRhi_etajes_jet_pt_p->at(recoPos));
+		  else recoJtPt_[nRecoJt_][1+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos);
 
-		    //QG Fraction handling - note how the eval is on truth pt
-		    recoJtPt_[nRecoJt_][2+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos)*(1.0 + qgFractionFit_p->Eval(aktR_truth_jet_pt_p->at(jI)));
+		  //QG Fraction handling - note how the eval is on truth pt
+		  recoJtPt_[nRecoJt_][2+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos)*(1.0 + qgFractionFit_p->Eval(aktR_truth_jet_pt_p->at(jI)));
 
 		    //QG Response handling - similar to fraction but w/ a different fit function
-		    recoJtPt_[nRecoJt_][3+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos)*(1.0 + qgResponseFit_p->Eval(aktR_truth_jet_pt_p->at(jI)));
+		  recoJtPt_[nRecoJt_][3+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos)*(1.0 + qgResponseFit_p->Eval(aktR_truth_jet_pt_p->at(jI)));
 
-		    for(Int_t jsI = 0; jsI < nJERSys; ++jsI){
-		      recoJtPt_[nRecoJt_][4 + nJESSys + jsI] = aktRhi_etajes_jet_pt_sysJER_p[jsI]->at(recoPos);
-		    }
-
+		  for(Int_t jsI = 0; jsI < nJERSys; ++jsI){
+		    recoJtPt_[nRecoJt_][4 + nJESSys + jsI] = aktRhi_etajes_jet_pt_sysJER_p[jsI]->at(recoPos);
+		  }
 
 		  recoJtPhi_[nRecoJt_] = aktRhi_etajes_jet_phi_p->at(recoPos);
 		  recoJtEta_[nRecoJt_] = aktRhi_etajes_jet_eta_p->at(recoPos);
