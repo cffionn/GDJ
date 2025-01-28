@@ -978,10 +978,66 @@ int gdjNTupleToHist(std::string inConfigFileName)
   TFile* inQGFile_p = nullptr;
   TF1* qgResponseFit_p = nullptr;
   TF1* qgFractionFit_p = nullptr;
+
+  //2024.12.15: Hardcoding a bunch of inputs for QG rescaling
+  TFile* pytXJ_p = nullptr;
+  TH1F* quarkRescaleXJ_PYTHIA_p = nullptr;
+  TH1F* gluonRescaleXJ_PYTHIA_p = nullptr;
+  TFile* pytXJJ_p = nullptr;
+  TH1F* quarkRescaleXJJ_PYTHIA_p = nullptr;
+  TH1F* gluonRescaleXJJ_PYTHIA_p = nullptr;
+
+  TFile* herXJ_p = nullptr;
+  TH1F* quarkRescaleXJ_HERWIG_p = nullptr;
+  TH1F* gluonRescaleXJ_HERWIG_p = nullptr;
+  TFile* herXJJ_p = nullptr;
+  TH1F* quarkRescaleXJJ_HERWIG_p = nullptr;
+  TH1F* gluonRescaleXJJ_HERWIG_p = nullptr;
+
   if(isMC){
     inQGFile_p = new TFile(inQGFileName.c_str(), "READ");
     qgResponseFit_p = (TF1*)inQGFile_p->Get(fitNameFlavorResponse.c_str());
     qgFractionFit_p = (TF1*)inQGFile_p->Get(fitNameFlavorFraction.c_str());
+
+    //PYT XJ
+    pytXJ_p = new TFile("input/qgRescale/unfold_PPData_R2_7piOver8_XJ_Reweight_20240509.root", "READ");
+    quarkRescaleXJ_PYTHIA_p = (TH1F*)pytXJ_p->Get("rooResGammaJetVar_PP_Quark_h");
+    gluonRescaleXJ_PYTHIA_p = (TH1F*)pytXJ_p->Get("rooResGammaJetVar_PP_Gluon_h");
+
+    quarkRescaleXJ_PYTHIA_p->Sumw2();
+    gluonRescaleXJ_PYTHIA_p->Sumw2();
+    quarkRescaleXJ_PYTHIA_p->Add(gluonRescaleXJ_PYTHIA_p);
+    gluonRescaleXJ_PYTHIA_p->Divide(quarkRescaleXJ_PYTHIA_p);
+
+    //PYT XJJ
+    pytXJJ_p = new TFile("input/qgRescale/unfold_PPData_R2_7piOver8_XJJ_Reweight_20240509.root", "READ");
+    quarkRescaleXJJ_PYTHIA_p = (TH1F*)pytXJJ_p->Get("rooResGammaJetVar_PP_Quark_h");
+    gluonRescaleXJJ_PYTHIA_p = (TH1F*)pytXJJ_p->Get("rooResGammaJetVar_PP_Gluon_h");
+
+    quarkRescaleXJJ_PYTHIA_p->Sumw2();
+    gluonRescaleXJJ_PYTHIA_p->Sumw2();
+    quarkRescaleXJJ_PYTHIA_p->Add(gluonRescaleXJJ_PYTHIA_p);
+    gluonRescaleXJJ_PYTHIA_p->Divide(quarkRescaleXJJ_PYTHIA_p);
+
+    //HER XJ
+    herXJ_p = new TFile("input/qgRescale/unfold_PPData_WithHERWIG_R2_7piOver8_XJ_Reweight_20240517.root", "READ");
+    quarkRescaleXJ_HERWIG_p = (TH1F*)herXJ_p->Get("rooResGammaJetVar_PP_Quark_h");
+    gluonRescaleXJ_HERWIG_p = (TH1F*)herXJ_p->Get("rooResGammaJetVar_PP_Gluon_h");
+
+    quarkRescaleXJ_HERWIG_p->Sumw2();
+    gluonRescaleXJ_HERWIG_p->Sumw2();
+    quarkRescaleXJ_HERWIG_p->Add(gluonRescaleXJ_HERWIG_p);
+    gluonRescaleXJ_HERWIG_p->Divide(quarkRescaleXJ_HERWIG_p);
+
+    //HER XJJ
+    herXJJ_p = new TFile("input/qgRescale/unfold_PPData_WithHERWIG_R2_7piOver8_XJJ_Reweight_20240517.root", "READ");
+    quarkRescaleXJJ_HERWIG_p = (TH1F*)herXJJ_p->Get("rooResGammaJetVar_PP_Quark_h");
+    gluonRescaleXJJ_HERWIG_p = (TH1F*)herXJJ_p->Get("rooResGammaJetVar_PP_Gluon_h");
+
+    quarkRescaleXJJ_HERWIG_p->Sumw2();
+    gluonRescaleXJJ_HERWIG_p->Sumw2();
+    quarkRescaleXJJ_HERWIG_p->Add(gluonRescaleXJJ_HERWIG_p);
+    gluonRescaleXJJ_HERWIG_p->Divide(quarkRescaleXJJ_HERWIG_p);
   }
 
   //Start the outputfile and systematics handling
@@ -1022,11 +1078,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
   //We need to declare some systematics (like jet pt cut unfolding variation)
   std::vector<std::string> systStrVect = {"NOMINAL", "JTPTCUT", "PURSIDEBANDLOOSE", "PURSIDEBANDTIGHT", "PURBINORFIT", "PURSIDEBANDISO", "ISO85", "ISO95"};
   std::vector<std::string> systTypeVect = {"NOMINAL", "UNFOLDING", "PHOISOANDPUR", "PHOISOANDPUR", "PHOISOANDPUR", "PHOISOANDPUR", "PHOISOANDPUR", "PHOISOANDPUR"};
-
-  //Temp override for simplicity
-  systStrVect = {"NOMINAL"};
-  systTypeVect = {"NOMINAL"};
-
 
   std::vector<bool> isPhoSyst;
   for(unsigned int systI = 0; systI < systTypeVect.size(); ++ systI){
@@ -2992,11 +3043,24 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		  if(!isPP) recoJtPt_[nRecoJt_][1+nJESSys] = getRTrkJESSysPt(cent, aktRhi_etajes_jet_pt_p->at(recoPos));
 		  else recoJtPt_[nRecoJt_][1+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos);
 
-		  //QG Fraction handling - note how the eval is on truth pt
-		  recoJtPt_[nRecoJt_][2+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos)*(1.0 + qgFractionFit_p->Eval(aktR_truth_jet_pt_p->at(jI)));
+		  double pTForQG = aktRhi_etajes_jet_pt_p->at(recoPos);
+		  if(pTForQG < quarkRescaleXJ_PYTHIA_p->GetBinLowEdge(1)) pTForQG = quarkRescaleXJ_PYTHIA_p->GetBinLowEdge(1) + 0.1;
+		  else if(pTForQG > quarkRescaleXJ_PYTHIA_p->GetBinLowEdge(quarkRescaleXJ_PYTHIA_p->GetXaxis()->GetNbins()+1)) pTForQG = quarkRescaleXJ_PYTHIA_p->GetBinLowEdge(quarkRescaleXJ_PYTHIA_p->GetXaxis()->GetNbins()+1) - 0.1;
 
-		    //QG Response handling - similar to fraction but w/ a different fit function
-		  recoJtPt_[nRecoJt_][3+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos)*(1.0 + qgResponseFit_p->Eval(aktR_truth_jet_pt_p->at(jI)));
+		  Int_t binPos = gluonRescaleXJ_PYTHIA_p->FindBin(pTForQG);
+		  Double_t gluonFracPYTXJ = gluonRescaleXJ_PYTHIA_p->GetBinContent(binPos);
+		  Double_t gluonFracHERXJ = gluonRescaleXJ_HERWIG_p->GetBinContent(binPos);
+		  Double_t gluonFracPYTXJJ = gluonRescaleXJJ_PYTHIA_p->GetBinContent(binPos);
+		  Double_t gluonFracHERXJJ = gluonRescaleXJJ_HERWIG_p->GetBinContent(binPos);
+
+		  Double_t responseScaling = gluonFracPYTXJJ/gluonFracPYTXJ;
+		  Double_t fractionScaling = TMath::Abs(gluonFracPYTXJJ - gluonFracHERXJJ)/TMath::Abs(gluonFracPYTXJ - gluonFracHERXJ);
+
+		  //QG Fraction handling - note how the eval is on truth pt
+		  recoJtPt_[nRecoJt_][2+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos)*(1.0 + qgFractionFit_p->Eval(aktR_truth_jet_pt_p->at(jI))*fractionScaling);
+
+		  //QG Response handling - similar to fraction but w/ a different fit function
+		  recoJtPt_[nRecoJt_][3+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos)*(1.0 + qgResponseFit_p->Eval(aktR_truth_jet_pt_p->at(jI))*responseScaling);
 
 		  for(Int_t jsI = 0; jsI < nJERSys; ++jsI){
 		    recoJtPt_[nRecoJt_][4 + nJESSys + jsI] = aktRhi_etajes_jet_pt_sysJER_p[jsI]->at(recoPos);
@@ -3109,6 +3173,19 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		    recoJtPt_[nRecoJt_][1 + jsI] = aktRhi_etajes_jet_pt_sysJES_p[jsI]->at(recoPos);
 		  }
 
+		  double pTForQG = aktRhi_etajes_jet_pt_p->at(recoPos);
+		  if(pTForQG < quarkRescaleXJ_PYTHIA_p->GetBinLowEdge(1)) pTForQG = quarkRescaleXJ_PYTHIA_p->GetBinLowEdge(1) + 0.1;
+		  else if(pTForQG > quarkRescaleXJ_PYTHIA_p->GetBinLowEdge(quarkRescaleXJ_PYTHIA_p->GetXaxis()->GetNbins()+1)) pTForQG = quarkRescaleXJ_PYTHIA_p->GetBinLowEdge(quarkRescaleXJ_PYTHIA_p->GetXaxis()->GetNbins()+1) - 0.1;
+
+		  Int_t binPos = gluonRescaleXJ_PYTHIA_p->FindBin(pTForQG);
+		  Double_t gluonFracPYTXJ = gluonRescaleXJ_PYTHIA_p->GetBinContent(binPos);
+		  Double_t gluonFracHERXJ = gluonRescaleXJ_HERWIG_p->GetBinContent(binPos);
+		  Double_t gluonFracPYTXJJ = gluonRescaleXJJ_PYTHIA_p->GetBinContent(binPos);
+		  Double_t gluonFracHERXJJ = gluonRescaleXJJ_HERWIG_p->GetBinContent(binPos);
+
+		  Double_t responseScaling = gluonFracPYTXJJ/gluonFracPYTXJ;
+		  Double_t fractionScaling = TMath::Abs(gluonFracPYTXJJ - gluonFracHERXJJ)/TMath::Abs(gluonFracPYTXJ - gluonFracHERXJ);
+
 		  //Manually insert the rtrk centrality dependent Pb+Pb specific uncertainty
 		  //in pp, just set it to zero for simplicity
 
@@ -3117,10 +3194,10 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		  else recoJtPt_[nRecoJt_][1+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos);
 
 		  //QG Fraction handling - note how the eval is on truth pt
-		  recoJtPt_[nRecoJt_][2+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos)*(1.0 + qgFractionFit_p->Eval(aktR_truth_jet_pt_p->at(jI)));
+		  recoJtPt_[nRecoJt_][2+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos)*(1.0 + qgFractionFit_p->Eval(aktR_truth_jet_pt_p->at(jI))*fractionScaling);
 
 		  //QG Response handling - similar to fraction but w/ a different fit function
-		  recoJtPt_[nRecoJt_][3+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos)*(1.0 + qgResponseFit_p->Eval(aktR_truth_jet_pt_p->at(jI)));
+		  recoJtPt_[nRecoJt_][3+nJESSys] = aktRhi_etajes_jet_pt_p->at(recoPos)*(1.0 + qgResponseFit_p->Eval(aktR_truth_jet_pt_p->at(jI))*responseScaling);
 
 		  for(Int_t jsI = 0; jsI < nJERSys; ++jsI){
 		    recoJtPt_[nRecoJt_][4 + nJESSys + jsI] = aktRhi_etajes_jet_pt_sysJER_p[jsI]->at(recoPos);
