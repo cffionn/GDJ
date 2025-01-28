@@ -848,6 +848,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
   }
   //Append any unfolding systematics defined earlier
   appendSyst(&systStrVect, &systTypeVect, inSystStrVect, inSystTypeVect, "UNFOLDING");
+
   //Append phoIsoAndPurity systematics
   appendSyst(&systStrVect, &systTypeVect, inSystStrVect, inSystTypeVect, "PHOISOANDPUR");
 
@@ -3337,7 +3338,10 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	if(!vectContainsStr(systStrVect[sI], &inUnfoldNames)) continue;
       }
 
-      if(doGlobalDebug) std::cout << __FILE__ << ", " << __LINE__ << std::endl;
+      if(doGlobalDebug){
+	std::cout << __FILE__ << ", " << __LINE__ << ", " << sI << ", " << systStrVect[sI] << std::endl;
+	std::cout << rooResGammaJetVar_p[cI][sI]->Htruth() << std::endl;
+      }
 
       TH2D* tempTruthHist_p = (TH2D*)rooResGammaJetVar_p[cI][sI]->Htruth();
       tempTruthHist_p->Write(("photonPtJet" + varName + "Truth_PreUnfold_" + centBinsStr[cI] + "_" + systStrVect[sI] + "_TRUTH2_COMBINED_h").c_str(), TObject::kOverwrite);

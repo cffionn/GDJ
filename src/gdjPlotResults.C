@@ -1018,6 +1018,8 @@ int gdjPlotResults(std::string inConfigFileName)
  const bool isPP = inPPFileConfig_p->GetValue("ISPP", 0);
  const bool isPbPb = !(inPbPbFileConfig_p->GetValue("ISPP", 0));
 
+ if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
  if(!isPP){
    std::cout << "Given pp file is not pp return 1" << std::endl;
    return 1;
@@ -1041,6 +1043,7 @@ int gdjPlotResults(std::string inConfigFileName)
  // pbpbColor = pbpbColor_p->GetColor(255, 51, 51);//kRed-4, GammaTest
  pbpbColor = pbpbColor_p->GetColor(191, 38, 38);//kRed-4, 3/4 values, DeltaTest
 
+ if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
  for(unsigned int cI = 0; cI < tempCentBinsStr.size()-1; ++cI){
    centBinsStr.push_back("Cent" + tempCentBinsStr[cI] + "to" + tempCentBinsStr[cI+1]);
@@ -1079,6 +1082,8 @@ int gdjPlotResults(std::string inConfigFileName)
  Double_t height = 900.0;
  Double_t width = height*(1.0 - topMargin*(1.0 - padSplit) - bottomMargin*padSplit)/(1.0 - leftMargin - rightMargin);
  height = 1200.0;
+
+ if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
  const Int_t nGammaPtBins = inPbPbFileConfig_p->GetValue("NGAMMAPTBINS", 0);
  const Float_t gammaPtBinsLow = inPbPbFileConfig_p->GetValue("GAMMAPTBINSLOW", 80.0);
@@ -1134,6 +1139,8 @@ int gdjPlotResults(std::string inConfigFileName)
  }
  else getLinBins(subJtPtBinsLow, subJtPtBinsHigh, nSubJtPtBins, subJtPtBins);
 
+ if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
  //Now that we have subjtpt bins, do the doJTPtCut check
  Double_t jtPtBinsLowReco = inPbPbFileConfig_p->GetValue("JTPTBINSLOWRECO", -10.0);
  if(doJtPtCut){
@@ -1166,10 +1173,13 @@ int gdjPlotResults(std::string inConfigFileName)
    return 1;
  }
 
+ if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
  std::vector<double> subJtGammaPtBinsV = subJtGammaPtBinFlattener.GetFlattenedBins(subJtGammaPtMin, subJtGammaPtMax);
  Int_t nSubJtGammaPtBins = nGammaPtBins*nSubJtPtBins;
 
  gStyle->SetOptStat(0);
+
 
  const Int_t iterPPPhoPt = inPPTermFileConfig_p->GetValue("GAMMAPT_PP_Nominal", -1);
 
@@ -1216,11 +1226,13 @@ int gdjPlotResults(std::string inConfigFileName)
      else if(isStrSame(systStrVect[jI], "MCSTAT")) isSystCorrelated.push_back(false);
      else isSystCorrelated.push_back(true);
 
-     Int_t iterPPSyst = inPPTermFileConfig_p->GetValue((varNameUpper + "_GAMMAPT_PP_" + systStrVect[jI]).c_str(), -1);
+     //     Int_t iterPPSyst = inPPTermFileConfig_p->GetValue((varNameUpper + "_GAMMAPT_PP_" + systStrVect[jI]).c_str(), -1);
+     Int_t iterPPSyst = inPPTermFileConfig_p->GetValue((varNameUpper + "_GAMMAPT_PP_Nominal").c_str(), -1);
      ppSystHistNames.push_back("photonPtJet" + varNameHist + "Reco_Iter" + std::to_string(iterPPSyst) + "_PP_" + systStrVect[jI] + "_PURCORR_COMBINED_h");
 
      if(isStrSame(systTypeVect[jI], "GESGER") || isStrSame(systStrVect[jI], "ISO85") || isStrSame(systStrVect[jI], "ISO95")){
- 	const Int_t iterPPPhoPtSyst = inPPTermFileConfig_p->GetValue(("GAMMAPT_PP_" + systStrVect[jI]).c_str(), -1);
+       // 	const Int_t iterPPPhoPtSyst = inPPTermFileConfig_p->GetValue(("GAMMAPT_PP_" + systStrVect[jI]).c_str(), -1);
+ 	const Int_t iterPPPhoPtSyst = inPPTermFileConfig_p->GetValue("GAMMAPT_PP_Nominal", -1);
 
  	TH1D* ppHistPhoPtSyst_p = (TH1D*)inPPFile_p->Get(("photonPtReco_Iter" + std::to_string(iterPPPhoPtSyst) + "_PP_" + systStrVect[jI] + "_PURCORR_COMBINED_h").c_str());
  	Double_t scaledTotalPPTemp = 0.0;
@@ -1246,6 +1258,9 @@ int gdjPlotResults(std::string inConfigFileName)
    std::vector<std::vector<std::string> > ratioLabelsPerCentrality;
 
    // We need to find all gamma bins matching our current bin for creating our final histogram
+
+   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
    std::vector<int> gammaMatchedBins;
    if(isMultijet){
      for(Int_t sgI = 0; sgI < nSubJtGammaPtBins; ++sgI){
@@ -1284,6 +1299,8 @@ int gdjPlotResults(std::string inConfigFileName)
    binWidthAndScaleNorm(ppHist_p, scaledTotalPP);
    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
    std::vector<std::vector<Double_t > > ppSyst = getSyst(inPPFile_p, ppHist_p, ppSystHistNames, gammaMatchedBins, scaledTotalPPSyst, inUnfoldNonClosureFileName, doGlobalDebug);
+   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
+
    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
    // Now we gotta make a few subsets of systematics for clearer plotting
@@ -1339,6 +1356,8 @@ int gdjPlotResults(std::string inConfigFileName)
      inJEWELPPHistCurve_p = (TH1D*)ppJEWELFile_p->Get((varNameLower + "Curve_R" + std::to_string(jetR) + "_GammaPt" + std::to_string(gI) + "_h").c_str());
    }
 
+
+   if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
    if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
@@ -1766,7 +1785,7 @@ int gdjPlotResults(std::string inConfigFileName)
 
       std::vector<std::string> labelsAlt;
       std::vector<std::string> labelsTemp = getLabels(inPbPbFileConfig_p, pbpbHist_p, &labelMap, &labelsAlt);
-      std::vector<std::string> labels = {"#bf{#it{ATLAS Preliminary}}", "2018 Pb+Pb 1.72 nb^{-1}", "2017 #it{pp} 260 pb^{-1}", "#sqrt{s} = 5.02 TeV"};
+      std::vector<std::string> labels = {"#bf{#it{ATLAS Internal}}", "2018 Pb+Pb 1.72 nb^{-1}", "2017 #it{pp} 260 pb^{-1}", "#sqrt{s} = 5.02 TeV"};
 
       for(unsigned int lI = 0; lI < labelsTemp.size(); ++lI){
 	if(isStrSame(labelsTemp[lI], "h")) continue;
