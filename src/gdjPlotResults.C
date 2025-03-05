@@ -295,8 +295,8 @@ std::vector<Double_t> drawSyst(TPad* pad_p, TH1D* nominalHist_p, std::vector<std
 
     box_p->SetFillColorAlpha(color, 0.3);
 
-    Double_t minVal = TMath::Max(binVal - systQuadSum, nominalHist_p->GetMinimum());
-    Double_t maxVal = TMath::Min(binVal + systQuadSum, nominalHist_p->GetMaximum());
+    Double_t minVal = TMath::Max((Double_t)(binVal - systQuadSum), (Double_t)nominalHist_p->GetMinimum());
+    Double_t maxVal = TMath::Min((Double_t)(binVal + systQuadSum), (Double_t)nominalHist_p->GetMaximum());
 
     box_p->DrawBox(binLow, minVal, binHigh, maxVal);
   }
@@ -332,7 +332,6 @@ std::vector<Double_t> plotSyst(TH1D* nominalHist_p, std::vector<std::vector<Doub
   const int titleFont = 42;
   const double titleSize = 0.04;
   const double labelSize = titleSize*1.0;
-  const double yOffset = 1.0;
 
   const Float_t height = 900.0;
   const Float_t width = 1200.0;
@@ -424,7 +423,7 @@ std::vector<Double_t> plotSyst(TH1D* nominalHist_p, std::vector<std::vector<Doub
   systHist_p[0]->GetXaxis()->SetLabelSize(labelSize);
   systHist_p[0]->GetXaxis()->SetTitleOffset(0.9);
 
-  for(Int_t sI = 0; sI < systVals.size()+1; ++sI){
+  for(unsigned int sI = 0; sI < systVals.size()+1; ++sI){
     if(sI == 0) systHist_p[sI]->DrawCopy("HIST");
     else systHist_p[sI]->DrawCopy("HIST SAME");
 
@@ -499,7 +498,7 @@ std::vector<Double_t> plotSyst(TH1D* nominalHist_p, std::vector<std::vector<Doub
   if(doGlobalDebug) std::cout << "LINE, FILE: " << __LINE__ << ", " << __FILE__ << ", " << systVals.size() << ", " << systNames.size() << std::endl;
 
   legs_p[0]->AddEntry(systHist_p[0], totalStr.c_str(), "L");
-  for(Int_t sI = 0; sI < systVals.size(); ++sI){
+  for(unsigned int sI = 0; sI < systVals.size(); ++sI){
     legs_p[(sI+1)/(nMaxHist/2)]->AddEntry(systHist_p[sI+1], systNameToLegName(systNames[sI]).c_str(), "L P");
   }
 
@@ -563,11 +562,6 @@ void constructJETSCAPEHist(std::string fileName, TH1D** histPointer_p, int color
     errors.push_back(binVect[4]);
   }
   inJETSCAPEFile.close();
-
-  //     std::cout << "BINS: " << std::endl;
-  //     for(Int_t iter = 0; iter < nBinsJETSCAPE; ++iter){
-  //       std::cout << " " << iter << ": " << binsJETSCAPE[iter] << "-" << binsJETSCAPE[iter+1] << std::endl;
-  //     }
 
   std::string histName = fileName;
   while(histName.find("/") != std::string::npos){
@@ -845,6 +839,9 @@ int gdjPlotResults(std::string inConfigFileName)
  float systMax = config_p->GetValue((varNameUpper + "SYSTMAX").c_str(), -1.0);
  float systMin = config_p->GetValue((varNameUpper + "SYSTMIN").c_str(), -1.0);
 
+ float systPPMax = config_p->GetValue((varNameUpper + "SYSTPPMAX").c_str(), -1.0);
+ float systPPMin = config_p->GetValue((varNameUpper + "SYSTPPMIN").c_str(), -1.0);
+
  float var2JetXLabelX = config_p->GetValue((varNameUpper + "2JETXLABELX").c_str(), 0.1);
  float var2JetXLabelY = config_p->GetValue((varNameUpper + "2JETXLABELY").c_str(), 0.1);
 
@@ -948,7 +945,7 @@ int gdjPlotResults(std::string inConfigFileName)
  if(!checkEnvForParams(inPPFileConfig_p, necessaryFileParams)) return 1;
  if(!compEnvParams(inPbPbFileConfig_p, inPPFileConfig_p, paramsToCompare)) return 1;
 
- const Int_t nMaxSyst = 100;
+ // const Int_t nMaxSyst = 100;
  //Grab all systs
  Int_t nSyst = inPPFileConfig_p->GetValue("NSYST", -1);
  std::vector<std::string> systStrVect = strToVect(inPPFileConfig_p->GetValue("SYST", ""));
@@ -1247,11 +1244,12 @@ int gdjPlotResults(std::string inConfigFileName)
      else scaledTotalPPSyst.push_back(scaledTotalPP);
    }
 
-   TH1D* ratioJEWEL0to10_p = nullptr;
    TH1D* ratioJEWEL0to10Curve_p = nullptr;
+   /*
+   TH1D* ratioJEWEL0to10_p = nullptr;
    if(!doXTrunc) ratioJEWEL0to10_p = new TH1D("ratioJEWEL0to10_h", ";;", nVarBins, varBins);
    else ratioJEWEL0to10_p = new TH1D("ratioJEWEL0to10_h", ";;", nVarBinsTrunc, varBinsTrunc);
-
+   */
 
    std::vector<TH1D*> ratioHistsPerCentrality;
    std::vector<std::vector<Double_t> > ratioSystsPerCentrality;
@@ -1310,7 +1308,7 @@ int gdjPlotResults(std::string inConfigFileName)
      std::vector<std::string> tempVectNames;
      std::vector<std::vector<Double_t> > tempVectVals;
 
-     for(int sI = 0; sI < systNames.size(); ++sI){
+     for(unsigned int sI = 0; sI < systNames.size(); ++sI){
  	if(!isStrSame(val.first, systStrToSystType[systNames[sI]])) continue;
 
  	tempVectNames.push_back(systNames[sI]);
@@ -1373,7 +1371,8 @@ int gdjPlotResults(std::string inConfigFileName)
 
    //LBT handling
    TH1D* inLBTPPHist_p = nullptr;
-   if(doLBT){ constructJETSCAPEHist(inLBTPPFile, &inLBTPPHist_p, kMagenta);
+   if(doLBT){
+     constructJETSCAPEHist(inLBTPPFile, &inLBTPPHist_p, kAzure-3);//kMagenta);
      inLBTPPHist_p->SetLineStyle(2);
      inLBTPPHist_p->Print("ALL");
    }
@@ -1428,11 +1427,11 @@ int gdjPlotResults(std::string inConfigFileName)
 
      TH1D* inJETSCAPEPbPbHist_p = nullptr;
      bool doJETSCAPEPbPb = doJETSCAPE && centBinsStr[cI].find("Cent0to10") != std::string::npos;
-     if(doJETSCAPEPbPb) constructJETSCAPEHist(inJETSCAPEPbPbFile, &inJETSCAPEPbPbHist_p, kGreen+2);
+     if(doJETSCAPEPbPb) constructJETSCAPEHist(inJETSCAPEPbPbFile, &inJETSCAPEPbPbHist_p, kGreen+4);
 
      TH1D* inLBTPbPbHist_p = nullptr;
      bool doLBTPbPb = doLBT && centBinsStr[cI].find("Cent0to10") != std::string::npos;
-     if(doLBTPbPb) constructJETSCAPEHist(inLBTPbPbFile, &inLBTPbPbHist_p, kMagenta);
+     if(doLBTPbPb) constructJETSCAPEHist(inLBTPbPbFile, &inLBTPbPbHist_p, kAzure-3);//kMagenta);
 
      if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
 
@@ -1524,17 +1523,12 @@ int gdjPlotResults(std::string inConfigFileName)
      for(auto const &val : systTypesMap){
  	std::vector<std::vector<Double_t> > tempVectVals;
 
-	std::cout << val.first << std::endl;
- 	for(int sI = 0; sI < systNames.size(); ++sI){
-	  std::cout << " " << systNames[sI] << std::endl;
+	if(doGlobalDebug) std::cout << val.first << std::endl;
+ 	for(unsigned int sI = 0; sI < systNames.size(); ++sI){
+	  if(doGlobalDebug) std::cout << " " << sI << "/" << systNames.size() << ": " << systNames[sI] << std::endl;
 
  	  if(!isStrSame(val.first, systStrToSystType[systNames[sI]])) continue;
-
-	  std::cout << "  PAST CONTINUE" << std::endl;
-
  	  tempVectVals.push_back(pbpbSyst[sI]);
-
-	  std::cout << "  PUSHBACK" << std::endl;
  	}
 
  	systTypeToSystValsPbPb[val.first] = tempVectVals;
@@ -1655,7 +1649,7 @@ int gdjPlotResults(std::string inConfigFileName)
      pbpbHist_p->DrawCopy("HIST E X0 P SAME");
 
      if(doJEWEL){
- 	HIJet::Style::EquipHistogram(jewelPPHistCurve_p, 2);
+ 	HIJet::Style::EquipHistogram(jewelPPHistCurve_p, 1);
  	jewelPPHistCurve_p->SetLineStyle(2);
  	jewelPPHistCurve_p->SetLineWidth(8);
  	jewelPPHistCurve_p->SetMarkerSize(0.0001);
@@ -1691,7 +1685,7 @@ int gdjPlotResults(std::string inConfigFileName)
 	  //	  jewelPbPbHistCurve_p->Scale(scaleFactorPYT);
 	  jewelPbPbHistCurve_p->DrawCopy("E X0 HIST SAME");
 	}
-      }
+     }
 
      if(doJETSCAPE){
        inJETSCAPEPPHist_p->DrawCopy("SAME C E3");
@@ -1882,7 +1876,7 @@ int gdjPlotResults(std::string inConfigFileName)
 	  for(Int_t bI = 0; bI < nBinsTemp; ++bI){
 
 	    Float_t total = 0.0;
-	    for(Int_t sI = 0; sI < tempSystValVect.size(); ++sI){
+	    for(unsigned int sI = 0; sI < tempSystValVect.size(); ++sI){
 	      total += tempSystValVect[sI][bI]*tempSystValVect[sI][bI];
 	    }
 
@@ -1895,7 +1889,7 @@ int gdjPlotResults(std::string inConfigFileName)
 	if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << ", " << gI << "/" << nGammaPtBins << ", " << cI << "/" << centBinsStr.size() << std::endl;
 
 	plotSaveName = "pdfDir/" + dateStr + "/" + varName + "UnfoldedSyst_GammaPt" + std::to_string(gI) + "_PP_SystType_" + saveTag + "_" + dateStr + "." + saveExt;
-	plotSyst(ppHist_p, systTypeQuadSumVals, uniqueSystTypes, systLabels, "pp", plotSaveName, "Total", systMin, systMax);
+	plotSyst(ppHist_p, systTypeQuadSumVals, uniqueSystTypes, systLabels, "pp", plotSaveName, "Total", systPPMin, systPPMax);
 
 
 	systLabels = labels;
@@ -1922,7 +1916,7 @@ int gdjPlotResults(std::string inConfigFileName)
 	for(Int_t bI = 0; bI < nBinsTemp; ++bI){
 
 	  Float_t total = 0.0;
-	  for(Int_t sI = 0; sI < tempSystValVect.size(); ++sI){
+	  for(unsigned int sI = 0; sI < tempSystValVect.size(); ++sI){
 	    total += tempSystValVect[sI][bI]*tempSystValVect[sI][bI];
 	  }
 
@@ -1965,7 +1959,14 @@ int gdjPlotResults(std::string inConfigFileName)
 	++nLegY;
 	if(jewelPbPbHistCurve_p != nullptr) ++nLegY;
       }
-
+      if(doJETSCAPE){
+	++nLegY;
+	if(doJETSCAPEPbPb) ++nLegY;
+      }
+      if(doLBT){
+	++nLegY;
+	if(doLBTPbPb) ++nLegY;
+      }
 
       TLegend* leg_p = new TLegend(legX, legY - 0.065*nLegY, legX+0.25, legY);
       leg_p->SetTextFont(42);
@@ -1981,8 +1982,25 @@ int gdjPlotResults(std::string inConfigFileName)
 
 	leg_p->AddEntry(jewelPPHistCurve_p, "JEWEL #it{pp}", "L");
 	if(jewelPbPbHistCurve_p != nullptr) leg_p->AddEntry(jewelPbPbHistCurve_p, "JEWEL Pb+Pb", "L");
-
       }
+
+      if(doJETSCAPE){
+	inJETSCAPEPPHist_p->SetLineWidth(0.0);
+
+	leg_p->AddEntry(inJETSCAPEPPHist_p, "JETSCAPE #it{pp}", "F");
+	if(doJETSCAPEPbPb){
+	  inJETSCAPEPbPbHist_p->SetLineWidth(0.0);
+	  leg_p->AddEntry(inJETSCAPEPbPbHist_p, "JETSCAPE Pb+Pb", "F");
+	}
+      }
+
+      if(doLBT){
+	leg_p->AddEntry(inLBTPPHist_p, "LBT #it{pp}", "L");
+	if(doLBTPbPb){
+	  leg_p->AddEntry(inLBTPbPbHist_p, "LBT Pb+Pb", "L");
+	}
+      }
+
       leg_p->Draw("SAME");
 
       gPad->SetTicks();
@@ -2000,7 +2018,7 @@ int gdjPlotResults(std::string inConfigFileName)
       for(auto const &val : systTypesMap){
 	std::vector<std::vector<Double_t> > tempVectVals;
 
-	for(int sI = 0; sI < systNames.size(); ++sI){
+	for(unsigned int sI = 0; sI < systNames.size(); ++sI){
 	  if(!isStrSame(val.first, systStrToSystType[systNames[sI]])) continue;
 
 	  tempVectVals.push_back(ratSyst[sI]);
@@ -2117,11 +2135,12 @@ int gdjPlotResults(std::string inConfigFileName)
 
 	  jewelPPHist_p->GetXaxis()->SetTitle(ppHist_p->GetXaxis()->GetTitle());
 
+	  /*
 	  Double_t max = TMath::Max(jewelPPHist_p->GetMaximum(), pyt8Truth_p->GetMaximum());
 	  Double_t min = TMath::Min(jewelPPHist_p->GetMinimum(), pyt8Truth_p->GetMinimum());
 
 	  if(max < 1.0) max = 1.0;
-
+	  */
 	  jewelPPHist_p->SetMaximum(maxPytRatVal);
 	  jewelPPHist_p->SetMinimum(minPytRatVal);
 
@@ -2160,7 +2179,7 @@ int gdjPlotResults(std::string inConfigFileName)
         for(Int_t bI = 0; bI < nBinsTemp; ++bI){
 
           Float_t total = 0.0;
-          for(Int_t sI = 0; sI < tempSystValVect.size(); ++sI){
+          for(unsigned int sI = 0; sI < tempSystValVect.size(); ++sI){
             total += tempSystValVect[sI][bI]*tempSystValVect[sI][bI];
           }
 
@@ -2196,6 +2215,7 @@ int gdjPlotResults(std::string inConfigFileName)
       ppHist_p->SetFillColorAlpha(ppColor, 0.3);
 
       //      gPad->Modified();
+      //CMcGinn: Testing this is the results plot save
       quietSaveAs(canv_p, "pdfDir/" + dateStr + "/" + varName + "Unfolded_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "_" + saveTag + "_" + dateStr + "." + saveExt);
       for(Int_t pI = 0; pI < nPad; ++pI){
 	delete pads_p[pI];

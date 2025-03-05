@@ -146,9 +146,9 @@ void getIterativeHists(TH1F* reco_p, std::vector<TH1F*> inUnfoldedHists_p, TH1F*
 }
 
 
-void getIterativeHists2D(TH2F* reco_p, std::vector<TH2F*> inUnfoldedHists_p, TH1F* statDelta_p, TH1F* iterDelta_p, TH1F* totalDelta_p, bool doRelative, std::map<int, std::map<int, bool> > goodBinMap, Int_t excludeYPos = -1)
+void getIterativeHists2D(TH2F* reco_p, std::vector<TH2F*> inUnfoldedHists_p, TH1F* statDelta_p, TH1F* iterDelta_p, TH1F* totalDelta_p, bool doRelative, std::map<int, std::map<int, bool> > goodBinMap/*, Int_t excludeYPos = -1*/)
 {
-  const Float_t deltaCheck = 0.0001;
+  //  const Float_t deltaCheck = 0.0001;
   
   const Int_t nIter = inUnfoldedHists_p.size();
   const Int_t nBins = nIter;
@@ -401,7 +401,7 @@ void getIterativeHists(TH1D* reco_p, std::vector<TH1D*> inUnfoldedHists_p, TH1D*
 
 void getIterativeHists2D(TH2D* reco_p, std::vector<TH2D*> inUnfoldedHists_p, TH1D* statDelta_p, TH1D* iterDelta_p, TH1D* totalDelta_p, bool doRelative, std::map<int, std::map<int, bool> > goodBinMap, bool doPrint = false)
 {
-  const Float_t deltaCheck = 0.0001;
+  //  const Float_t deltaCheck = 0.0001;
   const Int_t nIter = inUnfoldedHists_p.size();
   const Int_t nBins = nIter;
 
