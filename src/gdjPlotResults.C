@@ -50,6 +50,7 @@
 // #include "include/treeUtil.h"
 #include "include/varUtil.h"
 
+//Function to convert internal syst. names to pretty labeling strings
 std::string systNameToLegName(std::string inStr)
 {
   if(isStrSame("PURSIDEBANDLOOSE", inStr)) return "Loose Sideband";
@@ -72,7 +73,7 @@ std::string systNameToLegName(std::string inStr)
   return inStr;
 }
 
-//vector of syst, bin-by-bin
+//function to return vector of syst, bin-by-bin
 //As a start, assume symmetric syst
 std::vector<std::vector<Double_t> > getSyst(TFile* histFile_p, TH1D* nominalHist_p, std::vector<std::string> systHistNames, std::vector<Int_t> yPos, std::vector<Double_t> scaledTotalSyst, std::string unfFileName, bool doDebug=false)
 {
@@ -80,6 +81,7 @@ std::vector<std::vector<Double_t> > getSyst(TFile* histFile_p, TH1D* nominalHist
 
   if(doDebug) std::cout << __FILE__ << ", " << __LINE__ << ", systHistNames.size: " << systHistNames.size() << std::endl;
 
+  //loop over syst. hist names
   for(unsigned int jI = 0; jI < systHistNames.size(); ++jI){
     if(doDebug) std::cout << __FILE__ << ", " << __LINE__ << ", jI/nSystHist = " << jI << "/" << systHistNames.size() << ": " << systHistNames[jI] << std::endl;
 
@@ -2614,6 +2616,7 @@ int gdjPlotResults(std::string inConfigFileName)
   return 0;
 }
 
+//Main block; takes in config file and handles wrong inputs before calling gdjPlotResults
 int main(int argc, char* argv[])
 {
   if(argc != 2){
