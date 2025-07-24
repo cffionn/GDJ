@@ -1090,6 +1090,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
     return 1;
   }
 
+  const Int_t nMaxPartons = 2;
+  Int_t treePartonId[nMaxPartons];
+
   Bool_t is5050FilledHist;
   Int_t sampleTag;
   UInt_t runNumber;
@@ -1131,6 +1134,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
   if(isMC && keepResponseTree){
     unfoldTree_p = new TTree("unfoldTree_p", "");
+
+    unfoldTree_p->Branch("treePartonId", treePartonId, "treePartonId[2]/I");
 
     unfoldTree_p->Branch("is5050FilledHist", &is5050FilledHist, "is5050FilledHist/O");
 
@@ -1253,6 +1258,16 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
   TEnv photonPtJtDRJJVCent_Config;
  createMixMachineTEnv(&photonPtJtDRJJVCent_Config, true, isMC, nDRBins, drBinsStrForConfig, "Jet #DeltaR_{JJ}", nSubJtGammaPtBins, subJtGammaPtBinsStrForConfig, "Sub. Jet x Photon p_{T}");
+
+ //Need to track multijet filling
+ Int_t mixMachineXJJRawEvents[nMaxCentBins];
+ Int_t mixMachineXJJRawFills[nMaxCentBins];
+ Int_t mixMachineXJJRawNJets[nMaxCentBins];
+
+ Int_t mixMachineXJJRawFillsA[nMaxCentBins];
+ Int_t mixMachineXJJRawFillsB[nMaxCentBins];
+ Int_t mixMachineXJJRawFillsC[nMaxCentBins];
+ Int_t mixMachineXJJRawFillsD[nMaxCentBins];
 
   const Int_t nMaxSyst = 100;
   mixMachine* photonPtJtPtVCent_MixMachine_p[nMaxCentBins][nBarrelAndEC][nMaxSyst];
@@ -1570,6 +1585,15 @@ int gdjNTupleToHist(std::string inConfigFileName)
       singleJetResponse_OneJetNoTruth_p[cI] = new TH2D(("singleJetResponse_OneJetNoTruth_" + centBinsStr[cI] + "_h").c_str(), ";Truth Jet p_{T};Response (Reco./Gen.)", nJtPtBins, jtPtBins, 100, 0.0, 2.0);
       doubleJetResponse_OneJetNoTruth_p[cI] = new TH2D(("doubleJetResponse_OneJetNoTruth_" + centBinsStr[cI] + "_h").c_str(), ";Truth Jet p_{T};Response (Reco./Gen.)", nJtPtBins, jtPtBins, 100, 0.0, 2.0);
     }
+
+    mixMachineXJJRawEvents[cI] = 0;
+    mixMachineXJJRawFills[cI] = 0;
+    mixMachineXJJRawNJets[cI] = 0;
+
+    mixMachineXJJRawFillsA[cI] = 0;
+    mixMachineXJJRawFillsB[cI] = 0;
+    mixMachineXJJRawFillsC[cI] = 0;
+    mixMachineXJJRawFillsD[cI] = 0;
 
     for(Int_t eI = 0; eI < nBarrelAndEC; ++eI){
       photonPtJtPtVCent_Config.SetValue("ISMC", isMC);
@@ -2352,16 +2376,9 @@ int gdjNTupleToHist(std::string inConfigFileName)
       if(!isPP) inTree_p->SetBranchStatus("ncollWeight", 1);
       inTree_p->SetBranchStatus("fullWeight", 1);
 
-      /*
-	inTree_p->SetBranchStatus("truth_pt", 1);
-	inTree_p->SetBranchStatus("truth_eta", 1);
-	inTree_p->SetBranchStatus("truth_phi", 1);
-	inTree_p->SetBranchStatus("truth_pdg", 1);
-	inTree_p->SetBranchStatus("truth_origin", 1);
-	inTree_p->SetBranchStatus("truth_type", 1);
-      */
-      //Test the nTruthPhotons condition now
+      inTree_p->SetBranchStatus("treePartonId", 1);
 
+      //Test the nTruthPhotons condition now
       if(inTree_p->FindBranch("nTruthPhotons") != nullptr) inTree_p->SetBranchStatus("nTruthPhotons", 1);
       else isMultiTruthPho = false;
 
@@ -2465,6 +2482,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	inTree_p->SetBranchAddress("truth_origin", &truth_origin_p);
 	inTree_p->SetBranchAddress("truth_type", &truth_type_p);
       */
+
+      inTree_p->SetBranchAddress("treePartonId", treePartonId);
 
       if(isMultiTruthPho){
 	inTree_p->SetBranchAddress("nTruthPhotons", &nTruthPhotons);
@@ -3514,6 +3533,11 @@ int gdjNTupleToHist(std::string inConfigFileName)
 
 	    if(doGlobalDebug) std::cout << "GLOBAL DEBUG FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
 
+	    if(systI == 0 && goodRecoJets.size() >= 2){
+	      ++mixMachineXJJRawEvents[centPos];
+	      mixMachineXJJRawNJets[centPos] += goodRecoJets.size();
+	    }
+
 	    //Now we start another loop but one for multijet events
 	    for(unsigned int gI = 0; gI < goodRecoJets.size(); ++gI){
 	      //Get first  reco jet + corresponding truth info
@@ -3536,7 +3560,6 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		Float_t aJJValue = TMath::Abs(goodRecoJet1.Pt() - goodRecoJet2.Pt())/photon_pt_p->at(pI);
 		Float_t dPhiJJValue = TMath::Abs(getDPHI(goodRecoJet1.Phi(), goodRecoJet2.Phi()));
 		Float_t dRJJValue = getDR(goodRecoJet1.Eta(), goodRecoJet1.Phi(), goodRecoJet2.Eta(), goodRecoJet2.Phi());
-
 		Bool_t dRJJValueGood = dRJJValue >= drBinsLowReco && dRJJValue < drBinsHighReco;
 
 		//Construct Booleans from existing variables
@@ -3552,6 +3575,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		goodRecoJet2 += goodRecoJet1;
 
 		if(!dRJJPasses) continue;
+		if(systI == 0) ++(mixMachineXJJRawFillsA[centPos]);
 
 		//Does the multijet pass multijtdphi cut at truth level?
 		Float_t multiJtDPhiTruth = -999.0;
@@ -3595,6 +3619,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		  if(isGoodRecoSignal){
 		    photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRaw(multiJtDPhiReco, subJtGammaPtValReco, fullWeight);
 
+		    if(barrelEC == 2 && systI == 0) ++(mixMachineXJJRawFillsB[centPos]);
+
 		    if(isMC){
 		      if(isTruthPhotonMatched && isTruthMatched){
 			photonPtJtDPhiJJGVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRawWithTruthMatch(multiJtDPhiReco, subJtGammaPtValReco, fullWeight);
@@ -3620,6 +3646,8 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		  if(multiJtDPhiReco < gammaMultiJtDPhiCut) continue;
 
 		  if(isGoodRecoSignal){
+		    if(barrelEC == 2 && systI == 0) ++(mixMachineXJJRawFillsC[centPos]);
+
 		    if(systI == 0){
 		      multijetPt_h[centPos][0]->Fill(goodRecoJets[gI].Pt(), fullWeight);
 		      multijetEta_h[centPos][0]->Fill(goodRecoJets[gI].Eta(), fullWeight);
@@ -3645,6 +3673,7 @@ int gdjNTupleToHist(std::string inConfigFileName)
 		      }
 
 		      photonPtJtXJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRaw(xJJValue, subJtGammaPtValReco, fullWeight);
+		      if(barrelEC == 2 && systI == 0) ++(mixMachineXJJRawFills[centPos]);
 		    }
 		    if(aJJValueGood) photonPtJtAJJVCent_MixMachine_p[centPos][barrelEC][systI]->FillXYRaw(aJJValue, subJtGammaPtValReco, fullWeight);
 
@@ -5186,6 +5215,15 @@ int gdjNTupleToHist(std::string inConfigFileName)
 	//JtXJJ
 	photonPtJtXJJVCent_MixMachine_p[cI][eI][systI]->WriteToDirectory(centDir_p);
 	photonPtJtXJJVCent_MixMachine_p[cI][eI][systI]->Clean();
+
+	if(systI == 0 && eI == 2){
+	  std::cout << "Centrality " << centBins[cI] << "-" << centBins[cI+1] << "% nFills/nJets: " << mixMachineXJJRawFills[cI] << "/" << mixMachineXJJRawNJets[cI] << " = " << Form("%.3f", ((Double_t)mixMachineXJJRawFills[cI])/(Double_t)mixMachineXJJRawNJets[cI]) << std::endl;
+	  std::cout << " nJets/nEvents: " << mixMachineXJJRawNJets[cI] << "/" << mixMachineXJJRawEvents[cI] << " = " << Form("%.3f", ((Double_t)mixMachineXJJRawNJets[cI])/(Double_t)mixMachineXJJRawEvents[cI]) << std::endl;
+
+	  std::cout << " nFillsA " << mixMachineXJJRawFillsA[cI] << std::endl;
+	  std::cout << " nFillsB " << mixMachineXJJRawFillsB[cI] << std::endl;
+	  std::cout << " nFillsC " << mixMachineXJJRawFillsC[cI] << std::endl;
+	}
 
 	//JtAJJ
 	photonPtJtAJJVCent_MixMachine_p[cI][eI][systI]->WriteToDirectory(centDir_p);
