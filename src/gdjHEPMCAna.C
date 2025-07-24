@@ -9,6 +9,8 @@
 //ROOT
 #include "TEnv.h"
 #include "TFile.h"
+#include "TH1D.h"
+#include "TH2D.h"
 #include "TLorentzVector.h"
 #include "TMath.h"
 #include "TTree.h"
@@ -36,7 +38,7 @@ int gdjHEPMCAna(std::string inConfigFileName)
   //Global debug handler - do 'export DOGLOBALDEBUGROOT=1' at command line to turn on debug output
   globalDebugHandler gDebug;
   const bool doGlobalDebug = gDebug.GetDoGlobalDebug();
-  
+
   //Date string for tagging all output
   const std::string dateStr = getDateStr();
   const std::string outputStr = "output/" + dateStr;
@@ -59,7 +61,7 @@ int gdjHEPMCAna(std::string inConfigFileName)
   std::string inFileName = config_p->GetValue("INFILENAME", "");
   std::string outFileName = config_p->GetValue("OUTFILENAME", "");
   std::string inUnfoldFileName = config_p->GetValue("INUNFOLDFILENAME", "");
-  
+
   if(!check.checkFileExt(inFileName, ".root")) return 1;
   if(!check.checkFileExt(inUnfoldFileName, ".root")) return 1;
 
@@ -95,7 +97,7 @@ int gdjHEPMCAna(std::string inConfigFileName)
   const Bool_t gammaPtBinsDoCustom = (bool)unfoldConfig_p->GetValue("GAMMAPTBINSDOCUSTOM", 1);
   Double_t gammaPtBins[nMaxPtBins+1];
 
-  //We need to propagate the gamma pt bins forward  
+  //We need to propagate the gamma pt bins forward
   config_p->SetValue("NGAMMAPTBINS", nGammaPtBins);
   config_p->SetValue("GAMMAPTBINSLOW", gammaPtBinsLow);
   config_p->SetValue("GAMMAPTBINSHIGH", gammaPtBinsHigh);
@@ -104,7 +106,7 @@ int gdjHEPMCAna(std::string inConfigFileName)
   config_p->SetValue("GAMMAPTBINSDOLOG", gammaPtBinsDoLog);
   config_p->SetValue("GAMMAPTBINSDOCUSTOM", gammaPtBinsDoCustom);
   config_p->SetValue("GAMMAPTBINSCUSTOM", unfoldConfig_p->GetValue("GAMMAPTBINSCUSTOM", ""));
-  
+
   if(gammaPtBinsDoLog) getLogBins(gammaPtBinsLow, gammaPtBinsHigh, nGammaPtBins, gammaPtBins);
   else if(gammaPtBinsDoCustom){
     if(doGlobalDebug) std::cout << "FILE, LINE: " << __FILE__ << ", " << __LINE__ << std::endl;
@@ -135,7 +137,7 @@ int gdjHEPMCAna(std::string inConfigFileName)
   for(Int_t gI = 0; gI < nGammaPtBins+1; ++gI){
     gammaPtBinsVect.push_back(gammaPtBins[gI]);
   }
-  
+
   //Get Reco PT bounds
   const Float_t jtPtBinsLowReco = unfoldConfig_p->GetValue("JTPTBINSLOWRECO", -999.0);
   const Float_t jtPtBinsHighReco = unfoldConfig_p->GetValue("JTPTBINSHIGHRECO", -999.0);
@@ -161,23 +163,34 @@ int gdjHEPMCAna(std::string inConfigFileName)
   config_p->SetValue("JTETABINSHIGH", jtEtaBinsHigh);
 
   config_p->SetValue("VARNAME", varName.c_str());
-  
+
   config_p->SetValue("GAMMAEXCLUSIONDR", gammaJtDRExclusionCut);
   config_p->SetValue("MIXJETEXCLUSIONDR", mixJtDRExclusionCut);
   config_p->SetValue("GAMMAJTDPHI", unfoldConfig_p->GetValue("GAMMAJTDPHI", ""));
   config_p->SetValue("GAMMAMULTIJTDPHI", unfoldConfig_p->GetValue("GAMMAMULTIJTDPHI", ""));
-  
+
   //multijet defined by var name
   const Bool_t isMultijet = isStrSame(varNameLower, "xjj") || isStrSame(varNameLower, "dphijjg") || isStrSame(varNameLower, "ajj") || isStrSame(varNameLower, "dphijj") || isStrSame(varNameLower, "drjj");
-  
+
 
   std::string varPrefix = "";
   if(isStrSame(varNameUpper, "PT")) varPrefix = "JT";
-  
+
   std::string binVarStr = varPrefix + varNameUpper;
   if(isStrSame(binVarStr, "AJJ")) binVarStr = "AJ";
   else if(isStrSame(binVarStr, "DRJJ")) binVarStr = "DR";
 
+  //get xjj bins range
+  const Float_t xjjBinsLowReco = unfoldConfig_p->GetValue("XJJBINSLOWRECO", -1.0);
+  const Float_t xjjBinsHighReco = unfoldConfig_p->GetValue("XJJBINSHIGHRECO", -1.0);
+
+  std::cout << "XJJBINS: " << xjjBinsLowReco << "-" << xjjBinsHighReco << std::endl;
+
+  //get ajj bins range - we will hardcode because this is not defined in all files
+  const Float_t ajjBinsLowReco = 0.0;//unfoldConfig_p->GetValue("AJJBINSLOWRECO", -1.0);
+  const Float_t ajjBinsHighReco = 1.0;//unfoldConfig_p->GetValue("AJJBINSHIGHRECO", -1.0);
+
+  std::cout << "AJJBINS: " << ajjBinsLowReco << "-" << ajjBinsHighReco << std::endl;
 
   //get var bins
   Int_t nVarBins = unfoldConfig_p->GetValue(("N" + binVarStr + "BINS").c_str(), -1);
@@ -185,8 +198,8 @@ int gdjHEPMCAna(std::string inConfigFileName)
   Float_t varBinsHigh = unfoldConfig_p->GetValue((binVarStr + "BINSHIGH").c_str(), -1.0);
   Bool_t varBinsDoLog = unfoldConfig_p->GetValue((binVarStr + "BINSDOLOG").c_str(), 0);
   Bool_t varBinsDoCustom = unfoldConfig_p->GetValue((binVarStr + "BINSDOCUSTOM").c_str(), 0);
-  Float_t varBinsLowReco = unfoldConfig_p->GetValue((binVarStr + "BINSLOWRECO").c_str(), varBinsLow);
-  Float_t varBinsHighReco = unfoldConfig_p->GetValue((binVarStr + "BINSHIGHRECO").c_str(), varBinsHigh);
+  //  Float_t varBinsLowReco = unfoldConfig_p->GetValue((binVarStr + "BINSLOWRECO").c_str(), varBinsLow);
+  //  Float_t varBinsHighReco = unfoldConfig_p->GetValue((binVarStr + "BINSHIGHRECO").c_str(), varBinsHigh);
   Double_t varBins[nMaxPtBins+1];
 
   if(varBinsDoLog) getLogBins(varBinsLow, varBinsHigh, nVarBins, varBins);
@@ -215,10 +228,10 @@ int gdjHEPMCAna(std::string inConfigFileName)
   config_p->SetValue((binVarStr + "BINSDOLOG").c_str(), varBinsDoLog);
   config_p->SetValue((binVarStr + "BINSDOCUSTOM").c_str(), varBinsDoCustom);
   config_p->SetValue((binVarStr + "BINSCUSTOM").c_str(), unfoldConfig_p->GetValue((binVarStr + "BINSCUSTOM").c_str(), ""));
-  
+
   TFile* inFile_p = new TFile(inFileName.c_str(), "READ");
   TTree* jewelTree_p = (TTree*)inFile_p->Get("jewelTree");
-  TEnv* inFileConfig_p = (TEnv*)inFile_p->Get("config");  
+  TEnv* inFileConfig_p = (TEnv*)inFile_p->Get("config");
 
   const Int_t nMaxJetRs = 7;
   std::string jetRStr = inFileConfig_p->GetValue("JETRS", "");
@@ -227,13 +240,13 @@ int gdjHEPMCAna(std::string inConfigFileName)
     std::cout << "Jet R query returned \'" << jetRStr << "\', either 0 valid jet Rs or in excess of cap, " << nMaxJetRs << ". return 1" << std::endl;
     return 1;
   }
-  
+
   //Add some parameters from infileconfig to config for writeout
   config_p->SetValue("CENT", inFileConfig_p->GetValue("CENT", ""));
   config_p->SetValue("JETRS", jetRStr.c_str());
-  
+
   Double_t evtWeight_;
-  
+
   const Int_t nMaxPart = 10000;
   Int_t nPart_;
   Float_t pt_[nMaxPart];
@@ -249,14 +262,14 @@ int gdjHEPMCAna(std::string inConfigFileName)
   Float_t jteta_[nMaxJetRs][nMaxJets];
   Float_t jtm_[nMaxJetRs][nMaxJets];
 
-  jewelTree_p->SetBranchStatus("*", 0);  
+  jewelTree_p->SetBranchStatus("*", 0);
   jewelTree_p->SetBranchStatus("evtWeight", 1);
-  jewelTree_p->SetBranchStatus("nPart", 1);  
-  jewelTree_p->SetBranchStatus("pt", 1);  
-  jewelTree_p->SetBranchStatus("eta", 1);  
-  jewelTree_p->SetBranchStatus("phi", 1);  
-  jewelTree_p->SetBranchStatus("m", 1);  
-  jewelTree_p->SetBranchStatus("pid", 1);  
+  jewelTree_p->SetBranchStatus("nPart", 1);
+  jewelTree_p->SetBranchStatus("pt", 1);
+  jewelTree_p->SetBranchStatus("eta", 1);
+  jewelTree_p->SetBranchStatus("phi", 1);
+  jewelTree_p->SetBranchStatus("m", 1);
+  jewelTree_p->SetBranchStatus("pid", 1);
 
   jewelTree_p->SetBranchAddress("evtWeight", &evtWeight_);
   jewelTree_p->SetBranchAddress("nPart", &nPart_);
@@ -279,7 +292,7 @@ int gdjHEPMCAna(std::string inConfigFileName)
     jewelTree_p->SetBranchAddress(("jtphiR" + std::to_string(jetRVect[rI])).c_str(), jtphi_[rI]);
     jewelTree_p->SetBranchAddress(("jtmR" + std::to_string(jetRVect[rI])).c_str(), jtm_[rI]);
   }
-  
+
   //Check the outrootfile directory exists or add directory path to outfilename
   if(outFileName.find("/") == std::string::npos){
     outFileName = outputStr + "/" + outFileName;
@@ -294,6 +307,10 @@ int gdjHEPMCAna(std::string inConfigFileName)
   ULong64_t nPhotonsPerPtBin[nMaxPtBins];
   TH1D* varHist_p[nMaxJetRs][nMaxPtBins];
   TH1D* varHistCurve_p[nMaxJetRs][nMaxPtBins];
+  TH2D* photonPtVsXJJ_p[nMaxJetRs];
+  TH2D* photonPtXXJJVsAJJ_p[nMaxJetRs];
+  TH2D* xjjVsAJJ_Photon90to120_p[nMaxJetRs];
+
   for(unsigned int rI = 0; rI < jetRVect.size(); ++rI){
     for(Int_t gI = 0; gI < nGammaPtBins; ++gI){
       nPhotonsPerPtBin[gI] = 0;
@@ -303,13 +320,29 @@ int gdjHEPMCAna(std::string inConfigFileName)
       std::string titleStr = ";" + varNameLabel + ";#frac{1}{N_{#gamma}}";
       if(isMultijet) titleStr = titleStr + "#frac{dN_{JJ#gamma}}{d" + varNameLabel + "}";
       else titleStr = titleStr + "#frac{dN_{J#gamma}}{d" + varNameLabel + "}";
-      
+
       varHist_p[rI][gI] = new TH1D(nameStr.c_str(), titleStr.c_str(), nVarBins, varBins);
       varHistCurve_p[rI][gI] = new TH1D(nameCurveStr.c_str(), titleStr.c_str(), 100, varBinsLow, varBinsHigh);
       setSumW2({varHist_p[rI][gI], varHistCurve_p[rI][gI]});
     }
+
+    std::string nameStr = "photonPtVsXJJ_R" + std::to_string(jetRVect[rI]) + "_h";
+    std::string titleStr = "PYTHIA6;#gamma p_{T} [GeV];x_{JJ#gamma}";
+
+    //hard code photon pt range
+    photonPtVsXJJ_p[rI] = new TH2D(nameStr.c_str(), titleStr.c_str(), 30, 90, 180, 30, xjjBinsLowReco, xjjBinsHighReco);
+
+    nameStr = "photonPtXXJJVsAJJ_R" + std::to_string(jetRVect[rI]) + "_h";
+    titleStr = "PYTHIA6, 90 < p_{T,#gamma} < 180 GeV;#gamma p_{T} x x_{JJ#gamma} [GeV];A_{JJ#gamma}";
+
+    photonPtXXJJVsAJJ_p[rI] = new TH2D(nameStr.c_str(), titleStr.c_str(), 30, 90*xjjBinsLowReco, 180*xjjBinsHighReco, 30, ajjBinsLowReco, ajjBinsHighReco);
+
+    nameStr = "xjjVsAJJ_Photon90to120_R" + std::to_string(jetRVect[rI]) + "_h";
+    titleStr = "PYTHIA6, 90 < p_{T,#gamma} < 120 GeV;x_{JJ#gamma};A_{JJ#gamma}";
+
+    xjjVsAJJ_Photon90to120_p[rI] = new TH2D(nameStr.c_str(), titleStr.c_str(), 30, xjjBinsLowReco, xjjBinsHighReco, 30, ajjBinsLowReco, ajjBinsHighReco);
   }
-  
+
   const ULong64_t nEntries = jewelTree_p->GetEntries();
   const ULong64_t nDiv = TMath::Max((ULong64_t)1, nEntries/20);
 
@@ -320,7 +353,7 @@ int gdjHEPMCAna(std::string inConfigFileName)
 
     std::vector<TLorentzVector> goodPhotons;
     std::vector<std::vector<TLorentzVector> > goodJets;
-    
+
     //Process the event for every valid possible photon
     for(Int_t pI = 0; pI < nPart_; ++pI){
       if(pid_[pI] != 22) continue; //Only check photons
@@ -361,7 +394,7 @@ int gdjHEPMCAna(std::string inConfigFileName)
 
     for(unsigned int rI = 0; rI < jetRVect.size(); ++rI){
       goodJets.push_back({});
-      
+
       for(Int_t jI = 0; jI < nJt_[rI]; ++jI){
 	//Jet Pt Cuts
 	if(jtpt_[rI][jI] < jtPtBinsLowReco) continue;
@@ -373,24 +406,24 @@ int gdjHEPMCAna(std::string inConfigFileName)
 	TLorentzVector tL;
 	tL.SetPtEtaPhiM(jtpt_[rI][jI], jteta_[rI][jI], jtphi_[rI][jI], jtm_[rI][jI]);
 	goodJets[rI].push_back(tL);
-      }      
+      }
     }
 
     //Construct multi-jet observables
-    for(unsigned int gI = 0; gI < goodPhotons.size(); ++gI){      
+    for(unsigned int gI = 0; gI < goodPhotons.size(); ++gI){
       Int_t gammaPos = ghostPos(gammaPtBinsVect, goodPhotons[gI].Pt());
       ++nPhotonsPerPtBin[gammaPos];
-      
+
       for(unsigned int rI = 0; rI < jetRVect.size(); ++rI){
 	for(unsigned int jI = 0; jI < goodJets[rI].size(); ++jI){
 	  //Exclude jets w/ association w/ photon
 	  Double_t dRJG = getDR(goodPhotons[gI].Eta(), goodPhotons[gI].Phi(), goodJets[rI][jI].Eta(), goodJets[rI][jI].Phi());
 	  if(dRJG < gammaJtDRExclusionCut) continue;
-	  
+
 	  //DPhi between jet and gamma
 	  Double_t dPhiJG = getDPHI(goodPhotons[gI].Phi(), goodJets[rI][jI].Phi());
 	  if(TMath::Abs(dPhiJG) < gammaJtDPhiCut) continue;
-	  
+
 	  if(!isMultijet){
 	    //Give it the same jet twice - in inclusive jets its not used
 	    Float_t varVal = getVar(varNameLower, goodJets[rI][jI], goodJets[rI][jI], goodPhotons[gI]);
@@ -403,7 +436,7 @@ int gdjHEPMCAna(std::string inConfigFileName)
 	      //Gotta impose more cuts; same cuts as on prev jet, but adding multijet cuts
 	      Double_t dRJG2 = getDR(goodPhotons[gI].Eta(), goodPhotons[gI].Phi(), goodJets[rI][jI2].Eta(), goodJets[rI][jI2].Phi());
 	      if(dRJG2 < gammaJtDRExclusionCut) continue;
-	      
+
 	      //DPhi between jet and gamma
 	      Double_t dPhiJG2 = getDPHI(goodPhotons[gI].Phi(), goodJets[rI][jI2].Phi());
 	      if(TMath::Abs(dPhiJG2) < gammaJtDPhiCut) continue;
@@ -411,23 +444,44 @@ int gdjHEPMCAna(std::string inConfigFileName)
 	      //do drjj cut
 	      Double_t dRJJ = getDR(goodJets[rI][jI].Eta(), goodJets[rI][jI].Phi(), goodJets[rI][jI2].Eta(), goodJets[rI][jI2].Phi());
 	      if(dRJJ < mixJtDRExclusionCut) continue;
-	      
+
 	      //Now construct multijet and do multijet dphi cut
 	      TLorentzVector multiJt = goodJets[rI][jI] + goodJets[rI][jI2];
 	      Double_t dPhiJJG = getDPHI(goodPhotons[gI].Phi(), multiJt.Phi());
 	      if(TMath::Abs(dPhiJJG) < gammaMultiJtDPhiCut) continue;
 
 	      Float_t varVal = getVar(varNameLower, goodJets[rI][jI], goodJets[rI][jI2], goodPhotons[gI]);
+	      Float_t xjjVal = getVar("xjj", goodJets[rI][jI], goodJets[rI][jI2], goodPhotons[gI]);
+	      Float_t ajjVal = getVar("ajj", goodJets[rI][jI], goodJets[rI][jI2], goodPhotons[gI]);
 	      varHist_p[rI][gammaPos]->Fill(varVal, evtWeight_);
 	      varHistCurve_p[rI][gammaPos]->Fill(varVal, evtWeight_);
+
+	      //Fill your correlation checks
+	      if(goodPhotons[gI].Pt() >= 90.0 && goodPhotons[gI].Pt() < 180.0){
+		photonPtVsXJJ_p[rI]->Fill(goodPhotons[gI].Pt(), xjjVal, evtWeight_);
+		photonPtXXJJVsAJJ_p[rI]->Fill(goodPhotons[gI].Pt()*xjjVal, ajjVal, evtWeight_);
+		if(goodPhotons[gI].Pt() >= 90.0 && goodPhotons[gI].Pt() < 120.0){
+		  xjjVsAJJ_Photon90to120_p[rI]->Fill(xjjVal, ajjVal, evtWeight_);
+
+		  if(xjjVal > 0.6 && xjjVal < 0.8){
+		    if(ajjVal > 0.3 && false){
+		      std::cout << "XJJ 0.6-0.8, ajj > 0.3 flagged on entry = " << entry << std::endl;
+		      std::cout << " Photon pT, eta, phi: " << goodPhotons[gI].Pt() << ", " << goodPhotons[gI].Eta() << ", " << goodPhotons[gI].Phi() << std::endl;
+		      std::cout << " Jet 1 pT, eta, phi: " <<  goodJets[rI][jI].Pt() << ", " << goodJets[rI][jI].Eta() << ", " << goodJets[rI][jI].Phi() << std::endl;
+		      std::cout << " Jet 2 pT, eta, phi: " <<  goodJets[rI][jI2].Pt() << ", " << goodJets[rI][jI2].Eta() << ", " << goodJets[rI][jI2].Phi() << std::endl;
+		      std::cout << " xjj=" << xjjVal << ", ajj=" << ajjVal << std::endl;
+		    }
+		  }
+		}
+	      }
 	    }
-	  }	  
-	}	
-      }      
-    }    
+	  }
+	}
+      }
+    }
   }
-  std::cout << "Event processing complete." << std::endl;    
-  
+  std::cout << "Event processing complete." << std::endl;
+
   inFile_p->Close();
   delete inFile_p;
 
@@ -435,12 +489,12 @@ int gdjHEPMCAna(std::string inConfigFileName)
 
 
   for(unsigned int rI = 0; rI < jetRVect.size(); ++rI){
-    for(Int_t gI = 0; gI < nGammaPtBins; ++gI){    
+    for(Int_t gI = 0; gI < nGammaPtBins; ++gI){
       //Skip the ones outside your range
       Double_t binCenter = (gammaPtBins[gI] + gammaPtBins[gI+1])/2.0;
       if(binCenter < gammaPtBinsLowReco) continue;
       if(binCenter > gammaPtBinsHighReco) continue;
-      
+
       //Scale by nPhotons
       binWidthAndScaleNorm(varHist_p[rI][gI], (Double_t)nPhotonsPerPtBin[gI]);
       binWidthAndScaleNorm(varHistCurve_p[rI][gI], (Double_t)nPhotonsPerPtBin[gI]);
@@ -450,15 +504,24 @@ int gdjHEPMCAna(std::string inConfigFileName)
       delete varHist_p[rI][gI];
       delete varHistCurve_p[rI][gI];
     }
+
+    photonPtVsXJJ_p[rI]->Write("", TObject::kOverwrite);
+    delete photonPtVsXJJ_p[rI];
+
+    photonPtXXJJVsAJJ_p[rI]->Write("", TObject::kOverwrite);
+    delete photonPtXXJJVsAJJ_p[rI];
+
+    xjjVsAJJ_Photon90to120_p[rI]->Write("", TObject::kOverwrite);
+    delete xjjVsAJJ_Photon90to120_p[rI];
   }
-  
+
   config_p->Write("config", TObject::kOverwrite);
-  
+
   outFile_p->Close();
   delete outFile_p;
-  
+
   //Clean all new's
-  delete config_p;  
+  delete config_p;
 
   std::cout << "GDJHEPMCANA complete. return 0" << std::endl;
   return 0;

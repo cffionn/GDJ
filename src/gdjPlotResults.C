@@ -2194,8 +2194,6 @@ int gdjPlotResults(std::string inConfigFileName)
       plotSaveName = "pdfDir/" + dateStr + "/" + varName + "UnfoldedSyst_GammaPt" + std::to_string(gI) + "_" + centBinsStr[cI] + "OverPP_SystType_" + saveTag + "_" + dateStr + "." + saveExt;
       plotSyst(pbpbHist_p, systTypeQuadSumVals, uniqueSystTypes, systLabels, "#frac{" + centBinsLabel[cI] + "}{pp}", plotSaveName, "Total", systMin, systMax);
 
-
-
       canv_p->cd();
       pads_p[1]->cd();
 

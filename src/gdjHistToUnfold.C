@@ -131,10 +131,10 @@ void makeReweightHist(T* weightHist_p, T* numHist_p, T* denomHist_p, std::string
 
 
   //Dump the reweighting matrix to a canvas
-  const int titleFont = 42;
-  const double titleSize = 0.03;
-  const double labelSize = titleSize*0.9;
-  const double yOffset = 0.9;
+  //  const int titleFont = 42;
+  //  const double titleSize = 0.03;
+  //  const double labelSize = titleSize*0.9;
+  //  const double yOffset = 0.9;
 
   const Float_t height = 1200.0;
   const Float_t width = 1200.0;
@@ -1431,8 +1431,15 @@ int gdjHistToUnfold(std::string inConfigFileName)
   }
   qgFlavorToVectPos[21] = 1;
 
+  const Int_t nQGPair = 4;
+  std::vector<std::string> qgPairStr = {"QQ", "QG", "GG", "PairNoFlavor"};
+
+  Double_t rooResJetVarTotalFills = 0.0;
+  Double_t rooResJetVarTreePhoFills = 0.0;
+
   RooUnfoldResponse* rooResGammaJetVar_p[nMaxCentBins][nMaxSyst];
   TH1D* rooResGammaJetVar_QG_p[nMaxCentBins][nQG];
+  TH1D* rooResGammaJetVar_QGPair_p[nMaxCentBins][nQGPair];
   TH2D* rooResGammaJetVarMatrixReco_p[nMaxCentBins][nMaxSyst];
   TH2D* rooResGammaJetVarMatrixTruth_p[nMaxCentBins][nMaxSyst];
   TH2D* rooResGammaJetVarMisses_p[nMaxCentBins][nMaxSyst];
@@ -2102,6 +2109,9 @@ int gdjHistToUnfold(std::string inConfigFileName)
     return 1;
   }
 
+  const Int_t nMaxParton = 2;
+  Int_t treePartonId[nMaxParton];
+
   //Run,lumi,event check for duplication
   Bool_t is5050FilledHist;
   UInt_t runNumber;
@@ -2139,6 +2149,8 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
   Double_t unfoldWeight_;
   Float_t unfoldCent_;
+
+  unfoldTree_p->SetBranchAddress("treePartonId", treePartonId);
 
   unfoldTree_p->SetBranchAddress("is5050FilledHist", &is5050FilledHist);
   unfoldTree_p->SetBranchAddress("runNumber", &runNumber);
@@ -2218,6 +2230,12 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	  std::string qgName = "rooResGammaJetVar_" + centBinsStr[cI] + "_" + qgStr[qgI] + "_h";
 	  rooResGammaJetVar_QG_p[cI][qgI] = new TH1D(qgName.c_str(), ";Jet p_{T} [GeV];Counts", 17, 30, 200);
 	  rooResGammaJetVar_QG_p[cI][qgI]->Sumw2();
+	}
+
+	for(Int_t qgI = 0; qgI < nQGPair; ++qgI){
+	  std::string qgName = "rooResGammaJetVar_" + centBinsStr[cI] + "_" + qgPairStr[qgI] + "_h";
+	  rooResGammaJetVar_QGPair_p[cI][qgI] = new TH1D(qgName.c_str(), ";Pair Leading Jet p_{T} [GeV];Counts", 17, 30, 200);
+	  rooResGammaJetVar_QGPair_p[cI][qgI]->Sumw2();
 	}
       }
 
@@ -2500,7 +2518,6 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	  if(isRecoGood && !isTruthGood){
 	    rooResGammaJetVar_p[centPos][sysI]->Fake(gammaJtDPhiReco, recoGammaPt_[gammaSysPos], unfoldWeight_*phoJetWeight);
 	    rooResGammaJetVarFakes_p[centPos][sysI]->Fill(gammaJtDPhiReco, recoGammaPt_[gammaSysPos], unfoldWeight_*phoJetWeight);
-	    //	    rooResGammaJetVarMisses_p[centPos][sysI]->Fill(gammaJtDPhiTruth, truthGammaPt_, unfoldWeight_*phoJetWeight);
 	  }
 	  else if(isTruthGood && !isRecoGood){
 	    rooResGammaJetVar_p[centPos][sysI]->Miss(gammaJtDPhiTruth, truthGammaPt_, unfoldWeight_*phoJetWeight);
@@ -2881,8 +2898,6 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	    bool passesMultiJtDPhiReco = multiJtRecoDPhi >= gammaMultiJtDPhiCut;
 	    goodReco = goodReco && passesMultiJtDPhiReco;
 
-	    //	    Bool_t varValRecoGood = varValReco >= varBinsLowReco && varValReco < varBinsHighReco;
-
 	    goodTruth = goodTruth && !truthGammaOutOfBounds;
 	    goodReco = goodReco && !recoGammaOutOfBounds;
 
@@ -2898,11 +2913,36 @@ int gdjHistToUnfold(std::string inConfigFileName)
 
 	      rooResGammaJetVar_p[centPos][sysI]->Fill(varValReco, subJtGammaPtValReco, varValTruth, subJtGammaPtValTruth, unfoldWeight_*phoJetWeight);
 	      if(sysI == 0){
+		//Multijet QG handling
 		if(qgFlavorToVectPos.count(goodTruthJet1Flavor) == 0) rooResGammaJetVar_QG_p[centPos][2]->Fill(goodTruthJet1.Pt(), unfoldWeight_*phoJetWeight);
 		else rooResGammaJetVar_QG_p[centPos][qgFlavorToVectPos[goodTruthJet1Flavor]]->Fill(goodTruthJet1.Pt(), unfoldWeight_*phoJetWeight);
 
 		if(qgFlavorToVectPos.count(goodTruthJet2Flavor) == 0) rooResGammaJetVar_QG_p[centPos][2]->Fill(goodTruthJet2.Pt(), unfoldWeight_*phoJetWeight);
 		else rooResGammaJetVar_QG_p[centPos][qgFlavorToVectPos[goodTruthJet2Flavor]]->Fill(goodTruthJet2.Pt(), unfoldWeight_*phoJetWeight);
+
+		//Multijet QGPair handling
+		//std::vector<std::string> qgPairStr = {"QQ", "QG", "GG", "NoFlavor"};
+		Double_t leadingJtPt = goodTruthJet1.Pt();
+		if(goodTruthJet2.Pt() > leadingJtPt) leadingJtPt = goodTruthJet2.Pt();
+
+		//Either jet no flavor, fill no flavor
+		if(qgFlavorToVectPos.count(goodTruthJet1Flavor) == 0 || qgFlavorToVectPos.count(goodTruthJet2Flavor) == 0){
+		  rooResGammaJetVar_QGPair_p[centPos][3]->Fill(leadingJtPt, unfoldWeight_*phoJetWeight);
+		}
+		else if(qgFlavorToVectPos[goodTruthJet1Flavor] == 0){//flavor 1 quark
+		  if(qgFlavorToVectPos[goodTruthJet2Flavor] == 0) rooResGammaJetVar_QGPair_p[centPos][0]->Fill(leadingJtPt, unfoldWeight_*phoJetWeight); //qq pair
+		  else rooResGammaJetVar_QGPair_p[centPos][1]->Fill(leadingJtPt, unfoldWeight_*phoJetWeight); //qg pair
+		}
+		else if(qgFlavorToVectPos[goodTruthJet1Flavor] == 1){//flavor 1 gluon
+		  if(qgFlavorToVectPos[goodTruthJet2Flavor] == 0) rooResGammaJetVar_QGPair_p[centPos][1]->Fill(leadingJtPt, unfoldWeight_*phoJetWeight); //qg pair
+		  else rooResGammaJetVar_QGPair_p[centPos][2]->Fill(leadingJtPt, unfoldWeight_*phoJetWeight); //gg pair
+		}
+
+		rooResJetVarTotalFills += unfoldWeight_*phoJetWeight;
+		if(treePartonId[0] == 22 || treePartonId[1] == 22){
+		  rooResJetVarTreePhoFills += unfoldWeight_*phoJetWeight;
+		}
+		//		std::cout << "ROO RES TREE PHO FILLS: " << treePartonId[0] << ", " << treePartonId[1] << std::endl;
 	      }
 
 	      if(false){
@@ -3366,6 +3406,19 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	for(Int_t qgI = 0; qgI < nQG; ++qgI){
 	  rooResGammaJetVar_QG_p[cI][qgI]->Write("", TObject::kOverwrite);
 	}
+
+	for(Int_t qgI = 0; qgI < nQGPair; ++qgI){
+	  rooResGammaJetVar_QGPair_p[cI][qgI]->Write("", TObject::kOverwrite);
+	}
+
+	TEnv* rooResJetVarTreePhoFillsConfig = new TEnv();
+	rooResJetVarTreePhoFillsConfig->SetValue("ROORESJETVARTOTALFILLS", rooResJetVarTotalFills);
+	rooResJetVarTreePhoFillsConfig->SetValue("ROORESJETVARTREEPHOFILLS", rooResJetVarTreePhoFills);
+
+	rooResJetVarTreePhoFillsConfig->Write("rooResJetVarTreePhoFills", TObject::kOverwrite);
+	delete rooResJetVarTreePhoFillsConfig;
+
+	std::cout << "Fraction Tree Photons: " << rooResJetVarTreePhoFills << "/" << rooResJetVarTotalFills << " = " << Form("%.3f", rooResJetVarTreePhoFills/rooResJetVarTotalFills) << std::endl;
       }
 
       Int_t gammaSysPos = vectContainsStrPos(systStrVect[sysI], &gesGERStrVect);
@@ -3600,6 +3653,10 @@ int gdjHistToUnfold(std::string inConfigFileName)
       if(sysI == 0){
 	for(Int_t qgI = 0; qgI < nQG; ++qgI){
 	  delete rooResGammaJetVar_QG_p[cI][qgI];
+	}
+
+	for(Int_t qgI = 0; qgI < nQGPair; ++qgI){
+	  delete rooResGammaJetVar_QGPair_p[cI][qgI];
 	}
       }
 
