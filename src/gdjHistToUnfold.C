@@ -220,10 +220,10 @@ void plotReweightHists(TH1D* reweight_p, TH1D* data_p, TH1D* reweighted_p, std::
   binWidthAndSelfNorm(data_p);
   binWidthAndSelfNorm(reweighted_p);
 
-  Float_t max = TMath::Max(getMax(reweight_p), getMax(data_p));
+  Double_t max = TMath::Max(getMax(reweight_p), getMax(data_p));
   max = TMath::Max(getMax(reweighted_p), max);
 
-  Float_t min = TMath::Min(getMinGTZero(reweight_p), getMinGTZero(data_p));
+  Double_t min = TMath::Min(getMinGTZero(reweight_p), getMinGTZero(data_p));
   min = TMath::Min(getMinGTZero(reweighted_p), min);
 
   reweight_p->SetMaximum(max*1.2);
@@ -272,9 +272,9 @@ void plotReweightHists(TH1D* reweight_p, TH1D* data_p, TH1D* reweighted_p, std::
   delete line_p;
   pads_p[0]->cd();
 
-  Float_t xLow = 0.5;
+  Double_t xLow = 0.5;
   if(saveName.find("DRJJ") != std::string::npos) xLow = 0.3;
-  Float_t xHigh = xLow + 0.25;
+  Double_t xHigh = xLow + 0.25;
 
   TLegend* leg_p = new TLegend(xLow, 0.7, xHigh, 0.9);
   leg_p->SetTextFont(titleFont);
@@ -291,7 +291,7 @@ void plotReweightHists(TH1D* reweight_p, TH1D* data_p, TH1D* reweighted_p, std::
 
   TLatex* label_p = new TLatex();
   xLow = 0.94;
-  Float_t yLow = 0.65;
+  Double_t yLow = 0.65;
 
   if(saveName.find("DRJJ") != std::string::npos){
     xLow = 0.3;
@@ -505,7 +505,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
   std::vector<float> rebinXVect, rebinYVect;
 
   //We need some param delta defining when two bin edges are the same - here I pick something small
-  const Float_t deltaValue = 0.001;
+  const Double_t deltaValue = 0.001;
 
   //If we are doing rebin, grab the new arrays of bins
   if(doRebin){
@@ -3505,7 +3505,10 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	std::cout << "  Iter " << i << "/" << nIter << std::endl;
 
 	TH2D* histForUnfold_p = photonPtJetVarReco_PURCORR_COMBINED_p[cI][systPos];
-	if(isStrSame(systStrVect[sysI], "MIXNONCLOSURE") && !isPP){
+	//Per PAM, we reverse the current choice of what is nominal vs. what is syst.
+	//Now, nominal is correcting for the mixing nonclosure
+	//syst is not correcting
+	if(!isStrSame(systStrVect[sysI], "MIXNONCLOSURE") && !isPP){
 	  histForUnfold_p = (TH2D*)photonPtJetVarReco_PURCORR_COMBINED_p[cI][systPos]->Clone("mixNonClosureClone_h");
 
 	  TFile* inMixNonClosureFile_p = new TFile(inMixSystFileName.c_str(), "READ");
@@ -3536,11 +3539,6 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	  outFile_p->cd();
 	  //	  return 1;
 	}
-
-	//	std::cout << "PRINTING ROORESGAMMA JET VAR: " << std::endl;
-	//	rooResGammaJetVar_p[cI][sysI]->Print("ALL");
-	//	std::cout << "END PRINTING ROORESGAMMA JET VAR: " << std::endl;
-
 
 	RooUnfoldBayes* rooBayes_p = new RooUnfoldBayes(rooResGammaJetVar_p[cI][sysI], histForUnfold_p, i);
 	rooBayes_p->SetVerbose(0);
