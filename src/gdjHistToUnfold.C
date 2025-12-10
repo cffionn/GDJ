@@ -2150,7 +2150,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
   Double_t unfoldWeight_;
   Float_t unfoldCent_;
 
-  unfoldTree_p->SetBranchAddress("treePartonId", treePartonId);
+  if(isPP) unfoldTree_p->SetBranchAddress("treePartonId", treePartonId);
 
   unfoldTree_p->SetBranchAddress("is5050FilledHist", &is5050FilledHist);
   unfoldTree_p->SetBranchAddress("runNumber", &runNumber);
@@ -2939,10 +2939,11 @@ int gdjHistToUnfold(std::string inConfigFileName)
 		}
 
 		rooResJetVarTotalFills += unfoldWeight_*phoJetWeight;
-		if(treePartonId[0] == 22 || treePartonId[1] == 22){
-		  rooResJetVarTreePhoFills += unfoldWeight_*phoJetWeight;
+		if(isPP){
+		  if(treePartonId[0] == 22 || treePartonId[1] == 22){
+		    rooResJetVarTreePhoFills += unfoldWeight_*phoJetWeight;
+		  }
 		}
-		//		std::cout << "ROO RES TREE PHO FILLS: " << treePartonId[0] << ", " << treePartonId[1] << std::endl;
 	      }
 
 	      if(false){
@@ -3381,6 +3382,7 @@ int gdjHistToUnfold(std::string inConfigFileName)
       if(doGlobalDebug){
 	std::cout << __FILE__ << ", " << __LINE__ << ", " << sI << ", " << systStrVect[sI] << std::endl;
 	std::cout << rooResGammaJetVar_p[cI][sI]->Htruth() << std::endl;
+	std::cout << __FILE__ << ", " << __LINE__ << ", " << sI << ", " << systStrVect[sI] << std::endl;
       }
 
       TH2D* tempTruthHist_p = (TH2D*)rooResGammaJetVar_p[cI][sI]->Htruth();
@@ -3411,14 +3413,16 @@ int gdjHistToUnfold(std::string inConfigFileName)
 	  rooResGammaJetVar_QGPair_p[cI][qgI]->Write("", TObject::kOverwrite);
 	}
 
-	TEnv* rooResJetVarTreePhoFillsConfig = new TEnv();
-	rooResJetVarTreePhoFillsConfig->SetValue("ROORESJETVARTOTALFILLS", rooResJetVarTotalFills);
-	rooResJetVarTreePhoFillsConfig->SetValue("ROORESJETVARTREEPHOFILLS", rooResJetVarTreePhoFills);
+	if(isPP){
+	  TEnv* rooResJetVarTreePhoFillsConfig = new TEnv();
+	  rooResJetVarTreePhoFillsConfig->SetValue("ROORESJETVARTOTALFILLS", rooResJetVarTotalFills);
+	  rooResJetVarTreePhoFillsConfig->SetValue("ROORESJETVARTREEPHOFILLS", rooResJetVarTreePhoFills);
 
-	rooResJetVarTreePhoFillsConfig->Write("rooResJetVarTreePhoFills", TObject::kOverwrite);
-	delete rooResJetVarTreePhoFillsConfig;
+	  rooResJetVarTreePhoFillsConfig->Write("rooResJetVarTreePhoFills", TObject::kOverwrite);
+	  delete rooResJetVarTreePhoFillsConfig;
 
-	std::cout << "Fraction Tree Photons: " << rooResJetVarTreePhoFills << "/" << rooResJetVarTotalFills << " = " << Form("%.3f", rooResJetVarTreePhoFills/rooResJetVarTotalFills) << std::endl;
+	  std::cout << "Fraction Tree Photons: " << rooResJetVarTreePhoFills << "/" << rooResJetVarTotalFills << " = " << Form("%.3f", rooResJetVarTreePhoFills/rooResJetVarTotalFills) << std::endl;
+	}
       }
 
       Int_t gammaSysPos = vectContainsStrPos(systStrVect[sysI], &gesGERStrVect);
